@@ -1,0 +1,21 @@
+$bog_gamengine_spike_s2 $mol_page
+	title \S2: 10k instances
+	mode? \hot
+	count? 10000
+	tools /
+		<= Mode $mol_switch
+			value? <=> mode?
+			options *
+				hot \hot
+				cold \cold
+		<= Count $mol_number
+			value? <=> count?
+			value_min 1
+	body <= panes /
+	foot /
+		<= Stat $mol_view
+			sub / <= stat \
+	Hot $bog_gamengine_spike_s2_hot
+		count <= count
+	Cold $bog_gamengine_spike_s2_cold
+		count <= count
