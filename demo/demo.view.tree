@@ -1,0 +1,33 @@
+$bog_gamengine_demo $mol_book2
+	pages /
+		<= Page $mol_page
+			title \Квад
+			tools /
+				<= Cam_switch $mol_switch
+					value? <=> cam_kind? \flat
+					options *
+						flat \Плоская
+						deep \Объёмная
+				<= Pause $mol_check_box
+					title \Пауза
+					checked? <=> paused?
+			body /
+				<= Draw $bog_gamengine_draw
+					scene <= Scene
+					cam <= cam $bog_gamengine_cam
+					stat => stat
+			foot /
+				<= Stat $mol_view
+					sub / <= stat
+	Clock $bog_gamengine_clock
+		paused? => paused?
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		kids / <= Spin
+		batches /
+			<= Batch $bog_gamengine_batch
+				nodes / <= Spin
+	Spin $bog_gamengine_demo_spin
+	Cam_flat $bog_gamengine_cam_flat
+	Cam_deep $bog_gamengine_cam_deep
+		pos <= cam_deep_pos Float32Array
