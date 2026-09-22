@@ -1,0 +1,3 @@
+$bog_gamengine_spike_s3_quad $mol_view
+	sub /
+		<= Pane $bog_gamengine_spike_s3_quad_pane
