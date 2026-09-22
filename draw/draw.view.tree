@@ -1,0 +1,4 @@
+$bog_gamengine_draw $mol_3d_pane
+	scene $bog_gamengine_scene
+	cam $bog_gamengine_cam
+	stat \

@@ -21,8 +21,9 @@ namespace $ {
 			return list as readonly $bog_gamengine_node[]
 		}
 
-		batches() {
-			return [] as readonly { fill(): number }[]
+		@ $mol_mem
+		batches( next?: readonly $bog_gamengine_batch[] ) {
+			return next ?? []
 		}
 
 		@ $mol_mem

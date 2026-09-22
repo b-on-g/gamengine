@@ -7,9 +7,11 @@ namespace $ {
 		dt_raw = 0
 		time_total = 0
 		time_frame = 0
+		tick_at = 0
 
 		@ $mol_mem
 		frame() {
+			this.tick_at = performance.now()
 			const now = this.$.$mol_state_time.now( 0 )
 			this.dt_raw = isNaN( this.now_last ) ? 0 : Math.min( ( now - this.now_last ) / 1000, 0.1 )
 			this.now_last = now
