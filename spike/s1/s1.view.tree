@@ -1,8 +1,0 @@
-$bog_gamengine_spike_s1 $mol_view
-	bad? false
-	sub /
-		<= Bad $mol_check_box
-			title \bad
-			checked? <=> bad?
-		<= Pane $bog_gamengine_spike_s1_pane
-			bad <= bad
