@@ -3933,9 +3933,11 @@ declare namespace $ {
 declare namespace $ { }
 
 declare namespace $ {
+    type $bog_gamengine_prop_kind = 'vec2' | 'vec3' | 'vec4' | 'number' | 'flag' | 'text' | 'frame' | 'euler' | 'list';
     type $bog_gamengine_prop = {
         name: string;
-        kind: 'vec2' | 'vec3' | 'vec4' | 'number' | 'flag' | 'text' | 'frame' | 'euler';
+        kind: $bog_gamengine_prop_kind;
+        fields?: Readonly<Record<string, $bog_gamengine_prop_kind>>;
         get: () => unknown;
         set: (next: unknown) => void;
     };
