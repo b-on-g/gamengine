@@ -36,27 +36,21 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		tint( next?: Float32Array ) {
-			return next ?? new Float32Array([ 1, 1, 1, 1 ])
-		}
-
-		@ $mol_mem
 		flip_x( next = false ) {
 			return next
 		}
 
 		@ $mol_mem
-		size( next?: Float32Array ) {
-			return next ?? new Float32Array([ 1, 1 ])
+		size( next?: ArrayLike< number > ) {
+			return next ? $bog_gamengine_node_vec( next ) : new Float32Array([ 1, 1 ])
 		}
 
 		props(): readonly $bog_gamengine_prop[] {
 			return [
 				... super.props(),
 				{ name: 'frame', kind: 'frame', get: ()=> this.frame(), set: next => this.frame( next as string ) },
-				{ name: 'tint', kind: 'vec4', get: ()=> this.tint(), set: next => this.tint( next as Float32Array ) },
 				{ name: 'flip_x', kind: 'flag', get: ()=> this.flip_x(), set: next => this.flip_x( next as boolean ) },
-				{ name: 'size', kind: 'vec2', get: ()=> this.size(), set: next => this.size( next as Float32Array ) },
+				{ name: 'size', kind: 'vec2', get: ()=> this.size(), set: next => this.size( next as ArrayLike< number > ) },
 				{ name: 'clip', kind: 'text', get: ()=> this.clip(), set: next => this.clip( next as string ) },
 				{ name: 'fps', kind: 'number', get: ()=> this.fps(), set: next => this.fps( next as number ) },
 			]

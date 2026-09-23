@@ -152,6 +152,14 @@ namespace $ {
 			$mol_assert_equal( scene.nodes(), [ a, b, c ] )
 		},
 
+		'nodes see kids given through setter'() {
+			const a = new $bog_gamengine_node
+			const b = new $bog_gamengine_node
+			const scene = new $bog_gamengine_scene
+			scene.kids([ a, b ])
+			$mol_assert_equal( scene.nodes(), [ a, b ] )
+		},
+
 	})
 
 }

@@ -34,7 +34,7 @@ namespace $ {
 			return this.index_last
 		}
 
-		pos( next?: Float32Array ) {
+		pos( next?: ArrayLike< number > ) {
 			const i = this.index()
 			const world = this.phys3()
 			if( next ) world.pos.set( next, i * 3 )
@@ -42,7 +42,7 @@ namespace $ {
 			return this.pos_out
 		}
 
-		rot( next?: Float32Array ) {
+		rot( next?: ArrayLike< number > ) {
 			const i = this.index()
 			const world = this.phys3()
 			if( next ) {

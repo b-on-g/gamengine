@@ -34,16 +34,45 @@ namespace $ {
 			$mol_assert_equal( node.title(), 'Hero' )
 		},
 
-		'base props are pos, rot and scale with kinds'() {
+		'base props are pos, rot, scale and tint with kinds'() {
 			const props = new $bog_gamengine_node().props()
-			$mol_assert_equal( props.map( prop => prop.name ), [ 'pos', 'rot', 'scale' ] )
-			$mol_assert_equal( props.map( prop => prop.kind ), [ 'vec3', 'euler', 'vec3' ] )
+			$mol_assert_equal( props.map( prop => prop.name ), [ 'pos', 'rot', 'scale', 'tint' ] )
+			$mol_assert_equal( props.map( prop => prop.kind ), [ 'vec3', 'euler', 'vec3', 'vec4' ] )
 		},
 
 		'set through props changes pos'() {
 			const node = new $bog_gamengine_node
 			node_test_prop( node, 'pos' ).set( new Float32Array([ 1, 2, 3 ]) )
 			$mol_assert_equal( [ ... node.pos() ], [ 1, 2, 3 ] )
+		},
+
+		'pos from plain array is typed array with same numbers'() {
+			const node = new $bog_gamengine_node
+			node.pos([ 1, 2, 3 ])
+			$mol_assert_ok( node.pos() instanceof Float32Array )
+			$mol_assert_equal( [ ... node.pos() ], [ 1, 2, 3 ] )
+		},
+
+		'pos from typed array keeps the same reference'() {
+			const node = new $bog_gamengine_node
+			const typed = new Float32Array([ 1, 2, 3 ])
+			node.pos( typed )
+			$mol_assert_equal( node.pos(), typed )
+		},
+
+		'kids setter stores nodes'() {
+			const a = new $bog_gamengine_node
+			const b = new $bog_gamengine_node
+			const parent = new $bog_gamengine_node
+			parent.kids([ a, b ])
+			$mol_assert_equal( parent.kids(), [ a, b ] )
+		},
+
+		'tint of bare node defaults to opaque white through props'() {
+			const node = new $bog_gamengine_node
+			$mol_assert_equal( [ ... node_test_prop( node, 'tint' ).get() as Float32Array ], [ 1, 1, 1, 1 ] )
+			node_test_prop( node, 'tint' ).set([ 1, 0, 0, 0.5 ])
+			$mol_assert_equal( [ ... node.tint() ], [ 1, 0, 0, 0.5 ] )
 		},
 
 	})
