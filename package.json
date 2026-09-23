@@ -203,6 +203,7 @@
     "$bog_gamengine_draw",
     "$bog_gamengine_scene",
     "$bog_gamengine_clock",
+    "$bog_gamengine_light",
     "$bog_gamengine_batch",
     "$bog_gamengine_shader",
     "$bog_gamengine_gl",

@@ -9695,17 +9695,92 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    class $bog_gamengine_light extends $bog_gamengine_node {
+        kind(next = 'sun') {
+            return next;
+        }
+        color(next) {
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1, 1]);
+        }
+        power(next = 1) {
+            return next;
+        }
+        range(next = 10) {
+            return next;
+        }
+        angle(next = Math.PI / 6) {
+            return next;
+        }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'kind', kind: 'text', get: () => this.kind(), set: next => this.kind(next) },
+                { name: 'color', kind: 'vec3', get: () => this.color(), set: next => this.color(next) },
+                { name: 'power', kind: 'number', get: () => this.power(), set: next => this.power(next) },
+                { name: 'range', kind: 'number', get: () => this.range(), set: next => this.range(next) },
+                { name: 'angle', kind: 'number', get: () => this.angle(), set: next => this.angle(next) },
+            ];
+        }
+        dir() {
+            const dir = new Float32Array(3);
+            return $bog_gamengine_light_dir(this.world(), dir, 0);
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_light.prototype, "kind", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_light.prototype, "color", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_light.prototype, "power", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_light.prototype, "range", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_light.prototype, "angle", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_light.prototype, "dir", null);
+    $.$bog_gamengine_light = $bog_gamengine_light;
+    function $bog_gamengine_light_dir(world, out, offset) {
+        const x = -world[8];
+        const y = -world[9];
+        const z = -world[10];
+        const len = Math.hypot(x, y, z) || 1;
+        out[offset] = x / len;
+        out[offset + 1] = y / len;
+        out[offset + 2] = z / len;
+        return out;
+    }
+    $.$bog_gamengine_light_dir = $bog_gamengine_light_dir;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     const prefix = `#version 300 es
 				precision highp float;
 				precision highp sampler2D;
 				precision highp sampler2DArray;
 			`;
+    function $bog_gamengine_gl_decl(kind, type, name) {
+        const open = type.indexOf('[');
+        if (open < 0)
+            return `${kind} ${type} ${name};\n`;
+        return `${kind} ${type.slice(0, open)} ${name}${type.slice(open)};\n`;
+    }
+    $.$bog_gamengine_gl_decl = $bog_gamengine_gl_decl;
     function $bog_gamengine_gl_source(face, vert, frag) {
         let revert = prefix;
         let refrag = prefix;
         for (const name in face.glob ?? {}) {
-            revert += `uniform ${face.glob[name]} ${name};\n`;
-            refrag += `uniform ${face.glob[name]} ${name};\n`;
+            const decl = $bog_gamengine_gl_decl('uniform', face.glob[name], name);
+            revert += decl;
+            refrag += decl;
         }
         for (const name in face.input ?? {}) {
             revert += `in ${face.input[name]} ${name};\n`;
@@ -9857,6 +9932,12 @@ var $;
         return data;
     }
     $.$bog_gamengine_gl_uniform_vector = $bog_gamengine_gl_uniform_vector;
+    function $bog_gamengine_gl_uniform_vec4s(gl, location, data) {
+        if (location)
+            gl.uniform4fv(location, data);
+        return data;
+    }
+    $.$bog_gamengine_gl_uniform_vec4s = $bog_gamengine_gl_uniform_vec4s;
     function $bog_gamengine_gl_uniform_int(gl, location, value) {
         if (location)
             gl.uniform1i(location, value);
@@ -10233,6 +10314,8 @@ var $;
         tint = new Float32Array(0);
         layer = new Float32Array(0);
         uv = new Float32Array(0);
+        material = new Float32Array(0);
+        normal_layer = new Float32Array(0);
         grow(need) {
             if (need <= this.cap)
                 return;
@@ -10244,6 +10327,8 @@ var $;
             this.tint = new Float32Array(cap * 4);
             this.layer = new Float32Array(cap);
             this.uv = new Float32Array(cap * 4);
+            this.material = new Float32Array(cap * 4);
+            this.normal_layer = new Float32Array(cap);
         }
         fill() {
             const source = this.source();
@@ -10256,6 +10341,8 @@ var $;
             const tint = this.tint;
             const layer = this.layer;
             const uv = this.uv;
+            const material = this.material;
+            const normal_layer = this.normal_layer;
             for (let i = 0; i < count; ++i) {
                 const node = nodes[i];
                 trans.set(node.world(), i * 16);
@@ -10278,6 +10365,16 @@ var $;
                     uv[i * 4 + 2] = 1;
                     uv[i * 4 + 3] = 1;
                 }
+                if (typeof node.material === 'function') {
+                    material.set(node.material(), i * 4);
+                }
+                else {
+                    material[i * 4] = 0;
+                    material[i * 4 + 1] = 0.6;
+                    material[i * 4 + 2] = 0;
+                    material[i * 4 + 3] = 0;
+                }
+                normal_layer[i] = typeof node.normal_layer === 'function' ? node.normal_layer() : -1;
             }
             this.count = count;
             ++this.version;
@@ -10291,12 +10388,18 @@ var $;
             if (this.cap !== cap) {
                 this.tint.fill(1);
                 this.layer.fill(0);
+                this.normal_layer.fill(-1);
                 const uv = this.uv;
+                const material = this.material;
                 for (let i = 0; i < this.cap; ++i) {
                     uv[i * 4] = 0;
                     uv[i * 4 + 1] = 0;
                     uv[i * 4 + 2] = 1;
                     uv[i * 4 + 3] = 1;
+                    material[i * 4] = 0;
+                    material[i * 4 + 1] = 0.6;
+                    material[i * 4 + 2] = 0;
+                    material[i * 4 + 3] = 0;
                 }
             }
             this.trans.set(source.trans.subarray(skip * 16, (skip + count) * 16));
@@ -13576,6 +13679,16 @@ var $;
             walk(this);
             return list;
         }
+        lights() {
+            const nodes = this.nodes();
+            const lights = [];
+            for (let i = 0; i < nodes.length && lights.length < 8; ++i) {
+                const node = nodes[i];
+                if (node instanceof $bog_gamengine_light)
+                    lights.push(node);
+            }
+            return lights;
+        }
         batches(next) {
             return next ?? [];
         }
@@ -13616,6 +13729,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "nodes", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_scene.prototype, "lights", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "batches", null);
@@ -13692,10 +13808,16 @@ var $;
     var $$;
     (function ($$) {
         const stat_window = 30;
+        const light_max = 8;
         class $bog_gamengine_draw extends $.$bog_gamengine_draw {
             slots_all = new WeakMap();
             textures_all = new WeakMap();
-            ambient_vec = new Float32Array(1);
+            ambient_vec = new Float32Array(3);
+            cam_pos_vec = new Float32Array(3);
+            lights_pos = new Float32Array(light_max * 4);
+            lights_dir = new Float32Array(light_max * 4);
+            lights_color = new Float32Array(light_max * 4);
+            lights_count = 0;
             wire_off = new Float32Array(1);
             wire_on = new Float32Array([1]);
             gaps = new Float32Array(stat_window);
@@ -13763,13 +13885,18 @@ var $;
                 const mode = shape.mode();
                 const depth = shader.depth();
                 const wireframe = 'wireframe' in globs ? program.uniform('wireframe') : null;
+                const glob = (name) => name in globs ? program.uniform(name) : null;
                 const slot = {
                     batch,
                     program,
                     proj: program.uniform('proj'),
                     view: program.uniform('view'),
-                    light_dir: 'light_dir' in globs ? program.uniform('light_dir') : null,
-                    ambient: 'ambient' in globs ? program.uniform('ambient') : null,
+                    light_count: glob('light_count'),
+                    light_pos: glob('light_pos'),
+                    light_dir: glob('light_dir'),
+                    light_color: glob('light_color'),
+                    ambient: glob('ambient'),
+                    cam_pos: glob('cam_pos'),
                     wireframe,
                     depth,
                     vao: gl.createVertexArray(),
@@ -13779,6 +13906,8 @@ var $;
                     tint: null,
                     layer: null,
                     uv: null,
+                    material: null,
+                    normal_layer: null,
                     atlas,
                     sampler: atlas ? program.uniform('atlas') : null,
                     tex: atlas ? this.tex(atlas) : null,
@@ -13809,6 +13938,16 @@ var $;
                 if (inst_uv !== null) {
                     slot.uv = new $bog_gamengine_gl_buffer(gl, inst_uv, 4, 1);
                     slot.uv.reserve(cap * 16);
+                }
+                const material = program.attribute('inst_material');
+                if (material !== null) {
+                    slot.material = new $bog_gamengine_gl_buffer(gl, material, 4, 1);
+                    slot.material.reserve(cap * 16);
+                }
+                const normal_layer = program.attribute('inst_normal_layer');
+                if (normal_layer !== null) {
+                    slot.normal_layer = new $bog_gamengine_gl_buffer(gl, normal_layer, 1, 1);
+                    slot.normal_layer.reserve(cap * 4);
                 }
                 gl.bindVertexArray(null);
                 this.slots_all.set(batch, slot);
@@ -13848,6 +13987,51 @@ var $;
                 }
                 return sent;
             }
+            lights_fill() {
+                const lights = this.scene().lights();
+                const pos = this.lights_pos;
+                const dir = this.lights_dir;
+                const color = this.lights_color;
+                if (!lights.length) {
+                    const sun = this.light_dir();
+                    const len = Math.hypot(sun[0], sun[1], sun[2]) || 1;
+                    pos[0] = 0;
+                    pos[1] = 0;
+                    pos[2] = 0;
+                    pos[3] = 0;
+                    dir[0] = -sun[0] / len;
+                    dir[1] = -sun[1] / len;
+                    dir[2] = -sun[2] / len;
+                    dir[3] = -1;
+                    color[0] = 1;
+                    color[1] = 1;
+                    color[2] = 1;
+                    color[3] = 0;
+                    this.lights_count = 1;
+                    return 1;
+                }
+                const count = Math.min(lights.length, light_max);
+                for (let i = 0; i < count; ++i) {
+                    const light = lights[i];
+                    const kind = light.kind();
+                    const world = light.world();
+                    const tone = light.color();
+                    const power = light.power();
+                    const at = i * 4;
+                    pos[at] = world[12];
+                    pos[at + 1] = world[13];
+                    pos[at + 2] = world[14];
+                    pos[at + 3] = kind === 'sun' ? 0 : 1;
+                    $bog_gamengine_light_dir(world, dir, at);
+                    dir[at + 3] = kind === 'spot' ? Math.cos(light.angle()) : -1;
+                    color[at] = tone[0] * power;
+                    color[at + 1] = tone[1] * power;
+                    color[at + 2] = tone[2] * power;
+                    color[at + 3] = light.range();
+                }
+                this.lights_count = count;
+                return count;
+            }
             paint() {
                 this.scene().step();
                 const gl = this.context();
@@ -13855,20 +14039,27 @@ var $;
                 this.textures();
                 const proj = this.proj();
                 const view = this.cam().view();
-                const light_dir = this.light_dir();
                 const wireframe = this.wireframe();
-                this.ambient_vec[0] = this.ambient();
+                const ambient = this.ambient();
+                this.ambient_vec[0] = ambient;
+                this.ambient_vec[1] = ambient;
+                this.ambient_vec[2] = ambient;
+                const cam_world = this.cam().world();
+                this.cam_pos_vec[0] = cam_world[12];
+                this.cam_pos_vec[1] = cam_world[13];
+                this.cam_pos_vec[2] = cam_world[14];
+                this.lights_fill();
                 gl.enable(gl.BLEND);
                 gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
                 gl.clearColor(0.08, 0.08, 0.1, 1);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
                 for (let i = 0; i < slots.length; ++i)
-                    this.paint_slot(gl, slots[i], proj, view, light_dir, wireframe);
+                    this.paint_slot(gl, slots[i], proj, view, wireframe);
                 gl.bindVertexArray(null);
                 gl.useProgram(null);
                 this.measure();
             }
-            paint_slot(gl, slot, proj, view, light_dir, wireframe) {
+            paint_slot(gl, slot, proj, view, wireframe) {
                 const batch = slot.batch;
                 const count = batch.count;
                 if (!count)
@@ -13895,8 +14086,12 @@ var $;
                 gl.useProgram(slot.program.native);
                 $bog_gamengine_gl_uniform_matrix(gl, slot.proj, proj);
                 $bog_gamengine_gl_uniform_matrix(gl, slot.view, view);
-                $bog_gamengine_gl_uniform_vector(gl, slot.light_dir, light_dir);
+                $bog_gamengine_gl_uniform_int(gl, slot.light_count, this.lights_count);
+                $bog_gamengine_gl_uniform_vec4s(gl, slot.light_pos, this.lights_pos);
+                $bog_gamengine_gl_uniform_vec4s(gl, slot.light_dir, this.lights_dir);
+                $bog_gamengine_gl_uniform_vec4s(gl, slot.light_color, this.lights_color);
                 $bog_gamengine_gl_uniform_vector(gl, slot.ambient, this.ambient_vec);
+                $bog_gamengine_gl_uniform_vector(gl, slot.cam_pos, this.cam_pos_vec);
                 $bog_gamengine_gl_uniform_vector(gl, slot.wireframe, this.wire_off);
                 if (slot.tex) {
                     gl.activeTexture(gl.TEXTURE0);
@@ -13923,6 +14118,18 @@ var $;
                     if (grown)
                         gl.bufferData(gl.ARRAY_BUFFER, batch.cap * 16, gl.DYNAMIC_DRAW);
                     gl.bufferSubData(gl.ARRAY_BUFFER, 0, batch.uv, 0, count * 4);
+                }
+                if (slot.material) {
+                    gl.bindBuffer(gl.ARRAY_BUFFER, slot.material.native);
+                    if (grown)
+                        gl.bufferData(gl.ARRAY_BUFFER, batch.cap * 16, gl.DYNAMIC_DRAW);
+                    gl.bufferSubData(gl.ARRAY_BUFFER, 0, batch.material, 0, count * 4);
+                }
+                if (slot.normal_layer) {
+                    gl.bindBuffer(gl.ARRAY_BUFFER, slot.normal_layer.native);
+                    if (grown)
+                        gl.bufferData(gl.ARRAY_BUFFER, batch.cap * 4, gl.DYNAMIC_DRAW);
+                    gl.bufferSubData(gl.ARRAY_BUFFER, 0, batch.normal_layer, 0, count);
                 }
                 if (grown)
                     slot.cap = batch.cap;
@@ -15669,9 +15876,38 @@ var $;
     class $bog_gamengine_shader_solid extends $bog_gamengine_shader {
         face() {
             return {
-                glob: { proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray', light_dir: 'vec3', ambient: 'float', wireframe: 'float' },
-                input: { vertex: 'vec3', uv: 'vec2', normal: 'vec3', inst_trans: 'mat4', inst_tint: 'vec4', inst_layer: 'float', inst_uv: 'vec4' },
-                pipe: { pipe_uv: 'vec2', pipe_layer: 'float', pipe_tint: 'vec4', pipe_normal: 'vec3' },
+                glob: {
+                    proj: 'mat4',
+                    view: 'mat4',
+                    atlas: 'sampler2DArray',
+                    light_count: 'int',
+                    light_pos: 'vec4[8]',
+                    light_dir: 'vec4[8]',
+                    light_color: 'vec4[8]',
+                    ambient: 'vec3',
+                    cam_pos: 'vec3',
+                    wireframe: 'float',
+                },
+                input: {
+                    vertex: 'vec3',
+                    uv: 'vec2',
+                    normal: 'vec3',
+                    inst_trans: 'mat4',
+                    inst_tint: 'vec4',
+                    inst_layer: 'float',
+                    inst_uv: 'vec4',
+                    inst_material: 'vec4',
+                    inst_normal_layer: 'float',
+                },
+                pipe: {
+                    pipe_uv: 'vec2',
+                    pipe_layer: 'float',
+                    pipe_tint: 'vec4',
+                    pipe_normal: 'vec3',
+                    pipe_pos: 'vec3',
+                    pipe_material: 'vec4',
+                    pipe_normal_layer: 'float',
+                },
                 output: { color: 'vec4' },
             };
         }
@@ -15681,29 +15917,82 @@ var $;
         vert() {
             return `
 				void main() {
-					gl_Position = proj * view * inst_trans * vec4( vertex, 1.0 );
+					vec4 world = inst_trans * vec4( vertex, 1.0 );
+					gl_Position = proj * view * world;
 					if( wireframe > 0.5 ) gl_Position.z -= 0.001;
+					pipe_pos = world.xyz;
 					pipe_normal = normalize( mat3( inst_trans ) * normal );
 					pipe_uv = uv * inst_uv.zw + inst_uv.xy;
 					pipe_layer = inst_layer;
 					pipe_tint = inst_tint;
+					pipe_material = inst_material;
+					pipe_normal_layer = inst_normal_layer;
 				}
 			`;
         }
         frag() {
             return `
+				vec3 perturb( vec3 normal, vec3 bump, vec3 pos, vec2 uv ) {
+					vec3 dpx = dFdx( pos );
+					vec3 dpy = dFdy( pos );
+					vec2 dux = dFdx( uv );
+					vec2 duy = dFdy( uv );
+					vec3 px = cross( dpy, normal );
+					vec3 py = cross( normal, dpx );
+					vec3 tangent = px * dux.x + py * duy.x;
+					vec3 bitangent = px * dux.y + py * duy.y;
+					float scale = inversesqrt( max( dot( tangent, tangent ), dot( bitangent, bitangent ) ) );
+					return normalize( mat3( tangent * scale, bitangent * scale, normal ) * bump );
+				}
 				void main() {
 					if( wireframe > 0.5 ) {
 						color = vec4( 1.0 );
 						return;
 					}
-					float light = ambient + ( 1.0 - ambient ) * max( dot( normalize( pipe_normal ), normalize( light_dir ) ), 0.0 );
-					color = texture( atlas, vec3( pipe_uv, pipe_layer ) ) * pipe_tint * vec4( light, light, light, 1.0 );
+					vec4 base = texture( atlas, vec3( pipe_uv, pipe_layer ) ) * pipe_tint;
+					vec3 normal = normalize( pipe_normal );
+					if( pipe_normal_layer >= 0.0 ) {
+						vec3 bump = texture( atlas, vec3( pipe_uv, pipe_normal_layer ) ).xyz * 2.0 - 1.0;
+						normal = perturb( normal, bump, pipe_pos, pipe_uv );
+					}
+					vec3 eye = normalize( cam_pos - pipe_pos );
+					float metallic = pipe_material.x;
+					float roughness = max( pipe_material.y, 0.05 );
+					vec3 albedo = base.rgb;
+					vec3 f0 = mix( vec3( 0.04 ), albedo, metallic );
+					vec3 diffuse = albedo * ( 1.0 - metallic );
+					vec3 sum = albedo * ( ambient + pipe_material.z );
+					for( int i = 0; i < 8; ++ i ) {
+						if( i < light_count ) {
+							vec3 way = light_pos[ i ].xyz - pipe_pos;
+							float dist = length( way );
+							vec3 aim = normalize( light_dir[ i ].xyz );
+							vec3 light = - aim;
+							float atten = 1.0;
+							if( light_pos[ i ].w > 0.5 ) {
+								light = way / max( dist, 0.0001 );
+								atten = bog_gamengine_pbr_window( dist, light_color[ i ].w );
+								if( light_dir[ i ].w > -0.5 ) atten *= bog_gamengine_pbr_cone( dot( - light, aim ), light_dir[ i ].w );
+							}
+							float ndl = max( dot( normal, light ), 0.0 );
+							if( ndl > 0.0 && atten > 0.0 ) {
+								sum += bog_gamengine_pbr_brdf( normal, eye, light, diffuse, f0, roughness ) * light_color[ i ].rgb * ( atten * ndl );
+							}
+						}
+					}
+					color = vec4( sum, base.a );
 				}
 			`;
         }
     }
     $.$bog_gamengine_shader_solid = $bog_gamengine_shader_solid;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    $.$mol_3d_glsl_both += "float bog_gamengine_pbr_ggx( float ndh, float alpha ) {\n\tfloat a2 = alpha * alpha;\n\tfloat d = ndh * ndh * ( a2 - 1.0 ) + 1.0;\n\treturn a2 / max( d * d, 0.0000001 );\n}\n\nfloat bog_gamengine_pbr_smith( float ndl, float ndv, float alpha ) {\n\tfloat a2 = alpha * alpha;\n\tfloat shadowv = ndl * sqrt( ndv * ndv * ( 1.0 - a2 ) + a2 );\n\tfloat shadowl = ndv * sqrt( ndl * ndl * ( 1.0 - a2 ) + a2 );\n\treturn 0.5 / max( shadowv + shadowl, 0.0001 );\n}\n\nvec3 bog_gamengine_pbr_fresnel( vec3 f0, float vdh ) {\n\tfloat fade = pow( 1.0 - vdh, 5.0 );\n\treturn f0 + ( 1.0 - f0 ) * fade;\n}\n\nvec3 bog_gamengine_pbr_brdf( vec3 normal, vec3 eye, vec3 light, vec3 diffuse, vec3 f0, float roughness ) {\n\tvec3 mid = normalize( eye + light );\n\tfloat ndl = max( dot( normal, light ), 0.001 );\n\tfloat ndv = max( dot( normal, eye ), 0.001 );\n\tfloat ndh = max( dot( normal, mid ), 0.0 );\n\tfloat vdh = max( dot( eye, mid ), 0.0 );\n\tfloat alpha = roughness * roughness;\n\tvec3 fresnel = bog_gamengine_pbr_fresnel( f0, vdh );\n\tvec3 spec = fresnel * bog_gamengine_pbr_ggx( ndh, alpha ) * bog_gamengine_pbr_smith( ndl, ndv, alpha );\n\treturn ( 1.0 - fresnel ) * diffuse + spec;\n}\n\nfloat bog_gamengine_pbr_window( float dist, float range ) {\n\tfloat ratio = dist / max( range, 0.0001 );\n\tfloat fade = clamp( 1.0 - ratio * ratio * ratio * ratio, 0.0, 1.0 );\n\treturn fade * fade / max( dist * dist, 0.01 );\n}\n\nfloat bog_gamengine_pbr_cone( float cosine, float edge ) {\n\treturn smoothstep( edge, mix( edge, 1.0, 0.2 ), cosine );\n}\n";
 })($ || ($ = {}));
 
 ;
@@ -16006,16 +16295,29 @@ var $;
         size(next) {
             return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1, 1]);
         }
+        material(next) {
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array([0, 0.6, 0, 0]);
+        }
+        normal_frame(next = '') {
+            return next;
+        }
         props() {
             return [
                 ...super.props(),
                 { name: 'frame', kind: 'frame', get: () => this.frame(), set: next => this.frame(next) },
+                { name: 'normal_frame', kind: 'frame', get: () => this.normal_frame(), set: next => this.normal_frame(next) },
                 { name: 'size', kind: 'vec3', get: () => this.size(), set: next => this.size(next) },
+                { name: 'material', kind: 'vec4', get: () => this.material(), set: next => this.material(next) },
             ];
         }
         layer() {
             const atlas = this.atlas();
             return atlas ? atlas.layer(this.frame()) : 0;
+        }
+        normal_layer() {
+            const atlas = this.atlas();
+            const frame = this.normal_frame();
+            return atlas && frame ? atlas.layer(frame) : -1;
         }
         uv() {
             return uv_plain;
@@ -16038,7 +16340,16 @@ var $;
     ], $bog_gamengine_mesh.prototype, "size", null);
     __decorate([
         $mol_mem
+    ], $bog_gamengine_mesh.prototype, "material", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_mesh.prototype, "normal_frame", null);
+    __decorate([
+        $mol_mem
     ], $bog_gamengine_mesh.prototype, "layer", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_mesh.prototype, "normal_layer", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_mesh.prototype, "trans", null);
@@ -16184,6 +16495,16 @@ var $;
 			(obj.checked) = (next) => ((this.wireframe(next)));
 			return obj;
 		}
+		shine(next){
+			if(next !== undefined) return next;
+			return false;
+		}
+		Shine(){
+			const obj = new this.$.$mol_check_box();
+			(obj.title) = () => ("Блики");
+			(obj.checked) = (next) => ((this.shine(next)));
+			return obj;
+		}
 		Pause(){
 			const obj = new this.$.$mol_check_box();
 			(obj.title) = () => ("Пауза");
@@ -16221,6 +16542,14 @@ var $;
 		Pillar_stat(){
 			const obj = new this.$.$mol_view();
 			(obj.sub) = () => ([(this.pillar_stat())]);
+			return obj;
+		}
+		light_stat(){
+			return "";
+		}
+		Light_stat(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ([(this.light_stat())]);
 			return obj;
 		}
 		paused(next){
@@ -16282,6 +16611,10 @@ var $;
 			const obj = new this.$.Float32Array();
 			return obj;
 		}
+		wall_material(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
 		floor_pos(){
 			const obj = new this.$.Float32Array();
 			return obj;
@@ -16304,11 +16637,39 @@ var $;
 			const obj = new this.$.Float32Array();
 			return obj;
 		}
+		sun_rot(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		light_warm_pos(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		light_warm_color(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		light_cold_pos(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		light_cold_color(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		torch_rot(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
 		title(){
 			return "Комната";
 		}
 		tools(){
-			return [(this.Wireframe()), (this.Pause())];
+			return [
+				(this.Wireframe()), 
+				(this.Shine()), 
+				(this.Pause())
+			];
 		}
 		body(){
 			return [(this.Draw())];
@@ -16317,7 +16678,8 @@ var $;
 			return [
 				(this.Stat()), 
 				(this.Walker_stat()), 
-				(this.Pillar_stat())
+				(this.Pillar_stat()), 
+				(this.Light_stat())
 			];
 		}
 		Key(){
@@ -16367,6 +16729,7 @@ var $;
 			(obj.atlas) = () => ((this.Atlas()));
 			(obj.frame) = () => ("wall");
 			(obj.pos) = () => ((this.wall_pos(id)));
+			(obj.material) = () => ((this.wall_material()));
 			return obj;
 		}
 		Floor(){
@@ -16394,13 +16757,51 @@ var $;
 			(obj.rot) = (next) => ((this.walker_rot(next)));
 			return obj;
 		}
+		Sun(){
+			const obj = new this.$.$bog_gamengine_light();
+			(obj.kind) = () => ("sun");
+			(obj.rot) = () => ((this.sun_rot()));
+			(obj.power) = () => (1);
+			return obj;
+		}
+		Light_warm(){
+			const obj = new this.$.$bog_gamengine_light();
+			(obj.kind) = () => ("point");
+			(obj.pos) = () => ((this.light_warm_pos()));
+			(obj.color) = () => ((this.light_warm_color()));
+			(obj.power) = () => (1.2);
+			(obj.range) = () => (4);
+			return obj;
+		}
+		Light_cold(){
+			const obj = new this.$.$bog_gamengine_light();
+			(obj.kind) = () => ("point");
+			(obj.pos) = () => ((this.light_cold_pos()));
+			(obj.color) = () => ((this.light_cold_color()));
+			(obj.power) = () => (1.2);
+			(obj.range) = () => (4);
+			return obj;
+		}
+		Light_torch(){
+			const obj = new this.$.$bog_gamengine_light();
+			(obj.kind) = () => ("spot");
+			(obj.parent) = () => ((this.Walker()));
+			(obj.rot) = () => ((this.torch_rot()));
+			(obj.power) = () => (2);
+			(obj.range) = () => (10);
+			(obj.angle) = () => (0.6);
+			return obj;
+		}
 	};
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Wireframe"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "shine"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Shine"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pause"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Draw"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Stat"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Walker_stat"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pillar_stat"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Light_stat"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Solid"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Box"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Wall_batch"));
@@ -16410,11 +16811,18 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pillar_shape"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pillar_batch"));
 	($mol_mem_key(($.$bog_gamengine_demo_room.prototype), "wall_pos"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "wall_material"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "floor_pos"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "floor_size"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "pillar_pos"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "walker_pos"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "walker_rot"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "sun_rot"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "light_warm_pos"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "light_warm_color"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "light_cold_pos"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "light_cold_color"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "torch_rot"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Key"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Tile"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Atlas"));
@@ -16424,6 +16832,10 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Floor"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pillar"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Walker"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Sun"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Light_warm"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Light_cold"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Light_torch"));
 
 
 ;
@@ -16455,6 +16867,12 @@ var $;
             walls() {
                 return this.wall_ids().map(id => this.Wall(id));
             }
+            shine(next = false) {
+                return next;
+            }
+            wall_material() {
+                return this.shine() ? new Float32Array([0.8, 0.2, 0, 0]) : new Float32Array([0, 0.6, 0, 0]);
+            }
             floor_pos() {
                 return new Float32Array([this.Tile().width() / 2, 0, this.Tile().height() / 2]);
             }
@@ -16473,8 +16891,29 @@ var $;
             walker_rot(next) {
                 return next ?? new Float32Array([0, 0, 0]);
             }
+            sun_rot() {
+                return new Float32Array([-Math.PI / 4, 0.3, 0]);
+            }
+            light_warm_pos() {
+                return new Float32Array([4.5, 1.7, 4.5]);
+            }
+            light_warm_color() {
+                return new Float32Array([1, 0.6, 0.3]);
+            }
+            light_cold_pos() {
+                return new Float32Array([6.5, 1.7, 3.5]);
+            }
+            light_cold_color() {
+                return new Float32Array([0.3, 0.6, 1]);
+            }
+            torch_rot() {
+                return new Float32Array([-0.35, 0, 0]);
+            }
+            lights() {
+                return [this.Sun(), this.Light_warm(), this.Light_cold(), this.Light_torch()];
+            }
             nodes() {
-                return [...this.walls(), this.Floor(), this.Pillar(), this.Walker()];
+                return [...this.walls(), this.Floor(), this.Pillar(), this.Walker(), ...this.lights()];
             }
             pillar_stat() {
                 try {
@@ -16493,6 +16932,9 @@ var $;
                 const yaw = this.walker_rot()[1];
                 return `walker ${pos[0].toFixed(2)} × ${pos[2].toFixed(2)} yaw ${yaw.toFixed(2)}`;
             }
+            light_stat() {
+                return `lights ${this.Scene().lights().length}`;
+            }
         }
         __decorate([
             $mol_mem
@@ -16503,6 +16945,12 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_room.prototype, "walls", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "shine", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "wall_material", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_room.prototype, "floor_pos", null);
@@ -16521,6 +16969,27 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_room.prototype, "walker_rot", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "sun_rot", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "light_warm_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "light_warm_color", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "light_cold_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "light_cold_color", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "torch_rot", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "lights", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_room.prototype, "nodes", null);
@@ -21634,6 +22103,44 @@ var $;
 ;
 "use strict";
 var $;
+(function ($) {
+    $mol_test({
+        'props contain kind, color and power'() {
+            const names = new $bog_gamengine_light().props().map(prop => prop.name);
+            $mol_assert_ok(names.includes('kind'));
+            $mol_assert_ok(names.includes('color'));
+            $mol_assert_ok(names.includes('power'));
+        },
+        'defaults are white sun of power 1'() {
+            const light = new $bog_gamengine_light;
+            $mol_assert_equal(light.kind(), 'sun');
+            $mol_assert_equal([...light.color()], [1, 1, 1]);
+            $mol_assert_equal(light.power(), 1);
+        },
+        'spot rotated around Y by half pi shines to minus X'() {
+            const light = new $bog_gamengine_light;
+            light.kind('spot');
+            light.rot(new Float32Array([0, Math.PI / 2, 0]));
+            const dir = light.dir();
+            $mol_assert_ok(Math.abs(dir[0] + 1) < 1e-6);
+            $mol_assert_ok(Math.abs(dir[1]) < 1e-6);
+            $mol_assert_ok(Math.abs(dir[2]) < 1e-6);
+        },
+        'direction follows parent rotation'() {
+            const parent = new $bog_gamengine_node;
+            parent.rot(new Float32Array([0, Math.PI / 2, 0]));
+            const light = new $bog_gamengine_light;
+            light.parent(parent);
+            const dir = light.dir();
+            $mol_assert_ok(Math.abs(dir[0] + 1) < 1e-6);
+            $mol_assert_ok(Math.abs(dir[2]) < 1e-6);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
 (function ($_1) {
     $mol_test({
         'source starts with version line'($) {
@@ -21790,6 +22297,129 @@ var $;
 ;
 "use strict";
 var $;
+(function ($_1) {
+    $mol_test({
+        'box array lengths'($) {
+            const box = $bog_gamengine_shape_box.make({ $ });
+            $mol_assert_equal(box.geometry().length, 102);
+            $mol_assert_equal(box.skin().length, 68);
+            $mol_assert_equal(box.normals().length, 102);
+            $mol_assert_equal(box.size(), 34);
+            $mol_assert_equal(box.count(), 24);
+            $mol_assert_equal(box.mode(), 'strip');
+        },
+        'box has six different unit normals'($) {
+            const normals = $bog_gamengine_shape_box.make({ $ }).normals();
+            const seen = new Set();
+            for (let i = 0; i < 34; ++i) {
+                const x = normals[i * 3];
+                const y = normals[i * 3 + 1];
+                const z = normals[i * 3 + 2];
+                $mol_assert_equal(x * x + y * y + z * z, 1);
+                seen.add(`${x} ${y} ${z}`);
+            }
+            $mol_assert_equal(seen.size, 6);
+        },
+        'box faces are counter clockwise from outside'($) {
+            const box = $bog_gamengine_shape_box.make({ $ });
+            const geometry = box.geometry();
+            const normals = box.normals();
+            const winding = (a, b, c) => {
+                const ax = geometry[b * 3] - geometry[a * 3];
+                const ay = geometry[b * 3 + 1] - geometry[a * 3 + 1];
+                const az = geometry[b * 3 + 2] - geometry[a * 3 + 2];
+                const bx = geometry[c * 3] - geometry[a * 3];
+                const by = geometry[c * 3 + 1] - geometry[a * 3 + 1];
+                const bz = geometry[c * 3 + 2] - geometry[a * 3 + 2];
+                const cx = ay * bz - az * by;
+                const cy = az * bx - ax * bz;
+                const cz = ax * by - ay * bx;
+                return cx * normals[a * 3] + cy * normals[a * 3 + 1] + cz * normals[a * 3 + 2];
+            };
+            for (let face = 0; face < 6; ++face) {
+                const v = face * 6;
+                $mol_assert_ok(winding(v, v + 1, v + 2) > 0);
+                $mol_assert_ok(winding(v + 2, v + 1, v + 3) > 0);
+            }
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_mesh_test_atlas extends $bog_gamengine_atlas {
+        image(uri) {
+            return { data: () => ({ width: 64, height: 64 }) };
+        }
+    }
+    function mesh_test_atlas(uris) {
+        const atlas = new $bog_gamengine_mesh_test_atlas;
+        atlas.uris(uris);
+        return atlas;
+    }
+    function mesh_test_mesh(atlas, frame) {
+        const mesh = new $bog_gamengine_mesh;
+        mesh.atlas(atlas);
+        mesh.frame(frame);
+        return mesh;
+    }
+    $mol_test({
+        'layer is taken from atlas by frame name'() {
+            const atlas = mesh_test_atlas(['bog/gamengine/demo/atlas/wall.png', 'bog/gamengine/demo/atlas/floor.png']);
+            $mol_assert_equal(mesh_test_mesh(atlas, 'floor').layer(), 1);
+        },
+        'layer without atlas is 0'() {
+            $mol_assert_equal(mesh_test_mesh(null, 'floor').layer(), 0);
+        },
+        'uv is whole layer'() {
+            $mol_assert_equal([...new $bog_gamengine_mesh().uv()], [0, 0, 1, 1]);
+        },
+        'size scales trans in three axes'() {
+            const mesh = new $bog_gamengine_mesh;
+            mesh.size(new Float32Array([2, 3, 4]));
+            const trans = mesh.trans();
+            $mol_assert_equal(trans[0], 2);
+            $mol_assert_equal(trans[5], 3);
+            $mol_assert_equal(trans[10], 4);
+        },
+        'default shape is box'() {
+            $mol_assert_ok(new $bog_gamengine_mesh().shape() instanceof $bog_gamengine_shape_box);
+        },
+        'two meshes of different atlases give two batches'() {
+            const first = mesh_test_atlas(['bog/gamengine/demo/atlas/wall.png']);
+            const second = mesh_test_atlas(['bog/gamengine/demo/atlas/floor.png']);
+            const batches = $bog_gamengine_batch_group([mesh_test_mesh(first, 'wall'), mesh_test_mesh(second, 'floor')], atlas => {
+                const batch = new $bog_gamengine_batch;
+                batch.atlas(atlas);
+                return batch;
+            });
+            $mol_assert_equal(batches.length, 2);
+            $mol_assert_equal(batches[0].atlas(), first);
+            $mol_assert_equal(batches[1].atlas(), second);
+        },
+        'filled batch has layer and tint of mesh'() {
+            const atlas = mesh_test_atlas(['bog/gamengine/demo/atlas/wall.png', 'bog/gamengine/demo/atlas/floor.png']);
+            const mesh = mesh_test_mesh(atlas, 'floor');
+            mesh.tint(new Float32Array([1, 0.5, 0.25, 1]));
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([mesh]);
+            batch.fill();
+            $mol_assert_equal(batch.layer[0], 1);
+            $mol_assert_equal([...batch.tint.subarray(0, 4)], [1, 0.5, 0.25, 1]);
+        },
+        'set through props changes size'() {
+            const mesh = new $bog_gamengine_mesh;
+            mesh.props().find(prop => prop.name === 'size').set(new Float32Array([2, 3, 4]));
+            $mol_assert_equal([...mesh.size()], [2, 3, 4]);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
 (function ($) {
     class $bog_gamengine_batch_test_tinted extends $bog_gamengine_node {
         tint() {
@@ -21874,6 +22504,27 @@ var $;
             batch.fill();
             $mol_assert_equal([...batch.layer.subarray(0, 2)], [0, 3]);
             $mol_assert_equal([...batch.uv.subarray(0, 8)], [0, 0, 1, 1, 1, 0, -1, 1]);
+        },
+        'material buffer is filled from mesh material, plain node gets default'() {
+            const mesh = new $bog_gamengine_mesh;
+            mesh.material(new Float32Array([0.75, 0.25, 0.5, 0]));
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([$bog_gamengine_batch_test_node(0, 0, 0), mesh]);
+            batch.fill();
+            $mol_assert_equal(batch.material.subarray(0, 8), new Float32Array([0, 0.6, 0, 0, 0.75, 0.25, 0.5, 0]));
+        },
+        'normal layer is -1 without normal frame'() {
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([$bog_gamengine_batch_test_node(0, 0, 0), new $bog_gamengine_mesh]);
+            batch.fill();
+            $mol_assert_equal([...batch.normal_layer.subarray(0, 2)], [-1, -1]);
+        },
+        'source fill gives default material'() {
+            const batch = new $bog_gamengine_batch;
+            batch.source({ trans: new Float32Array(16), count: 1 });
+            batch.fill();
+            $mol_assert_equal(batch.material.subarray(0, 4), new Float32Array([0, 0.6, 0, 0]));
+            $mol_assert_equal(batch.normal_layer[0], -1);
         },
         'version grows on every fill'() {
             const batch = new $bog_gamengine_batch;
@@ -22471,6 +23122,31 @@ var $;
             $mol_assert_equal(input.action('right'), false);
         },
     });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function $bog_gamengine_batch_group(nodes, make) {
+        const groups = new Map();
+        for (const node of nodes) {
+            const atlas = node.atlas();
+            const group = groups.get(atlas);
+            if (group)
+                group.push(node);
+            else
+                groups.set(atlas, [node]);
+        }
+        const batches = [];
+        for (const [atlas, group] of groups) {
+            const batch = make(atlas);
+            batch.nodes(group);
+            batches.push(batch);
+        }
+        return batches;
+    }
+    $.$bog_gamengine_batch_group = $bog_gamengine_batch_group;
 })($ || ($ = {}));
 
 ;
@@ -23501,31 +24177,6 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    function $bog_gamengine_batch_group(nodes, make) {
-        const groups = new Map();
-        for (const node of nodes) {
-            const atlas = node.atlas();
-            const group = groups.get(atlas);
-            if (group)
-                group.push(node);
-            else
-                groups.set(atlas, [node]);
-        }
-        const batches = [];
-        for (const [atlas, group] of groups) {
-            const batch = make(atlas);
-            batch.nodes(group);
-            batches.push(batch);
-        }
-        return batches;
-    }
-    $.$bog_gamengine_batch_group = $bog_gamengine_batch_group;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
     class $bog_gamengine_sprite_test_atlas extends $bog_gamengine_atlas {
         image(uri) {
             return { data: () => ({ width: 64, height: 64 }) };
@@ -23686,60 +24337,34 @@ var $;
             $mol_assert_ok(shader.vert().includes('wireframe'));
             $mol_assert_ok(shader.frag().includes('wireframe'));
         },
+        'light uniforms are arrays of eight in face and used in frag'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            const glob = shader.face().glob;
+            $mol_assert_equal(glob.light_count, 'int');
+            $mol_assert_equal(glob.light_pos, 'vec4[8]');
+            $mol_assert_equal(glob.light_dir, 'vec4[8]');
+            $mol_assert_equal(glob.light_color, 'vec4[8]');
+            $mol_assert_equal(glob.ambient, 'vec3');
+            $mol_assert_equal(glob.cam_pos, 'vec3');
+            const frag = shader.frag();
+            for (const name of ['light_count', 'light_pos', 'light_dir', 'light_color', 'ambient', 'cam_pos'])
+                $mol_assert_ok(frag.includes(name));
+        },
+        'material and normal layer come per instance and reach frag'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            $mol_assert_equal(shader.face().input.inst_material, 'vec4');
+            $mol_assert_equal(shader.face().input.inst_normal_layer, 'float');
+            $mol_assert_ok(shader.vert().includes('inst_material'));
+            $mol_assert_ok(shader.frag().includes('pipe_material'));
+            $mol_assert_ok(shader.frag().includes('pipe_normal_layer'));
+        },
+        'array uniform is declared with size after name'($) {
+            const source = $bog_gamengine_gl_source({ glob: { light_pos: 'vec4[8]' } }, '', '');
+            $mol_assert_ok(source.frag.includes('uniform vec4 light_pos[8];'));
+        },
         'solid wants depth, flat does not'($) {
             $mol_assert_equal(new $bog_gamengine_shader_solid().depth(), true);
             $mol_assert_equal(new $bog_gamengine_shader_flat().depth(), false);
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($_1) {
-    $mol_test({
-        'box array lengths'($) {
-            const box = $bog_gamengine_shape_box.make({ $ });
-            $mol_assert_equal(box.geometry().length, 102);
-            $mol_assert_equal(box.skin().length, 68);
-            $mol_assert_equal(box.normals().length, 102);
-            $mol_assert_equal(box.size(), 34);
-            $mol_assert_equal(box.count(), 24);
-            $mol_assert_equal(box.mode(), 'strip');
-        },
-        'box has six different unit normals'($) {
-            const normals = $bog_gamengine_shape_box.make({ $ }).normals();
-            const seen = new Set();
-            for (let i = 0; i < 34; ++i) {
-                const x = normals[i * 3];
-                const y = normals[i * 3 + 1];
-                const z = normals[i * 3 + 2];
-                $mol_assert_equal(x * x + y * y + z * z, 1);
-                seen.add(`${x} ${y} ${z}`);
-            }
-            $mol_assert_equal(seen.size, 6);
-        },
-        'box faces are counter clockwise from outside'($) {
-            const box = $bog_gamengine_shape_box.make({ $ });
-            const geometry = box.geometry();
-            const normals = box.normals();
-            const winding = (a, b, c) => {
-                const ax = geometry[b * 3] - geometry[a * 3];
-                const ay = geometry[b * 3 + 1] - geometry[a * 3 + 1];
-                const az = geometry[b * 3 + 2] - geometry[a * 3 + 2];
-                const bx = geometry[c * 3] - geometry[a * 3];
-                const by = geometry[c * 3 + 1] - geometry[a * 3 + 1];
-                const bz = geometry[c * 3 + 2] - geometry[a * 3 + 2];
-                const cx = ay * bz - az * by;
-                const cy = az * bx - ax * bz;
-                const cz = ax * by - ay * bx;
-                return cx * normals[a * 3] + cy * normals[a * 3 + 1] + cz * normals[a * 3 + 2];
-            };
-            for (let face = 0; face < 6; ++face) {
-                const v = face * 6;
-                $mol_assert_ok(winding(v, v + 1, v + 2) > 0);
-                $mol_assert_ok(winding(v + 2, v + 1, v + 3) > 0);
-            }
         },
     });
 })($ || ($ = {}));
@@ -23862,78 +24487,6 @@ var $;
         'glb without position fails with message'($) {
             const shape = $bog_gamengine_shape_gltf.make({ $, json: () => ({ meshes: [{ primitives: [{ attributes: {} }] }] }) });
             $mol_assert_fail(() => shape.geometry(), 'glTF primitive has no POSITION');
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $bog_gamengine_mesh_test_atlas extends $bog_gamengine_atlas {
-        image(uri) {
-            return { data: () => ({ width: 64, height: 64 }) };
-        }
-    }
-    function mesh_test_atlas(uris) {
-        const atlas = new $bog_gamengine_mesh_test_atlas;
-        atlas.uris(uris);
-        return atlas;
-    }
-    function mesh_test_mesh(atlas, frame) {
-        const mesh = new $bog_gamengine_mesh;
-        mesh.atlas(atlas);
-        mesh.frame(frame);
-        return mesh;
-    }
-    $mol_test({
-        'layer is taken from atlas by frame name'() {
-            const atlas = mesh_test_atlas(['bog/gamengine/demo/atlas/wall.png', 'bog/gamengine/demo/atlas/floor.png']);
-            $mol_assert_equal(mesh_test_mesh(atlas, 'floor').layer(), 1);
-        },
-        'layer without atlas is 0'() {
-            $mol_assert_equal(mesh_test_mesh(null, 'floor').layer(), 0);
-        },
-        'uv is whole layer'() {
-            $mol_assert_equal([...new $bog_gamengine_mesh().uv()], [0, 0, 1, 1]);
-        },
-        'size scales trans in three axes'() {
-            const mesh = new $bog_gamengine_mesh;
-            mesh.size(new Float32Array([2, 3, 4]));
-            const trans = mesh.trans();
-            $mol_assert_equal(trans[0], 2);
-            $mol_assert_equal(trans[5], 3);
-            $mol_assert_equal(trans[10], 4);
-        },
-        'default shape is box'() {
-            $mol_assert_ok(new $bog_gamengine_mesh().shape() instanceof $bog_gamengine_shape_box);
-        },
-        'two meshes of different atlases give two batches'() {
-            const first = mesh_test_atlas(['bog/gamengine/demo/atlas/wall.png']);
-            const second = mesh_test_atlas(['bog/gamengine/demo/atlas/floor.png']);
-            const batches = $bog_gamengine_batch_group([mesh_test_mesh(first, 'wall'), mesh_test_mesh(second, 'floor')], atlas => {
-                const batch = new $bog_gamengine_batch;
-                batch.atlas(atlas);
-                return batch;
-            });
-            $mol_assert_equal(batches.length, 2);
-            $mol_assert_equal(batches[0].atlas(), first);
-            $mol_assert_equal(batches[1].atlas(), second);
-        },
-        'filled batch has layer and tint of mesh'() {
-            const atlas = mesh_test_atlas(['bog/gamengine/demo/atlas/wall.png', 'bog/gamengine/demo/atlas/floor.png']);
-            const mesh = mesh_test_mesh(atlas, 'floor');
-            mesh.tint(new Float32Array([1, 0.5, 0.25, 1]));
-            const batch = new $bog_gamengine_batch;
-            batch.nodes([mesh]);
-            batch.fill();
-            $mol_assert_equal(batch.layer[0], 1);
-            $mol_assert_equal([...batch.tint.subarray(0, 4)], [1, 0.5, 0.25, 1]);
-        },
-        'set through props changes size'() {
-            const mesh = new $bog_gamengine_mesh;
-            mesh.props().find(prop => prop.name === 'size').set(new Float32Array([2, 3, 4]));
-            $mol_assert_equal([...mesh.size()], [2, 3, 4]);
         },
     });
 })($ || ($ = {}));
