@@ -180,6 +180,25 @@ premultiplied blend, для объёма наоборот.
 'stretch' } } } }`, образец `demo/demo.view.css.ts`. Ключом в `$mol_style_define`
 может быть только настоящий класс, не имя подвида вроде `$mol_page_body_content`.
 
+### 3.10. `send_multi` ставит premultiply после заливки
+
+`mol/3d/texture/texture.ts`: `pixelStorei( UNPACK_PREMULTIPLY_ALPHA_WEBGL, true )`
+стоит после циклов `texSubImage3D`, то есть первая заливка texture array идёт без
+premultiply, а blend уже premultiplied. Полупрозрачные края спрайтов темнеют.
+Там же `getExtension( 'EXT_texture_filter_anisotropic' )` читается без проверки
+на `null`, под SwiftShader расширения может не быть. Найдено в задаче 2.3.
+
+Решение: `draw` ставит `pixelStorei` сам до `send_multi`. Про анизотропию:
+если проба падает на `null`, `draw` заливает слои сам теми же вызовами.
+
+### 3.11. Объект в ключе `@$mol_mem_key` слипается
+
+`$mol_key` для `$mol_object2` берёт `toString()`, это `имя_класса<>`. Два атласа
+одного класса дают один ключ, и мемо по атласу отдаёт чужой слот. Найдено в 2.3.
+
+Решение: кэш по объектам только через `WeakMap` полем, как слоты батчей и текстуры
+атласов в `draw`. Мемо по ключу только для строк и чисел.
+
 ## 4. Модули
 
 Папки односложные, класс по пути. Всё под `bog/gamengine/`.
