@@ -26,9 +26,14 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		time() {
+		time( next?: number ) {
 			const frame = this.frame()
 			const dt = this.dt()
+			if( next !== undefined ) {
+				this.time_frame = frame
+				this.time_total = next
+				return next
+			}
 			if( frame !== this.time_frame ) {
 				this.time_frame = frame
 				this.time_total += dt

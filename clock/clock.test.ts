@@ -76,6 +76,18 @@ namespace $ {
 			$mol_assert_equal( clock.time(), 0.03 )
 		},
 
+		'time set to 5 keeps accumulating dt from 5'( $ ) {
+			const clock = clock_mock( $ )
+			$bog_gamengine_clock_time_mock.stamp( 0 )
+			clock.time()
+			$bog_gamengine_clock_time_mock.stamp( 10 )
+			clock.time()
+			clock.time( 5 )
+			$mol_assert_equal( clock.time(), 5 )
+			$bog_gamengine_clock_time_mock.stamp( 30 )
+			$mol_assert_equal( clock.time(), 5.02 )
+		},
+
 	})
 
 }
