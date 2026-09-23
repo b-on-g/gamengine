@@ -5,10 +5,21 @@ $bog_gamengine_demo_flat $mol_page
 			title \Монеты
 			content / <= coins_stat \
 	body /
-		<= Draw $bog_gamengine_draw
-			scene <= Scene
-			cam <= Cam
-			stat => stat
+		<= World $mol_view
+			sub /
+				<= Draw $bog_gamengine_draw
+					scene <= Scene
+					cam <= Cam
+					stat => stat
+					width => draw_width
+					height => draw_height
+					event *
+						pointerdown? <=> pointer_down? null
+				<= Hero_label $mol_view
+					sub / \Герой
+					style *
+						left <= label_left \0px
+						top <= label_top \0px
 	foot /
 		<= Stat $mol_view
 			sub / <= stat
@@ -53,6 +64,13 @@ $bog_gamengine_demo_flat $mol_page
 			\bog/gamengine/demo/atlas/wall.png
 			\bog/gamengine/demo/atlas/floor.png
 		size 64
+	Point $bog_gamengine_point
+		cam <= Cam
+		width <= draw_width
+		height <= draw_height
+	Sound $bog_gamengine_sound
+		uris *
+			coin \bog/gamengine/demo/sound/coin.wav
 	Clock $bog_gamengine_clock
 	Scene $bog_gamengine_scene
 		clock <= Clock
@@ -82,6 +100,7 @@ $bog_gamengine_demo_flat $mol_page
 		frame \hero
 		flip_x <= hero_face_left
 	Coin* $bog_gamengine_demo_flat_coin
+		sound <= Sound
 		pos <= coin_pos* Float32Array
 		taken? => coin_taken*?
 	Coin_sprite* $bog_gamengine_sprite

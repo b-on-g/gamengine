@@ -16,12 +16,18 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		sound( next?: $bog_gamengine_sound | null ) {
+			return next ?? null
+		}
+
+		@ $mol_mem
 		taken( next = false ) {
+			if( next ) this.sound()?.play( 'coin' )
 			return next
 		}
 
 		hit( other: $bog_gamengine_phys_body | null ) {
-			if( other instanceof $bog_gamengine_demo_flat_hero ) this.taken( true )
+			if( other instanceof $bog_gamengine_demo_flat_hero && !this.taken() ) this.taken( true )
 		}
 
 	}

@@ -10,7 +10,7 @@ namespace $ {
 
 	export const $bog_gamengine_probe_ok = 'центр красный, буферы не создаются'
 
-	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя'
+	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя, клик собирает монету, подпись едет за героем'
 
 	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени'
 
@@ -60,11 +60,35 @@ namespace $ {
 		const hero = pixel( ... at( start[ 0 ], start[ 1 ] ) )
 		const corner = pixel( ... at( start[ 0 ] - 0.45, start[ 1 ] + 0.45 ) )
 		const floor = pixel( ... at( start[ 0 ] + 0.55, start[ 1 ] + 0.45 ) )
+		const taken = ()=> {
+			const found = document.body.innerText.match( /(\\d+) \\/ (\\d+)/ )
+			return found ? Number( found[ 1 ] ) : -1
+		}
+		const dpr = devicePixelRatio
+		const box = canvas.getBoundingClientRect()
+		const coin_x = ( ( 18.5 - 10 ) * ppu + canvas.width / 2 ) / dpr
+		const coin_y = ( canvas.height / 2 - ( -1.5 + 7.5 ) * ppu ) / dpr
+		const taken_before = taken()
+		canvas.dispatchEvent( new PointerEvent( 'pointerdown', {
+			clientX: box.left + coin_x, clientY: box.top + coin_y, pointerId: 1, bubbles: true,
+		} ) )
+		await frame()
+		await frame()
+		const taken_after = taken()
+		const label = document.querySelector( '[bog_gamengine_demo_flat_hero_label]' )
+		const label_text = label ? label.textContent : ''
+		const label_before = label ? label.getBoundingClientRect().left : NaN
 		document.body.dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 68, bubbles: true } ) )
 		for( let i = 0; i < 60; ++ i ) await frame()
 		const moved = read()
 		document.body.dispatchEvent( new KeyboardEvent( 'keyup', { keyCode: 68, bubbles: true } ) )
-		return { webgl: true, loaded: true, start, moved, center, hero, corner, floor, size: [ canvas.width, canvas.height ] }
+		await frame()
+		const label_after = label ? label.getBoundingClientRect().left : NaN
+		return {
+			webgl: true, loaded: true, start, moved, center, hero, corner, floor,
+			taken_before, taken_after, label_text, label_before, label_after,
+			size: [ canvas.width, canvas.height ],
+		}
 	`
 
 	export const $bog_gamengine_probe_room_script = `
@@ -124,6 +148,11 @@ namespace $ {
 		readonly hero?: $bog_gamengine_probe_pixel
 		readonly corner?: $bog_gamengine_probe_pixel
 		readonly floor?: $bog_gamengine_probe_pixel
+		readonly taken_before?: number
+		readonly taken_after?: number
+		readonly label_text?: string
+		readonly label_before?: number
+		readonly label_after?: number
 		readonly size?: readonly [ number, number ]
 	}
 
@@ -219,6 +248,10 @@ namespace $ {
 		if( $bog_gamengine_probe_dark( got.corner! ) ) return fail( 'угол героя чёрный' )
 		if( !$bog_gamengine_probe_near( got.corner!, got.floor! ) ) return fail( 'угол героя не совпал с полом' )
 		if( $bog_gamengine_probe_near( got.corner!, got.hero! ) ) return fail( 'угол героя совпал с центром героя' )
+		if( got.taken_before !== 0 ) return fail( 'счётчик монет до клика не нулевой' )
+		if( got.taken_after !== 1 ) return fail( 'клик по монете не собрал её' )
+		if( got.label_text !== 'Герой' ) return fail( 'подписи над героем нет в DOM' )
+		if( !( got.label_after! > got.label_before! ) ) return fail( 'подпись не поехала за героем' )
 
 		return say( $bog_gamengine_probe_flat_ok )
 	}
