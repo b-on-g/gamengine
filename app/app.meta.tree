@@ -1,0 +1,12 @@
+deploy \/bog/jumper/app/atlas/hero.png
+deploy \/bog/jumper/app/atlas/hero_1.png
+deploy \/bog/jumper/app/atlas/enemy.png
+deploy \/bog/jumper/app/atlas/coin.png
+deploy \/bog/jumper/app/atlas/spike.png
+deploy \/bog/jumper/app/atlas/flag.png
+deploy \/bog/jumper/app/atlas/ground.png
+deploy \/bog/jumper/app/atlas/platform.png
+deploy \/bog/jumper/app/atlas/sky.png
+deploy \/bog/jumper/app/sound/jump.wav
+deploy \/bog/jumper/app/sound/coin.wav
+deploy \/bog/jumper/app/sound/death.wav
