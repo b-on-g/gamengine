@@ -6,6 +6,11 @@ namespace $ {
 		uv?(): Float32Array
 	}
 
+	export type $bog_gamengine_batch_source = {
+		trans: Float32Array
+		count: number
+	}
+
 	export class $bog_gamengine_batch extends $mol_object2 {
 
 		@ $mol_mem
@@ -28,6 +33,11 @@ namespace $ {
 			return next ?? []
 		}
 
+		@ $mol_mem
+		source( next?: $bog_gamengine_batch_source | null ) {
+			return next ?? null
+		}
+
 		cap = 0
 		count = 0
 		version = 0
@@ -48,6 +58,8 @@ namespace $ {
 		}
 
 		fill() {
+			const source = this.source()
+			if( source ) return this.fill_source( source )
 			const nodes = this.nodes()
 			const count = nodes.length
 			this.grow( count )
@@ -76,6 +88,27 @@ namespace $ {
 					uv[ i * 4 + 3 ] = 1
 				}
 			}
+			this.count = count
+			++ this.version
+			return count
+		}
+
+		fill_source( source: $bog_gamengine_batch_source ) {
+			const count = source.count
+			const cap = this.cap
+			this.grow( count )
+			if( this.cap !== cap ) {
+				this.tint.fill( 1 )
+				this.layer.fill( 0 )
+				const uv = this.uv
+				for( let i = 0; i < this.cap; ++ i ) {
+					uv[ i * 4 ] = 0
+					uv[ i * 4 + 1 ] = 0
+					uv[ i * 4 + 2 ] = 1
+					uv[ i * 4 + 3 ] = 1
+				}
+			}
+			this.trans.set( source.trans.subarray( 0, count * 16 ) )
 			this.count = count
 			++ this.version
 			return count

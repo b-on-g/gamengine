@@ -60,5 +60,70 @@ namespace $ {
 			$mol_assert_equal( [ ...out ], [ 11, 22, 33, 1 ] )
 		},
 
+		'quat_rotate by half pi around Y sends x to minus z'() {
+			const q = $bog_gamengine_vec_quat_from_axis( new Float32Array( 4 ), new Float32Array([ 0, 1, 0 ]), Math.PI / 2 )
+			const out = $bog_gamengine_vec_quat_rotate( new Float32Array( 3 ), q, new Float32Array([ 1, 0, 0 ]) )
+			$mol_assert_ok( Math.abs( out[ 0 ] ) < 1e-6 )
+			$mol_assert_ok( Math.abs( out[ 1 ] ) < 1e-6 )
+			$mol_assert_ok( Math.abs( out[ 2 ] + 1 ) < 1e-6 )
+		},
+
+		'quat_mul of two quarter turns around Y is a half turn'() {
+			const q = $bog_gamengine_vec_quat_from_axis( new Float32Array( 4 ), new Float32Array([ 0, 1, 0 ]), Math.PI / 2 )
+			const qq = $bog_gamengine_vec_quat_mul( new Float32Array( 4 ), q, q )
+			const out = $bog_gamengine_vec_quat_rotate( new Float32Array( 3 ), qq, new Float32Array([ 1, 0, 0 ]) )
+			$mol_assert_ok( Math.abs( out[ 0 ] + 1 ) < 1e-6 )
+			$mol_assert_ok( Math.abs( out[ 2 ] ) < 1e-6 )
+		},
+
+		'quat_identity leaves vector as is'() {
+			const q = $bog_gamengine_vec_quat_identity( new Float32Array( 4 ) )
+			const out = $bog_gamengine_vec_quat_rotate( new Float32Array( 3 ), q, new Float32Array([ 1, 2, 3 ]) )
+			$mol_assert_equal( [ ...out ], [ 1, 2, 3 ] )
+		},
+
+		'quat_normalize gives unit length'() {
+			const out = $bog_gamengine_vec_quat_normalize( new Float32Array( 4 ), new Float32Array([ 0, 3, 0, 4 ]) )
+			$mol_assert_ok( Math.abs( out[ 1 ] - 0.6 ) < 1e-6 )
+			$mol_assert_ok( Math.abs( out[ 3 ] - 0.8 ) < 1e-6 )
+		},
+
+		'quat_from_euler to_mat4 matches mat4 translation rotation ZYX scaling for random angles'() {
+			for( let trial = 0; trial < 20; ++ trial ) {
+				const x = ( Math.random() - 0.5 ) * 6
+				const y = ( Math.random() - 0.5 ) * 6
+				const z = ( Math.random() - 0.5 ) * 6
+				const pos = new Float32Array([ 1, 2, 3 ])
+				const scale = new Float32Array([ 1, 2, 0.5 ])
+				const q = $bog_gamengine_vec_quat_from_euler( new Float32Array( 4 ), x, y, z )
+				const out = $bog_gamengine_vec_quat_to_mat4( new Float32Array( 16 ), q, pos, scale )
+				const ref = $mol_3d_mat4.multiply(
+					$mol_3d_mat4.translation( pos ),
+					$mol_3d_mat4.rotation( [ 0, 0, 1 ], z ),
+					$mol_3d_mat4.rotation( [ 0, 1, 0 ], y ),
+					$mol_3d_mat4.rotation( [ 1, 0, 0 ], x ),
+					$mol_3d_mat4.scaling( scale ),
+				)
+				for( let i = 0; i < 16; ++ i ) $mol_assert_ok( Math.abs( out[ i ] - ref[ i ] ) < 1e-5 )
+			}
+		},
+
+		'quat_to_euler inverts from_euler'() {
+			const q = $bog_gamengine_vec_quat_from_euler( new Float32Array( 4 ), 0.3, -0.5, 1.2 )
+			const out = $bog_gamengine_vec_quat_to_euler( new Float32Array( 3 ), q )
+			$mol_assert_ok( Math.abs( out[ 0 ] - 0.3 ) < 1e-6 )
+			$mol_assert_ok( Math.abs( out[ 1 ] + 0.5 ) < 1e-6 )
+			$mol_assert_ok( Math.abs( out[ 2 ] - 1.2 ) < 1e-6 )
+		},
+
+		'quat_integrate one second at half pi around Y turns x to minus z'() {
+			const q = $bog_gamengine_vec_quat_identity( new Float32Array( 4 ) )
+			const ang = new Float32Array([ 0, Math.PI / 2, 0 ])
+			for( let i = 0; i < 60; ++ i ) $bog_gamengine_vec_quat_integrate( q, q, ang, 1 / 60 )
+			const out = $bog_gamengine_vec_quat_rotate( new Float32Array( 3 ), q, new Float32Array([ 1, 0, 0 ]) )
+			$mol_assert_ok( Math.abs( out[ 0 ] ) < 1e-3 )
+			$mol_assert_ok( Math.abs( out[ 2 ] + 1 ) < 1e-3 )
+		},
+
 	})
 }

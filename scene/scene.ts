@@ -32,6 +32,11 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		phys3( next?: $bog_gamengine_phys3 | null ) {
+			return next ?? null
+		}
+
+		@ $mol_mem
 		input( next?: $bog_gamengine_input | null ) {
 			return next ?? null
 		}
@@ -48,6 +53,7 @@ namespace $ {
 				const nodes = this.nodes()
 				for( let i = 0; i < nodes.length; ++i ) nodes[ i ].step( dt )
 				this.phys()?.step( dt )
+				this.phys3()?.step( dt )
 			}
 			const batches = this.batches()
 			for( let i = 0; i < batches.length; ++i ) batches[ i ].fill()

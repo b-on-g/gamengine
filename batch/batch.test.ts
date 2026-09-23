@@ -102,6 +102,20 @@ namespace $ {
 			$mol_assert_equal( batch.version, before + 2 )
 		},
 
+		'source with two matrices gives count 2 and same translations'() {
+			const trans = new Float32Array( 32 )
+			trans.set([ 1, 2, 3 ], 12 )
+			trans.set([ 4, 5, 6 ], 28 )
+			const batch = new $bog_gamengine_batch
+			batch.source({ trans, count: 2 })
+			$mol_assert_equal( batch.fill(), 2 )
+			$mol_assert_equal( batch.count, 2 )
+			$mol_assert_equal( [ ...batch.trans.subarray( 12, 15 ) ], [ 1, 2, 3 ] )
+			$mol_assert_equal( [ ...batch.trans.subarray( 28, 31 ) ], [ 4, 5, 6 ] )
+			$mol_assert_equal( [ ...batch.tint.subarray( 4, 8 ) ], [ 1, 1, 1, 1 ] )
+			$mol_assert_equal( [ ...batch.uv.subarray( 4, 8 ) ], [ 0, 0, 1, 1 ] )
+		},
+
 	})
 
 }

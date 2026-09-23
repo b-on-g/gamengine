@@ -106,6 +106,22 @@ namespace $ {
 			$mol_assert_ok( Math.abs( mover.pos()[ 0 ] - 0.016 ) < 1e-9 )
 		},
 
+		'scene steps phys3 body by its velocity'( $ ) {
+			$.$mol_state_time = $bog_gamengine_scene_time_mock
+			const world = new $bog_gamengine_phys3
+			world.gravity( new Float32Array( 3 ) )
+			const i = world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ 0.5, 0.5, 0.5 ]), 1, new Float32Array( 3 ) )
+			world.vel[ i * 3 ] = 1
+			const scene = new $bog_gamengine_scene
+			scene.$ = $
+			scene.phys3( world )
+			$bog_gamengine_scene_time_mock.stamp( 0 )
+			scene.step()
+			$bog_gamengine_scene_time_mock.stamp( 16 )
+			scene.step()
+			$mol_assert_ok( Math.abs( world.pos[ i * 3 ] - 0.016 ) < 1e-6 )
+		},
+
 		'nodes lists tree depth first with parent before kids'() {
 			const a = new $bog_gamengine_scene_named
 			const b = new $bog_gamengine_scene_named
