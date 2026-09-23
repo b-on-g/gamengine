@@ -52,5 +52,13 @@ namespace $ {
 			$mol_assert_equal( [ ...b ], [ 2.5, 5 ] )
 		},
 
+		'mat4_apply multiplies column-major matrix by vec4'() {
+			const out = new Float32Array( 4 )
+			const m = $mol_3d_mat4.translation([ 10, 20, 30 ])
+			const res = $bog_gamengine_vec_mat4_apply( out, m, new Float32Array([ 1, 2, 3, 1 ]) )
+			$mol_assert_equal( res, out )
+			$mol_assert_equal( [ ...out ], [ 11, 22, 33, 1 ] )
+		},
+
 	})
 }
