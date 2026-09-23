@@ -26,7 +26,9 @@ namespace $ {
 	function walker_test_walker( world: $bog_gamengine_phys3, key: $bog_gamengine_key, y = 0.9 ) {
 		const walker = new $bog_gamengine_phys3_walker
 		walker.phys3( world )
-		walker.input( key )
+		const input = new $bog_gamengine_input
+		input.key( key )
+		walker.input( input )
 		walker.pos( new Float32Array([ 0, y, 0 ]) )
 		return walker
 	}

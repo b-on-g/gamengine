@@ -68,6 +68,29 @@ namespace $ {
 			$mol_assert_equal( parent.kids(), [ a, b ] )
 		},
 
+		'kids setter sets parent of kids'() {
+			const a = new $bog_gamengine_node
+			const parent = new $bog_gamengine_node
+			parent.kids([ a ])
+			$mol_assert_equal( a.parent(), parent )
+		},
+
+		'kids setter keeps parent already set'() {
+			const a = new $bog_gamengine_node
+			const own = new $bog_gamengine_node
+			a.parent( own )
+			new $bog_gamengine_node().kids([ a ])
+			$mol_assert_equal( a.parent(), own )
+		},
+
+		'root of a bare node is itself and scene is null'() {
+			const node = new $bog_gamengine_node
+			$mol_assert_equal( node.root(), node )
+			$mol_assert_equal( node.scene(), null )
+			$mol_assert_equal( node.input(), null )
+			$mol_assert_equal( node.clock(), null )
+		},
+
 		'tint of bare node defaults to opaque white through props'() {
 			const node = new $bog_gamengine_node
 			$mol_assert_equal( [ ... node_test_prop( node, 'tint' ).get() as Float32Array ], [ 1, 1, 1, 1 ] )

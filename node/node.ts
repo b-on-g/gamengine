@@ -61,7 +61,34 @@ namespace $ {
 
 		@ $mol_mem
 		kids( next?: readonly $bog_gamengine_node[] ): readonly $bog_gamengine_node[] {
-			return next ?? []
+			if( !next ) return []
+			for( let i = 0; i < next.length; ++i ) {
+				if( !next[ i ].parent() ) next[ i ].parent( this )
+			}
+			return next
+		}
+
+		root(): $bog_gamengine_node {
+			let node: $bog_gamengine_node = this
+			for( let parent = node.parent(); parent; parent = node.parent() ) node = parent
+			return node
+		}
+
+		is_scene() {
+			return false
+		}
+
+		scene(): $bog_gamengine_scene | null {
+			const root = this.root()
+			return root.is_scene() ? root as $bog_gamengine_scene : null
+		}
+
+		input(): $bog_gamengine_input | null {
+			return this.scene()?.input() ?? null
+		}
+
+		clock(): $bog_gamengine_clock | null {
+			return this.scene()?.clock() ?? null
 		}
 
 		@ $mol_mem

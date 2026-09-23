@@ -193,6 +193,30 @@ namespace $ {
 			$mol_assert_equal( scene.nodes(), [ a, b ] )
 		},
 
+		'node in scene kids sees scene, its input and clock'() {
+			const a = new $bog_gamengine_node
+			const scene = new $bog_gamengine_scene
+			const input = new $bog_gamengine_input
+			scene.input( input )
+			scene.kids([ a ])
+			$mol_assert_equal( a.scene(), scene )
+			$mol_assert_equal( a.input(), input )
+			$mol_assert_equal( a.clock(), scene.clock() )
+		},
+
+		'grandchild of overridden kids sees scene after nodes walk'() {
+			const a = new $bog_gamengine_scene_named
+			const b = new $bog_gamengine_node
+			a.kids([ b ])
+			const scene = new $bog_gamengine_scene
+			scene.kids = ()=> [ a ]
+			$mol_assert_equal( a.scene(), null )
+			scene.nodes()
+			$mol_assert_equal( a.scene(), scene )
+			$mol_assert_equal( b.scene(), scene )
+			$mol_assert_equal( b.clock(), scene.clock() )
+		},
+
 	})
 
 }

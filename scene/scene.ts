@@ -7,12 +7,17 @@ namespace $ {
 			return next ?? new $bog_gamengine_clock
 		}
 
+		is_scene() {
+			return true
+		}
+
 		@ $mol_mem
 		nodes() {
 			const list = [] as $bog_gamengine_node[]
 			const walk = ( node: $bog_gamengine_node )=> {
 				const kids = node.kids()
 				for( let i = 0; i < kids.length; ++i ) {
+					if( !kids[ i ].parent() ) kids[ i ].parent( node )
 					list.push( kids[ i ] )
 					walk( kids[ i ] )
 				}

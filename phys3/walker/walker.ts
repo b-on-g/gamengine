@@ -15,8 +15,8 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		input( next?: $bog_gamengine_phys3_walker_input | null ) {
-			return next ?? null
+		input( next?: $bog_gamengine_input | null ) {
+			return next ?? super.input()
 		}
 
 		@ $mol_mem
