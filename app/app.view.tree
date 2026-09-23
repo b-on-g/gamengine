@@ -1,0 +1,197 @@
+$bog_shooter_app $mol_page
+	title \Стрелок
+	plugins /
+		<= Control $mol_keyboard_state
+			key <= key_map *
+	tools /
+		<= Health $mol_labeler
+			title \Здоровье
+			content / <= health_stat \
+		<= Targets $mol_labeler
+			title \Мишени
+			content / <= targets_stat \
+		<= Shadows $mol_check_box
+			title \Тени
+			checked? <=> shadows? false
+		<= Pause $mol_check_box
+			title \Пауза
+			checked? <=> paused?
+	body <= game /
+		<= Draw $bog_gamengine_draw
+			scene <= Scene
+			cam <= Eye
+			shadows? <=> shadows? false
+			shadow_range? 24
+			ambient 0.2
+			stat => stat
+			event *
+				pointerdown? <=> shoot? null
+		<= Cross $mol_view
+			sub /
+				<= Cross_bar $mol_view
+				<= Cross_pin $mol_view
+		<= End $mol_page
+			title <= end_title \
+			body /
+				<= End_hint $mol_view
+					sub / <= end_hint \
+			foot /
+				<= Again $mol_button_major
+					title \Ещё раз
+					click? <=> restart? null
+	foot /
+		<= Player_stat $mol_view
+			sub / <= player_stat \
+		<= Stat $mol_view
+			sub / <= stat
+		<= Phys_stat $mol_view
+			sub / <= phys_stat \
+	round? 0
+	map \
+		\############
+		\#........E.#
+		\#....E.....#
+		\#..........#
+		\#..##...##.#
+		\#..#....#..#
+		\#.......E..#
+		\#..#....#..#
+		\#..##...##.#
+		\#.....E....#
+		\#....P.....#
+		\############
+	Phys $bog_shooter_phys
+	Arena $bog_shooter_arena
+		map <= map
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/shooter/app/atlas/wall.png
+			\bog/shooter/app/atlas/floor.png
+			\bog/shooter/app/atlas/target.png
+			\bog/shooter/app/atlas/spark.png
+		size 256
+	Sound $bog_gamengine_sound
+		listener <= Eye
+		range 16
+		uris *
+			shot \bog/shooter/app/sound/shot.wav
+			hit \bog/shooter/app/sound/hit.wav
+	Key $bog_gamengine_key
+		bind *
+			forward /
+				\W
+				\up
+			back /
+				\S
+				\down
+			left /
+				\A
+				\left
+			right /
+				\D
+				\right
+			jump / \space
+			turn_left / \Q
+			turn_right / \E
+			fire / \F
+	Input $bog_gamengine_input
+		key <= Key
+	Screen $bog_gamengine_screen
+		target <= draw_node null
+	Clock $bog_gamengine_clock
+		paused? => paused?
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		input <= Input
+		kids <= nodes /
+		phys3 <= Phys
+		batches <= batches /
+		cam <= Eye
+		aspect <= aspect 1
+		Shader_solid <= Solid
+	Solids $bog_gamengine_batch
+		shader <= Solid $bog_gamengine_shader_solid
+		shape <= Box $bog_gamengine_shape_box
+		atlas <= Atlas
+		source <= Phys
+		skip 1
+	Sparks $bog_gamengine_batch
+		shader <= Sprite $bog_gamengine_shader_sprite
+		shape <= Quad $bog_gamengine_shape_quad
+		atlas <= Atlas
+		source <= Spark_pool
+		cull false
+	Traces $bog_gamengine_batch
+		shader <= Flat $bog_gamengine_shader_flat
+		shape <= Lines $bog_gamengine_shape_lines
+			points <= trace_points Float32Array
+		nodes / <= Trace_holder
+	Trace_holder $bog_gamengine_node
+	Spark_pool $bog_gamengine_particle_pool
+		cap 200
+	Spark $bog_gamengine_particle
+		pool <= Spark_pool
+		atlas <= Atlas
+		frame \spark
+		life /
+			0.12
+			0.3
+		speed /
+			2
+			6
+		spread 0.6
+		size /
+			0.12
+			0.01
+		color /
+			1
+			0.9
+			0.6
+			1
+			1
+			0.4
+			0.1
+			0
+		billboard true
+	Floor $bog_gamengine_mesh
+		shape <= Plane $bog_gamengine_shape_plane
+			tile <= floor_tile 12
+		atlas <= Atlas
+		frame \floor
+		pos <= floor_pos Float32Array
+		size <= floor_size Float32Array
+	Player $bog_shooter_player
+		phys3 <= Phys
+		input <= Input
+		screen <= Screen
+		sound <= Sound
+		spark <= Spark
+		targets <= targets /
+		height <= player_height 1.7
+		radius 0.3
+		speed 4.2
+		jump 4.6
+		pos? <=> player_pos? Float32Array
+		health? => player_health?
+	Eye $bog_gamengine_cam_deep
+		parent <= Player
+		pos <= eye_pos Float32Array
+		rot <= eye_rot Float32Array
+		far 60
+	Target* $bog_shooter_target
+		phys3 <= Phys
+		player <= Player
+		sound <= Sound
+		layer <= target_layer 0
+		start <= target_start* Float32Array
+		health? => target_health*?
+	Sun $bog_gamengine_light
+		kind \sun
+		rot <= sun_rot Float32Array
+		power 0.6
+	Lamp $bog_gamengine_light
+		kind \spot
+		parent <= Eye
+		power 1.1
+		range 12
+		angle 0.7

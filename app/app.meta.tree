@@ -1,0 +1,6 @@
+deploy \/bog/shooter/app/atlas/wall.png
+deploy \/bog/shooter/app/atlas/floor.png
+deploy \/bog/shooter/app/atlas/target.png
+deploy \/bog/shooter/app/atlas/spark.png
+deploy \/bog/shooter/app/sound/shot.wav
+deploy \/bog/shooter/app/sound/hit.wav
