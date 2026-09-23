@@ -1,0 +1,51 @@
+$bog_gamengine_spike_net $mol_page
+	title \Сеть
+	body /
+		<= Draw $bog_gamengine_draw
+			scene <= Scene
+			cam <= Cam
+			stat => stat
+	foot /
+		<= Stat $mol_view
+			sub / <= stat
+		<= Net_stat $mol_view
+			sub / <= net_stat \
+	Key $bog_gamengine_key
+		bind *
+			left / \A
+			right / \D
+			up / \W
+			down / \S
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/atlas/hero.png
+		size 64
+	Clock $bog_gamengine_clock
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		kids <= nodes /
+		phys <= Phys $bog_gamengine_phys
+			bodies / <= Hero
+		batches /
+			<= Batch $bog_gamengine_batch
+				shader <= Sprite_shader $bog_gamengine_shader_sprite
+				atlas <= Atlas
+				nodes <= sprites /
+	Cam $bog_gamengine_cam_flat
+		height 15
+		pos <= cam_pos Float32Array
+	Hero $bog_gamengine_spike_net_self
+		key <= Key
+		pos? <=> hero_pos? Float32Array
+		face_left? => hero_face_left?
+		pawn <= my_hero null
+	Hero_sprite $bog_gamengine_sprite
+		parent <= Hero
+		atlas <= Atlas
+		frame \hero
+		flip_x <= hero_face_left
+	Other* $bog_gamengine_sprite
+		atlas <= Atlas
+		frame \hero
+		pos <= other_pos* Float32Array
+		tint <= other_tint Float32Array
