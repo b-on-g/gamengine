@@ -4222,6 +4222,9 @@ declare namespace $.$$ {
     export {};
 }
 
+declare namespace $.$$ {
+}
+
 declare namespace $ {
 }
 
@@ -4706,57 +4709,52 @@ declare namespace $ {
 		,
 		ReturnType< $mol_view['sub'] >
 	>
-	type $mol_view__sub_bog_gamengine_demo_flat_10 = $mol_type_enforce<
-		readonly(any)[]
-		,
-		ReturnType< $mol_view['sub'] >
-	>
-	type $bog_gamengine_phys__bodies_bog_gamengine_demo_flat_11 = $mol_type_enforce<
+	type $bog_gamengine_phys__bodies_bog_gamengine_demo_flat_10 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['bodies'] >
 		,
 		ReturnType< $bog_gamengine_phys['bodies'] >
 	>
-	type $bog_gamengine_phys__tile_bog_gamengine_demo_flat_12 = $mol_type_enforce<
+	type $bog_gamengine_phys__tile_bog_gamengine_demo_flat_11 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Tile'] >
 		,
 		ReturnType< $bog_gamengine_phys['tile'] >
 	>
-	type $bog_gamengine_batch__shader_bog_gamengine_demo_flat_13 = $mol_type_enforce<
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_flat_12 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Sprite_shader'] >
 		,
 		ReturnType< $bog_gamengine_batch['shader'] >
 	>
-	type $bog_gamengine_batch__atlas_bog_gamengine_demo_flat_14 = $mol_type_enforce<
+	type $bog_gamengine_batch__atlas_bog_gamengine_demo_flat_13 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Atlas'] >
 		,
 		ReturnType< $bog_gamengine_batch['atlas'] >
 	>
-	type $bog_gamengine_batch__nodes_bog_gamengine_demo_flat_15 = $mol_type_enforce<
+	type $bog_gamengine_batch__nodes_bog_gamengine_demo_flat_14 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['sprites'] >
 		,
 		ReturnType< $bog_gamengine_batch['nodes'] >
 	>
-	type __bog_gamengine_demo_flat_16 = $mol_type_enforce<
+	type __bog_gamengine_demo_flat_15 = $mol_type_enforce<
 		Parameters< $bog_gamengine_demo_flat['hero_face_left'] >[0]
 		,
 		Parameters< ReturnType< $bog_gamengine_demo_flat['Hero'] >['face_left'] >[0]
 	>
-	type __bog_gamengine_demo_flat_17 = $mol_type_enforce<
+	type __bog_gamengine_demo_flat_16 = $mol_type_enforce<
 		Parameters< $bog_gamengine_demo_flat['hero_clip'] >[0]
 		,
 		Parameters< ReturnType< $bog_gamengine_demo_flat['Hero'] >['clip'] >[0]
 	>
-	type __bog_gamengine_demo_flat_18 = $mol_type_enforce<
+	type __bog_gamengine_demo_flat_17 = $mol_type_enforce<
 		Parameters< $bog_gamengine_demo_flat['coin_taken'] >[0]
 		,
 		Parameters< $bog_gamengine_demo_flat['Coin'] >[0]
 	>
-	type __bog_gamengine_demo_flat_19 = $mol_type_enforce<
+	type __bog_gamengine_demo_flat_18 = $mol_type_enforce<
 		Parameters< $bog_gamengine_demo_flat['coin_taken'] >[1]
 		,
 		Parameters< $bog_gamengine_demo_flat['Coin'] >[0]
 	>
-	type $bog_gamengine_key__bind_bog_gamengine_demo_flat_20 = $mol_type_enforce<
+	type $bog_gamengine_key__bind_bog_gamengine_demo_flat_19 = $mol_type_enforce<
 		({ 
 			'left': readonly(any)[],
 			'right': readonly(any)[],
@@ -4766,161 +4764,161 @@ declare namespace $ {
 		,
 		ReturnType< $bog_gamengine_key['bind'] >
 	>
-	type $bog_gamengine_phys_tile__map_bog_gamengine_demo_flat_21 = $mol_type_enforce<
+	type $bog_gamengine_phys_tile__map_bog_gamengine_demo_flat_20 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['map'] >
 		,
 		ReturnType< $bog_gamengine_phys_tile['map'] >
 	>
-	type $bog_gamengine_atlas__uris_bog_gamengine_demo_flat_22 = $mol_type_enforce<
+	type $bog_gamengine_atlas__uris_bog_gamengine_demo_flat_21 = $mol_type_enforce<
 		readonly(any)[]
 		,
 		ReturnType< $bog_gamengine_atlas['uris'] >
 	>
-	type $bog_gamengine_atlas__size_bog_gamengine_demo_flat_23 = $mol_type_enforce<
+	type $bog_gamengine_atlas__size_bog_gamengine_demo_flat_22 = $mol_type_enforce<
 		number
 		,
 		ReturnType< $bog_gamengine_atlas['size'] >
 	>
-	type $bog_gamengine_point__cam_bog_gamengine_demo_flat_24 = $mol_type_enforce<
+	type $bog_gamengine_point__cam_bog_gamengine_demo_flat_23 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Cam'] >
 		,
 		ReturnType< $bog_gamengine_point['cam'] >
 	>
-	type $bog_gamengine_point__width_bog_gamengine_demo_flat_25 = $mol_type_enforce<
+	type $bog_gamengine_point__width_bog_gamengine_demo_flat_24 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['draw_width'] >
 		,
 		ReturnType< $bog_gamengine_point['width'] >
 	>
-	type $bog_gamengine_point__height_bog_gamengine_demo_flat_26 = $mol_type_enforce<
+	type $bog_gamengine_point__height_bog_gamengine_demo_flat_25 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['draw_height'] >
 		,
 		ReturnType< $bog_gamengine_point['height'] >
 	>
-	type $bog_gamengine_sound__uris_bog_gamengine_demo_flat_27 = $mol_type_enforce<
+	type $bog_gamengine_sound__uris_bog_gamengine_demo_flat_26 = $mol_type_enforce<
 		({ 
 			'coin': string,
 		}) 
 		,
 		ReturnType< $bog_gamengine_sound['uris'] >
 	>
-	type $bog_gamengine_scene__clock_bog_gamengine_demo_flat_28 = $mol_type_enforce<
+	type $bog_gamengine_scene__clock_bog_gamengine_demo_flat_27 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Clock'] >
 		,
 		ReturnType< $bog_gamengine_scene['clock'] >
 	>
-	type $bog_gamengine_scene__kids_bog_gamengine_demo_flat_29 = $mol_type_enforce<
+	type $bog_gamengine_scene__kids_bog_gamengine_demo_flat_28 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['nodes'] >
 		,
 		ReturnType< $bog_gamengine_scene['kids'] >
 	>
-	type $bog_gamengine_scene__phys_bog_gamengine_demo_flat_30 = $mol_type_enforce<
+	type $bog_gamengine_scene__phys_bog_gamengine_demo_flat_29 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Phys'] >
 		,
 		ReturnType< $bog_gamengine_scene['phys'] >
 	>
-	type $bog_gamengine_scene__batches_bog_gamengine_demo_flat_31 = $mol_type_enforce<
+	type $bog_gamengine_scene__batches_bog_gamengine_demo_flat_30 = $mol_type_enforce<
 		readonly(any)[]
 		,
 		ReturnType< $bog_gamengine_scene['batches'] >
 	>
-	type $bog_gamengine_cam_flat__height_bog_gamengine_demo_flat_32 = $mol_type_enforce<
+	type $bog_gamengine_cam_flat__height_bog_gamengine_demo_flat_31 = $mol_type_enforce<
 		number
 		,
 		ReturnType< $bog_gamengine_cam_flat['height'] >
 	>
-	type $bog_gamengine_cam_flat__pos_bog_gamengine_demo_flat_33 = $mol_type_enforce<
+	type $bog_gamengine_cam_flat__pos_bog_gamengine_demo_flat_32 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['cam_pos'] >
 		,
 		ReturnType< $bog_gamengine_cam_flat['pos'] >
 	>
-	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_flat_34 = $mol_type_enforce<
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_flat_33 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Atlas'] >
 		,
 		ReturnType< $bog_gamengine_sprite['atlas'] >
 	>
-	type $bog_gamengine_sprite__frame_bog_gamengine_demo_flat_35 = $mol_type_enforce<
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_flat_34 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['cell_frame'] >
 		,
 		ReturnType< $bog_gamengine_sprite['frame'] >
 	>
-	type $bog_gamengine_sprite__pos_bog_gamengine_demo_flat_36 = $mol_type_enforce<
+	type $bog_gamengine_sprite__pos_bog_gamengine_demo_flat_35 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['cell_pos'] >
 		,
 		ReturnType< $bog_gamengine_sprite['pos'] >
 	>
-	type $bog_gamengine_demo_flat_hero__key_bog_gamengine_demo_flat_37 = $mol_type_enforce<
+	type $bog_gamengine_demo_flat_hero__key_bog_gamengine_demo_flat_36 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Key'] >
 		,
 		ReturnType< $bog_gamengine_demo_flat_hero['key'] >
 	>
-	type $bog_gamengine_demo_flat_hero__pos_bog_gamengine_demo_flat_38 = $mol_type_enforce<
+	type $bog_gamengine_demo_flat_hero__pos_bog_gamengine_demo_flat_37 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['hero_pos'] >
 		,
 		ReturnType< $bog_gamengine_demo_flat_hero['pos'] >
 	>
-	type $bog_gamengine_sprite__parent_bog_gamengine_demo_flat_39 = $mol_type_enforce<
+	type $bog_gamengine_sprite__parent_bog_gamengine_demo_flat_38 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Hero'] >
 		,
 		ReturnType< $bog_gamengine_sprite['parent'] >
 	>
-	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_flat_40 = $mol_type_enforce<
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_flat_39 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Atlas'] >
 		,
 		ReturnType< $bog_gamengine_sprite['atlas'] >
 	>
-	type $bog_gamengine_sprite__frame_bog_gamengine_demo_flat_41 = $mol_type_enforce<
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_flat_40 = $mol_type_enforce<
 		string
 		,
 		ReturnType< $bog_gamengine_sprite['frame'] >
 	>
-	type $bog_gamengine_sprite__flip_x_bog_gamengine_demo_flat_42 = $mol_type_enforce<
+	type $bog_gamengine_sprite__flip_x_bog_gamengine_demo_flat_41 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['hero_face_left'] >
 		,
 		ReturnType< $bog_gamengine_sprite['flip_x'] >
 	>
-	type $bog_gamengine_sprite__clock_bog_gamengine_demo_flat_43 = $mol_type_enforce<
+	type $bog_gamengine_sprite__clock_bog_gamengine_demo_flat_42 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Clock'] >
 		,
 		ReturnType< $bog_gamengine_sprite['clock'] >
 	>
-	type $bog_gamengine_sprite__clip_bog_gamengine_demo_flat_44 = $mol_type_enforce<
+	type $bog_gamengine_sprite__clip_bog_gamengine_demo_flat_43 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['hero_clip'] >
 		,
 		ReturnType< $bog_gamengine_sprite['clip'] >
 	>
-	type $bog_gamengine_sprite__fps_bog_gamengine_demo_flat_45 = $mol_type_enforce<
+	type $bog_gamengine_sprite__fps_bog_gamengine_demo_flat_44 = $mol_type_enforce<
 		number
 		,
 		ReturnType< $bog_gamengine_sprite['fps'] >
 	>
-	type $bog_gamengine_sprite__clips_bog_gamengine_demo_flat_46 = $mol_type_enforce<
+	type $bog_gamengine_sprite__clips_bog_gamengine_demo_flat_45 = $mol_type_enforce<
 		({ 
 			'walk': readonly(any)[],
 		}) 
 		,
 		ReturnType< $bog_gamengine_sprite['clips'] >
 	>
-	type $bog_gamengine_demo_flat_coin__sound_bog_gamengine_demo_flat_47 = $mol_type_enforce<
+	type $bog_gamengine_demo_flat_coin__sound_bog_gamengine_demo_flat_46 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Sound'] >
 		,
 		ReturnType< $bog_gamengine_demo_flat_coin['sound'] >
 	>
-	type $bog_gamengine_demo_flat_coin__pos_bog_gamengine_demo_flat_48 = $mol_type_enforce<
+	type $bog_gamengine_demo_flat_coin__pos_bog_gamengine_demo_flat_47 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['coin_pos'] >
 		,
 		ReturnType< $bog_gamengine_demo_flat_coin['pos'] >
 	>
-	type $bog_gamengine_sprite__parent_bog_gamengine_demo_flat_49 = $mol_type_enforce<
+	type $bog_gamengine_sprite__parent_bog_gamengine_demo_flat_48 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Coin'] >
 		,
 		ReturnType< $bog_gamengine_sprite['parent'] >
 	>
-	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_flat_50 = $mol_type_enforce<
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_flat_49 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_flat['Atlas'] >
 		,
 		ReturnType< $bog_gamengine_sprite['atlas'] >
 	>
-	type $bog_gamengine_sprite__frame_bog_gamengine_demo_flat_51 = $mol_type_enforce<
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_flat_50 = $mol_type_enforce<
 		string
 		,
 		ReturnType< $bog_gamengine_sprite['frame'] >
@@ -4936,7 +4934,6 @@ declare namespace $ {
 		label_left( ): string
 		label_top( ): string
 		Hero_label( ): $mol_view
-		World( ): $mol_view
 		Stat( ): $mol_view
 		hero_stat( ): string
 		Hero_stat( ): $mol_view

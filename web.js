@@ -11111,6 +11111,22 @@ var $;
 })($ || ($ = {}));
 
 ;
+"use strict";
+var $;
+(function ($) {
+    var $$;
+    (function ($$) {
+        $mol_style_define($bog_gamengine_draw, {
+            minWidth: 0,
+            minHeight: 0,
+            flex: {
+                basis: 0,
+            },
+        });
+    })($$ = $.$$ || ($.$$ = {}));
+})($ || ($ = {}));
+
+;
 	($.$mol_labeler) = class $mol_labeler extends ($.$mol_list) {
 		label(){
 			return [(this.title())];
@@ -12158,11 +12174,6 @@ var $;
 			(obj.style) = () => ({"left": (this.label_left()), "top": (this.label_top())});
 			return obj;
 		}
-		World(){
-			const obj = new this.$.$mol_view();
-			(obj.sub) = () => ([(this.Draw()), (this.Hero_label())]);
-			return obj;
-		}
 		Stat(){
 			const obj = new this.$.$mol_view();
 			(obj.sub) = () => ([(this.stat())]);
@@ -12238,7 +12249,7 @@ var $;
 			return [(this.Coins())];
 		}
 		body(){
-			return [(this.World())];
+			return [(this.Draw()), (this.Hero_label())];
 		}
 		foot(){
 			return [(this.Stat()), (this.Hero_stat())];
@@ -12352,7 +12363,6 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "pointer_down"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Draw"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Hero_label"));
-	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "World"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Stat"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Hero_stat"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Phys"));
@@ -12469,7 +12479,12 @@ var $;
                 world[2] = pos[2];
                 const screen = this.Point().screen(this.label_screen, world);
                 const dpr = this.$.$mol_dom_context.devicePixelRatio;
-                return [screen[0] / dpr, screen[1] / dpr];
+                const draw = this.Draw().view_rect();
+                const node = this.Hero_label().dom_node();
+                const page = node.offsetParent?.getBoundingClientRect();
+                const dx = (draw?.left ?? 0) - (page?.left ?? 0);
+                const dy = (draw?.top ?? 0) - (page?.top ?? 0);
+                return [screen[0] / dpr + dx, screen[1] / dpr + dy];
             }
             label_left() {
                 return `${this.label_pos()[0].toFixed(1)}px`;
@@ -12551,13 +12566,6 @@ var $;
                             alignSelf: 'stretch',
                         },
                     },
-                },
-            },
-            World: {
-                position: 'relative',
-                alignSelf: 'stretch',
-                flex: {
-                    grow: 1,
                 },
             },
             Hero_label: {
