@@ -6,6 +6,15 @@ namespace $.$$ {
 	const pile_layers = 3
 	const throw_speed = 8
 	const throw_ahead = 1.5
+	const chain_links = 5
+	const chain_half = 0.3
+	const chain_link = 1
+	const chain_top = 6
+	const chain_x = -4
+	const chain_push = 2
+	const door_x = 4
+	const door_lift = 0.05
+	const side_ahead = 3
 
 	export function $bog_gamengine_demo_boxes_rand( seed: number ) {
 		let state = seed | 0
@@ -41,6 +50,7 @@ namespace $.$$ {
 			const count = this.count()
 			const rand = $bog_gamengine_demo_boxes_rand( this.seed() )
 			const phys = new this.$.$bog_gamengine_demo_boxes_phys
+			this.chain_first = -1
 			phys.add( $bog_gamengine_phys3.shape_plane, new Float32Array([ 0, 1, 0 ]), 0, new Float32Array( 3 ) )
 			const side = this.pile_side()
 			const size = new Float32Array([ box_half, box_half, box_half ])
@@ -127,11 +137,66 @@ namespace $.$$ {
 			return next
 		}
 
+		side_z() {
+			return ( this.pile_side() - 1 ) / 2 * pile_step + side_ahead
+		}
+
+		chain_first = -1
+
+		chain( next?: Event | null ) {
+			if( !next ) return null
+			const phys = this.Phys()
+			const size = new Float32Array([ chain_half, chain_half, chain_half ])
+			const pos = new Float32Array([ chain_x, 0, this.side_z() ])
+			const top = new Float32Array([ 0, chain_link / 2, 0 ])
+			const bottom = new Float32Array([ 0, - chain_link / 2, 0 ])
+			const axis = new Float32Array([ 0, 0, 1 ])
+			const hook = new Float32Array([ chain_x, chain_top, this.side_z() ])
+			let prev = -1
+			for( let n = 0; n < chain_links; ++ n ) {
+				pos[ 1 ] = chain_top - chain_link / 2 - n * chain_link
+				const i = phys.add( $bog_gamengine_phys3.shape_box, size, 1, pos )
+				if( n === 0 ) {
+					this.chain_first = i
+					phys.joint.add( $bog_gamengine_phys3_joint.type_point, i, 0, top, hook )
+				} else {
+					phys.joint.add( $bog_gamengine_phys3_joint.type_hinge, i, prev, top, bottom, axis )
+				}
+				prev = i
+			}
+			phys.vel[ prev * 3 ] = chain_push
+			return next
+		}
+
+		chain_drop() {
+			const phys = this.Phys()
+			const first = this.chain_first
+			const last = first + chain_links - 1
+			if( first < 0 || last >= phys.count ) return 0
+			return phys.pos[ first * 3 + 1 ] - phys.pos[ last * 3 + 1 ]
+		}
+
+		door( next?: Event | null ) {
+			if( !next ) return null
+			const phys = this.Phys()
+			const z = this.side_z()
+			const post_size = new Float32Array([ 0.15, 1.5, 0.15 ])
+			const post = phys.add( $bog_gamengine_phys3.shape_box, post_size, 0, new Float32Array([ door_x, 1.5, z ]) )
+			const leaf_size = new Float32Array([ 0.5, 1, 0.1 ])
+			const leaf = phys.add( $bog_gamengine_phys3.shape_box, leaf_size, 1, new Float32Array([ door_x + 0.8, 1 + door_lift, z ]) )
+			phys.joint.add(
+				$bog_gamengine_phys3_joint.type_hinge, post, leaf,
+				new Float32Array([ 0.3, door_lift - 0.5, 0 ]), new Float32Array([ -0.5, 0, 0 ]),
+				new Float32Array([ 0, 1, 0 ]), new Float32Array([ - Math.PI / 2, Math.PI / 2 ]),
+			)
+			return next
+		}
+
 		@ $mol_mem
 		phys_stat() {
 			this.Scene().step()
 			const phys = this.Phys()
-			return `bodies ${ phys.count } | contacts ${ phys.narrow.contact_count } | phys ${ phys.step_ms().toFixed( 2 ) } ms | low ${ phys.low().toFixed( 2 ) }`
+			return `bodies ${ phys.count } | contacts ${ phys.narrow.contact_count } | joints ${ phys.joint.count } | chain_drop ${ this.chain_drop().toFixed( 2 ) } | phys ${ phys.step_ms().toFixed( 2 ) } ms | low ${ phys.low().toFixed( 2 ) }`
 		}
 
 	}

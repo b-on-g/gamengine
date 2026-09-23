@@ -43,6 +43,12 @@ namespace $ {
 		broad = new $bog_gamengine_phys3_broad
 		narrow = new $bog_gamengine_phys3_narrow
 		solve = new $bog_gamengine_phys3_solve
+		joint = new $bog_gamengine_phys3_joint
+
+		constructor() {
+			super()
+			this.joint.world = this
+		}
 
 		@ $mol_mem
 		gravity( next?: Float32Array ) {
@@ -189,6 +195,7 @@ namespace $ {
 				this.hull_count[ index ] = this.hull_count[ last ]
 			}
 			this.count = last
+			this.joint.body_remove( index, last )
 			return last
 		}
 
@@ -252,7 +259,8 @@ namespace $ {
 			this.bounds()
 			this.broad.find( this )
 			this.narrow.collide( this, this.broad.pairs, this.broad.pair_count )
-			this.solve.solve( this, this.narrow, dt )
+			this.joint.prepare( this, dt )
+			this.solve.solve( this, this.narrow, dt, this.joint )
 			const speed2 = $bog_gamengine_phys3.sleep_speed * $bog_gamengine_phys3.sleep_speed
 			const sleep_time = $bog_gamengine_phys3.sleep_time
 			for( let i = 0; i < count; ++ i ) {

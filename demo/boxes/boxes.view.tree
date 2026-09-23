@@ -7,6 +7,12 @@ $bog_gamengine_demo_boxes $mol_page
 		<= Reset $mol_button_minor
 			title \Сброс
 			click? <=> reset? null
+		<= Chain $mol_button_minor
+			title \Цепь
+			click? <=> chain? null
+		<= Door $mol_button_minor
+			title \Дверь
+			click? <=> door? null
 		<= Wireframe $mol_check_box
 			title \Каркас
 			checked? <=> wireframe?

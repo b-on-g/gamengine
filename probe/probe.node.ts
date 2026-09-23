@@ -16,7 +16,7 @@ namespace $ {
 
 	export const $bog_gamengine_probe_boxes_page = 'bog/gamengine/demo/-/index.html#!demo=boxes'
 
-	export const $bog_gamengine_probe_boxes_ok = 'куча ящиков лежит на полу с контактами, клик бросает ящик, центр не чёрный'
+	export const $bog_gamengine_probe_boxes_ok = 'куча ящиков лежит на полу с контактами, клик бросает ящик, цепь висит на пяти шарнирах, дверь на петле, центр не чёрный'
 
 	export const $bog_gamengine_probe_boxes_count = 300
 
@@ -189,8 +189,11 @@ namespace $ {
 		const gl = canvas && canvas.getContext( 'webgl2' )
 		if( !gl ) return { webgl: false, loaded: false }
 		const read = ()=> {
-			const found = document.body.innerText.match( /bodies (\\d+) \\| contacts (\\d+) \\| phys ([\\d.]+) ms \\| low (-?[\\d.]+|Infinity)/ )
-			return found ? { bodies: Number( found[ 1 ] ), contacts: Number( found[ 2 ] ), phys: Number( found[ 3 ] ), low: Number( found[ 4 ] ) } : null
+			const found = document.body.innerText.match( /bodies (\\d+) \\| contacts (\\d+) \\| joints (\\d+) \\| chain_drop (-?[\\d.]+) \\| phys ([\\d.]+) ms \\| low (-?[\\d.]+|Infinity)/ )
+			return found ? {
+				bodies: Number( found[ 1 ] ), contacts: Number( found[ 2 ] ), joints: Number( found[ 3 ] ),
+				chain_drop: Number( found[ 4 ] ), phys: Number( found[ 5 ] ), low: Number( found[ 6 ] ),
+			} : null
 		}
 		let start = null
 		for( let i = 0; i < 600 && !start; ++ i ) { await frame(); start = read() }
@@ -208,8 +211,19 @@ namespace $ {
 		await frame()
 		await frame()
 		const thrown = read()
+		const chain_button = document.querySelector( '[bog_gamengine_demo_boxes_chain]' )
+		const door_button = document.querySelector( '[bog_gamengine_demo_boxes_door]' )
+		if( !chain_button || !door_button ) return { webgl: true, loaded: true, start, settled, thrown, frames, buttons: false }
+		chain_button.click()
+		const chain_started = performance.now()
+		while( performance.now() - chain_started < 2000 ) await frame()
+		const chain = read()
+		door_button.click()
+		await frame()
+		await frame()
+		const door = read()
 		return {
-			webgl: true, loaded: true, start, settled, thrown, frames,
+			webgl: true, loaded: true, start, settled, thrown, frames, buttons: true, chain, door,
 			center: Array.from( pixel ), size: [ canvas.width, canvas.height ],
 		}
 	`
@@ -268,6 +282,8 @@ namespace $ {
 	export type $bog_gamengine_probe_boxes_stat = {
 		readonly bodies: number
 		readonly contacts: number
+		readonly joints: number
+		readonly chain_drop: number
 		readonly phys: number
 		readonly low: number
 	}
@@ -279,6 +295,9 @@ namespace $ {
 		readonly settled?: $bog_gamengine_probe_boxes_stat | null
 		readonly thrown?: $bog_gamengine_probe_boxes_stat | null
 		readonly frames?: number
+		readonly buttons?: boolean
+		readonly chain?: $bog_gamengine_probe_boxes_stat | null
+		readonly door?: $bog_gamengine_probe_boxes_stat | null
 		readonly center?: $bog_gamengine_probe_pixel
 		readonly size?: readonly [ number, number ]
 	}
@@ -452,6 +471,10 @@ namespace $ {
 		if( !( got.settled.contacts > 0 ) ) return fail( 'контактов нет' )
 		if( !( got.settled.low > $bog_gamengine_probe_boxes_low ) ) return fail( 'ящик ушёл под пол' )
 		if( !got.thrown || got.thrown.bodies !== got.settled.bodies + 1 ) return fail( 'клик не добавил тело' )
+		if( !got.buttons ) return fail( 'кнопок цепи и двери нет в DOM' )
+		if( !got.chain || got.chain.joints !== 5 ) return fail( 'после цепи шарниров не 5' )
+		if( !( Math.abs( got.chain.chain_drop - 4 ) <= 0.5 ) ) return fail( 'нижний ящик цепи не на 4 ниже верхнего' )
+		if( !got.door || got.door.joints !== 6 ) return fail( 'после двери шарниров не 6' )
 		if( $bog_gamengine_probe_dark( got.center! ) ) return fail( 'центр чёрный' )
 
 		return say( $bog_gamengine_probe_boxes_ok )

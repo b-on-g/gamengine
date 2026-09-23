@@ -23,6 +23,10 @@ namespace $ {
 		contact_depth: Float32Array
 	}
 
+	export type $bog_gamengine_phys3_solve_joint = {
+		iterate(): void
+	}
+
 	export class $bog_gamengine_phys3_solve extends $mol_object2 {
 
 		static beta = 0.2
@@ -124,7 +128,7 @@ namespace $ {
 			return next
 		}
 
-		solve( world: $bog_gamengine_phys3_solve_world, narrow: $bog_gamengine_phys3_solve_narrow, dt: number ) {
+		solve( world: $bog_gamengine_phys3_solve_world, narrow: $bog_gamengine_phys3_solve_narrow, dt: number, joint?: $bog_gamengine_phys3_solve_joint ) {
 			this.world = world
 			const count = narrow.contact_count
 			this.grow( count )
@@ -134,7 +138,10 @@ namespace $ {
 			this.prepare( narrow, dt )
 			const iterations = world.iterations()
 			const friction = world.friction()
-			for( let it = 0; it < iterations; ++ it ) this.iterate( friction )
+			for( let it = 0; it < iterations; ++ it ) {
+				this.iterate( friction )
+				joint?.iterate()
+			}
 			this.remember()
 			return count
 		}
