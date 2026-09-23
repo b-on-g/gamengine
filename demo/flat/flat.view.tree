@@ -1,0 +1,90 @@
+$bog_gamengine_demo_flat $mol_page
+	title \Плоский мир
+	tools /
+		<= Coins $mol_labeler
+			title \Монеты
+			content / <= coins_stat \
+	body /
+		<= Draw $bog_gamengine_draw
+			scene <= Scene
+			cam <= Cam
+			stat => stat
+	foot /
+		<= Stat $mol_view
+			sub / <= stat
+		<= Hero_stat $mol_view
+			sub / <= hero_stat \
+	Key $bog_gamengine_key
+		bind *
+			left /
+				\A
+				\left
+			right /
+				\D
+				\right
+			up /
+				\W
+				\up
+			down /
+				\S
+				\down
+	map \
+		\####################
+		\#..................#
+		\#..####............#
+		\#..#...............#
+		\#..#....######.....#
+		\#..#.........#.....#
+		\#............#.....#
+		\#......###...#.....#
+		\#............#.....#
+		\#.....#............#
+		\#.....#............#
+		\#.....#.....####...#
+		\#..................#
+		\#..................#
+		\####################
+	Tile $bog_gamengine_phys_tile
+		map <= map
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/atlas/hero.png
+			\bog/gamengine/demo/atlas/coin.png
+			\bog/gamengine/demo/atlas/wall.png
+			\bog/gamengine/demo/atlas/floor.png
+		size 64
+	Clock $bog_gamengine_clock
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		kids <= nodes /
+		phys <= Phys $bog_gamengine_phys
+			bodies <= bodies /
+			tile <= Tile
+		batches /
+			<= Batch $bog_gamengine_batch
+				shader <= Sprite_shader $bog_gamengine_shader_sprite
+				atlas <= Atlas
+				nodes <= sprites /
+	Cam $bog_gamengine_cam_flat
+		height 15
+		pos <= cam_pos Float32Array
+	Cell* $bog_gamengine_sprite
+		atlas <= Atlas
+		frame <= cell_frame* \
+		pos <= cell_pos* Float32Array
+	Hero $bog_gamengine_demo_flat_hero
+		key <= Key
+		pos? <=> hero_pos? Float32Array
+		face_left? => hero_face_left?
+	Hero_sprite $bog_gamengine_sprite
+		parent <= Hero
+		atlas <= Atlas
+		frame \hero
+		flip_x <= hero_face_left
+	Coin* $bog_gamengine_demo_flat_coin
+		pos <= coin_pos* Float32Array
+		taken? => coin_taken*?
+	Coin_sprite* $bog_gamengine_sprite
+		parent <= Coin*
+		atlas <= Atlas
+		frame \coin

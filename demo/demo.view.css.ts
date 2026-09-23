@@ -2,7 +2,7 @@ namespace $.$$ {
 
 	$mol_style_define( $bog_gamengine_demo, {
 
-		Page: {
+		Quad: {
 			flex: {
 				grow: 1,
 			},

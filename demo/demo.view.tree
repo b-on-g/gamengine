@@ -1,6 +1,10 @@
-$bog_gamengine_demo $mol_book2
-	pages /
-		<= Page $mol_page
+$bog_gamengine_demo $mol_book2_catalog
+	param \demo
+	plugins /
+		<= Control $mol_keyboard_state
+			key <= key_map *
+	spreads *
+		quad <= Quad $mol_page
 			title \Квад
 			tools /
 				<= Cam_switch $mol_switch
@@ -19,6 +23,7 @@ $bog_gamengine_demo $mol_book2
 			foot /
 				<= Stat $mol_view
 					sub / <= stat
+		flat <= Flat $bog_gamengine_demo_flat
 	Clock $bog_gamengine_clock
 		paused? => paused?
 	Scene $bog_gamengine_scene
