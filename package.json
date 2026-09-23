@@ -256,6 +256,8 @@
     "$bog_gamengine_nav_mesh",
     "$bog_gamengine_demo_flat_coin",
     "$bog_gamengine_particle",
+    "$bog_gamengine_text_font",
+    "$bog_gamengine_text",
     "$bog_gamengine_demo_room",
     "$bog_gamengine_shader_solid",
     "$bog_gamengine_shape_box",

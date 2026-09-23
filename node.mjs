@@ -10818,14 +10818,29 @@ var $;
         size(next = 64) {
             return next;
         }
-        names() {
+        sources(next = []) {
+            return next;
+        }
+        origins() {
             const uris = this.uris();
-            const names = new Map();
+            const sources = this.sources();
+            const origins = [];
             for (let i = 0; i < uris.length; ++i) {
-                const name = uris[i].replace(/^.*\//, '').replace(/\.[^.]*$/, '');
+                origins.push({ name: uris[i].replace(/^.*\//, '').replace(/\.[^.]*$/, ''), from: uris[i] });
+            }
+            for (let i = 0; i < sources.length; ++i) {
+                origins.push({ name: sources[i].name, from: sources[i].name });
+            }
+            return origins;
+        }
+        names() {
+            const origins = this.origins();
+            const names = new Map();
+            for (let i = 0; i < origins.length; ++i) {
+                const name = origins[i].name;
                 const known = names.get(name);
                 if (known !== undefined)
-                    $mol_fail(new Error(`Atlas layer name ${name} is used twice: ${uris[known]} and ${uris[i]}`));
+                    $mol_fail(new Error(`Atlas layer name ${name} is used twice: ${origins[known].from} and ${origins[i].from}`));
                 names.set(name, i);
             }
             return names;
@@ -10846,13 +10861,17 @@ var $;
         images() {
             const uris = this.uris();
             const size = this.size();
-            const images = $mol_wire_race(...uris.map(uri => () => this.image(uri).data()));
+            const origins = this.origins();
+            const loaded = $mol_wire_race(...uris.map(uri => () => this.image(uri).data()));
+            const images = [...loaded, ...this.sources().map(source => source.image)];
             for (let i = 0; i < images.length; ++i) {
-                const { width, height } = images[i];
+                const box = images[i];
+                const width = box.width;
+                const height = box.height;
                 if (width === size && height === size)
                     continue;
                 const hint = width === 512 && height === 512 ? ', is it loaded?' : '';
-                $mol_fail(new Error(`Atlas image ${uris[i]} is ${width}×${height}, expected ${size}×${size}${hint}`));
+                $mol_fail(new Error(`Atlas image ${origins[i].from} is ${width}×${height}, expected ${size}×${size}${hint}`));
             }
             return images;
         }
@@ -10874,6 +10893,12 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_atlas.prototype, "size", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_atlas.prototype, "sources", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_atlas.prototype, "origins", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_atlas.prototype, "names", null);
@@ -17822,6 +17847,295 @@ var $;
 })($ || ($ = {}));
 
 ;
+"use strict";
+var $;
+(function ($) {
+    $.$bog_gamengine_text_font_chars = ' !"#%&\'()*+,-./0123456789:;<=>?@'
+        + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_'
+        + 'abcdefghijklmnopqrstuvwxyz{|}~'
+        + 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'
+        + 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя';
+    function $bog_gamengine_text_font_render(context, family, size, chars) {
+        const advance = new Map();
+        const sources = [];
+        const view = context;
+        if (!view.document || !view.CanvasRenderingContext2D)
+            return { sources, advance };
+        const canvas = view.document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const paint = canvas.getContext('2d', { willReadFrequently: true });
+        if (!paint)
+            return { sources, advance };
+        paint.font = `${Math.round(size * 0.75)}px ${family}`;
+        paint.textAlign = 'center';
+        paint.textBaseline = 'middle';
+        paint.fillStyle = '#ffffff';
+        for (let i = 0; i < chars.length; ++i) {
+            const char = chars[i];
+            advance.set(char, paint.measureText(char).width / size);
+            if (char === ' ')
+                continue;
+            paint.clearRect(0, 0, size, size);
+            paint.fillText(char, size / 2, size / 2);
+            sources.push({ name: char, image: paint.getImageData(0, 0, size, size) });
+        }
+        return { sources, advance };
+    }
+    $.$bog_gamengine_text_font_render = $bog_gamengine_text_font_render;
+    class $bog_gamengine_text_font extends $mol_object2 {
+        family(next = 'sans-serif') {
+            return next;
+        }
+        size(next = 64) {
+            return next;
+        }
+        chars(next = $.$bog_gamengine_text_font_chars) {
+            return next;
+        }
+        static glyphs(key) {
+            $mol_wire_solid();
+            const at = key.indexOf('\n');
+            const to = key.indexOf('\n', at + 1);
+            return $bog_gamengine_text_font_render(this.$.$mol_dom_context, key.slice(0, at), Number(key.slice(at + 1, to)), key.slice(to + 1));
+        }
+        glyphs() {
+            const cls = this.constructor;
+            return cls.glyphs(`${this.family()}\n${this.size()}\n${this.chars()}`);
+        }
+        sources() {
+            return this.glyphs().sources;
+        }
+        advance(char) {
+            return this.glyphs().advance.get(char) ?? 0.6;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_text_font.prototype, "family", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_text_font.prototype, "size", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_text_font.prototype, "chars", null);
+    __decorate([
+        $mol_mem_key
+    ], $bog_gamengine_text_font, "glyphs", null);
+    $.$bog_gamengine_text_font = $bog_gamengine_text_font;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_text_pool extends $mol_object2 {
+        cap = 0;
+        count = 0;
+        trans = new Float32Array(0);
+        tint = new Float32Array(0);
+        layer = new Float32Array(0);
+        uv = new Float32Array(0);
+        aabb = new Float32Array(0);
+        fit(need) {
+            if (need <= this.cap)
+                return this.cap;
+            let cap = Math.max(this.cap, 16);
+            while (cap < need)
+                cap *= 2;
+            this.cap = cap;
+            this.trans = new Float32Array(cap * 16);
+            this.tint = new Float32Array(cap * 4);
+            this.layer = new Float32Array(cap);
+            this.uv = new Float32Array(cap * 4);
+            this.aabb = new Float32Array(cap * 6);
+            const uv = this.uv;
+            for (let i = 0; i < cap; ++i) {
+                uv[i * 4 + 2] = 1;
+                uv[i * 4 + 3] = 1;
+            }
+            return cap;
+        }
+    }
+    $.$bog_gamengine_text_pool = $bog_gamengine_text_pool;
+    class $bog_gamengine_text extends $bog_gamengine_node {
+        pool(next) {
+            return next ?? new $bog_gamengine_text_pool;
+        }
+        font(next) {
+            return next ?? new $bog_gamengine_text_font;
+        }
+        atlas(next) {
+            return next ?? null;
+        }
+        value(next = '') {
+            return next;
+        }
+        height(next = 0.5) {
+            return next;
+        }
+        align(next) {
+            return next ?? 'left';
+        }
+        color(next) {
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1, 1, 1]);
+        }
+        billboard(next = false) {
+            return next;
+        }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'value', kind: 'text', get: () => this.value(), set: next => this.value(next) },
+                { name: 'height', kind: 'number', get: () => this.height(), set: next => this.height(next) },
+                { name: 'align', kind: 'text', get: () => this.align(), set: next => this.align(next) },
+                { name: 'color', kind: 'vec4', get: () => this.color(), set: next => this.color(next) },
+                { name: 'billboard', kind: 'flag', get: () => this.billboard(), set: next => this.billboard(next) },
+            ];
+        }
+        width() {
+            const value = this.value();
+            const font = this.font();
+            let total = 0;
+            for (let i = 0; i < value.length; ++i)
+                total += font.advance(value[i]);
+            return total * this.height();
+        }
+        axes = new Float32Array(16);
+        done_world = new Float32Array(16);
+        done_color = new Float32Array(4);
+        done_value = null;
+        done_height = NaN;
+        done_align = '';
+        fresh(value, world, height, align, color) {
+            let same = value === this.done_value && height === this.done_height && align === this.done_align;
+            const done_world = this.done_world;
+            for (let i = 0; i < 16; ++i) {
+                if (world[i] !== done_world[i])
+                    same = false;
+                done_world[i] = world[i];
+            }
+            const done_color = this.done_color;
+            for (let i = 0; i < 4; ++i) {
+                if (color[i] !== done_color[i])
+                    same = false;
+                done_color[i] = color[i];
+            }
+            this.done_value = value;
+            this.done_height = height;
+            this.done_align = align;
+            return same;
+        }
+        emit() {
+            const pool = this.pool();
+            const value = this.value();
+            const world = this.world();
+            const height = this.height();
+            const align = this.align();
+            const color = this.color();
+            const billboard = this.billboard();
+            const cam = billboard ? this.scene()?.cam() ?? null : null;
+            if (this.fresh(value, world, height, align, color) && !cam)
+                return pool.count;
+            const axes = this.axes;
+            if (cam) {
+                const view = cam.world();
+                for (let c = 0; c < 3; ++c) {
+                    const x = view[c * 4];
+                    const y = view[c * 4 + 1];
+                    const z = view[c * 4 + 2];
+                    const k = 1 / (Math.sqrt(x * x + y * y + z * z) || 1);
+                    axes[c * 4] = x * k;
+                    axes[c * 4 + 1] = y * k;
+                    axes[c * 4 + 2] = z * k;
+                    axes[c * 4 + 3] = 0;
+                }
+                axes[12] = world[12];
+                axes[13] = world[13];
+                axes[14] = world[14];
+                axes[15] = 1;
+            }
+            else {
+                for (let k = 0; k < 16; ++k)
+                    axes[k] = world[k];
+            }
+            pool.fit(value.length);
+            const font = this.font();
+            const names = this.atlas()?.names() ?? null;
+            const unknown = names?.get('?') ?? 0;
+            const trans = pool.trans;
+            const tint = pool.tint;
+            const layer = pool.layer;
+            const aabb = pool.aabb;
+            const radius = height * $bog_gamengine_batch_scale_max(axes) * Math.SQRT1_2;
+            let total = 0;
+            for (let i = 0; i < value.length; ++i)
+                total += font.advance(value[i]);
+            let pen = align === 'center' ? -total * height / 2 : align === 'right' ? -total * height : 0;
+            let count = 0;
+            for (let i = 0; i < value.length; ++i) {
+                const char = value[i];
+                const step = font.advance(char) * height;
+                const dx = pen + step / 2;
+                pen += step;
+                if (char === ' ')
+                    continue;
+                const at = count * 16;
+                for (let r = 0; r < 4; ++r) {
+                    trans[at + r] = axes[r] * height;
+                    trans[at + 4 + r] = axes[4 + r] * height;
+                    trans[at + 8 + r] = axes[8 + r];
+                    trans[at + 12 + r] = axes[12 + r] + axes[r] * dx;
+                }
+                for (let k = 0; k < 4; ++k)
+                    tint[count * 4 + k] = color[k];
+                layer[count] = names ? names.get(char) ?? unknown : 0;
+                const x = trans[at + 12];
+                const y = trans[at + 13];
+                const z = trans[at + 14];
+                aabb[count * 6] = x - radius;
+                aabb[count * 6 + 1] = y - radius;
+                aabb[count * 6 + 2] = z - radius;
+                aabb[count * 6 + 3] = x + radius;
+                aabb[count * 6 + 4] = y + radius;
+                aabb[count * 6 + 5] = z + radius;
+                ++count;
+            }
+            pool.count = count;
+            return count;
+        }
+        step(dt) {
+            this.emit();
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_text.prototype, "pool", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_text.prototype, "font", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_text.prototype, "atlas", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_text.prototype, "value", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_text.prototype, "height", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_text.prototype, "align", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_text.prototype, "color", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_text.prototype, "billboard", null);
+    $.$bog_gamengine_text = $bog_gamengine_text;
+})($ || ($ = {}));
+
+;
 	($.$bog_gamengine_demo_flat) = class $bog_gamengine_demo_flat extends ($.$mol_page) {
 		coins_stat(){
 			return "";
@@ -17912,19 +18226,15 @@ var $;
 			(obj.tile) = () => ((this.Tile()));
 			return obj;
 		}
+		batches(){
+			return [];
+		}
 		Sprite_shader(){
 			const obj = new this.$.$bog_gamengine_shader_sprite();
 			return obj;
 		}
 		sprites(){
 			return [];
-		}
-		Batch(){
-			const obj = new this.$.$bog_gamengine_batch();
-			(obj.shader) = () => ((this.Sprite_shader()));
-			(obj.atlas) = () => ((this.Atlas()));
-			(obj.nodes) = () => ((this.sprites()));
-			return obj;
 		}
 		cam_pos(){
 			const obj = new this.$.Float32Array();
@@ -17963,6 +18273,20 @@ var $;
 		}
 		coin_taken(id, next){
 			return (this.Coin(id).taken(next));
+		}
+		font_sources(){
+			return [];
+		}
+		coin_text_color(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		coin_text_pos(id){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		coin_text_pool(id){
+			return null;
 		}
 		title(){
 			return "Плоский мир";
@@ -18043,7 +18367,14 @@ var $;
 			(obj.input) = () => ((this.Input()));
 			(obj.kids) = () => ((this.nodes()));
 			(obj.phys) = () => ((this.Phys()));
-			(obj.batches) = () => ([(this.Batch())]);
+			(obj.batches) = () => ((this.batches()));
+			return obj;
+		}
+		Batch(){
+			const obj = new this.$.$bog_gamengine_batch();
+			(obj.shader) = () => ((this.Sprite_shader()));
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.nodes) = () => ((this.sprites()));
 			return obj;
 		}
 		Cam(){
@@ -18115,6 +18446,36 @@ var $;
 			(obj.frame) = () => ("coin");
 			return obj;
 		}
+		Font(){
+			const obj = new this.$.$bog_gamengine_text_font();
+			(obj.size) = () => (64);
+			(obj.chars) = () => ("+1");
+			return obj;
+		}
+		Font_atlas(){
+			const obj = new this.$.$bog_gamengine_atlas();
+			(obj.size) = () => (64);
+			(obj.sources) = () => ((this.font_sources()));
+			return obj;
+		}
+		Coin_text(id){
+			const obj = new this.$.$bog_gamengine_text();
+			(obj.font) = () => ((this.Font()));
+			(obj.atlas) = () => ((this.Font_atlas()));
+			(obj.value) = () => ("+1");
+			(obj.height) = () => (0.4);
+			(obj.align) = () => ("center");
+			(obj.color) = () => ((this.coin_text_color()));
+			(obj.pos) = () => ((this.coin_text_pos(id)));
+			return obj;
+		}
+		Coin_text_batch(id){
+			const obj = new this.$.$bog_gamengine_batch();
+			(obj.shader) = () => ((this.Sprite_shader()));
+			(obj.atlas) = () => ((this.Font_atlas()));
+			(obj.source) = () => ((this.coin_text_pool(id)));
+			return obj;
+		}
 	};
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Coins"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "screen_shown"));
@@ -18128,13 +18489,14 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Ghost_stat"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Phys"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Sprite_shader"));
-	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Batch"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "cam_pos"));
 	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "cell_pos"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "hero_pos"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "ghost_pos"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "ghost_tint"));
 	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "coin_pos"));
+	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "coin_text_color"));
+	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "coin_text_pos"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Input"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Key"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Tile"));
@@ -18143,6 +18505,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Sound"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Clock"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Scene"));
+	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Batch"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Cam"));
 	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "Cell"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Hero"));
@@ -18152,6 +18515,10 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Ghost_sprite"));
 	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "Coin"));
 	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "Coin_sprite"));
+	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Font"));
+	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Font_atlas"));
+	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "Coin_text"));
+	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "Coin_text_batch"));
 
 
 ;
@@ -18219,8 +18586,27 @@ var $;
             sprites() {
                 return [...this.cells(), ...this.coin_sprites(), this.Ghost_sprite(), this.Hero_sprite()];
             }
+            font_sources() {
+                return this.Font().sources();
+            }
+            coin_text_pos(id) {
+                const pos = this.coin_pos(id);
+                return new Float32Array([pos[0], pos[1] + 0.6, pos[2]]);
+            }
+            coin_text_color() {
+                return new Float32Array([1, 0.92, 0.35, 1]);
+            }
+            coin_text_pool(id) {
+                return this.Coin_text(id).pool();
+            }
+            coin_texts() {
+                return this.coins_left().map(id => this.Coin_text(id));
+            }
+            batches() {
+                return [this.Batch(), ...this.coins_left().map(id => this.Coin_text_batch(id))];
+            }
             nodes() {
-                return [...this.bodies(), this.Ghost(), ...this.sprites()];
+                return [...this.bodies(), this.Ghost(), ...this.sprites(), ...this.coin_texts()];
             }
             ghost_pos(next) {
                 return next ?? new Float32Array([18.5, -13.5, 0]);
@@ -18318,6 +18704,18 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_flat.prototype, "sprites", null);
+        __decorate([
+            $mol_mem_key
+        ], $bog_gamengine_demo_flat.prototype, "coin_text_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_flat.prototype, "coin_text_color", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_flat.prototype, "coin_texts", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_flat.prototype, "batches", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_flat.prototype, "nodes", null);
