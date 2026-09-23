@@ -112,7 +112,12 @@ namespace $.$$ {
 			world[ 2 ] = pos[ 2 ]
 			const screen = this.Point().screen( this.label_screen, world )
 			const dpr = this.$.$mol_dom_context.devicePixelRatio
-			return [ screen[ 0 ] / dpr, screen[ 1 ] / dpr ] as const
+			const draw = this.Draw().view_rect()
+			const node = this.Hero_label().dom_node() as HTMLElement
+			const page = node.offsetParent?.getBoundingClientRect()
+			const dx = ( draw?.left ?? 0 ) - ( page?.left ?? 0 )
+			const dy = ( draw?.top ?? 0 ) - ( page?.top ?? 0 )
+			return [ screen[ 0 ] / dpr + dx, screen[ 1 ] / dpr + dy ] as const
 		}
 
 		label_left() {

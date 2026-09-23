@@ -15,14 +15,6 @@ namespace $.$$ {
 			},
 		},
 
-		World: {
-			position: 'relative',
-			alignSelf: 'stretch',
-			flex: {
-				grow: 1,
-			},
-		},
-
 		Hero_label: {
 			position: 'absolute',
 			pointerEvents: 'none',

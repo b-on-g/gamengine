@@ -5,21 +5,19 @@ $bog_gamengine_demo_flat $mol_page
 			title \Монеты
 			content / <= coins_stat \
 	body /
-		<= World $mol_view
-			sub /
-				<= Draw $bog_gamengine_draw
-					scene <= Scene
-					cam <= Cam
-					stat => stat
-					width => draw_width
-					height => draw_height
-					event *
-						pointerdown? <=> pointer_down? null
-				<= Hero_label $mol_view
-					sub / \Герой
-					style *
-						left <= label_left \0px
-						top <= label_top \0px
+		<= Draw $bog_gamengine_draw
+			scene <= Scene
+			cam <= Cam
+			stat => stat
+			width => draw_width
+			height => draw_height
+			event *
+				pointerdown? <=> pointer_down? null
+		<= Hero_label $mol_view
+			sub / \Герой
+			style *
+				left <= label_left \0px
+				top <= label_top \0px
 	foot /
 		<= Stat $mol_view
 			sub / <= stat
