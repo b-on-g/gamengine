@@ -69,6 +69,18 @@ namespace $ {
 		readonly mesh_pixel: $bog_gamestudio_probe_pixel
 	}
 
+	export const $bog_gamestudio_probe_gizmo_from = 20
+
+	export const $bog_gamestudio_probe_arrow_script = `
+		const arrow_at = ( at, x, y )=> {
+			for( let dx = ${ $bog_gamestudio_probe_gizmo_from }; dx < 90; ++ dx ) for( let dy = -3; dy <= 3; ++ dy ) {
+				const px = at( x + dx, y + dy )
+				if( px[ 0 ] > 200 && px[ 1 ] < 100 && px[ 2 ] < 100 ) return [ x + dx, y + dy ]
+			}
+			return null
+		}
+	`
+
 	export function $bog_gamestudio_probe_script( selectors: readonly string[] ) {
 		return `
 			const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
@@ -143,11 +155,8 @@ namespace $ {
 			await frame()
 			const fields_coin = inspect ? inspect.innerText : ''
 			const row_coin = rows[ 1 ] ? rows[ 1 ].getAttribute( 'mol_check_checked' ) : null
-			let arrow = null
-			for( let dx = 4; dx < 90 && !arrow; ++ dx ) for( let dy = -3; dy <= 3; ++ dy ) {
-				const px = at( coin_x + dx, coin_y + dy )
-				if( px[ 0 ] > 200 && px[ 1 ] < 100 && px[ 2 ] < 100 ) { arrow = [ coin_x + dx, coin_y + dy ]; break }
-			}
+			${ $bog_gamestudio_probe_arrow_script }
+			const arrow = arrow_at( at, coin_x, coin_y )
 			if( arrow ) {
 				pointer( 'pointerdown', arrow[ 0 ], arrow[ 1 ] )
 				pointer( 'pointermove', arrow[ 0 ] + 40, arrow[ 1 ] + 30 )
@@ -419,11 +428,8 @@ namespace $ {
 		const before = hero_x()
 		const origin_x = canvas.width / 2 + before * ppu
 		const origin_y = canvas.height / 2
-		let arrow = null
-		for( let dx = 4; dx < 90 && !arrow; ++ dx ) for( let dy = -3; dy <= 3; ++ dy ) {
-			const px = at( origin_x + dx, origin_y + dy )
-			if( px[ 0 ] > 200 && px[ 1 ] < 100 && px[ 2 ] < 100 ) { arrow = [ origin_x + dx, origin_y + dy ]; break }
-		}
+		${ $bog_gamestudio_probe_arrow_script }
+		const arrow = arrow_at( at, origin_x, origin_y )
 		if( !arrow ) return { t0: -1, before, after: before, arrow }
 		const shift = ${ $bog_gamestudio_probe_live_shift }
 		pointer( 'pointerdown', arrow[ 0 ], arrow[ 1 ] )
