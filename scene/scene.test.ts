@@ -66,6 +66,21 @@ namespace $ {
 			$mol_assert_ok( Math.abs( body.pos()[ 0 ] - 0.016 ) < 1e-6 )
 		},
 
+		'step recomputed within one frame moves node once'( $ ) {
+			$.$mol_state_time = $bog_gamengine_scene_time_mock
+			const mover = new $bog_gamengine_scene_mover
+			const scene = new $bog_gamengine_scene
+			scene.$ = $
+			scene.kids = ()=> [ mover ]
+			$bog_gamengine_scene_time_mock.stamp( 0 )
+			scene.step()
+			$bog_gamengine_scene_time_mock.stamp( 16 )
+			scene.step()
+			scene.batches([])
+			scene.step()
+			$mol_assert_ok( Math.abs( mover.pos()[ 0 ] - 0.016 ) < 1e-9 )
+		},
+
 		'nodes lists tree depth first with parent before kids'() {
 			const a = new $bog_gamengine_scene_named
 			const b = new $bog_gamengine_scene_named

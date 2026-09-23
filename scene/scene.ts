@@ -31,13 +31,18 @@ namespace $ {
 			return next ?? null
 		}
 
+		frame_done = -1
+
 		@ $mol_mem
 		step() {
 			const frame = this.clock().frame()
-			const dt = this.clock().dt()
-			const nodes = this.nodes()
-			for( let i = 0; i < nodes.length; ++i ) nodes[ i ].step( dt )
-			this.phys()?.step( dt )
+			if( frame !== this.frame_done ) {
+				this.frame_done = frame
+				const dt = this.clock().dt()
+				const nodes = this.nodes()
+				for( let i = 0; i < nodes.length; ++i ) nodes[ i ].step( dt )
+				this.phys()?.step( dt )
+			}
 			const batches = this.batches()
 			for( let i = 0; i < batches.length; ++i ) batches[ i ].fill()
 			return frame
