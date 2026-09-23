@@ -13,39 +13,54 @@ namespace $.$$ {
 		}
 	}
 
-	type $bog_gamengine_draw_slot = {
-		batch: $bog_gamengine_batch
-		program: $bog_gamengine_gl_program< $bog_gamengine_draw_face >
-		proj: WebGLUniformLocation | null
-		view: WebGLUniformLocation | null
-		light_count: WebGLUniformLocation | null
-		light_pos: WebGLUniformLocation | null
-		light_dir: WebGLUniformLocation | null
-		light_color: WebGLUniformLocation | null
-		ambient: WebGLUniformLocation | null
-		cam_pos: WebGLUniformLocation | null
-		wireframe: WebGLUniformLocation | null
-		depth: boolean
-		vao: WebGLVertexArrayObject
-		vertex: $bog_gamengine_gl_buffer
-		live: boolean
-		trans: $bog_gamengine_gl_buffer
-		tint: $bog_gamengine_gl_buffer
-		layer: $bog_gamengine_gl_buffer | null
-		uv: $bog_gamengine_gl_buffer | null
-		material: $bog_gamengine_gl_buffer | null
-		normal_layer: $bog_gamengine_gl_buffer | null
-		atlas: $bog_gamengine_atlas | null
-		sampler: WebGLUniformLocation | null
-		tex: $bog_gamengine_draw_tex | null
-		prim: GLenum
-		wire: GLenum | null
-		size: number
-		cap: number
+	export class $bog_gamengine_draw_slot extends Object {
+		batch = null! as $bog_gamengine_batch
+		program = null! as $bog_gamengine_gl_program< $bog_gamengine_draw_face >
+		proj = null as WebGLUniformLocation | null
+		view = null as WebGLUniformLocation | null
+		light_count = null as WebGLUniformLocation | null
+		light_pos = null as WebGLUniformLocation | null
+		light_dir = null as WebGLUniformLocation | null
+		light_color = null as WebGLUniformLocation | null
+		ambient = null as WebGLUniformLocation | null
+		cam_pos = null as WebGLUniformLocation | null
+		wireframe = null as WebGLUniformLocation | null
+		depth = false
+		vao = null! as WebGLVertexArrayObject
+		vertex = null! as $bog_gamengine_gl_buffer
+		live = false
+		trans = null! as $bog_gamengine_gl_buffer
+		tint = null! as $bog_gamengine_gl_buffer
+		layer = null as $bog_gamengine_gl_buffer | null
+		uv = null as $bog_gamengine_gl_buffer | null
+		material = null as $bog_gamengine_gl_buffer | null
+		normal_layer = null as $bog_gamengine_gl_buffer | null
+		buffers = [] as $bog_gamengine_gl_buffer[]
+		atlas = null as $bog_gamengine_atlas | null
+		sampler = null as WebGLUniformLocation | null
+		tex = null as $bog_gamengine_draw_tex | null
+		prim = 0 as GLenum
+		wire = null as GLenum | null
+		size = 0
+		cap = 0
+
+		dispose( gl: WebGL2RenderingContext ) {
+			for( let i = 0; i < this.buffers.length; ++ i ) gl.deleteBuffer( this.buffers[ i ].native )
+			this.buffers = []
+			gl.deleteVertexArray( this.vao )
+			return this
+		}
 	}
 
-	type $bog_gamengine_draw_tex = {
-		native: WebGLTexture | null
+	export class $bog_gamengine_draw_tex extends Object {
+		atlas = null! as $bog_gamengine_atlas
+		native = null as WebGLTexture | null
+
+		dispose( gl: WebGL2RenderingContext ) {
+			if( this.native ) gl.deleteTexture( this.native )
+			this.native = null
+			return this
+		}
 	}
 
 	const stat_window = 30
@@ -55,7 +70,9 @@ namespace $.$$ {
 	export class $bog_gamengine_draw extends $.$bog_gamengine_draw {
 
 		slots_all = new WeakMap< $bog_gamengine_batch, $bog_gamengine_draw_slot >()
+		slots_last = [] as readonly $bog_gamengine_draw_slot[]
 		textures_all = new WeakMap< $bog_gamengine_atlas, $bog_gamengine_draw_tex >()
+		textures_last = [] as readonly $bog_gamengine_draw_tex[]
 		ambient_vec = new Float32Array( 3 )
 		cam_pos_vec = new Float32Array( 3 )
 		lights_pos = new Float32Array( light_max * 4 )
@@ -127,7 +144,33 @@ namespace $.$$ {
 				const slot = this.slot( batches[ i ] )
 				if( slot ) slots.push( slot )
 			}
+			const last = this.slots_last
+			for( let i = 0; i < last.length; ++ i ) {
+				if( slots.includes( last[ i ] ) ) continue
+				this.slot_drop( last[ i ] )
+			}
+			this.slots_last = slots
 			return slots as readonly $bog_gamengine_draw_slot[]
+		}
+
+		slot_drop( slot: $bog_gamengine_draw_slot ) {
+			this.slots_all.delete( slot.batch )
+			return slot.dispose( this.context() )
+		}
+
+		tex_drop( tex: $bog_gamengine_draw_tex ) {
+			this.textures_all.delete( tex.atlas )
+			return tex.dispose( this.context() )
+		}
+
+		destructor() {
+			const slots = this.slots_last
+			for( let i = 0; i < slots.length; ++ i ) this.slot_drop( slots[ i ] )
+			this.slots_last = []
+			const textures = this.textures_last
+			for( let i = 0; i < textures.length; ++ i ) this.tex_drop( textures[ i ] )
+			this.textures_last = []
+			super.destructor()
 		}
 
 		slot( batch: $bog_gamengine_batch ) {
@@ -148,7 +191,7 @@ namespace $.$$ {
 			const wireframe = 'wireframe' in globs ? program.uniform( 'wireframe' ) : null
 			const glob = ( name: keyof $bog_gamengine_draw_face[ 'glob' ] )=> name in globs ? program.uniform( name ) : null
 
-			const slot: $bog_gamengine_draw_slot = {
+			const slot = Object.assign( new $bog_gamengine_draw_slot, {
 				batch,
 				program,
 				proj: program.uniform( 'proj' ),
@@ -162,14 +205,7 @@ namespace $.$$ {
 				wireframe,
 				depth,
 				vao: gl.createVertexArray()!,
-				vertex: null!,
 				live: mode === 'lines',
-				trans: null!,
-				tint: null!,
-				layer: null,
-				uv: null,
-				material: null,
-				normal_layer: null,
 				atlas,
 				sampler: atlas ? program.uniform( 'atlas' ) : null,
 				tex: atlas ? this.tex( atlas ) : null,
@@ -177,39 +213,32 @@ namespace $.$$ {
 				wire: depth && wireframe && mode !== 'lines' ? ( mode === 'triangles' ? gl.LINES : gl.LINE_STRIP ) : null,
 				size: shape.size(),
 				cap,
+			} )
+
+			const buffer = ( location: number | null, size: number, divisor: number )=> {
+				if( location === null ) return null
+				const buffer = new $bog_gamengine_gl_buffer( gl, location, size, divisor )
+				slot.buffers.push( buffer )
+				return buffer
 			}
 
 			gl.bindVertexArray( slot.vao )
-			slot.vertex = new $bog_gamengine_gl_buffer( gl, program.attribute( 'vertex' )!, 3, 0 )
+			slot.vertex = buffer( program.attribute( 'vertex' ), 3, 0 )!
 			slot.vertex.send( shape.geometry() )
-			const uv = program.attribute( 'uv' )
-			if( uv !== null ) new $bog_gamengine_gl_buffer( gl, uv, 2, 0 ).send( shape.skin() )
-			const normal = program.attribute( 'normal' )
-			if( normal !== null ) new $bog_gamengine_gl_buffer( gl, normal, 3, 0 ).send( shape.normals() )
-			slot.trans = new $bog_gamengine_gl_buffer( gl, program.attribute( 'inst_trans' )!, 16, 1 )
+			buffer( program.attribute( 'uv' ), 2, 0 )?.send( shape.skin() )
+			buffer( program.attribute( 'normal' ), 3, 0 )?.send( shape.normals() )
+			slot.trans = buffer( program.attribute( 'inst_trans' ), 16, 1 )!
 			slot.trans.reserve( cap * 64 )
-			slot.tint = new $bog_gamengine_gl_buffer( gl, program.attribute( 'inst_tint' )!, 4, 1 )
+			slot.tint = buffer( program.attribute( 'inst_tint' ), 4, 1 )!
 			slot.tint.reserve( cap * 16 )
-			const layer = program.attribute( 'inst_layer' )
-			if( layer !== null ) {
-				slot.layer = new $bog_gamengine_gl_buffer( gl, layer, 1, 1 )
-				slot.layer.reserve( cap * 4 )
-			}
-			const inst_uv = program.attribute( 'inst_uv' )
-			if( inst_uv !== null ) {
-				slot.uv = new $bog_gamengine_gl_buffer( gl, inst_uv, 4, 1 )
-				slot.uv.reserve( cap * 16 )
-			}
-			const material = program.attribute( 'inst_material' )
-			if( material !== null ) {
-				slot.material = new $bog_gamengine_gl_buffer( gl, material, 4, 1 )
-				slot.material.reserve( cap * 16 )
-			}
-			const normal_layer = program.attribute( 'inst_normal_layer' )
-			if( normal_layer !== null ) {
-				slot.normal_layer = new $bog_gamengine_gl_buffer( gl, normal_layer, 1, 1 )
-				slot.normal_layer.reserve( cap * 4 )
-			}
+			slot.layer = buffer( program.attribute( 'inst_layer' ), 1, 1 )
+			slot.layer?.reserve( cap * 4 )
+			slot.uv = buffer( program.attribute( 'inst_uv' ), 4, 1 )
+			slot.uv?.reserve( cap * 16 )
+			slot.material = buffer( program.attribute( 'inst_material' ), 4, 1 )
+			slot.material?.reserve( cap * 16 )
+			slot.normal_layer = buffer( program.attribute( 'inst_normal_layer' ), 1, 1 )
+			slot.normal_layer?.reserve( cap * 4 )
 			gl.bindVertexArray( null )
 
 			this.slots_all.set( batch, slot )
@@ -229,7 +258,8 @@ namespace $.$$ {
 		tex( atlas: $bog_gamengine_atlas ) {
 			const found = this.textures_all.get( atlas )
 			if( found ) return found
-			const tex: $bog_gamengine_draw_tex = { native: null }
+			const tex = new $bog_gamengine_draw_tex
+			tex.atlas = atlas
 			this.textures_all.set( atlas, tex )
 			return tex
 		}
@@ -238,15 +268,22 @@ namespace $.$$ {
 		textures() {
 			const gl = this.context()
 			const slots = this.slots()
-			let sent = 0
+			const textures = [] as $bog_gamengine_draw_tex[]
 			for( let i = 0; i < slots.length; ++ i ) {
 				const slot = slots[ i ]
-				if( !slot.atlas || slot.tex!.native ) continue
-				if( !slot.atlas.ready() ) continue
-				slot.tex!.native = $bog_gamengine_gl_texture_array( gl, slot.atlas.images(), slot.atlas.size() )
-				++ sent
+				const tex = slot.tex
+				if( !tex || textures.includes( tex ) ) continue
+				textures.push( tex )
+				if( tex.native || !slot.atlas!.ready() ) continue
+				tex.native = $bog_gamengine_gl_texture_array( gl, slot.atlas!.images(), slot.atlas!.size() )
 			}
-			return sent
+			const last = this.textures_last
+			for( let i = 0; i < last.length; ++ i ) {
+				if( textures.includes( last[ i ] ) ) continue
+				this.tex_drop( last[ i ] )
+			}
+			this.textures_last = textures
+			return textures as readonly $bog_gamengine_draw_tex[]
 		}
 
 		lights_fill() {

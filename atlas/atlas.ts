@@ -32,10 +32,13 @@ namespace $ {
 		}
 
 		@ $mol_mem_key
+		static image( uri: string ) {
+			$mol_wire_solid()
+			return this.$.$mol_3d_image.make({ uri: ()=> uri })
+		}
+
 		image( uri: string ) {
-			const image = this.$.$mol_3d_image.make({ uri: ()=> uri })
-			image.$ = this.$
-			return image
+			return ( this.constructor as typeof $bog_gamengine_atlas ).image( uri )
 		}
 
 		@ $mol_mem

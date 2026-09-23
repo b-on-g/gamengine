@@ -47,6 +47,16 @@ namespace $ {
 			$mol_assert_equal( error.message.includes( 'tiles/hero.png' ), true )
 		},
 
+		'two atlases share one image per uri'( $ ) {
+			const uri = 'bog/gamengine/demo/atlas/hero.png'
+			const left = new $bog_gamengine_atlas
+			const right = new $bog_gamengine_atlas
+			left.$ = $
+			right.$ = $
+			$mol_assert_equal( left.image( uri ), right.image( uri ) )
+			$mol_assert_equal( left.image( uri ).uri(), uri )
+		},
+
 		'ready is true when all images match size'() {
 			const atlas = atlas_mock([ 'bog/gamengine/demo/atlas/hero.png' ])
 			$mol_assert_equal( atlas.ready(), true )
