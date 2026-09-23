@@ -4218,6 +4218,57 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    function $bog_gamengine_phys_tile_test_make() {
+        const tile = new $bog_gamengine_phys_tile;
+        tile.map('###\n#.#\n###');
+        return tile;
+    }
+    $mol_test({
+        'cell pos is the center of the cell square'() {
+            const tile = $bog_gamengine_phys_tile_test_make();
+            const pos = tile.cell_pos(2, 1, new Float32Array(3));
+            $mol_assert_equal(pos[0], 2.5);
+            $mol_assert_equal(pos[1], -1.5);
+            $mol_assert_equal(pos[2], 0);
+        },
+        'cell at the center of a cell gives that cell back'() {
+            const tile = $bog_gamengine_phys_tile_test_make();
+            const pos = tile.cell_pos(2, 1, new Float32Array(3));
+            const at = tile.cell_at(pos[0], pos[1], new Int32Array(2));
+            $mol_assert_equal(at[0], 2);
+            $mol_assert_equal(at[1], 1);
+        },
+        'corners of a cell belong to it'() {
+            const tile = $bog_gamengine_phys_tile_test_make();
+            const at = new Int32Array(2);
+            tile.cell_at(2, -1, at);
+            $mol_assert_equal(at[0], 2);
+            $mol_assert_equal(at[1], 1);
+            tile.cell_at(2.999, -1.001, at);
+            $mol_assert_equal(at[0], 2);
+            $mol_assert_equal(at[1], 1);
+        },
+        'cell at a point outside the map is outside its bounds'() {
+            const tile = $bog_gamengine_phys_tile_test_make();
+            const at = tile.cell_at(-0.5, 0.5, new Int32Array(2));
+            $mol_assert_equal(at[0], -1);
+            $mol_assert_equal(at[1], -1);
+            $mol_assert_equal(tile.cell(at[0], at[1]), true);
+        },
+        'solid at a point uses the same cell as cell at'() {
+            const tile = $bog_gamengine_phys_tile_test_make();
+            const pos = tile.cell_pos(1, 1, new Float32Array(3));
+            $mol_assert_equal(tile.solid_at(pos[0], pos[1]), false);
+            const wall = tile.cell_pos(0, 1, new Float32Array(3));
+            $mol_assert_equal(tile.solid_at(wall[0], wall[1]), true);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     const map = '####\n#..#\n####';
     class Probe extends $bog_gamengine_phys_body {
         hits = [];
@@ -5980,6 +6031,12 @@ var $;
             return $mol_3d_mat4.perspective(Math.PI / 3, aspect, 0.1, 100);
         }
     }
+    class $bog_gamengine_scene_generated extends $bog_gamengine_scene {
+        extra = new $bog_gamengine_scene_mover;
+        auto_nodes() {
+            return [this.extra];
+        }
+    }
     class $bog_gamengine_scene_input_mock extends $bog_gamengine_input {
         polls = 0;
         poll() {
@@ -6205,6 +6262,33 @@ var $;
             $mol_assert_equal(a.scene(), scene);
             $mol_assert_equal(a.input(), input);
             $mol_assert_equal(a.clock(), scene.clock());
+        },
+        'generated nodes live alongside the tree ones'($) {
+            $.$mol_state_time = $bog_gamengine_scene_time_mock;
+            const kid = new $bog_gamengine_scene_mover;
+            const scene = new $bog_gamengine_scene_generated;
+            scene.$ = $;
+            scene.kids([kid]);
+            $mol_assert_equal(scene.nodes(), [kid, scene.extra]);
+            $bog_gamengine_scene_time_mock.stamp(0);
+            scene.step();
+            $bog_gamengine_scene_time_mock.stamp(16);
+            scene.step();
+            $mol_assert_ok(Math.abs(kid.pos()[0] - 0.016) < 1e-9);
+            $mol_assert_ok(Math.abs(scene.extra.pos()[0] - 0.016) < 1e-9);
+            $mol_assert_equal(kid.parent(), scene);
+            $mol_assert_equal(scene.extra.parent(), scene);
+        },
+        'auto batches take generated nodes too'() {
+            const atlas = new $bog_gamengine_atlas;
+            atlas.uris(['bog/gamengine/demo/atlas/hero.png']);
+            const sprite = new $bog_gamengine_sprite;
+            sprite.atlas(atlas);
+            const scene = new $bog_gamengine_scene;
+            scene.auto_nodes([sprite]);
+            const batches = scene.auto_batches();
+            $mol_assert_equal(batches.length, 1);
+            $mol_assert_equal(batches[0].nodes(), [sprite]);
         },
         'grandchild of overridden kids sees scene after nodes walk'() {
             const a = new $bog_gamengine_scene_named;
@@ -6626,6 +6710,66 @@ var $;
             await settle();
             const source = snd.sample_last.output();
             $mol_assert_equal(source.targets, [snd.effects_gain()]);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function $bog_gamengine_tilemap_test_atlas() {
+        const atlas = new $bog_gamengine_atlas;
+        atlas.sources(['wall', 'floor'].map(name => ({ name, image: { width: 64, height: 64 } })));
+        return atlas;
+    }
+    function $bog_gamengine_tilemap_test_make(map = '#.#\n..#') {
+        const tile = new $bog_gamengine_phys_tile;
+        tile.map(map);
+        const node = new $bog_gamengine_tilemap;
+        node.tile(tile);
+        node.atlas($bog_gamengine_tilemap_test_atlas());
+        node.palette({ '#': 'wall', '.': 'floor' });
+        node.emit();
+        return node;
+    }
+    $mol_test({
+        'map of three by two gives an instance per cell'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            $mol_assert_equal(node.pool().count, 6);
+        },
+        'cell kinds take their layers from the atlas'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            const layer = node.pool().layer;
+            $mol_assert_equal(layer[0], 0);
+            $mol_assert_equal(layer[1], 1);
+        },
+        'char outside the palette is skipped'() {
+            const node = $bog_gamengine_tilemap_test_make('#x#\n..#');
+            $mol_assert_equal(node.pool().count, 5);
+        },
+        'first cell sits in the center the tile gives it'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            const pos = node.tile().cell_pos(0, 0, new Float32Array(3));
+            const trans = node.pool().trans;
+            $mol_assert_equal(trans[12], pos[0]);
+            $mol_assert_equal(trans[13], pos[1]);
+            $mol_assert_equal(trans[14], pos[2]);
+        },
+        'edit of the map refills the pool'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            node.tile().map('##\n##\n##\n##');
+            node.emit();
+            $mol_assert_equal(node.pool().count, 8);
+        },
+        'aabb covers the whole map'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            const tile = node.tile();
+            const box = node.aabb();
+            $mol_assert_equal(box[0], 0);
+            $mol_assert_equal(box[1], -tile.height());
+            $mol_assert_equal(box[3], tile.width());
+            $mol_assert_equal(box[4], 0);
         },
     });
 })($ || ($ = {}));
@@ -7063,6 +7207,10 @@ var $;
             delete primitive.attributes.indices;
         }
         const doc = { asset: { version: '2.0' }, meshes: [{ primitives: [primitive] }], accessors, bufferViews: views, buffers: [{ byteLength: bin_size }] };
+        return $bog_gamengine_shape_gltf_test_wrap(doc, bin);
+    }
+    function $bog_gamengine_shape_gltf_test_wrap(doc, bin) {
+        const bin_size = bin.byteLength;
         let json = new TextEncoder().encode(JSON.stringify(doc));
         while (json.length % 4)
             json = new Uint8Array([...json, 0x20]);
@@ -7079,6 +7227,75 @@ var $;
         out.setUint32(24 + json.length, 0x004E4942, true);
         new Uint8Array(glb, 28 + json.length, bin_size).set(new Uint8Array(bin));
         return glb;
+    }
+    function $bog_gamengine_shape_gltf_test_skin_glb() {
+        const parts = [
+            { data: [0, 0, 0, 1, 0, 0, 0, 1, 0], kind: 'f32', type: 'VEC3' },
+            { data: [0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0], kind: 'u8', type: 'VEC4' },
+            { data: [1, 0, 0, 0, 0.5, 0.5, 0, 0, 0.25, 0.75, 0, 0], kind: 'f32', type: 'VEC4' },
+            { data: [2, 1, 0], kind: 'u16', type: 'SCALAR' },
+            { data: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1, 0, 1], kind: 'f32', type: 'MAT4' },
+            { data: [0, 0.75], kind: 'f32', type: 'SCALAR' },
+            { data: [0, 0, 0, 1, 0, 0, 1, 0], kind: 'f32', type: 'VEC4' },
+        ];
+        const dims = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
+        const units = { f32: 4, u8: 1, u16: 2 };
+        const codes = { f32: 5126, u8: 5121, u16: 5123 };
+        const align = (size) => size + (4 - size % 4) % 4;
+        let bin_size = 0;
+        for (const part of parts)
+            bin_size += align(part.data.length * units[part.kind]);
+        const bin = new ArrayBuffer(bin_size);
+        const view = new DataView(bin);
+        const views = [];
+        const accessors = [];
+        let at = 0;
+        for (const part of parts) {
+            const unit = units[part.kind];
+            for (let i = 0; i < part.data.length; ++i) {
+                const to = at + i * unit;
+                if (part.kind === 'f32')
+                    view.setFloat32(to, part.data[i], true);
+                else if (part.kind === 'u16')
+                    view.setUint16(to, part.data[i], true);
+                else
+                    view.setUint8(to, part.data[i]);
+            }
+            views.push({ buffer: 0, byteOffset: at, byteLength: part.data.length * unit });
+            accessors.push({
+                bufferView: views.length - 1,
+                componentType: codes[part.kind],
+                count: part.data.length / dims[part.type],
+                type: part.type,
+            });
+            at += align(part.data.length * unit);
+        }
+        const doc = {
+            asset: { version: '2.0' },
+            nodes: [
+                { name: 'root', translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1], children: [1] },
+                { name: 'tip', translation: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+                { name: 'arm', mesh: 0, skin: 0 },
+            ],
+            meshes: [{ primitives: [{ attributes: { POSITION: 0, JOINTS_0: 1, WEIGHTS_0: 2 }, indices: 3 }] }],
+            skins: [{ joints: [0, 1], inverseBindMatrices: 4 }],
+            animations: [
+                {
+                    name: 'wave',
+                    channels: [{ sampler: 0, target: { node: 1, path: 'rotation' } }],
+                    samplers: [{ input: 5, output: 6, interpolation: 'LINEAR' }],
+                },
+                {
+                    name: 'hold',
+                    channels: [{ sampler: 0, target: { node: 1, path: 'rotation' } }],
+                    samplers: [{ input: 5, output: 6, interpolation: 'STEP' }],
+                },
+            ],
+            accessors,
+            bufferViews: views,
+            buffers: [{ byteLength: bin_size }],
+        };
+        return $bog_gamengine_shape_gltf_test_wrap(doc, bin);
     }
     $mol_test({
         'glb triangle gives positions, normals and flipped uv'($) {
@@ -7097,6 +7314,53 @@ var $;
             const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_glb(true, false) });
             $mol_assert_equal(shape.size(), 3);
             $mol_assert_equal([...shape.geometry()], [0, 0, 0, 1, 0, 0, 0, 1, 0]);
+        },
+        'glb skin unrolls joints and weights by index'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_skin_glb() });
+            $mol_assert_equal(shape.size(), 3);
+            $mol_assert_equal([...shape.joints()], [1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0]);
+            $mol_assert_equal([...shape.weights()], [0.25, 0.75, 0, 0, 0.5, 0.5, 0, 0, 1, 0, 0, 0]);
+        },
+        'glb skeleton keeps parents, base pose and inverse binds'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_skin_glb() });
+            const skeleton = shape.skeleton();
+            $mol_assert_equal(skeleton.count, 2);
+            $mol_assert_equal([...skeleton.names], ['root', 'tip']);
+            $mol_assert_equal([...skeleton.parents], [-1, 0]);
+            $mol_assert_equal([...skeleton.order], [0, 1]);
+            $mol_assert_equal([...skeleton.base.subarray(10, 20)], [0, 1, 0, 0, 0, 0, 1, 1, 1, 1]);
+            $mol_assert_equal(skeleton.binds[16 + 13], -1);
+        },
+        'glb clip with two keys takes duration from the last key'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_skin_glb() });
+            const clip = shape.clips().get('wave');
+            $mol_assert_equal(clip.duration, 0.75);
+            $mol_assert_equal(clip.channels.length, 1);
+            $mol_assert_equal(clip.channels[0].joint, 1);
+            $mol_assert_equal(clip.channels[0].path, 'rotation');
+        },
+        'glb marks a step sampler as step and a linear one as not'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_skin_glb() });
+            $mol_assert_equal(shape.clips().get('hold').channels[0].step, true);
+            $mol_assert_equal(shape.clips().get('wave').channels[0].step, false);
+        },
+        'glb cubic spline animation fails with message'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, json: () => ({
+                    nodes: [{ name: 'root' }],
+                    skins: [{ joints: [0] }],
+                    animations: [{
+                            name: 'jump',
+                            channels: [{ sampler: 0, target: { node: 0, path: 'rotation' } }],
+                            samplers: [{ input: 0, output: 1, interpolation: 'CUBICSPLINE' }],
+                        }],
+                }) });
+            $mol_assert_fail(() => shape.clips(), 'glTF animation interpolation CUBICSPLINE is not supported');
+        },
+        'glb without skin gives no skeleton and no clips'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_glb(true, true) });
+            $mol_assert_equal(shape.skeleton(), null);
+            $mol_assert_equal(shape.clips().size, 0);
+            $mol_assert_equal(shape.joints().length, 0);
         },
         'glb without position fails with message'($) {
             const shape = $bog_gamengine_shape_gltf.make({ $, json: () => ({ meshes: [{ primitives: [{ attributes: {} }] }] }) });
