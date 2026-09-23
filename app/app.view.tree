@@ -4,6 +4,8 @@ $bog_gamestudio_app $mol_view
 	plugins /
 		<= Control $mol_keyboard_state
 			key <= key_map *
+		<= Escape $mol_hotkey
+			key * escape? <=> tool_drop? null
 	sub /
 		<= Side $mol_deck
 			current? <=> tab? \0
@@ -18,6 +20,11 @@ $bog_gamestudio_app $mol_view
 					sub /
 						<= Asset_list $mol_list
 							rows <= asset_rows /
+				<= Tiles_page $mol_scroll
+					title \Тайлы
+					sub /
+						<= Tile_list $mol_list
+							rows <= tile_rows /
 		<= Canvas $mol_page
 			title \Холст
 			tools /
@@ -74,6 +81,10 @@ $bog_gamestudio_app $mol_view
 				shader <= Gizmo_shader
 				shape <= Gizmo_box $bog_gamengine_shape_lines
 				nodes <= gizmo_box_nodes /
+			<= Rect_lines $bog_gamengine_batch
+				shader <= Gizmo_shader
+				shape <= Rect_shape $bog_gamengine_shape_lines
+				nodes <= rect_nodes /
 		clock <= Clock $bog_gamengine_clock
 			paused <= clock_paused true
 		scene => Scene
@@ -137,7 +148,21 @@ $bog_gamestudio_app $mol_view
 	Gizmo_xy $bog_gamengine_sprite
 		pos <= gizmo_pos
 		scale <= gizmo_scale
+		tint <= gizmo_tint_xy
+	Rect_node $bog_gamengine_node
 		tint <= gizmo_tint_xy Float32Array
+	Tools $mol_switch
+		value? <=> tool? \
+		options *
+			cell \Клетка
+			rect \Прямоугольник
+			fill \Заливка
+	Tile* $mol_check
+		Icon <= tile_icon* null
+		title <= tile_title* \
+		checked? <=> tile_selected*? false
+	Tile_image* $mol_image
+		uri <= tile_uri* \ Float32Array
 	Row* $mol_check
 		title <= row_title* \
 		checked? <=> row_selected*? false

@@ -2,7 +2,7 @@ namespace $ {
 
 	export const $bog_gamestudio_probe_page = 'bog/gamestudio/app/-/index.html'
 
-	export const $bog_gamestudio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник, клик по холсту выбрал монету, стрелка гизмо перенесла её в исходнике, клик мимо снял выбор, игра с зажатой D сдвинула героя вправо, стоп вернул его на место и не тронул исходник, пять правок pos героя не мигают и не копят текстуры и буферы, вкладка «Ассеты» показала файлы пака, монета с панели встала на холст по клику и записалась в исходник спрайтом, столб мешем с загрузчиком, звук строкой в Sound'
+	export const $bog_gamestudio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник, клик по холсту выбрал монету, стрелка гизмо перенесла её в исходнике, клик мимо снял выбор, игра с зажатой D сдвинула героя вправо, стоп вернул его на место и не тронул исходник, пять правок pos героя не мигают и не копят текстуры и буферы, вкладка «Ассеты» показала файлы пака, монета с панели встала на холст по клику и записалась в исходник спрайтом, столб мешем с загрузчиком, звук строкой в Sound, кисть на вкладке «Тайлы» покрасила клетку пола в стену одним символом, заливка перекрасила комнату, Esc снял инструмент'
 
 	export const $bog_gamestudio_probe_moves = [ -2, -1, -2.5, -1.5, -2 ] as const
 
@@ -46,6 +46,16 @@ namespace $ {
 		readonly buffers: { readonly created: number, readonly deleted: number, readonly scene: number }
 		readonly images: number
 		readonly moves: readonly { readonly x: number, readonly first: $bog_gamestudio_probe_pixel, readonly pixel: $bog_gamestudio_probe_pixel }[]
+		readonly tiles: {
+			readonly titles: readonly string[]
+			readonly cell_diff: number
+			readonly fill_diff: number
+			readonly wall_pixel: $bog_gamestudio_probe_pixel
+			readonly cell_before: $bog_gamestudio_probe_pixel
+			readonly cell_pixel: $bog_gamestudio_probe_pixel
+			readonly tool_after: string
+			readonly map_fill: string
+		}
 		readonly asset_files: readonly string[]
 		readonly drop_before: $bog_gamestudio_probe_pixel
 		readonly drop_after: $bog_gamestudio_probe_pixel
@@ -188,6 +198,45 @@ namespace $ {
 			const textures = { created: tex_created.count, deleted: tex_deleted.count }
 			const buffers = { created: buf_created.count, deleted: buf_deleted.count, scene: scene_buffers }
 			const tab = title => Array.from( document.querySelectorAll( '[bog_gamestudio_app_side] [mol_switch] [mol_check]' ) ).find( el => el.innerText.trim() === title )
+			tab( 'Тайлы' ).click()
+			await frame()
+			await frame()
+			const tile_rows = Array.from( document.querySelectorAll( '[bog_gamestudio_app_tile]' ) )
+			const tile_titles = tile_rows.map( el => el.innerText.trim() )
+			const tool = title => Array.from( document.querySelectorAll( '[bog_gamestudio_app_tools] [mol_check]' ) ).find( el => el.innerText.trim() === title )
+			const map_text = ()=> ( editor.value.match( /map \\\\[^]*?\\n\\tpalette/ ) || [ '' ] )[ 0 ]
+			const diff = ( a, b )=> {
+				let count = 0
+				for( let i = 0; i < Math.max( a.length, b.length ); ++ i ) if( a[ i ] !== b[ i ] ) ++ count
+				return count
+			}
+			tile_rows.find( el => el.innerText.includes( 'wall' ) ).click()
+			tool( 'Клетка' ).click()
+			await frame()
+			const map_before = map_text()
+			const wall_pixel = at( canvas.width / 2 + 0.5 * ppu, canvas.height / 2 + 2.5 * ppu )
+			const cell_x = canvas.width / 2 + 1.5 * ppu
+			const cell_y = canvas.height / 2 + 1.5 * ppu
+			const cell_before = at( cell_x, cell_y )
+			pointer( 'pointerdown', cell_x, cell_y )
+			pointer( 'pointerup', cell_x, cell_y )
+			let cell_pixel = cell_before
+			for( let i = 0; i < 120 && same( cell_pixel, cell_before ); ++ i ) {
+				await frame()
+				cell_pixel = at( cell_x, cell_y )
+			}
+			const map_cell = map_text()
+			tool( 'Заливка' ).click()
+			await frame()
+			pointer( 'pointerdown', cell_x, canvas.height / 2 + 2.5 * ppu )
+			pointer( 'pointerup', cell_x, canvas.height / 2 + 2.5 * ppu )
+			await frame()
+			await frame()
+			const map_fill = map_text()
+			document.querySelector( '[bog_gamestudio_app]' ).dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 27, bubbles: true } ) )
+			await frame()
+			const tool_after = ( document.querySelector( '[bog_gamestudio_app_tools] [mol_check_checked="true"]' ) || { innerText: '' } ).innerText.trim()
+			const tiles = { titles: tile_titles, cell_diff: diff( map_before, map_cell ), fill_diff: diff( map_cell, map_fill ), wall_pixel, cell_before, cell_pixel, tool_after, map_fill }
 			tab( 'Ассеты' ).click()
 			await frame()
 			await frame()
@@ -232,7 +281,7 @@ namespace $ {
 			const status_node = document.querySelector( '[bog_gamestudio_app_status]' )
 			const status = status_node ? status_node.innerText.trim() : ''
 			const mesh_pixel = at( drop_x + 2 * ppu, drop_y )
-			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after, ppu, fields_coin, row_coin, arrow, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after, textures, buffers, images: images.count, moves, asset_files, drop_before, drop_after, cursor, tab_after, rows_assets, sprite_line, mesh_line, sound_line, status, mesh_pixel }
+			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after, ppu, fields_coin, row_coin, arrow, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after, textures, buffers, images: images.count, moves, tiles, asset_files, drop_before, drop_after, cursor, tab_after, rows_assets, sprite_line, mesh_line, sound_line, status, mesh_pixel }
 		`
 	}
 
@@ -297,6 +346,14 @@ namespace $ {
 		if( got.textures.created - got.textures.deleted > 1 ) return fail( 'правки исходника копят текстуры' )
 		if( got.buffers.created - got.buffers.deleted > got.buffers.scene ) return fail( 'правки исходника копят буферы' )
 		if( got.images !== 0 ) return fail( 'правки исходника грузят картинки заново' )
+		const tiles = got.tiles
+		if( !tiles.titles.some( title => title.includes( 'wall' ) ) ) return fail( 'на вкладке «Тайлы» нет символа стены' )
+		if( !tiles.titles.some( title => title.includes( 'floor' ) ) ) return fail( 'на вкладке «Тайлы» нет символа пола' )
+		if( tiles.cell_diff !== 1 ) return fail( 'клик кистью по клетке изменил в карте не один символ' )
+		if( tiles.cell_pixel.every( ( value, index )=> Math.abs( value - tiles.cell_before[ index ] ) < 8 ) ) return fail( 'клик кистью не перерисовал клетку' )
+		if( !tiles.cell_pixel.every( ( value, index )=> Math.abs( value - tiles.wall_pixel[ index ] ) < 16 ) ) return fail( 'пиксель в точке клика не цвета стены' )
+		if( tiles.fill_diff < 5 ) return fail( 'заливка по полу изменила меньше пяти символов' )
+		if( tiles.tool_after ) return fail( 'Esc не снял инструмент кисти' )
 		if( got.asset_files.length < 3 ) return fail( 'на вкладке «Ассеты» меньше трёх строк' )
 		if( !got.asset_files.includes( 'coin.png' ) || !got.asset_files.includes( 'pillar.glb' ) || !got.asset_files.includes( 'coin.wav' ) ) return fail( 'на вкладке «Ассеты» нет coin.png, pillar.glb или coin.wav' )
 		if( got.cursor !== 'copy' ) return fail( 'после выбора ассета курсор над холстом не «поставить»' )

@@ -66,6 +66,72 @@ namespace $ {
 			this.source( this.print( swap( tree ) ) )
 		}
 
+		@ $mol_mem
+		map_lines() {
+			const root = this.decls().get( '' )
+			return ( root?.kids.find( kid => kid.type === 'map' )?.kids[ 0 ]?.kids ?? [] ) as readonly $mol_tree2[]
+		}
+
+		@ $mol_mem
+		map() {
+			return this.map_lines().map( line => [ ...line.value ] as readonly string[] ) as readonly ( readonly string[] )[]
+		}
+
+		paint_all( cells: readonly ( readonly [ number, number ] )[], char: string ) {
+			const lines = this.map_lines()
+			const rows = this.map()
+			const edits = new Map< number, string[] >()
+			for( const [ x, y ] of cells ) {
+				const row = rows[ y ]
+				if( !row || x < 0 || x >= row.length ) continue
+				let chars = edits.get( y )
+				if( !chars ) edits.set( y, chars = [ ...row ] )
+				chars[ x ] = char
+			}
+			const source = this.source().split( '\n' )
+			let changed = false
+			for( const [ y, chars ] of edits ) {
+				const text = chars.join( '' )
+				if( text === rows[ y ].join( '' ) ) continue
+				const at = lines[ y ].span.row - 1
+				const cut = source[ at ].indexOf( '\\' )
+				source[ at ] = source[ at ].slice( 0, cut + 1 ) + text
+				changed = true
+			}
+			if( changed ) this.source( source.join( '\n' ) )
+		}
+
+		paint( x: number, y: number, char: string ) {
+			this.paint_all( [ [ x, y ] ], char )
+		}
+
+		rect( x0: number, y0: number, x1: number, y1: number, char: string ) {
+			const cells = [] as ( readonly [ number, number ] )[]
+			for( let y = Math.min( y0, y1 ); y <= Math.max( y0, y1 ); ++y ) {
+				for( let x = Math.min( x0, x1 ); x <= Math.max( x0, x1 ); ++x ) cells.push( [ x, y ] )
+			}
+			this.paint_all( cells, char )
+		}
+
+		fill( x: number, y: number, char: string ) {
+			const rows = this.map()
+			const from = rows[ y ]?.[ x ]
+			if( from === undefined || from === char ) return
+			const seen = new Set< string >()
+			const queue = [ [ x, y ] as readonly [ number, number ] ]
+			const cells = [] as ( readonly [ number, number ] )[]
+			while( queue.length ) {
+				const [ cx, cy ] = queue.pop()!
+				const key = `${ cx }_${ cy }`
+				if( seen.has( key ) ) continue
+				seen.add( key )
+				if( rows[ cy ]?.[ cx ] !== from ) continue
+				cells.push( [ cx, cy ] )
+				queue.push( [ cx + 1, cy ], [ cx - 1, cy ], [ cx, cy + 1 ], [ cx, cy - 1 ] )
+			}
+			this.paint_all( cells, char )
+		}
+
 		end_row( tree: $mol_tree2 ): number {
 			let row = tree.span.row
 			for( const kid of tree.kids ) row = Math.max( row, this.end_row( kid ) )

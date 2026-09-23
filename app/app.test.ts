@@ -153,6 +153,61 @@ namespace $ {
 			$mol_assert_equal( app.Side().current(), '1' )
 		},
 
+		'tiles tab lists the palette of the scene'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			$mol_assert_equal( app.tile_rows().length, 3 )
+			$mol_assert_equal( app.tile_title( '#' ), '# wall' )
+			$mol_assert_equal( app.tile_uri( '.' ), 'bog/gamengine/demo/atlas/floor.png' )
+			$mol_assert_ok( app.tile_icon( '#' ) instanceof $mol_image )
+		},
+
+		'picked char and cell tool paint the map of the document'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			app.brush_down([ 1, 1 ])
+			app.brush_move([ 2, 1 ])
+			app.brush_up([ 2, 1 ])
+			$mol_assert_equal( app.Doc().map()[ 1 ].join( '' ), '###..#' )
+		},
+
+		'rect tool paints a rectangle and shows a preview frame'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'rect' )
+			app.brush_down([ 1, 1 ])
+			app.brush_move([ 2, 2 ])
+			$mol_assert_equal( app.rect_nodes().length, 1 )
+			app.brush_up([ 2, 2 ])
+			$mol_assert_equal( app.rect_nodes().length, 0 )
+			$mol_assert_equal( app.Doc().map().map( row => row.join( '' ) ), [ '######', '###..#', '####.#', '#....#', '######' ] )
+		},
+
+		'fill tool floods the room and the tool blocks the gizmo'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 0 )
+			$mol_assert_equal( app.gizmo_arrow_nodes().length, 2 )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'fill' )
+			$mol_assert_equal( app.gizmo_arrow_nodes().length, 0 )
+			app.brush_down([ 1, 1 ])
+			$mol_assert_equal( app.Doc().map().map( row => row.join( '' ) ), [ '######', '######', '######', '######', '######' ] )
+			app.tool_drop()
+			$mol_assert_equal( app.gizmo_arrow_nodes().length, 2 )
+		},
+
+		'painted cell becomes a sprite of the scene'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			const scene = app.tile_scene()!
+			$mol_assert_equal( scene.cells().length, 30 )
+			$mol_assert_equal( scene.Cell( '1_1' ).frame(), 'floor' )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			app.brush_down([ 1, 1 ])
+			app.brush_up([ 1, 1 ])
+			$mol_assert_equal( app.tile_scene()!.Cell( '1_1' ).frame(), 'wall' )
+		},
+
 		'gizmo hit on the x arrow'( $ ) {
 			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
 		},

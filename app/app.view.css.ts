@@ -20,7 +20,17 @@ namespace $.$$ {
 			flex: { grow: 1, shrink: 1, basis: 0 },
 		},
 
+		Tiles_page: {
+			flex: { grow: 1, shrink: 1, basis: 0 },
+		},
+
 		Asset_image: {
+			width: '2rem',
+			height: '2rem',
+			imageRendering: 'pixelated',
+		},
+
+		Tile_image: {
 			width: '2rem',
 			height: '2rem',
 			imageRendering: 'pixelated',

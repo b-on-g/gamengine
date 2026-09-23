@@ -1,7 +1,17 @@
 namespace $ {
 
 	export const $bog_gamestudio_sample = [
-		'$bog_gamestudio_sample $bog_gamengine_scene',
+		'$bog_gamestudio_sample $bog_gamestudio_sample_map',
+		'\tatlas <= Atlas',
+		'\tmap \\',
+		'\t\t\\######',
+		'\t\t\\#....#',
+		'\t\t\\#..#.#',
+		'\t\t\\#....#',
+		'\t\t\\######',
+		'\tpalette *',
+		'\t\t# \\wall',
+		'\t\t. \\floor',
 		'\tkids /',
 		'\t\t<= Hero $bog_gamestudio_sample_hero',
 		'\t\t\tname \\Герой',
@@ -21,8 +31,12 @@ namespace $ {
 		'\t\t\tframe \\wall',
 		'\t\t\tpos / 0 0 0',
 		'\tbatches /',
-		'\t\t<= Batch $bog_gamengine_batch',
+		'\t\t<= Cells $bog_gamengine_batch',
 		'\t\t\tshader <= Shader $bog_gamengine_shader_sprite',
+		'\t\t\tatlas <= Atlas',
+		'\t\t\tnodes <= cells',
+		'\t\t<= Batch $bog_gamengine_batch',
+		'\t\t\tshader <= Shader',
 		'\t\t\tatlas <= Atlas',
 		'\t\t\tnodes <= kids',
 		'\tAtlas $bog_gamengine_atlas',
@@ -30,6 +44,7 @@ namespace $ {
 		'\t\t\t\\bog/gamengine/demo/atlas/hero.png',
 		'\t\t\t\\bog/gamengine/demo/atlas/coin.png',
 		'\t\t\t\\bog/gamengine/demo/atlas/wall.png',
+		'\t\t\t\\bog/gamengine/demo/atlas/floor.png',
 		'\t\tsize 64',
 	].join( '\n' ) + '\n'
 

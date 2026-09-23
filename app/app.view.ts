@@ -406,12 +406,123 @@ namespace $.$$ {
 
 		@ $mol_mem
 		gizmo_arrow_nodes() {
-			return this.node() && this.editing() ? [ this.Gizmo_x(), this.Gizmo_y() ] : []
+			return this.node() && this.editing() && !this.tool() ? [ this.Gizmo_x(), this.Gizmo_y() ] : []
 		}
 
 		@ $mol_mem
 		gizmo_box_nodes() {
-			return this.node() && this.editing() ? [ this.Gizmo_xy() ] : []
+			return this.node() && this.editing() && !this.tool() ? [ this.Gizmo_xy() ] : []
+		}
+
+		@ $mol_mem
+		tool( next?: string ) {
+			return next ?? ''
+		}
+
+		tool_drop( event?: Event | null ) {
+			this.tool( '' )
+			return event ?? null
+		}
+
+		tile_scene() {
+			const scene = this.Scene() as $bog_gamengine_scene
+			return scene instanceof $bog_gamestudio_sample_map ? scene : null
+		}
+
+		@ $mol_mem
+		palette() {
+			return this.tile_scene()?.palette() ?? {}
+		}
+
+		@ $mol_mem
+		tile_rows() {
+			return [ this.Tools(), ... Object.keys( this.palette() ).map( char => this.Tile( char ) ) ]
+		}
+
+		tile_title( char: string ) {
+			return `${ char } ${ this.palette()[ char ] }`
+		}
+
+		tile_uri( char: string ) {
+			const frame = this.palette()[ char ]
+			return this.Assets().list().find( item => this.Assets().name( item.uri ) === frame )?.uri ?? ''
+		}
+
+		tile_icon( char: string ) {
+			return this.tile_uri( char ) ? this.Tile_image( char ) : null
+		}
+
+		@ $mol_mem
+		tile_char( next?: string ) {
+			return next ?? ''
+		}
+
+		tile_selected( char: string, next?: boolean ) {
+			if( next !== undefined ) this.tile_char( next ? char : '' )
+			return this.tile_char() === char
+		}
+
+		@ $mol_mem
+		rect_nodes() {
+			return this.Rect_shape().points().length ? [ this.Rect_node() ] : []
+		}
+
+		rect_preview( from: readonly [ number, number ], to: readonly [ number, number ] ) {
+			const x0 = Math.min( from[ 0 ], to[ 0 ] )
+			const x1 = Math.max( from[ 0 ], to[ 0 ] ) + 1
+			const y0 = - Math.min( from[ 1 ], to[ 1 ] )
+			const y1 = - Math.max( from[ 1 ], to[ 1 ] ) - 1
+			this.Rect_shape().points( new Float32Array([
+				x0, y0, 0, x1, y0, 0,
+				x1, y0, 0, x1, y1, 0,
+				x1, y1, 0, x0, y1, 0,
+				x0, y1, 0, x0, y0, 0,
+			]) )
+		}
+
+		brush_cells = [] as ( readonly [ number, number ] )[]
+		brush_from = null as readonly [ number, number ] | null
+
+		brushing() {
+			return Boolean( this.tool() && this.tile_char() && this.tile_scene() && this.editing() )
+		}
+
+		brush_cell( event: PointerEvent ) {
+			const at = this.Point().world( this.point_world, this.point_x( event ), this.point_y( event ) )
+			return this.tile_scene()!.cell_at( at[ 0 ], at[ 1 ] )
+		}
+
+		brush_down( cell: readonly [ number, number ] ) {
+			const scene = this.tile_scene()!
+			const char = this.tile_char()
+			if( this.tool() === 'fill' ) return this.Doc().fill( cell[ 0 ], cell[ 1 ], char )
+			this.brush_from = cell
+			this.brush_cells = [ cell ]
+			if( this.tool() === 'rect' ) return this.rect_preview( cell, cell )
+			scene.cell_char( scene.cell_id( cell[ 0 ], cell[ 1 ] ), char )
+		}
+
+		brush_move( cell: readonly [ number, number ] ) {
+			const from = this.brush_from
+			if( !from ) return
+			if( this.tool() === 'rect' ) return this.rect_preview( from, cell )
+			if( this.brush_cells.some( known => known[ 0 ] === cell[ 0 ] && known[ 1 ] === cell[ 1 ] ) ) return
+			this.brush_cells.push( cell )
+			const scene = this.tile_scene()!
+			scene.cell_char( scene.cell_id( cell[ 0 ], cell[ 1 ] ), this.tile_char() )
+		}
+
+		brush_up( cell: readonly [ number, number ] ) {
+			const from = this.brush_from
+			if( !from ) return
+			const cells = this.brush_cells
+			this.brush_from = null
+			this.brush_cells = []
+			if( this.tool() === 'rect' ) {
+				this.Rect_shape().points( new Float32Array( 0 ) )
+				return this.Doc().rect( from[ 0 ], from[ 1 ], cell[ 0 ], cell[ 1 ], this.tile_char() )
+			}
+			this.Doc().paint_all( cells, this.tile_char() )
 		}
 
 		drag_axis = null as $bog_gamestudio_app_axis | null
@@ -441,6 +552,11 @@ namespace $.$$ {
 				this.asset( null )
 				return event
 			}
+			if( this.brushing() ) {
+				this.brush_down( this.brush_cell( event ) )
+				if( event.isTrusted && this.brush_from ) ( this.Draw().dom_node() as HTMLElement ).setPointerCapture( event.pointerId )
+				return event
+			}
 			const node = this.node()
 			if( node && this.editing() ) {
 				const at = point.world( this.point_world, x, y )
@@ -462,6 +578,10 @@ namespace $.$$ {
 		}
 
 		pointer_move( event?: PointerEvent ) {
+			if( event && this.brush_from ) {
+				this.brush_move( this.brush_cell( event ) )
+				return event
+			}
 			const axis = this.drag_axis
 			if( !event || !axis ) return null
 			const node = this.node()
@@ -479,6 +599,10 @@ namespace $.$$ {
 		}
 
 		pointer_up( event?: PointerEvent ) {
+			if( event && this.brush_from ) {
+				this.brush_up( this.brush_cell( event ) )
+				return event
+			}
 			if( !event || !this.drag_axis ) return null
 			this.drag_axis = null
 			const node = this.node()
