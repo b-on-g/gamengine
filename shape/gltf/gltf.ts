@@ -6,12 +6,6 @@ namespace $ {
 		bufferViews?: readonly { buffer: number, byteOffset?: number, byteLength: number, byteStride?: number }[]
 	}
 
-	type $bog_gamengine_shape_gltf_arrays = {
-		geometry: Float32Array
-		normals: Float32Array
-		skin: Float32Array
-	}
-
 	const magic = 0x46546C67
 	const chunk_json = 0x4E4F534A
 	const chunk_bin = 0x004E4942
@@ -84,7 +78,7 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		arrays(): $bog_gamengine_shape_gltf_arrays {
+		arrays() {
 			const doc = this.json()
 			const prim = doc.meshes?.[ 0 ]?.primitives?.[ 0 ] ?? $mol_fail( new Error( 'glTF has no mesh primitive' ) )
 			const attrs = prim.attributes
