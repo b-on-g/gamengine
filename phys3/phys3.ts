@@ -24,6 +24,7 @@ namespace $ {
 		size = new Float32Array( 0 )
 		flags = new Uint8Array( 0 )
 		trans = new Float32Array( 0 )
+		aabb = new Float32Array( 0 )
 		hull_off = new Uint32Array( 0 )
 		hull_count = new Uint32Array( 0 )
 		hull = new Float32Array( 0 )
@@ -34,6 +35,8 @@ namespace $ {
 		trans_view = [] as Float32Array[]
 
 		tmp_scale = new Float32Array( 3 )
+		tmp_point = new Float32Array( 3 )
+		broad = new $bog_gamengine_phys3_broad
 
 		@ $mol_mem
 		gravity( next?: Float32Array ) {
@@ -54,6 +57,7 @@ namespace $ {
 			this.inv_inertia = this.grow_f32( this.inv_inertia, cap * 3 )
 			this.size = this.grow_f32( this.size, cap * 3 )
 			this.trans = this.grow_f32( this.trans, cap * 16 )
+			this.aabb = this.grow_f32( this.aabb, cap * 6 )
 			const shape = new Uint8Array( cap )
 			shape.set( this.shape )
 			this.shape = shape
@@ -100,6 +104,7 @@ namespace $ {
 			this.hull_count[ i ] = 0
 			this.mass_set( i, mass )
 			this.trans_write( i )
+			this.bounds_of( i )
 			return i
 		}
 
@@ -155,6 +160,7 @@ namespace $ {
 				this.size.copyWithin( index * 3, last * 3, last * 3 + 3 )
 				this.flags[ index ] = this.flags[ last ]
 				this.trans.copyWithin( index * 16, last * 16, last * 16 + 16 )
+				this.aabb.copyWithin( index * 6, last * 6, last * 6 + 6 )
 				this.hull_off[ index ] = this.hull_off[ last ]
 				this.hull_count[ index ] = this.hull_count[ last ]
 			}
@@ -174,6 +180,7 @@ namespace $ {
 			this.hull_len = need
 			this.hull_off[ index ] = off
 			this.hull_count[ index ] = points.length / 3
+			this.bounds_of( index )
 		}
 
 		scale_of( i: number ) {
@@ -224,6 +231,89 @@ namespace $ {
 					$bog_gamengine_vec_quat_integrate( rot_view[ i ], rot_view[ i ], ang_view[ i ], dt )
 				}
 				$bog_gamengine_vec_quat_to_mat4( trans_view[ i ], rot_view[ i ], pos_view[ i ], this.scale_of( i ) )
+			}
+			this.bounds()
+			this.broad.find( this )
+		}
+
+		bounds() {
+			const count = this.count
+			const flags = this.flags
+			const sleep = $bog_gamengine_phys3.flag_sleep
+			for( let i = 0; i < count; ++ i ) {
+				if( flags[ i ] & sleep ) continue
+				this.bounds_of( i )
+			}
+		}
+
+		bounds_of( i: number ) {
+			const aabb = this.aabb
+			const a = i * 6
+			const pos = this.pos
+			const px = pos[ i * 3 ], py = pos[ i * 3 + 1 ], pz = pos[ i * 3 + 2 ]
+			const size = this.size
+			const sx = size[ i * 3 ], sy = size[ i * 3 + 1 ], sz = size[ i * 3 + 2 ]
+			switch( this.shape[ i ] ) {
+				case $bog_gamengine_phys3.shape_sphere:
+				case $bog_gamengine_phys3.shape_capsule: {
+					const r = this.shape[ i ] === $bog_gamengine_phys3.shape_sphere ? sx : sx + sy
+					aabb[ a ] = px - r
+					aabb[ a + 1 ] = py - r
+					aabb[ a + 2 ] = pz - r
+					aabb[ a + 3 ] = px + r
+					aabb[ a + 4 ] = py + r
+					aabb[ a + 5 ] = pz + r
+					break
+				}
+				case $bog_gamengine_phys3.shape_box: {
+					const q = this.rot
+					const x = q[ i * 4 ], y = q[ i * 4 + 1 ], z = q[ i * 4 + 2 ], w = q[ i * 4 + 3 ]
+					const xx = x * x, yy = y * y, zz = z * z
+					const xy = x * y, xz = x * z, yz = y * z
+					const wx = w * x, wy = w * y, wz = w * z
+					const ex = Math.abs( 1 - 2 * ( yy + zz ) ) * sx + Math.abs( 2 * ( xy - wz ) ) * sy + Math.abs( 2 * ( xz + wy ) ) * sz
+					const ey = Math.abs( 2 * ( xy + wz ) ) * sx + Math.abs( 1 - 2 * ( xx + zz ) ) * sy + Math.abs( 2 * ( yz - wx ) ) * sz
+					const ez = Math.abs( 2 * ( xz - wy ) ) * sx + Math.abs( 2 * ( yz + wx ) ) * sy + Math.abs( 1 - 2 * ( xx + yy ) ) * sz
+					aabb[ a ] = px - ex
+					aabb[ a + 1 ] = py - ey
+					aabb[ a + 2 ] = pz - ez
+					aabb[ a + 3 ] = px + ex
+					aabb[ a + 4 ] = py + ey
+					aabb[ a + 5 ] = pz + ez
+					break
+				}
+				case $bog_gamengine_phys3.shape_hull: {
+					const hull = this.hull
+					const off = this.hull_off[ i ], end = off + this.hull_count[ i ] * 3
+					const rot = this.rot_view[ i ]
+					const point = this.tmp_point
+					let min_x = Infinity, min_y = Infinity, min_z = Infinity
+					let max_x = -Infinity, max_y = -Infinity, max_z = -Infinity
+					for( let k = off; k < end; k += 3 ) {
+						point[ 0 ] = hull[ k ]
+						point[ 1 ] = hull[ k + 1 ]
+						point[ 2 ] = hull[ k + 2 ]
+						$bog_gamengine_vec_quat_rotate( point, rot, point )
+						if( point[ 0 ] < min_x ) min_x = point[ 0 ]
+						if( point[ 1 ] < min_y ) min_y = point[ 1 ]
+						if( point[ 2 ] < min_z ) min_z = point[ 2 ]
+						if( point[ 0 ] > max_x ) max_x = point[ 0 ]
+						if( point[ 1 ] > max_y ) max_y = point[ 1 ]
+						if( point[ 2 ] > max_z ) max_z = point[ 2 ]
+					}
+					if( end === off ) min_x = min_y = min_z = max_x = max_y = max_z = 0
+					aabb[ a ] = px + min_x
+					aabb[ a + 1 ] = py + min_y
+					aabb[ a + 2 ] = pz + min_z
+					aabb[ a + 3 ] = px + max_x
+					aabb[ a + 4 ] = py + max_y
+					aabb[ a + 5 ] = pz + max_z
+					break
+				}
+				default: {
+					aabb[ a ] = aabb[ a + 1 ] = aabb[ a + 2 ] = -1e9
+					aabb[ a + 3 ] = aabb[ a + 4 ] = aabb[ a + 5 ] = 1e9
+				}
 			}
 		}
 
