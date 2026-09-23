@@ -2,8 +2,18 @@ namespace $.$$ {
 
 	export class $bog_gamengine_demo extends $.$bog_gamengine_demo {
 
+		@ $mol_mem
 		key_map() {
-			return this.Flat().Key().keys()
+			const maps = [ this.Flat().Key().keys(), this.Room().Key().keys() ]
+			const keys: Record< string, ( state?: boolean )=> boolean > = {}
+			for( const map of maps ) {
+				for( const name of Object.keys( map ) ) {
+					const prev = keys[ name ]
+					const own = map[ name ]
+					keys[ name ] = prev ? ( state?: boolean )=> { prev( state ); return own( state ) } : own
+				}
+			}
+			return keys
 		}
 
 		@ $mol_mem

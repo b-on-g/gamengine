@@ -4,11 +4,15 @@ namespace $ {
 
 	export const $bog_gamengine_probe_flat_page = 'bog/gamengine/demo/-/index.html#!demo=flat'
 
+	export const $bog_gamengine_probe_room_page = 'bog/gamengine/demo/-/index.html#!demo=room'
+
 	export const $bog_gamengine_probe_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0`
 
 	export const $bog_gamengine_probe_ok = 'центр красный, буферы не создаются'
 
 	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя'
+
+	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени'
 
 	export const $bog_gamengine_probe_flags = [ '--use-angle=swiftshader' ] as const
 
@@ -63,6 +67,45 @@ namespace $ {
 		return { webgl: true, loaded: true, start, moved, center, hero, corner, floor, size: [ canvas.width, canvas.height ] }
 	`
 
+	export const $bog_gamengine_probe_room_script = `
+		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
+		const canvas = document.querySelector( 'canvas' )
+		const gl = canvas && canvas.getContext( 'webgl2' )
+		if( !gl ) return { webgl: false, loaded: false }
+		const read = ()=> {
+			const found = document.body.innerText.match( /walker (-?[\\d.]+) × (-?[\\d.]+) yaw (-?[\\d.]+)/ )
+			return found ? [ Number( found[ 1 ] ), Number( found[ 2 ] ), Number( found[ 3 ] ) ] : null
+		}
+		let start = null
+		for( let i = 0; i < 600 && !start; ++ i ) { await frame(); start = read() }
+		if( !start ) return { webgl: true, loaded: false }
+		await frame()
+		await frame()
+		const pixel = ( x, y )=> {
+			const out = new Uint8Array( 4 )
+			gl.readPixels( x | 0, y | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
+			return Array.from( out )
+		}
+		const half = Math.tan( Math.PI / 6 )
+		const aspect = canvas.width / canvas.height
+		const at = ( wx, wy, wz )=> {
+			const depth = start[ 1 ] - wz
+			const nx = ( wx - start[ 0 ] ) / ( half * aspect * depth )
+			const ny = ( wy - 0.5 ) / ( half * depth )
+			return [ ( nx + 1 ) / 2 * canvas.width, ( ny + 1 ) / 2 * canvas.height ]
+		}
+		const center = pixel( canvas.width / 2, canvas.height / 2 )
+		const lit_at = at( 4.5, 0.5, 5 )
+		const shade_at = at( 8, 0.5, 3.5 )
+		const lit = pixel( ... lit_at )
+		const shade = pixel( ... shade_at )
+		document.body.dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 87, bubbles: true } ) )
+		for( let i = 0; i < 60; ++ i ) await frame()
+		const moved = read()
+		document.body.dispatchEvent( new KeyboardEvent( 'keyup', { keyCode: 87, bubbles: true } ) )
+		return { webgl: true, loaded: true, start, moved, center, lit, shade, lit_at, shade_at, size: [ canvas.width, canvas.height ] }
+	`
+
 	export type $bog_gamengine_probe_result = {
 		readonly webgl: boolean
 		readonly pixel: readonly [ number, number, number, number ]
@@ -82,6 +125,23 @@ namespace $ {
 		readonly corner?: $bog_gamengine_probe_pixel
 		readonly floor?: $bog_gamengine_probe_pixel
 		readonly size?: readonly [ number, number ]
+	}
+
+	export type $bog_gamengine_probe_room_result = {
+		readonly webgl: boolean
+		readonly loaded: boolean
+		readonly start?: readonly [ number, number, number ]
+		readonly moved?: readonly [ number, number, number ] | null
+		readonly center?: $bog_gamengine_probe_pixel
+		readonly lit?: $bog_gamengine_probe_pixel
+		readonly shade?: $bog_gamengine_probe_pixel
+		readonly lit_at?: readonly [ number, number ]
+		readonly shade_at?: readonly [ number, number ]
+		readonly size?: readonly [ number, number ]
+	}
+
+	export function $bog_gamengine_probe_sum( pixel: $bog_gamengine_probe_pixel ) {
+		return pixel[ 0 ] + pixel[ 1 ] + pixel[ 2 ]
 	}
 
 	export function $bog_gamengine_probe_red( got: $bog_gamengine_probe_result ) {
@@ -161,6 +221,41 @@ namespace $ {
 		if( $bog_gamengine_probe_near( got.corner!, got.hero! ) ) return fail( 'угол героя совпал с центром героя' )
 
 		return say( $bog_gamengine_probe_flat_ok )
+	}
+
+	export async function $bog_gamengine_probe_room_check(
+		root = $node.process.cwd(),
+		flags: readonly string[] = $bog_gamengine_probe_flags,
+	) {
+
+		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
+
+		const started = Date.now()
+
+		const got = await $bog_probe_run({
+			root,
+			flags,
+			page: $bog_gamengine_probe_room_page,
+			ready: $bog_gamengine_probe_ready,
+			script: $bog_gamengine_probe_room_script,
+			width: 1024,
+			height: 768,
+		}) as $bog_gamengine_probe_room_result | typeof $bog_probe_skip
+
+		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
+
+		say( `${ flags.join( ' ' ) || 'без флагов' }: ${ Date.now() - started } мс, ${ JSON.stringify( got ) }` )
+
+		const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( got ) }` ) )
+
+		if( !got.webgl ) return fail( 'нет webgl2' )
+		if( !got.loaded || !got.start ) return fail( 'подвал не показал позицию ходока' )
+		if( !got.moved || !( got.moved[ 1 ] < got.start[ 1 ] ) ) return fail( 'ходок не пошёл вперёд по W' )
+		if( $bog_gamengine_probe_dark( got.center! ) ) return fail( 'центр чёрный, комната не нарисована' )
+		if( $bog_gamengine_probe_dark( got.lit! ) ) return fail( 'освещённая грань чёрная' )
+		if( !( $bog_gamengine_probe_sum( got.lit! ) > $bog_gamengine_probe_sum( got.shade! ) * 1.3 ) ) return fail( 'грань к свету не ярче грани в тени' )
+
+		return say( $bog_gamengine_probe_room_ok )
 	}
 
 }
