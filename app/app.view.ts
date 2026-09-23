@@ -355,20 +355,13 @@ namespace $.$$ {
 				case 'model': {
 					const frame = this.atlas_frame()
 					const mesh = doc.free_name( '$bog_gamengine_mesh' )
-					doc.add( '$bog_gamengine_mesh', {
+					return doc.add( '$bog_gamengine_mesh', {
 						name: `\\${ name }`,
 						atlas: '<= Atlas',
 						frame: `\\${ frame }`,
 						pos,
 						shape: `<= ${ mesh }_shape $bog_gamestudio_assets_gltf\n\turi \\${ uri }`,
 					} )
-					doc.add( '$bog_gamengine_batch', {
-						shader: `<= ${ mesh }_shader $bog_gamengine_shader_solid`,
-						shape: `<= ${ mesh }_shape`,
-						atlas: '<= Atlas',
-						nodes: `/ <= ${ mesh }`,
-					}, 'batches' )
-					return mesh
 				}
 				case 'sound': {
 					if( doc.decls().has( 'Sound' ) ) doc.add_uri( 'Sound', 'uris', uri, name )
@@ -476,14 +469,68 @@ namespace $.$$ {
 				case 'flag': return [ this.Flag( name ) ]
 				case 'text': return [ this.Text( name ) ]
 				case 'frame': return [ this.frame_options().length ? this.Frame( name ) : this.Text( name ) ]
+				case 'list': return [ this.List( name ) ]
 			}
 			return []
 		}
 
-		write( prop: string, value: $bog_gamestudio_doc_value ) {
+		doc_title() {
 			const index = this.selected()
-			if( index === null ) return
-			this.Doc().set( this.Doc().nodes()[ index ].title, prop, value )
+			if( index === null ) return ''
+			return this.Doc().nodes()[ index ]?.title ?? ''
+		}
+
+		write( prop: string, value: $bog_gamestudio_doc_value ) {
+			const title = this.doc_title()
+			if( !title ) return
+			this.Doc().set( title, prop, value )
+		}
+
+		list_fields( name: string ) {
+			return Object.keys( this.prop( name )?.fields ?? {} )
+		}
+
+		list_values( name: string ) {
+			return ( this.prop( name )?.get() as readonly $bog_gamestudio_doc_row[] | undefined ) ?? []
+		}
+
+		@ $mol_mem_key
+		list_rows( name: string ) {
+			return [ ... this.list_values( name ).map( ( row, index )=> this.List_row( `${ name }/${ index }` ) ), this.List_add( name ) ]
+		}
+
+		@ $mol_mem_key
+		list_row( key: string ) {
+			const name = key.slice( 0, key.indexOf( '/' ) )
+			return [ ... this.list_fields( name ).map( field => this.List_field( `${ key }/${ field }` ) ), this.List_drop( key ) ]
+		}
+
+		list_hint( key: string ) {
+			return key.slice( key.lastIndexOf( '/' ) + 1 )
+		}
+
+		list_value( key: string, next?: string ) {
+			const [ name, index, field ] = key.split( '/' )
+			if( next === undefined ) return String( this.list_values( name )[ Number( index ) ]?.[ field ] ?? '' )
+			const title = this.doc_title()
+			if( title ) this.Doc().list_set( title, name, Number( index ), field, next )
+			return next
+		}
+
+		list_drop( key: string, event?: Event | null ) {
+			const [ name, index ] = key.split( '/' )
+			const title = this.doc_title()
+			if( title ) this.Doc().list_drop( title, name, Number( index ) )
+			return event ?? null
+		}
+
+		list_add( name: string, event?: Event | null ) {
+			const title = this.doc_title()
+			if( !title ) return event ?? null
+			const row = {} as Record< string, string >
+			for( const field of this.list_fields( name ) ) row[ field ] = ''
+			this.Doc().list_add( title, name, row )
+			return event ?? null
 		}
 
 		vec( name: string ) {

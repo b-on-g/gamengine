@@ -53,6 +53,26 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		Cells( next?: $bog_gamengine_batch ) {
+			return next ?? new this.$.$bog_gamengine_batch
+		}
+
+		@ $mol_mem
+		cells_batch() {
+			const batch = this.Cells()
+			batch.shader( this.Shader_sprite() )
+			batch.shape( this.Shape_quad() )
+			batch.atlas( this.atlas() )
+			batch.nodes( this.cells() )
+			return batch
+		}
+
+		@ $mol_mem
+		batches( next?: readonly $bog_gamengine_batch[] ) {
+			return next ?? [ this.cells_batch(), ... this.auto_batches() ]
+		}
+
+		@ $mol_mem
 		cells() {
 			const rows = this.rows()
 			const palette = this.palette()

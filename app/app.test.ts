@@ -125,14 +125,25 @@ namespace $ {
 			$mol_assert_ok( app.source().includes( '\t\t<= Sprite_1 $bog_gamengine_sprite\n\t\t\tname \\floor\n\t\t\tatlas <= Atlas\n\t\t\tframe \\floor\n\t\t\tpos / 1 -2 0\n' ) )
 		},
 
-		'placed model gets a loader shape and its own batch'( $ ) {
+		'placed model gets a loader shape and no batch of its own'( $ ) {
 			const app = $$.$bog_gamestudio_app.make({ $ })
 			app.place( 'bog/gamengine/demo/room/model/pillar.glb', [ 0, 1, 0 ] )
 			$mol_assert_equal( app.row_title( 3 ), 'pillar' )
 			$mol_assert_ok( app.source().includes( '\t\t\tshape <= Mesh_1_shape $bog_gamestudio_assets_gltf\n\t\t\t\turi \\bog/gamengine/demo/room/model/pillar.glb\n' ) )
-			$mol_assert_ok( app.source().includes( '\t\t<= Batch_1 $bog_gamengine_batch\n' ) )
+			$mol_assert_not( app.source().includes( '$bog_gamengine_batch' ) )
 			$mol_assert_ok( app.Scene().batches().some( batch => batch.shape() instanceof $bog_gamestudio_assets_gltf ) )
 			$mol_assert_ok( app.Scene().nodes()[ 3 ] instanceof $bog_gamengine_mesh )
+		},
+
+		'model and sprites go to batches of their own'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			const before = app.Scene().batches().length
+			app.place( 'bog/gamengine/demo/room/model/pillar.glb', [ 0, 1, 0 ] )
+			const batches = app.Scene().batches()
+			$mol_assert_equal( batches.length, before + 1 )
+			const mesh = batches.find( batch => batch.shape() instanceof $bog_gamestudio_assets_gltf )!
+			$mol_assert_equal( mesh.nodes().length, 1 )
+			$mol_assert_ok( mesh.nodes()[ 0 ] instanceof $bog_gamengine_mesh )
 		},
 
 		'placed sound is written into the sound dictionary'( $ ) {
@@ -206,6 +217,40 @@ namespace $ {
 			app.brush_down([ 1, 1 ])
 			app.brush_up([ 1, 1 ])
 			$mol_assert_equal( app.tile_scene()!.Cell( '1_1' ).frame(), 'wall' )
+		},
+
+		'inspector draws a row per record of a list prop'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.source( $bog_gamestudio_sample_brain )
+			app.selected( 1 )
+			$mol_assert_equal( app.row_title( 1 ), 'Ходит' )
+			$mol_assert_ok( app.fields().some( field => field.name() === 'next' ) )
+			$mol_assert_equal( app.list_rows( 'next' ).length, 2 )
+			$mol_assert_equal( app.list_row( 'next/0' ).length, 3 )
+			$mol_assert_equal( app.List_field( 'next/0/to' ).value(), 'Ждёт' )
+			$mol_assert_equal( app.List_field( 'next/0/when' ).value(), 'near' )
+			$mol_assert_equal( app.List_field( 'next/0/when' ).hint(), 'when' )
+		},
+
+		'text typed into a list row rewrites the record in the source'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.source( $bog_gamestudio_sample_brain )
+			app.selected( 1 )
+			app.List_field( 'next/0/to' ).value( 'Спит' )
+			$mol_assert_ok( app.source().includes( '\t\t\t\t\tto \\Спит\n\t\t\t\t\twhen \\near\n' ) )
+			$mol_assert_equal( app.list_values( 'next' ).length, 1 )
+		},
+
+		'buttons add and drop a record of a list prop'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.source( $bog_gamestudio_sample_brain )
+			app.selected( 1 )
+			app.List_add( 'next' ).click( null )
+			$mol_assert_equal( app.list_values( 'next' ).length, 2 )
+			$mol_assert_equal( app.list_rows( 'next' ).length, 3 )
+			app.List_field( 'next/1/to' ).value( 'Ждёт' )
+			app.List_drop( 'next/0' ).click( null )
+			$mol_assert_equal( app.list_values( 'next' ), [ { to: 'Ждёт', when: '' } ] )
 		},
 
 		'gizmo hit on the x arrow'( $ ) {

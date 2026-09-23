@@ -2,6 +2,8 @@ namespace $ {
 
 	export type $bog_gamestudio_doc_value = string | number | boolean | readonly number[]
 
+	export type $bog_gamestudio_doc_row = Readonly< Record< string, string > >
+
 	export type $bog_gamestudio_doc_node = {
 		readonly name: string
 		readonly title: string
@@ -75,6 +77,44 @@ namespace $ {
 			const kids = old ? klass.kids.map( kid => kid === old ? line : kid ) : [ ... klass.kids, line ]
 			const swap = ( cur: $mol_tree2 ): $mol_tree2 => cur === klass ? cur.clone( kids ) : cur.clone( cur.kids.map( swap ) )
 			this.source( this.print( swap( tree ) ) )
+		}
+
+		list_rows( title: string, prop: string ): readonly $bog_gamestudio_doc_row[] {
+			const node = this.nodes().find( node => node.title === title )
+			if( !node ) return $mol_fail( new Error( `Node ${ title } is not found` ) )
+			const items = node.props[ prop ]?.kids[ 0 ]?.kids ?? []
+			return items.map( item => {
+				const row = {} as Record< string, string >
+				for( const field of item.kids ) row[ field.type ] = field.kids[ 0 ]?.value ?? ''
+				return row
+			} )
+		}
+
+		list_write( title: string, prop: string, rows: readonly $bog_gamestudio_doc_row[] ) {
+			const node = this.nodes().find( node => node.title === title )!
+			const klass = this.decls().get( node.name )!
+			const tree = this.tree()
+			const head = tree.span.span( 1, 1, 0 )
+			const body = tree.span.span( 2, 1, 0 )
+			const slot = $mol_tree2.struct( '*', [], tree.span.span( 3, 1, 0 ) )
+			const items = rows.map( row => $mol_tree2.struct( '*', Object.entries( row ).map( ( [ field, value ] )=> this.line( slot, field, value ) ), body ) )
+			const line = $mol_tree2.struct( prop, [ $mol_tree2.struct( '/', items, head ) ], head )
+			const old = node.props[ prop ]
+			const kids = old ? klass.kids.map( kid => kid === old ? line : kid ) : [ ... klass.kids, line ]
+			const swap = ( cur: $mol_tree2 ): $mol_tree2 => cur === klass ? cur.clone( kids ) : cur.clone( cur.kids.map( swap ) )
+			this.source( this.print( swap( tree ) ) )
+		}
+
+		list_set( title: string, prop: string, index: number, field: string, value: string ) {
+			this.list_write( title, prop, this.list_rows( title, prop ).map( ( row, at )=> at === index ? { ... row, [ field ]: value } : row ) )
+		}
+
+		list_add( title: string, prop: string, row: $bog_gamestudio_doc_row ) {
+			this.list_write( title, prop, [ ... this.list_rows( title, prop ), row ] )
+		}
+
+		list_drop( title: string, prop: string, index: number ) {
+			this.list_write( title, prop, this.list_rows( title, prop ).filter( ( row, at )=> at !== index ) )
 		}
 
 		@ $mol_mem
@@ -174,11 +214,11 @@ namespace $ {
 			return [ `${ name } ${ klass }`, ... Object.entries( props ).map( ( [ prop, value ] )=> `\t${ prop } ${ value.replace( /\n/g, '\n\t' ) }` ) ].join( '\n' )
 		}
 
-		add( klass: string, props: Readonly< Record< string, string > >, list = 'kids' ) {
+		add( klass: string, props: Readonly< Record< string, string > > ) {
 			const root = this.decls().get( '' )
 			if( !root ) return $mol_fail( new Error( `Scene has no root class` ) )
-			const items = root.select( list, '/' ).kids[ 0 ]
-			if( !items ) return $mol_fail( new Error( `Scene has no ${ list } list` ) )
+			const items = root.select( 'kids', '/' ).kids[ 0 ]
+			if( !items ) return $mol_fail( new Error( `Scene has no kids list` ) )
 			const name = this.free_name( klass )
 			this.insert( this.end_row( items ), this.indent( items.span.row ) + 1, [ '<= ' + this.block( name, klass, props ) ] )
 			return name

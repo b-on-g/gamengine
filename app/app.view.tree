@@ -124,7 +124,7 @@ $bog_gamestudio_app $mol_view
 		atlas <= Font_atlas
 		source <= mate_pool* null
 	Assets $bog_gamestudio_assets
-		list /
+		fallback /
 			*
 				uri \bog/gamengine/demo/atlas/hero.png
 				kind \image
@@ -239,3 +239,19 @@ $bog_gamestudio_app $mol_view
 		enabled <= editing
 		value? <=> text_value*? \
 		options <= frame_options /string
+	List* $mol_list
+		rows <= list_rows* /
+	List_row* $mol_row
+		sub <= list_row* /
+	List_field* $mol_string
+		enabled <= editing
+		hint <= list_hint* \
+		value? <=> list_value*? \
+	List_drop* $mol_button_minor
+		enabled <= editing
+		title \Убрать
+		click? <=> list_drop*? null
+	List_add* $mol_button_minor
+		enabled <= editing
+		title \Добавить
+		click? <=> list_add*? null

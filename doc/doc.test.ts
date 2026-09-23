@@ -80,7 +80,7 @@ namespace $ {
 			$mol_assert_equal( name, 'Sprite_1' )
 			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Монета', 'Стена', 'Ключ' ] )
 			const lines = '\t\t<= Sprite_1 $bog_gamengine_sprite\n\t\t\tname \\Ключ\n\t\t\tatlas <= Atlas\n\t\t\tframe \\coin\n\t\t\tpos / 1 2 0\n'
-			$mol_assert_ok( doc.source().includes( lines + '\tbatches /\n' ) )
+			$mol_assert_ok( doc.source().includes( lines + '\tAtlas $bog_gamengine_atlas\n' ) )
 			$mol_assert_equal( doc.source().replace( lines, '' ), before )
 			$mol_assert_equal( doc.scene().nodes()[ 3 ].pos()[ 1 ], 2 )
 		},
@@ -92,13 +92,56 @@ namespace $ {
 			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Монета', 'Стена', 'Sprite_1', 'Sprite_2' ] )
 		},
 
-		'add with a nested subview and add into batches'( $ ) {
+		'add with a nested subview makes no batch of its own'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
-			const mesh = doc.add( '$bog_gamengine_mesh', { shape: '<= Mesh_1_shape $bog_gamengine_shape_box\n\ttile 2' } )
-			doc.add( '$bog_gamengine_batch', { shape: '<= Mesh_1_shape', nodes: '/ <= ' + mesh }, 'batches' )
-			$mol_assert_ok( doc.source().includes( '\t\t\tshape <= Mesh_1_shape $bog_gamengine_shape_box\n\t\t\t\ttile 2\n\tbatches /\n' ) )
-			$mol_assert_ok( doc.source().includes( '\t\t<= Batch_1 $bog_gamengine_batch\n\t\t\tshape <= Mesh_1_shape\n\t\t\tnodes / <= Mesh_1\n\tAtlas ' ) )
-			$mol_assert_equal( doc.scene().batches().length, 3 )
+			const mesh = doc.add( '$bog_gamengine_mesh', { atlas: '<= Atlas', shape: '<= Mesh_1_shape $bog_gamengine_shape_box\n\ttile 2' } )
+			$mol_assert_equal( mesh, 'Mesh_1' )
+			$mol_assert_ok( doc.source().includes( '\t\t\tshape <= Mesh_1_shape $bog_gamengine_shape_box\n\t\t\t\ttile 2\n\tAtlas ' ) )
+			$mol_assert_not( doc.source().includes( '$bog_gamengine_batch' ) )
+			const batches = doc.scene().batches()
+			$mol_assert_equal( batches.filter( batch => batch.shape() instanceof $bog_gamengine_shape_box ).length, 1 )
+		},
+
+		'list rows are read from the document'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample_brain )
+			$mol_assert_equal( doc.list_rows( 'Ходит', 'next' ), [ { to: 'Ждёт', when: 'near' } ] )
+		},
+
+		'edit of a list row changes exactly one line of the source'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample_brain )
+			const before = doc.source().split( '\n' )
+			doc.list_set( 'Ходит', 'next', 0, 'when', 'far' )
+			const after = doc.source().split( '\n' )
+			$mol_assert_equal( after.length, before.length )
+			const changed = before.filter( ( line, index )=> line !== after[ index ] )
+			$mol_assert_equal( changed, [ '\t\t\t\t\twhen \\near' ] )
+			$mol_assert_ok( doc.source().includes( '\t\t\t\t\twhen \\far\n' ) )
+		},
+
+		'row added to a list becomes a record of the source'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample_brain )
+			doc.list_add( 'Ходит', 'next', { to: 'Спит', when: 'tired' } )
+			$mol_assert_ok( doc.source().includes( '\t\t\tnext /\n\t\t\t\t*\n\t\t\t\t\tto \\Ждёт\n\t\t\t\t\twhen \\near\n\t\t\t\t*\n\t\t\t\t\tto \\Спит\n\t\t\t\t\twhen \\tired\n\t\t<= Wait ' ) )
+			$mol_assert_equal( doc.list_rows( 'Ходит', 'next' ).length, 2 )
+		},
+
+		'dropped row leaves the rest of the list'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample_brain )
+			doc.list_add( 'Ходит', 'next', { to: 'Спит', when: 'tired' } )
+			doc.list_drop( 'Ходит', 'next', 0 )
+			$mol_assert_equal( doc.list_rows( 'Ходит', 'next' ), [ { to: 'Спит', when: 'tired' } ] )
+			doc.list_drop( 'Ходит', 'next', 0 )
+			$mol_assert_equal( doc.list_rows( 'Ходит', 'next' ), [] )
+			$mol_assert_ok( doc.source().includes( '\t\t\tnext /\n' ) )
+		},
+
+		'list of the document reaches the node'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample_brain )
+			const state = ()=> doc.scene().nodes().find( node => node.title() === 'Ходит' ) as $bog_gamengine_brain_state
+			$mol_assert_equal( state().next().length, 1 )
+			$mol_assert_equal( state().next()[ 0 ].when, 'near' )
+			doc.list_set( 'Ходит', 'next', 0, 'when', 'far' )
+			$mol_assert_equal( state().next()[ 0 ].when, 'far' )
 		},
 
 		'add_uri appends to the list without duplicates'( $ ) {

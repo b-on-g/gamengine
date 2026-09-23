@@ -30,15 +30,6 @@ namespace $ {
 		'\t\t\tatlas <= Atlas',
 		'\t\t\tframe \\wall',
 		'\t\t\tpos / 0 0 0',
-		'\tbatches /',
-		'\t\t<= Cells $bog_gamengine_batch',
-		'\t\t\tshader <= Shader $bog_gamengine_shader_sprite',
-		'\t\t\tatlas <= Atlas',
-		'\t\t\tnodes <= cells',
-		'\t\t<= Batch $bog_gamengine_batch',
-		'\t\t\tshader <= Shader',
-		'\t\t\tatlas <= Atlas',
-		'\t\t\tnodes <= kids',
 		'\tAtlas $bog_gamengine_atlas',
 		'\t\turis /',
 		'\t\t\t\\bog/gamengine/demo/atlas/hero.png',
@@ -46,6 +37,21 @@ namespace $ {
 		'\t\t\t\\bog/gamengine/demo/atlas/wall.png',
 		'\t\t\t\\bog/gamengine/demo/atlas/floor.png',
 		'\t\tsize 64',
+	].join( '\n' ) + '\n'
+
+	export const $bog_gamestudio_sample_brain = [
+		'$bog_gamestudio_sample_brain $bog_gamengine_scene',
+		'\tkids /',
+		'\t\t<= Guard $bog_gamengine_brain_fsm',
+		'\t\t\tname \\Сторож',
+		'\t\t<= Walk $bog_gamengine_brain_state',
+		'\t\t\tname \\Ходит',
+		'\t\t\tnext /',
+		'\t\t\t\t*',
+		'\t\t\t\t\tto \\Ждёт',
+		'\t\t\t\t\twhen \\near',
+		'\t\t<= Wait $bog_gamengine_brain_state',
+		'\t\t\tname \\Ждёт',
 	].join( '\n' ) + '\n'
 
 }

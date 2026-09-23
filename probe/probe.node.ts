@@ -375,6 +375,7 @@ namespace $ {
 		if( !got.sound_line.endsWith( 'coin \\bog/gamengine/demo/sound/coin.wav' ) ) return fail( 'звук не записался в Sound uris' )
 		if( got.status ) return fail( 'подвал холста показал ошибку: ' + got.status )
 		if( got.mesh_pixel[ 0 ] < 40 && got.mesh_pixel[ 1 ] < 40 && got.mesh_pixel[ 2 ] < 40 ) return fail( 'в точке модели пиксель чёрный' )
+		if( got.mesh_pixel.every( ( value, index )=> Math.abs( value - got.hero_after[ index ] ) < 8 ) ) return fail( 'пиксель модели не отличается от пикселя героя, модель рисуется квадом спрайтов' )
 
 		return say( $bog_gamestudio_probe_ok )
 	}
