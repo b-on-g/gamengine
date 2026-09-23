@@ -30,6 +30,8 @@ $bog_gamengine_demo_flat $mol_page
 			sub / <= hero_stat \
 		<= Ghost_stat $mol_view
 			sub / <= ghost_stat \
+		<= Nodes_stat $mol_view
+			sub / <= nodes_stat \
 	Input $bog_gamengine_input
 		key <= Key
 		screen <= Screen
@@ -97,10 +99,14 @@ $bog_gamengine_demo_flat $mol_page
 	Cam $bog_gamengine_cam_flat
 		height 15
 		pos <= cam_pos Float32Array
-	Cell* $bog_gamengine_sprite
+	Tilemap $bog_gamengine_tilemap
+		tile <= Tile
 		atlas <= Atlas
-		frame <= cell_frame* \
-		pos <= cell_pos* Float32Array
+		palette <= palette *
+	Tilemap_batch $bog_gamengine_batch
+		shader <= Sprite_shader
+		atlas <= Atlas
+		source <= tilemap_pool null
 	Hero $bog_gamengine_demo_flat_hero
 		input <= Input
 		pos? <=> hero_pos? Float32Array

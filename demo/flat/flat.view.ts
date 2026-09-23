@@ -8,33 +8,12 @@ namespace $.$$ {
 		}
 
 		@ $mol_mem
-		cell_ids() {
-			const rows = this.Tile().rows()
-			const ids = [] as string[]
-			for( let y = 0; y < rows.length; ++y ) {
-				for( let x = 0; x < rows[ y ].length; ++x ) ids.push( `${ x }_${ y }` )
-			}
-			return ids as readonly string[]
+		palette() {
+			return { '#': 'wall', '.': 'floor' }
 		}
 
-		cell_xy( id: string ) {
-			return id.split( '_' ).map( Number ) as [ number, number ]
-		}
-
-		cell_frame( id: string ) {
-			const [ x, y ] = this.cell_xy( id )
-			return this.Tile().cell( x, y ) ? 'wall' : 'floor'
-		}
-
-		@ $mol_mem_key
-		cell_pos( id: string ) {
-			const [ x, y ] = this.cell_xy( id )
-			return new Float32Array([ x + 0.5, - y - 0.5, 0 ])
-		}
-
-		@ $mol_mem
-		cells() {
-			return this.cell_ids().map( id => this.Cell( id ) )
+		tilemap_pool() {
+			return this.Tilemap().pool()
 		}
 
 		@ $mol_mem
@@ -49,7 +28,7 @@ namespace $.$$ {
 		@ $mol_mem_key
 		coin_pos( id: string ) {
 			const [ x, y ] = this.coin_cells()[ Number( id ) ]
-			return new Float32Array([ x + 0.5, - y - 0.5, 0 ])
+			return this.Tile().cell_pos( x, y, new Float32Array( 3 ) )
 		}
 
 		@ $mol_mem
@@ -79,7 +58,7 @@ namespace $.$$ {
 
 		@ $mol_mem
 		sprites() {
-			return [ ... this.cells(), ... this.coin_sprites(), this.Ghost_sprite(), this.Hero_sprite() ]
+			return [ ... this.coin_sprites(), this.Ghost_sprite(), this.Hero_sprite() ]
 		}
 
 		font_sources() {
@@ -108,12 +87,16 @@ namespace $.$$ {
 
 		@ $mol_mem
 		batches() {
-			return [ this.Batch(), ... this.coins_left().map( id => this.Coin_text_batch( id ) ) ]
+			return [ this.Tilemap_batch(), this.Batch(), ... this.coins_left().map( id => this.Coin_text_batch( id ) ) ]
 		}
 
 		@ $mol_mem
 		nodes() {
-			return [ ... this.bodies(), this.Ghost(), ... this.sprites(), ... this.coin_texts() ]
+			return [ this.Tilemap(), ... this.bodies(), this.Ghost(), ... this.sprites(), ... this.coin_texts() ]
+		}
+
+		nodes_stat() {
+			return `nodes ${ this.Scene().nodes().length }`
 		}
 
 		@ $mol_mem

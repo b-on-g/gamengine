@@ -38,8 +38,24 @@ namespace $ {
 			return this.solid().includes( row[ x ] )
 		}
 
+		cell_pos( x: number, y: number, out: Float32Array ) {
+			out[ 0 ] = x + 0.5
+			out[ 1 ] = - y - 0.5
+			out[ 2 ] = 0
+			return out
+		}
+
+		cell_at( wx: number, wy: number, out: Int32Array ) {
+			out[ 0 ] = Math.floor( wx )
+			out[ 1 ] = Math.floor( - wy )
+			return out
+		}
+
+		at = new Int32Array( 2 )
+
 		solid_at( wx: number, wy: number ) {
-			return this.cell( Math.floor( wx ), Math.floor( - wy ) )
+			const at = this.cell_at( wx, wy, this.at )
+			return this.cell( at[ 0 ], at[ 1 ] )
 		}
 
 	}
