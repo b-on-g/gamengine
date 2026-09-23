@@ -2,7 +2,7 @@ namespace $ {
 
 	export const $bog_gamestudio_probe_page = 'bog/gamestudio/app/-/index.html'
 
-	export const $bog_gamestudio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник, клик по холсту выбрал монету, стрелка гизмо перенесла её в исходнике, клик мимо снял выбор'
+	export const $bog_gamestudio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник, клик по холсту выбрал монету, стрелка гизмо перенесла её в исходнике, клик мимо снял выбор, игра с зажатой D сдвинула героя вправо, стоп вернул его на место и не тронул исходник'
 
 	export const $bog_gamestudio_probe_flags = [ '--use-angle=swiftshader' ] as const
 
@@ -35,6 +35,11 @@ namespace $ {
 		readonly arrow: readonly [ number, number ] | null
 		readonly source_moved: string
 		readonly fields_clear: string
+		readonly hero_line_before: string
+		readonly x_before: string
+		readonly x_play: string
+		readonly x_stop: string
+		readonly hero_line_after: string
 	}
 
 	export function $bog_gamestudio_probe_script( selectors: readonly string[] ) {
@@ -118,7 +123,27 @@ namespace $ {
 			await frame()
 			await frame()
 			const fields_clear = inspect ? inspect.innerText : ''
-			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after, ppu, fields_coin, row_coin, arrow, source_moved, fields_clear }
+			const hero_line = ()=> ( editor.value.match( /Герой[^]*?pos \\/ [^\\n]*/ ) || [ '' ] )[ 0 ]
+			const x_value = ()=> document.querySelector( '[bog_gamestudio_app_vec_num] input' ).value
+			document.querySelector( '[bog_gamestudio_app_row]' ).click()
+			await frame()
+			await frame()
+			const hero_line_before = hero_line()
+			const x_before = x_value()
+			document.querySelector( '[bog_gamestudio_app_play]' ).click()
+			await frame()
+			document.body.dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 68, bubbles: true } ) )
+			for( let i = 0; i < 30; ++ i ) await frame()
+			document.body.dispatchEvent( new KeyboardEvent( 'keyup', { keyCode: 68, bubbles: true } ) )
+			await frame()
+			await frame()
+			const x_play = x_value()
+			document.querySelector( '[bog_gamestudio_app_stop]' ).click()
+			await frame()
+			await frame()
+			const x_stop = x_value()
+			const hero_line_after = hero_line()
+			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after, ppu, fields_coin, row_coin, arrow, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after }
 		`
 	}
 
@@ -172,6 +197,10 @@ namespace $ {
 		if( Math.abs( Number( moved[ 1 ] ) - 2 - 80 / got.ppu ) > 0.1 ) return fail( 'x монеты после переноса по стрелке не вырос на 80 px' )
 		if( Number( moved[ 2 ] ) !== 0 ) return fail( 'перенос по стрелке X сдвинул y' )
 		if( got.fields_clear.includes( 'pos' ) ) return fail( 'клик мимо не снял выбор' )
+		if( !got.hero_line_before ) return fail( 'в исходнике нет pos героя' )
+		if( !( Number( got.x_play ) > Number( got.x_before ) ) ) return fail( 'игра с зажатой D не сдвинула героя вправо' )
+		if( got.x_stop !== got.x_before ) return fail( 'стоп не вернул x героя к исходному' )
+		if( got.hero_line_after !== got.hero_line_before ) return fail( 'игра изменила pos героя в исходнике' )
 
 		return say( $bog_gamestudio_probe_ok )
 	}

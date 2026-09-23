@@ -158,6 +158,11 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		input( next?: $bog_gamengine_input | null ) {
+			return next ?? null
+		}
+
+		@ $mol_mem
 		overlay( next?: readonly $bog_gamengine_batch[] ) {
 			return next ?? []
 		}
@@ -171,6 +176,7 @@ namespace $ {
 			const own = klass.prototype.batches as ()=> readonly $bog_gamengine_batch[]
 			scene.batches = ()=> [ ... own.call( scene ), ... this.overlay() ]
 			scene.clock = ()=> this.clock()
+			scene.input = ()=> this.input()
 			return scene
 		}
 

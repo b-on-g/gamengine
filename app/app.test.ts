@@ -1,6 +1,72 @@
 namespace $ {
 
+	class $bog_gamestudio_app_time_mock extends $mol_state_time {
+
+		@ $mol_mem
+		static stamp( next = 0 ) {
+			return next
+		}
+
+		static now( precision: number ) {
+			return this.stamp()
+		}
+
+	}
+
+	function played( $: $ ) {
+		$.$mol_state_time = $bog_gamestudio_app_time_mock
+		const app = $$.$bog_gamestudio_app.make({ $ })
+		$bog_gamestudio_app_time_mock.stamp( 0 )
+		app.Scene().step()
+		app.play()
+		app.Key().keys().D( true )
+		for( let tick = 1; tick <= 3; ++ tick ) {
+			$bog_gamestudio_app_time_mock.stamp( tick * 16 )
+			app.Scene().step()
+		}
+		return app
+	}
+
 	$mol_test({
+
+		'play with D held moves the hero right'( $ ) {
+			const app = played( $ )
+			$mol_assert_ok( app.Scene().nodes()[ 0 ].pos()[ 0 ] > -2 )
+		},
+
+		'stop returns the hero pos to the document value'( $ ) {
+			const app = played( $ )
+			app.stop()
+			$mol_assert_equal( app.Scene().nodes()[ 0 ].pos()[ 0 ], -2 )
+		},
+
+		'play and stop leave the source untouched'( $ ) {
+			const app = played( $ )
+			app.stop()
+			$mol_assert_equal( app.source(), $bog_gamestudio_sample )
+		},
+
+		'pause stops the movement'( $ ) {
+			const app = played( $ )
+			app.Pause().checked( true )
+			const before = app.Scene().nodes()[ 0 ].pos()[ 0 ]
+			$bog_gamestudio_app_time_mock.stamp( 64 )
+			app.Scene().step()
+			$bog_gamestudio_app_time_mock.stamp( 80 )
+			app.Scene().step()
+			$mol_assert_equal( app.Scene().nodes()[ 0 ].pos()[ 0 ], before )
+		},
+
+		'hero stands still in the edit mode'( $ ) {
+			$.$mol_state_time = $bog_gamestudio_app_time_mock
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.Key().keys().D( true )
+			$bog_gamestudio_app_time_mock.stamp( 0 )
+			app.Scene().step()
+			$bog_gamestudio_app_time_mock.stamp( 16 )
+			app.Scene().step()
+			$mol_assert_equal( app.Scene().nodes()[ 0 ].pos()[ 0 ], -2 )
+		},
 
 		'scene tree lists three rows'( $ ) {
 			const app = $$.$bog_gamestudio_app.make({ $ })

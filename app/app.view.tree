@@ -1,6 +1,9 @@
 $bog_gamestudio_app $mol_view
 	selected? null
 	source? \
+	plugins /
+		<= Control $mol_keyboard_state
+			key <= key_map *
 	sub /
 		<= Tree $mol_page
 			title \Сцена
@@ -9,6 +12,19 @@ $bog_gamestudio_app $mol_view
 					rows <= node_rows /
 		<= Canvas $mol_page
 			title \Холст
+			tools /
+				<= Play $mol_button_minor
+					title \Играть
+					enabled <= editing true
+					click? <=> play? null
+				<= Pause $mol_check_box
+					title \Пауза
+					enabled <= playing false
+					checked? <=> paused? false
+				<= Stop $mol_button_minor
+					title \Стоп
+					enabled <= playing
+					click? <=> stop? null
 			body /
 				<= Draw $bog_gamengine_draw
 					scene <= Scene
@@ -32,6 +48,7 @@ $bog_gamestudio_app $mol_view
 					value? <=> source?
 	Doc $bog_gamestudio_doc
 		source? <=> source?
+		input <= scene_input null
 		overlay /
 			<= Gizmo_arrows $bog_gamengine_batch
 				shader <= Gizmo_shader $bog_gamengine_shader_flat
@@ -42,7 +59,24 @@ $bog_gamestudio_app $mol_view
 				shape <= Gizmo_box $bog_gamengine_shape_lines
 				nodes <= gizmo_box_nodes /
 		clock <= Clock $bog_gamengine_clock
+			paused <= clock_paused true
 		scene => Scene
+	Key $bog_gamengine_key
+		bind *
+			left /
+				\A
+				\left
+			right /
+				\D
+				\right
+			up /
+				\W
+				\up
+			down /
+				\S
+				\down
+	Input $bog_gamengine_input
+		key <= Key
 	Cam $bog_gamengine_cam_flat
 		height 6
 	Point $bog_gamengine_point
@@ -69,17 +103,22 @@ $bog_gamestudio_app $mol_view
 		name <= field_name* \
 		content <= field_content* /
 	Vec_num* $mol_number
+		enabled <= editing
 		precision_view 0.01
 		precision_change 0.1
 		value? <=> vec_value*? +NaN
 	Num* $mol_number
+		enabled <= editing
 		precision_view 0.01
 		precision_change 0.1
 		value? <=> num_value*? +NaN
 	Flag* $mol_check_box
+		enabled <= editing
 		checked? <=> flag_value*? false
 	Text* $mol_string
+		enabled <= editing
 		value? <=> text_value*? \
 	Frame* $mol_select
+		enabled <= editing
 		value? <=> text_value*? \
 		options <= frame_options /string

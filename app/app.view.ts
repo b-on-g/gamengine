@@ -2,6 +2,14 @@ namespace $ {
 
 	export type $bog_gamestudio_app_axis = 'x' | 'y' | 'xy'
 
+	export type $bog_gamestudio_app_mode = 'edit' | 'play' | 'pause'
+
+	export type $bog_gamestudio_app_snap = {
+		readonly node: $bog_gamengine_node
+		readonly prop: string
+		readonly value: unknown
+	}
+
 	export const $bog_gamestudio_app_gizmo_box = 0.15
 
 	export const $bog_gamestudio_app_gizmo_near = 0.1
@@ -59,6 +67,72 @@ namespace $.$$ {
 		@ $mol_mem
 		selected( next?: number | null ) {
 			return next ?? null
+		}
+
+		@ $mol_mem
+		mode( next?: $bog_gamestudio_app_mode ) {
+			return next ?? 'edit'
+		}
+
+		editing() {
+			return this.mode() === 'edit'
+		}
+
+		playing() {
+			return this.mode() !== 'edit'
+		}
+
+		clock_paused() {
+			return this.mode() !== 'play'
+		}
+
+		scene_input() {
+			return this.editing() ? null : this.Input()
+		}
+
+		@ $mol_mem
+		key_map() {
+			return this.Key().keys()
+		}
+
+		snap = [] as readonly $bog_gamestudio_app_snap[]
+		snap_scene = null as $bog_gamengine_scene | null
+
+		snapshot() {
+			const snap = [] as $bog_gamestudio_app_snap[]
+			for( const node of this.Scene().nodes() ) {
+				for( const prop of node.props() ) {
+					const value = prop.get()
+					snap.push({ node, prop: prop.name, value: value instanceof Float32Array ? new Float32Array( value ) : value })
+				}
+			}
+			return snap
+		}
+
+		play( event?: Event | null ) {
+			if( this.editing() ) {
+				this.snap_scene = this.Scene()
+				this.snap = this.snapshot()
+			}
+			this.mode( 'play' )
+			return event ?? null
+		}
+
+		paused( next?: boolean ) {
+			if( next !== undefined && this.playing() ) this.mode( next ? 'pause' : 'play' )
+			return this.mode() === 'pause'
+		}
+
+		stop( event?: Event | null ) {
+			if( this.snap_scene === this.Scene() ) {
+				for( const { node, prop, value } of this.snap ) {
+					node.props().find( item => item.name === prop )?.set( value instanceof Float32Array ? new Float32Array( value ) : value )
+				}
+			}
+			this.snap = []
+			this.snap_scene = null
+			this.mode( 'edit' )
+			return event ?? null
 		}
 
 		@ $mol_mem
@@ -225,12 +299,12 @@ namespace $.$$ {
 
 		@ $mol_mem
 		gizmo_arrow_nodes() {
-			return this.node() ? [ this.Gizmo_x(), this.Gizmo_y() ] : []
+			return this.node() && this.editing() ? [ this.Gizmo_x(), this.Gizmo_y() ] : []
 		}
 
 		@ $mol_mem
 		gizmo_box_nodes() {
-			return this.node() ? [ this.Gizmo_xy() ] : []
+			return this.node() && this.editing() ? [ this.Gizmo_xy() ] : []
 		}
 
 		drag_axis = null as $bog_gamestudio_app_axis | null
@@ -255,7 +329,7 @@ namespace $.$$ {
 			const y = this.point_y( event )
 			const point = this.Point()
 			const node = this.node()
-			if( node ) {
+			if( node && this.editing() ) {
 				const at = point.world( this.point_world, x, y )
 				const origin = this.gizmo_pos()
 				const axis = $bog_gamestudio_app_gizmo_hit( at[ 0 ] - origin[ 0 ], at[ 1 ] - origin[ 1 ], this.gizmo_size() )
