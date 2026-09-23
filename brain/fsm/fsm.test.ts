@@ -51,7 +51,85 @@ namespace $ {
 		return { owner, idle, rest, fsm }
 	}
 
+	class $bog_gamengine_brain_fsm_test_time extends $mol_state_time {
+
+		@ $mol_mem
+		static stamp( next = 0 ) {
+			return next
+		}
+
+		static now( precision: number ) {
+			return this.stamp()
+		}
+
+	}
+
+	class $bog_gamengine_brain_fsm_test_walker extends $bog_gamengine_node {
+
+		seen = ''
+		stopped = false
+
+		Brain = new $bog_gamengine_brain_fsm
+
+		stop() {
+			return this.stopped
+		}
+
+		kids() {
+			return [ this.Brain ] as readonly $bog_gamengine_node[]
+		}
+
+		step( dt: number ) {
+			this.seen = this.Brain.state()
+		}
+
+	}
+
+	function fsm_test_walker() {
+		const walker = new $bog_gamengine_brain_fsm_test_walker
+		const walk = new $bog_gamengine_brain_state
+		walk.name( 'walk' )
+		walk.next([ { to: 'stop', when: 'stop' } ])
+		const stop = new $bog_gamengine_brain_state
+		stop.name( 'stop' )
+		walker.Brain.kids([ walk, stop ])
+		return walker
+	}
+
 	$mol_test({
+
+		'condition comes from a method of the owner'() {
+			const walker = fsm_test_walker()
+			walker.Brain.owner( walker )
+			walker.Brain.step( 0.016 )
+			$mol_assert_equal( walker.Brain.state(), 'walk' )
+			walker.stopped = true
+			walker.Brain.step( 0.016 )
+			$mol_assert_equal( walker.Brain.state(), 'stop' )
+		},
+
+		'state knows the owner of its machine'() {
+			const { owner, idle } = fsm_test_make()
+			$mol_assert_equal( idle.owner(), owner )
+			$mol_assert_equal( new $bog_gamengine_brain_state().owner(), null )
+		},
+
+		'machine switches state before its owner steps in the same frame'( $ ) {
+			$.$mol_state_time = $bog_gamengine_brain_fsm_test_time
+			const walker = fsm_test_walker()
+			const scene = new $bog_gamengine_scene
+			scene.$ = $
+			scene.kids = ()=> [ walker ]
+			$bog_gamengine_brain_fsm_test_time.stamp( 0 )
+			scene.step()
+			$bog_gamengine_brain_fsm_test_time.stamp( 16 )
+			scene.step()
+			$mol_assert_equal( walker.seen, 'walk' )
+			walker.stopped = true
+			$bog_gamengine_brain_fsm_test_time.stamp( 32 )
+			scene.step()
+			$mol_assert_equal( walker.seen, 'stop' )
+		},
 
 		'state is the first one before the flag and the second is not entered'() {
 			const { idle, rest, fsm } = fsm_test_make()

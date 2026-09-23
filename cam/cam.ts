@@ -25,6 +25,11 @@ namespace $ {
 	export class $bog_gamengine_cam extends $bog_gamengine_node {
 
 		@ $mol_mem
+		aspect( next?: number ) {
+			return next ?? this.scene()?.aspect() ?? 1
+		}
+
+		@ $mol_mem
 		view() {
 			return this.world().inversed()
 		}

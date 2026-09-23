@@ -16,6 +16,16 @@ namespace $ {
 
 	}
 
+	class $bog_gamengine_brain_bt_test_walker extends $bog_gamengine_node {
+
+		close = false
+
+		near() {
+			return this.close
+		}
+
+	}
+
 	class $bog_gamengine_brain_bt_test_act extends $bog_gamengine_brain_bt_act {
 
 		ticks = 0
@@ -85,6 +95,19 @@ namespace $ {
 			root.step( 0.016 )
 			$mol_assert_equal( root.status(), 'run' )
 			slow.result = 'ok'
+			root.step( 0.016 )
+			$mol_assert_equal( root.status(), 'ok' )
+		},
+
+		'cond follows a method of the owner'() {
+			const owner = new $bog_gamengine_brain_bt_test_walker
+			const cond = new $bog_gamengine_brain_bt_cond
+			cond.when( 'near' )
+			const root = bt_test_root( cond )
+			root.owner( owner )
+			root.step( 0.016 )
+			$mol_assert_equal( root.status(), 'fail' )
+			owner.close = true
 			root.step( 0.016 )
 			$mol_assert_equal( root.status(), 'ok' )
 		},

@@ -6,7 +6,61 @@ namespace $ {
 		return tile
 	}
 
+	function $bog_gamengine_phys_tile_test_level() {
+		const tile = new $bog_gamengine_phys_tile
+		tile.map( '..o..\n.###.\n.E...\n#####' )
+		return tile
+	}
+
 	$mol_test({
+
+		'ahead gives the char of the cell in the given direction'() {
+			const tile = $bog_gamengine_phys_tile_test_level()
+			$mol_assert_equal( tile.ahead( 0.5, -2.5, 1, 0, 1 ), 'E' )
+			$mol_assert_equal( tile.ahead( 2.5, -0.5, 0, -1, 1 ), '#' )
+			$mol_assert_equal( tile.ahead( 2.5, -0.5, 1, 0, 1 ), '.' )
+			$mol_assert_equal( tile.ahead( 2.5, -0.5, 1, 0, 3 ), '' )
+		},
+
+		'edge is true past the end of the platform and false above it'() {
+			const tile = $bog_gamengine_phys_tile_test_level()
+			$mol_assert_equal( tile.edge( 2.5, -0.5, 1, 0 ), false )
+			$mol_assert_equal( tile.edge( 3.5, -0.5, 1, 0 ), true )
+			$mol_assert_equal( tile.edge( 1.5, -0.5, -1, 0 ), true )
+		},
+
+		'edge is false when the cell ahead is solid'() {
+			const tile = $bog_gamengine_phys_tile_test_level()
+			$mol_assert_equal( tile.edge( 1.5, -1.5, 1, 0 ), false )
+		},
+
+		'spots gives every cell with the char'() {
+			const tile = $bog_gamengine_phys_tile_test_level()
+			$mol_assert_equal( tile.spots( 'o' ).length, 1 )
+			$mol_assert_equal( tile.spots( 'o' )[ 0 ][ 0 ], 2 )
+			$mol_assert_equal( tile.spots( 'o' )[ 0 ][ 1 ], 0 )
+			$mol_assert_equal( tile.spots( 'E' ).length, 1 )
+			$mol_assert_equal( tile.spots( '#' ).length, 8 )
+			$mol_assert_equal( tile.spots( 'x' ).length, 0 )
+		},
+
+		'chars gives the set of chars of the map'() {
+			const tile = $bog_gamengine_phys_tile_test_level()
+			const chars = tile.chars()
+			$mol_assert_equal( chars.size, 4 )
+			$mol_assert_equal( chars.has( 'o' ), true )
+			$mol_assert_equal( chars.has( 'E' ), true )
+			$mol_assert_equal( chars.has( '#' ), true )
+			$mol_assert_equal( chars.has( 'x' ), false )
+		},
+
+		'spots follow the map'() {
+			const tile = $bog_gamengine_phys_tile_test_level()
+			$mol_assert_equal( tile.spots( 'o' ).length, 1 )
+			tile.map( '.....\n#####' )
+			$mol_assert_equal( tile.spots( 'o' ).length, 0 )
+			$mol_assert_equal( tile.chars().size, 2 )
+		},
 
 		'cell pos is the center of the cell square'() {
 			const tile = $bog_gamengine_phys_tile_test_make()

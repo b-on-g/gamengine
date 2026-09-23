@@ -19,6 +19,10 @@ namespace $ {
 
 	export class $bog_gamengine_brain_bt extends $bog_gamengine_brain_bt_node {
 
+		is_brain() {
+			return true
+		}
+
 		@ $mol_mem
 		owner( next?: $bog_gamengine_node | null ) {
 			return next ?? this.parent()
@@ -39,6 +43,8 @@ namespace $ {
 		cond( name: string ) {
 			const owner = this.owner()
 			if( !owner ) return false
+			const method = ( owner as unknown as Record< string, unknown > )[ name ]
+			if( typeof method === 'function' ) return Boolean( ( method as ()=> unknown ).call( owner ) )
 			const props = owner.props()
 			for( let i = 0; i < props.length; ++i ) {
 				const prop = props[ i ]

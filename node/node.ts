@@ -83,6 +83,10 @@ namespace $ {
 			return false
 		}
 
+		is_brain() {
+			return false
+		}
+
 		scene(): $bog_gamengine_scene | null {
 			const root = this.root()
 			return root.is_scene() ? root as $bog_gamengine_scene : null

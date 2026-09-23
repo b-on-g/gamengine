@@ -19,20 +19,35 @@ namespace $ {
 		@ $mol_mem
 		nodes() {
 			const list = [] as $bog_gamengine_node[]
-			const walk = ( node: $bog_gamengine_node )=> {
+			const brains = ( node: $bog_gamengine_node )=> {
 				const kids = node.kids()
 				for( let i = 0; i < kids.length; ++i ) {
-					if( !kids[ i ].parent() ) kids[ i ].parent( node )
-					list.push( kids[ i ] )
-					walk( kids[ i ] )
+					const kid = kids[ i ]
+					if( !kid.parent() ) kid.parent( node )
+					if( !kid.is_brain() ) continue
+					list.push( kid )
+					rest( kid )
 				}
 			}
-			walk( this )
+			const rest = ( node: $bog_gamengine_node )=> {
+				const kids = node.kids()
+				for( let i = 0; i < kids.length; ++i ) {
+					const kid = kids[ i ]
+					if( !kid.parent() ) kid.parent( node )
+					if( kid.is_brain() ) continue
+					brains( kid )
+					list.push( kid )
+					rest( kid )
+				}
+			}
+			brains( this )
+			rest( this )
 			const auto = this.auto_nodes()
 			for( let i = 0; i < auto.length; ++i ) {
 				if( !auto[ i ].parent() ) auto[ i ].parent( this )
+				brains( auto[ i ] )
 				list.push( auto[ i ] )
-				walk( auto[ i ] )
+				rest( auto[ i ] )
 			}
 			return list as readonly $bog_gamengine_node[]
 		}
@@ -166,6 +181,10 @@ namespace $ {
 				for( let i = 0; i < nodes.length; ++i ) nodes[ i ].step( dt )
 				phys?.step( dt )
 				phys3?.step( dt )
+				if( cam && nodes.indexOf( cam ) < 0 ) {
+					if( !cam.parent() ) cam.parent( this )
+					cam.step( dt )
+				}
 			}
 			if( cam ) {
 				cam.frustum( aspect, this.frustum )
