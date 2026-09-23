@@ -12,7 +12,7 @@ namespace $ {
 
 	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя, клик собирает монету, подпись едет за героем, кадры ходьбы сменяются, джойстик ведёт героя и отпускает'
 
-	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола, ребро ящика с каркасом белое, пол под тёплым светом краснее, блики ярче, пол за столбом в тени'
+	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола, ребро ящика с каркасом белое, пол под тёплым светом краснее, блики ярче, пол за столбом в тени, со свечением строка ярче, отчёт кадра считает батчи'
 
 	export const $bog_gamengine_probe_boxes_page = 'bog/gamengine/demo/-/index.html#!demo=boxes'
 
@@ -219,6 +219,16 @@ namespace $ {
 		if( shine ) shine.click()
 		await frame()
 		await frame()
+		const glow = document.querySelector( '[bog_gamengine_demo_room_glow]' )
+		const row_dim = row_max()
+		if( glow ) glow.click()
+		await frame()
+		await frame()
+		const glow_checked = glow ? glow.getAttribute( 'mol_check_checked' ) : null
+		const row_glow = row_max()
+		if( glow ) glow.click()
+		await frame()
+		await frame()
 		const shadow_at = at( 6, 0, 3.2 )
 		const open_at = at( 7.5, 0, 5 )
 		const shadows = document.querySelector( '[bog_gamengine_demo_room_shadows]' )
@@ -238,8 +248,15 @@ namespace $ {
 		for( let i = 0; i < 60; ++ i ) await frame()
 		const moved = read()
 		document.body.dispatchEvent( new KeyboardEvent( 'keyup', { keyCode: 87, bubbles: true } ) )
+		const profile = document.querySelector( '[bog_gamengine_demo_room_profile]' )
+		if( profile ) profile.click()
+		for( let i = 0; i < 10; ++ i ) await frame()
+		const profile_checked = profile ? profile.getAttribute( 'mol_check_checked' ) : null
+		const report_found = document.body.innerText.match( /\\u0411\\u0430\\u0442\\u0447\\u0438\\s+(\\d+)/ )
+		const report_batches = report_found ? Number( report_found[ 1 ] ) : -1
 		return {
 			webgl: true, loaded: true, start, moved, center, lit, shade, lit_at, shade_at,
+			glow: !!glow, glow_checked, row_dim, row_glow, profile_checked, report_batches,
 			pillar, pillar_at, floor_at, pillar_pixel, floor_pixel,
 			wire: true, wire_checked, edge_at, edge_on, edge_off,
 			light_count, warm_at, cold_at, warm, cold, shine: !!shine, shine_checked, row_plain, row_shine,
@@ -379,6 +396,12 @@ namespace $ {
 		readonly shine_checked?: string | null
 		readonly row_plain?: number
 		readonly row_shine?: number
+		readonly glow?: boolean
+		readonly glow_checked?: string | null
+		readonly row_dim?: number
+		readonly row_glow?: number
+		readonly profile_checked?: string | null
+		readonly report_batches?: number
 		readonly shadow_box?: boolean
 		readonly shadow_checked?: string | null
 		readonly shadow_at?: readonly [ number, number ]
@@ -562,6 +585,11 @@ namespace $ {
 		if( !got.shine ) return fail( 'чекбокса бликов нет в DOM' )
 		if( got.shine_checked !== 'true' ) return fail( 'клик по чекбоксу бликов его не включил' )
 		if( !( got.row_shine! > got.row_plain! ) ) return fail( 'самая светлая точка строки с бликами не ярче, чем без' )
+		if( !got.glow ) return fail( 'чекбокса свечения нет в DOM' )
+		if( got.glow_checked !== 'true' ) return fail( 'клик по чекбоксу свечения его не включил' )
+		if( !( got.row_glow! > got.row_dim! ) ) return fail( 'самая светлая точка строки со свечением не ярче, чем без' )
+		if( got.profile_checked !== 'true' ) return fail( 'чекбокс профиля не включился' )
+		if( !( got.report_batches! > 0 ) ) return fail( 'отчёт кадра не показал батчи' )
 		if( !got.shadow_box ) return fail( 'чекбокса теней нет в DOM' )
 		if( got.shadow_checked === 'true' ) return fail( 'клик по чекбоксу теней его не выключил' )
 		if( !( $bog_gamengine_probe_sum( got.shadow_off! ) - $bog_gamengine_probe_sum( got.shadow_on! ) > 30 ) ) {

@@ -10,9 +10,26 @@ namespace $.$$ {
 				'>': {
 					$mol_view: {
 						alignSelf: 'stretch',
+						flex: {
+							grow: 1,
+						},
 					},
 				},
 			},
+		},
+
+		Foot: {
+			flex: {
+				wrap: 'wrap',
+			},
+		},
+
+		Report: {
+			flex: {
+				wrap: 'wrap',
+				grow: 1,
+			},
+			minWidth: 0,
 		},
 
 	} )

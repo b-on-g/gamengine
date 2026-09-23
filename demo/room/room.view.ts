@@ -31,6 +31,73 @@ namespace $.$$ {
 		}
 
 		@ $mol_mem
+		glow( next = false ) {
+			return next
+		}
+
+		@ $mol_mem
+		profile( next = false ) {
+			return next
+		}
+
+		@ $mol_mem
+		passes() {
+			const tail = [ this.Tone(), this.Vignette() ]
+			return this.glow() ? [ this.Bloom(), ... tail ] : tail
+		}
+
+		@ $mol_mem
+		foot_rows() {
+			return [
+				this.Stat(),
+				this.Walker_stat(),
+				this.Pillar_stat(),
+				this.Light_stat(),
+				... this.profile() ? [ this.Report() ] : [],
+			]
+		}
+
+		report_tick() {
+			return this.report().tick.toFixed( 2 ) + ' мс'
+		}
+
+		report_fill() {
+			return this.report().fill.toFixed( 2 ) + ' мс'
+		}
+
+		report_shadow() {
+			return this.report().shadow.toFixed( 2 ) + ' мс'
+		}
+
+		report_main() {
+			return this.report().main.toFixed( 2 ) + ' мс'
+		}
+
+		report_post() {
+			return this.report().post.toFixed( 2 ) + ' мс'
+		}
+
+		report_batches() {
+			return String( Math.round( this.report().batches ) )
+		}
+
+		report_instances() {
+			return String( Math.round( this.report().instances ) )
+		}
+
+		report_draws() {
+			return String( Math.round( this.report().draws ) )
+		}
+
+		report_triangles() {
+			return String( Math.round( this.report().triangles ) )
+		}
+
+		report_bytes() {
+			return Math.round( this.report().bytes / 1024 ) + ' КБ'
+		}
+
+		@ $mol_mem
 		wall_material() {
 			return this.shine() ? new Float32Array([ 0.8, 0.2, 0, 0 ]) : new Float32Array([ 0, 0.6, 0, 0 ])
 		}
