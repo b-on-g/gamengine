@@ -1,6 +1,6 @@
 # $bog_gamengine
 
-Игровой движок на $mol: 2D и 3D на одном рендерере WebGL2 поверх `$mol_3d`,
+Игровой движок на $mol: 2D и 3D на одном рендерере WebGL2 со своим тонким слоем `gl/`,
 сцена и правила игры на реактивных объектах, интерфейс игры на обычных `view.tree`.
 
 Документы:
@@ -12,7 +12,7 @@
 
 Демо: https://b-on-g.github.io/gamengine/ (страницы [quad](https://b-on-g.github.io/gamengine/#!demo=quad),
 [flat](https://b-on-g.github.io/gamengine/#!demo=flat), [room](https://b-on-g.github.io/gamengine/#!demo=room)).
-До вливания [mol#897](https://github.com/hyoo-ru/mam_mol/pull/897) сборка на CI берёт мол из форка `Dev-cmyser/mam_mol` через `meta` в workflow; после вливания эти две строки из `deploy.yml` убрать.
+Движок не использует `$mol_3d_pane` и программную обвязку мола, только `$mol_3d_mat4`, `$mol_3d_shape`, `$mol_3d_image` и строки `$mol_3d_glsl`; причина в архитектуре, раздел 3.
 
 Управление: WASD и стрелки, Q/E поворот в комнате, клик по монете, звук после первого клика.
 

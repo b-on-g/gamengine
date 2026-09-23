@@ -9612,577 +9612,6 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    class $mol_3d_texture extends $mol_object {
-        api;
-        native;
-        constructor(api, native = api.createTexture()) {
-            super();
-            this.api = api;
-            this.native = native;
-        }
-        destructor() {
-            this.api.deleteTexture(this.native);
-        }
-        fill(color) {
-            this.api.bindTexture(this.api.TEXTURE_2D, this.native);
-            this.api.texImage2D(this.api.TEXTURE_2D, 0, // level
-            this.api.RGBA, // internal
-            1, // width
-            1, // height
-            0, // border
-            this.api.RGBA, // native
-            this.api.UNSIGNED_BYTE, color);
-            return color;
-        }
-        send_one(data) {
-            this.api.bindTexture(this.api.TEXTURE_2D, this.native);
-            this.api.texImage2D(this.api.TEXTURE_2D, 0, // level
-            this.api.RGBA, // internal
-            this.api.RGBA, // native
-            this.api.UNSIGNED_BYTE, data);
-            this.api.texParameteri(this.api.TEXTURE_2D, this.api.TEXTURE_MIN_FILTER, this.api.LINEAR_MIPMAP_LINEAR);
-            this.api.texParameteri(this.api.TEXTURE_2D, this.api.TEXTURE_MAG_FILTER, this.api.LINEAR);
-            this.api.generateMipmap(this.api.TEXTURE_2D);
-            return data;
-        }
-        send_multi(data) {
-            this.api.bindTexture(this.api.TEXTURE_2D_ARRAY, this.native);
-            const first = data[0];
-            const size = 'displayWidth' in first ? first.displayWidth : first.width;
-            this.api.texImage3D(this.api.TEXTURE_2D_ARRAY, 0, this.api.RGBA, size, size, data.length, 0, this.api.RGBA, this.api.UNSIGNED_BYTE, null);
-            for (let i = 0; i < data.length; ++i) {
-                this.api.texSubImage3D(this.api.TEXTURE_2D_ARRAY, 0, // level
-                0, // x
-                0, // y
-                i, // z
-                size, size, 1, // depth
-                this.api.RGBA, this.api.UNSIGNED_BYTE, data[i]);
-            }
-            const anisotropic = this.api.getExtension('EXT_texture_filter_anisotropic');
-            const max = this.api.getParameter(anisotropic.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
-            this.api.texParameterf(this.api.TEXTURE_2D_ARRAY, anisotropic.TEXTURE_MAX_ANISOTROPY_EXT, max);
-            this.api.texParameteri(this.api.TEXTURE_2D_ARRAY, this.api.TEXTURE_MIN_FILTER, this.api.LINEAR_MIPMAP_LINEAR);
-            this.api.texParameteri(this.api.TEXTURE_2D_ARRAY, this.api.TEXTURE_MAG_FILTER, this.api.LINEAR);
-            this.api.pixelStorei(this.api.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-            this.api.blendFunc(this.api.ONE, this.api.ONE_MINUS_SRC_ALPHA);
-            this.api.generateMipmap(this.api.TEXTURE_2D_ARRAY);
-            return data;
-        }
-    }
-    $.$mol_3d_texture = $mol_3d_texture;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $mol_3d_glob extends Object {
-        api;
-        location;
-        constructor(api, location) {
-            super();
-            this.api = api;
-            this.location = location;
-        }
-        vector_int(data, offset = 0, length = data.length - offset) {
-            switch (length) {
-                case 4:
-                    this.api.uniform4iv(this.location, data, offset, length);
-                    break;
-                case 3:
-                    this.api.uniform3iv(this.location, data, offset, length);
-                    break;
-                case 2:
-                    this.api.uniform2iv(this.location, data, offset, length);
-                    break;
-                case 1:
-                    this.api.uniform1iv(this.location, data, offset, length);
-                    break;
-                default: throw new Error(`Wrong matrix data length (${length})`);
-            }
-            return data;
-        }
-        vector_uint(data, offset = 0, length = data.length - offset) {
-            switch (length) {
-                case 4:
-                    this.api.uniform4uiv(this.location, data, offset, length);
-                    break;
-                case 3:
-                    this.api.uniform3uiv(this.location, data, offset, length);
-                    break;
-                case 2:
-                    this.api.uniform2uiv(this.location, data, offset, length);
-                    break;
-                case 1:
-                    this.api.uniform1uiv(this.location, data, offset, length);
-                    break;
-                default: throw new Error(`Wrong matrix data length (${length})`);
-            }
-            return data;
-        }
-        vector_float(data, offset = 0, length = data.length - offset) {
-            switch (length) {
-                case 4:
-                    this.api.uniform4fv(this.location, data, offset, length);
-                    break;
-                case 3:
-                    this.api.uniform3fv(this.location, data, offset, length);
-                    break;
-                case 2:
-                    this.api.uniform2fv(this.location, data, offset, length);
-                    break;
-                case 1:
-                    this.api.uniform1fv(this.location, data, offset, length);
-                    break;
-                default: throw new Error(`Wrong matrix data length (${length})`);
-            }
-            return data;
-        }
-        matrix(data, transpose = false, offset = 0, length = data.length - offset) {
-            switch (length) {
-                case 16:
-                    this.api.uniformMatrix4fv(this.location, transpose, data, offset, length);
-                    break;
-                case 12:
-                    this.api.uniformMatrix4x3fv(this.location, transpose, data, offset, length);
-                    break;
-                case 9:
-                    this.api.uniformMatrix3fv(this.location, transpose, data, offset, length);
-                    break;
-                case 8:
-                    this.api.uniformMatrix4x2fv(this.location, transpose, data, offset, length);
-                    break;
-                case 6:
-                    this.api.uniformMatrix3x2fv(this.location, transpose, data, offset, length);
-                    break;
-                case 2:
-                    this.api.uniformMatrix2fv(this.location, transpose, data, offset, length);
-                    break;
-                default: throw new Error(`Wrong matrix data length (${length})`);
-            }
-            return data;
-        }
-        texture() {
-            return new $mol_3d_texture(this.api);
-        }
-    }
-    __decorate([
-        $mol_mem
-    ], $mol_3d_glob.prototype, "texture", null);
-    $.$mol_3d_glob = $mol_3d_glob;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $mol_3d_buffer extends Object {
-        api;
-        native;
-        constructor(api, native) {
-            super();
-            this.api = api;
-            this.native = native;
-        }
-        send(data) {
-            this.api.bindBuffer(this.api.ARRAY_BUFFER, this.native);
-            const size = data.reduce((sum, buf) => sum + buf.byteLength, 0);
-            this.api.bufferData(this.api.ARRAY_BUFFER, size, this.api.DYNAMIC_DRAW);
-            let offset = 0;
-            for (let buf of data) {
-                this.api.bufferSubData(this.api.ARRAY_BUFFER, offset, buf, 0);
-                offset += buf.byteLength;
-            }
-            return data;
-        }
-    }
-    $.$mol_3d_buffer = $mol_3d_buffer;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    const float_size = 4;
-    class $mol_3d_param extends Object {
-        api;
-        location;
-        constructor(api, location) {
-            super();
-            this.api = api;
-            this.location = location;
-        }
-        vector(vals) {
-            const buffer = this.api.createBuffer();
-            this.api.bindBuffer(this.api.ARRAY_BUFFER, buffer);
-            this.api.enableVertexAttribArray(this.location);
-            this.api.vertexAttribPointer(this.location, vals, this.api.FLOAT, false, 0, 0);
-            return new $mol_3d_buffer(this.api, buffer);
-        }
-        vectors(vals) {
-            const buffer = this.api.createBuffer();
-            this.api.bindBuffer(this.api.ARRAY_BUFFER, buffer);
-            this.api.enableVertexAttribArray(this.location);
-            this.api.vertexAttribPointer(this.location, vals, this.api.FLOAT, false, 0, 0);
-            this.api.vertexAttribDivisor(this.location, 1);
-            return new $mol_3d_buffer(this.api, buffer);
-        }
-        vectors_byte(vals) {
-            const buffer = this.api.createBuffer();
-            this.api.bindBuffer(this.api.ARRAY_BUFFER, buffer);
-            this.api.enableVertexAttribArray(this.location);
-            this.api.vertexAttribPointer(this.location, vals, this.api.UNSIGNED_BYTE, false, 0, 0);
-            this.api.vertexAttribDivisor(this.location, 1);
-            return new $mol_3d_buffer(this.api, buffer);
-        }
-        vectors_uint(vals) {
-            const buffer = this.api.createBuffer();
-            this.api.bindBuffer(this.api.ARRAY_BUFFER, buffer);
-            this.api.enableVertexAttribArray(this.location);
-            this.api.vertexAttribPointer(this.location, vals, this.api.UNSIGNED_INT, false, 0, 0);
-            this.api.vertexAttribDivisor(this.location, 1);
-            return new $mol_3d_buffer(this.api, buffer);
-        }
-        matrix([cols, rows]) {
-            const matrix_size = rows * cols * float_size;
-            const buffer = this.api.createBuffer();
-            this.api.bindBuffer(this.api.ARRAY_BUFFER, buffer);
-            for (let row = 0; row < rows; ++row) {
-                const loc = this.location + row;
-                const offset = row * cols * float_size;
-                this.api.enableVertexAttribArray(loc);
-                this.api.vertexAttribPointer(loc, cols, this.api.FLOAT, false, matrix_size, offset);
-            }
-            return new $mol_3d_buffer(this.api, buffer);
-        }
-        matrices([cols, rows]) {
-            const matrix_size = rows * cols * float_size;
-            const buffer = this.api.createBuffer();
-            this.api.bindBuffer(this.api.ARRAY_BUFFER, buffer);
-            for (let row = 0; row < rows; ++row) {
-                const loc = this.location + row;
-                const offset = row * cols * float_size;
-                this.api.enableVertexAttribArray(loc);
-                this.api.vertexAttribPointer(loc, cols, this.api.FLOAT, false, matrix_size, offset);
-                this.api.vertexAttribDivisor(loc, 1);
-            }
-            return new $mol_3d_buffer(this.api, buffer);
-        }
-    }
-    __decorate([
-        $mol_mem_key
-    ], $mol_3d_param.prototype, "vector", null);
-    __decorate([
-        $mol_mem_key
-    ], $mol_3d_param.prototype, "vectors", null);
-    __decorate([
-        $mol_mem_key
-    ], $mol_3d_param.prototype, "vectors_byte", null);
-    __decorate([
-        $mol_mem_key
-    ], $mol_3d_param.prototype, "vectors_uint", null);
-    __decorate([
-        $mol_mem_key
-    ], $mol_3d_param.prototype, "matrix", null);
-    __decorate([
-        $mol_mem_key
-    ], $mol_3d_param.prototype, "matrices", null);
-    $.$mol_3d_param = $mol_3d_param;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $mol_3d_geometry extends Object {
-        api;
-        vertexes;
-        constructor(api, vertexes = api.createVertexArray()) {
-            super();
-            this.api = api;
-            this.vertexes = vertexes;
-        }
-        destructor() {
-            this.api.deleteVertexArray(this.vertexes);
-        }
-        size = 0;
-        count = 1;
-        use(task) {
-            try {
-                this.api.bindVertexArray(this.vertexes);
-                task(this);
-                return this;
-            }
-            finally {
-                this.api.bindVertexArray(null);
-            }
-        }
-    }
-    $.$mol_3d_geometry = $mol_3d_geometry;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $mol_3d_program extends Object {
-        api;
-        native;
-        constructor(api, native) {
-            api.enable(api.CULL_FACE); // hide back sides
-            api.enable(api.DEPTH_TEST); // order indepenent overlap
-            api.enable(api.SCISSOR_TEST); // allow partial render
-            api.enable(api.BLEND); // allow texture alpha
-            super();
-            this.api = api;
-            this.native = native;
-        }
-        glob(name) {
-            const location = this.api.getUniformLocation(this.native, name);
-            return new $mol_3d_glob(this.api, location);
-        }
-        // @ $mol_mem_key
-        param(name) {
-            const location = this.api.getAttribLocation(this.native, name);
-            if (location === -1)
-                return null;
-            return new $mol_3d_param(this.api, location);
-        }
-        geometry(id) {
-            return new $mol_3d_geometry(this.api);
-        }
-        use(task) {
-            try {
-                this.api.useProgram(this.native);
-                task(this);
-                return this;
-            }
-            finally {
-                this.api.useProgram(null);
-            }
-        }
-        point(size, offset = 0) {
-            this.api.drawArrays(this.api.POINTS, offset, size);
-        }
-        line(size, offset = 0) {
-            this.api.drawArrays(this.api.LINES, offset, size);
-        }
-        triangle(size, offset = 0) {
-            this.api.drawArrays(this.api.TRIANGLES, offset, size);
-        }
-        strip(size, offset = 0) {
-            this.api.drawArrays(this.api.TRIANGLE_STRIP, offset, size);
-        }
-        points(first, vertices, instances = 1) {
-            this.api.drawArraysInstanced(this.api.POINTS, first, vertices, instances);
-        }
-        lines(first, vertices, instances = 1) {
-            this.api.drawArraysInstanced(this.api.LINE_STRIP, first, vertices, instances);
-        }
-        strips(first, vertices, instances = 1) {
-            this.api.drawArraysInstanced(this.api.TRIANGLE_STRIP, first, vertices, instances);
-        }
-    }
-    __decorate([
-        $mol_mem_key
-    ], $mol_3d_program.prototype, "glob", null);
-    __decorate([
-        $mol_mem_key
-    ], $mol_3d_program.prototype, "geometry", null);
-    $.$mol_3d_program = $mol_3d_program;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $mol_3d_context extends Object {
-        native;
-        constructor(native) {
-            super();
-            this.native = native;
-        }
-        shader(type, code) {
-            // console.log( 'shader', code )
-            const gl = this.native;
-            const shader = gl.createShader(type);
-            gl.shaderSource(shader, code);
-            gl.compileShader(shader);
-            const ok = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
-            if (ok)
-                return shader;
-            const log = gl.getShaderInfoLog(shader);
-            gl.deleteShader(shader);
-            throw new Error(String(log));
-        }
-        func(name, face) {
-            return this.program(face, $mol_3d_glsl_both + $mol_3d_glsl_vert + `void main() { ${name}(); }`, $mol_3d_glsl_both + $mol_3d_glsl_frag + `void main() { ${name}(); }`);
-        }
-        program(face, vertex, fragment) {
-            const gl = this.native;
-            const program = gl.createProgram();
-            const prefix = `#version 300 es
-				precision highp float;
-				precision highp sampler2D;
-				precision highp sampler2DArray;
-			`;
-            let revert = prefix;
-            let refrag = prefix;
-            for (const name in face.glob ?? {}) {
-                revert += `uniform ${face.glob[name]} ${name};\n`;
-                refrag += `uniform ${face.glob[name]} ${name};\n`;
-            }
-            for (const name in face.input ?? {}) {
-                revert += `in ${face.input[name]} ${name};\n`;
-            }
-            for (const name in face.pipe ?? {}) {
-                revert += `out ${face.pipe[name]} ${name};\n`;
-                refrag += `in ${face.pipe[name]} ${name};\n`;
-            }
-            for (const name in face.output ?? {}) {
-                refrag += `out ${face.output[name]} ${name};\n`;
-            }
-            gl.attachShader(program, this.shader(gl.VERTEX_SHADER, revert + vertex));
-            gl.attachShader(program, this.shader(gl.FRAGMENT_SHADER, refrag + fragment));
-            gl.linkProgram(program);
-            var ok = gl.getProgramParameter(program, gl.LINK_STATUS);
-            if (ok)
-                return new $mol_3d_program(this.native, program);
-            const log = gl.getProgramInfoLog(program);
-            gl.deleteProgram(program);
-            throw new Error(String(log));
-        }
-    }
-    $.$mol_3d_context = $mol_3d_context;
-})($ || ($ = {}));
-
-;
-	($.$mol_3d_pane) = class $mol_3d_pane extends ($.$mol_view) {
-		context_native(){
-			const obj = new this.$.WebGL2RenderingContext();
-			return obj;
-		}
-		width(){
-			return 0;
-		}
-		height(){
-			return 0;
-		}
-		dom_name(){
-			return "canvas";
-		}
-		context(){
-			const obj = new this.$.$mol_3d_context((this.context_native()));
-			return obj;
-		}
-		field(){
-			return {
-				...(super.field()), 
-				"width": (this.width()), 
-				"height": (this.height())
-			};
-		}
-		paint(){
-			return null;
-		}
-	};
-	($mol_mem(($.$mol_3d_pane.prototype), "context_native"));
-	($mol_mem(($.$mol_3d_pane.prototype), "context"));
-
-
-;
-"use strict";
-
-
-;
-"use strict";
-var $;
-(function ($) {
-    var $$;
-    (function ($$) {
-        class $mol_3d_pane extends $.$mol_3d_pane {
-            context() {
-                const canvas = this.dom_node();
-                let context = canvas.getContext('webgl2');
-                // context = new Proxy( context, {
-                // 	get( gl, f ) {
-                // 		let v = gl[f]
-                // 		if( typeof v !== 'function' ) return v
-                // 		return function( ... args: any[] ) {
-                // 			let res
-                // 			try {
-                // 				return res = v.call( gl, ... args )
-                // 			} finally {
-                // 				console.debug( v.name, '(', ... args, ')=>', res )
-                // 			}
-                // 		}
-                // 	}
-                // } )
-                return new $mol_3d_context(context);
-            }
-            width() {
-                return Math.ceil((this.view_rect()?.width ?? 0) * this.$.$mol_dom_context.devicePixelRatio);
-            }
-            height() {
-                return Math.ceil((this.view_rect()?.height ?? 0) * this.$.$mol_dom_context.devicePixelRatio);
-            }
-            viewport() {
-                const viewport = [0, 0, this.width(), this.height()];
-                this.context().native.viewport(...viewport);
-                return viewport;
-            }
-            scissor() {
-                const scissor = this.viewport();
-                this.context().native.scissor(...scissor);
-                return scissor;
-            }
-            render() {
-                super.render();
-                this.viewport();
-                this.scissor();
-                this.paint();
-            }
-        }
-        __decorate([
-            $mol_mem
-        ], $mol_3d_pane.prototype, "context", null);
-        __decorate([
-            $mol_mem
-        ], $mol_3d_pane.prototype, "width", null);
-        __decorate([
-            $mol_mem
-        ], $mol_3d_pane.prototype, "height", null);
-        __decorate([
-            $mol_mem
-        ], $mol_3d_pane.prototype, "viewport", null);
-        __decorate([
-            $mol_mem
-        ], $mol_3d_pane.prototype, "scissor", null);
-        $$.$mol_3d_pane = $mol_3d_pane;
-    })($$ = $.$$ || ($.$$ = {}));
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    var $$;
-    (function ($$) {
-        $mol_style_define($mol_3d_pane, {
-            alignSelf: 'stretch',
-            justifySelf: 'stretch',
-            flex: {
-                grow: 1,
-                shrink: 1,
-            },
-        });
-    })($$ = $.$$ || ($.$$ = {}));
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
     class $bog_gamengine_clock extends $mol_object2 {
         frames = 0;
         now_last = NaN;
@@ -10241,6 +9670,180 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    const prefix = `#version 300 es
+				precision highp float;
+				precision highp sampler2D;
+				precision highp sampler2DArray;
+			`;
+    function $bog_gamengine_gl_source(face, vert, frag) {
+        let revert = prefix;
+        let refrag = prefix;
+        for (const name in face.glob ?? {}) {
+            revert += `uniform ${face.glob[name]} ${name};\n`;
+            refrag += `uniform ${face.glob[name]} ${name};\n`;
+        }
+        for (const name in face.input ?? {}) {
+            revert += `in ${face.input[name]} ${name};\n`;
+        }
+        for (const name in face.pipe ?? {}) {
+            revert += `out ${face.pipe[name]} ${name};\n`;
+            refrag += `in ${face.pipe[name]} ${name};\n`;
+        }
+        for (const name in face.output ?? {}) {
+            refrag += `out ${face.output[name]} ${name};\n`;
+        }
+        return { vert: revert + vert, frag: refrag + frag };
+    }
+    $.$bog_gamengine_gl_source = $bog_gamengine_gl_source;
+    function $bog_gamengine_gl_shader(gl, type, code) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, code);
+        gl.compileShader(shader);
+        if (gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+            return shader;
+        const log = gl.getShaderInfoLog(shader);
+        gl.deleteShader(shader);
+        throw new Error(String(log));
+    }
+    $.$bog_gamengine_gl_shader = $bog_gamengine_gl_shader;
+    class $bog_gamengine_gl_program extends Object {
+        gl;
+        native;
+        uniforms = new Map();
+        constructor(gl, face, vert, frag) {
+            super();
+            this.gl = gl;
+            const source = $bog_gamengine_gl_source(face, vert, frag);
+            const program = gl.createProgram();
+            gl.attachShader(program, $bog_gamengine_gl_shader(gl, gl.VERTEX_SHADER, source.vert));
+            gl.attachShader(program, $bog_gamengine_gl_shader(gl, gl.FRAGMENT_SHADER, source.frag));
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                const log = gl.getProgramInfoLog(program);
+                gl.deleteProgram(program);
+                throw new Error(String(log));
+            }
+            this.native = program;
+        }
+        uniform(name) {
+            let location = this.uniforms.get(name);
+            if (location === undefined) {
+                location = this.gl.getUniformLocation(this.native, name);
+                this.uniforms.set(name, location);
+            }
+            return location;
+        }
+        attribute(name) {
+            const location = this.gl.getAttribLocation(this.native, name);
+            return location === -1 ? null : location;
+        }
+    }
+    $.$bog_gamengine_gl_program = $bog_gamengine_gl_program;
+    class $bog_gamengine_gl_buffer extends Object {
+        gl;
+        native;
+        constructor(gl, location, size, divisor) {
+            super();
+            this.gl = gl;
+            this.native = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.native);
+            if (size === 16) {
+                for (let row = 0; row < 4; ++row) {
+                    gl.enableVertexAttribArray(location + row);
+                    gl.vertexAttribPointer(location + row, 4, gl.FLOAT, false, 64, row * 16);
+                    gl.vertexAttribDivisor(location + row, divisor);
+                }
+            }
+            else {
+                gl.enableVertexAttribArray(location);
+                gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
+                gl.vertexAttribDivisor(location, divisor);
+            }
+        }
+        send(data) {
+            const gl = this.gl;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.native);
+            gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+            return data;
+        }
+        reserve(bytes) {
+            const gl = this.gl;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.native);
+            gl.bufferData(gl.ARRAY_BUFFER, bytes, gl.DYNAMIC_DRAW);
+            return bytes;
+        }
+    }
+    $.$bog_gamengine_gl_buffer = $bog_gamengine_gl_buffer;
+    function $bog_gamengine_gl_texture_array(gl, images, size) {
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+        gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA, size, size, images.length, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        for (let i = 0; i < images.length; ++i) {
+            gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, size, size, 1, gl.RGBA, gl.UNSIGNED_BYTE, images[i]);
+        }
+        const anisotropic = gl.getExtension('EXT_texture_filter_anisotropic');
+        if (anisotropic) {
+            const max = gl.getParameter(anisotropic.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+            gl.texParameterf(gl.TEXTURE_2D_ARRAY, anisotropic.TEXTURE_MAX_ANISOTROPY_EXT, max);
+        }
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+        return texture;
+    }
+    $.$bog_gamengine_gl_texture_array = $bog_gamengine_gl_texture_array;
+    function $bog_gamengine_gl_uniform_matrix(gl, location, data) {
+        if (!location)
+            return data;
+        switch (data.length) {
+            case 16:
+                gl.uniformMatrix4fv(location, false, data);
+                break;
+            case 9:
+                gl.uniformMatrix3fv(location, false, data);
+                break;
+            case 4:
+                gl.uniformMatrix2fv(location, false, data);
+                break;
+            default: throw new Error(`Wrong matrix data length (${data.length})`);
+        }
+        return data;
+    }
+    $.$bog_gamengine_gl_uniform_matrix = $bog_gamengine_gl_uniform_matrix;
+    function $bog_gamengine_gl_uniform_vector(gl, location, data) {
+        if (!location)
+            return data;
+        switch (data.length) {
+            case 4:
+                gl.uniform4fv(location, data);
+                break;
+            case 3:
+                gl.uniform3fv(location, data);
+                break;
+            case 2:
+                gl.uniform2fv(location, data);
+                break;
+            case 1:
+                gl.uniform1fv(location, data);
+                break;
+            default: throw new Error(`Wrong vector data length (${data.length})`);
+        }
+        return data;
+    }
+    $.$bog_gamengine_gl_uniform_vector = $bog_gamengine_gl_uniform_vector;
+    function $bog_gamengine_gl_uniform_int(gl, location, value) {
+        if (location)
+            gl.uniform1i(location, value);
+        return value;
+    }
+    $.$bog_gamengine_gl_uniform_int = $bog_gamengine_gl_uniform_int;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     class $bog_gamengine_shader extends $mol_object2 {
         programs = new WeakMap();
         face() {
@@ -10261,12 +9864,12 @@ var $;
                 frag: $mol_3d_glsl_both + this.frag(),
             };
         }
-        program(context) {
-            let program = this.programs.get(context);
+        program(gl) {
+            let program = this.programs.get(gl);
             if (!program) {
                 const sources = this.sources();
-                program = context.program(this.face(), sources.vert, sources.frag);
-                this.programs.set(context, program);
+                program = new $bog_gamengine_gl_program(gl, this.face(), sources.vert, sources.frag);
+                this.programs.set(gl, program);
             }
             return program;
         }
@@ -11199,7 +10802,23 @@ var $;
 })($ || ($ = {}));
 
 ;
-	($.$bog_gamengine_draw) = class $bog_gamengine_draw extends ($.$mol_3d_pane) {
+	($.$bog_gamengine_draw) = class $bog_gamengine_draw extends ($.$mol_view) {
+		width(){
+			return 0;
+		}
+		height(){
+			return 0;
+		}
+		dom_name(){
+			return "canvas";
+		}
+		field(){
+			return {
+				...(super.field()), 
+				"width": (this.width()), 
+				"height": (this.height())
+			};
+		}
 		scene(){
 			const obj = new this.$.$bog_gamengine_scene();
 			return obj;
@@ -11238,7 +10857,6 @@ var $;
         class $bog_gamengine_draw extends $.$bog_gamengine_draw {
             slots_all = new WeakMap();
             textures_all = new WeakMap();
-            unit = new Int32Array([0]);
             ambient_vec = new Float32Array(1);
             gaps = new Float32Array(stat_window);
             ticks = new Float32Array(stat_window);
@@ -11246,8 +10864,31 @@ var $;
             paint_at = 0;
             context() {
                 const canvas = this.dom_node();
-                const native = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
-                return new $mol_3d_context(native);
+                return canvas.getContext('webgl2', { preserveDrawingBuffer: true });
+            }
+            width() {
+                return Math.ceil((this.view_rect()?.width ?? 0) * this.$.$mol_dom_context.devicePixelRatio);
+            }
+            height() {
+                return Math.ceil((this.view_rect()?.height ?? 0) * this.$.$mol_dom_context.devicePixelRatio);
+            }
+            viewport() {
+                const viewport = [0, 0, this.width(), this.height()];
+                this.context().viewport(...viewport);
+                return viewport;
+            }
+            scissor() {
+                const scissor = this.viewport();
+                const gl = this.context();
+                gl.enable(gl.SCISSOR_TEST);
+                gl.scissor(...scissor);
+                return scissor;
+            }
+            render() {
+                super.render();
+                this.viewport();
+                this.scissor();
+                this.paint();
             }
             light_dir(next) {
                 return next ?? new Float32Array([0.4, 1, 0.6]);
@@ -11270,10 +10911,9 @@ var $;
                 const found = this.slots_all.get(batch);
                 if (found)
                     return found;
-                const context = this.context();
-                const gl = context.native;
+                const gl = this.context();
                 const shader = batch.shader();
-                const program = shader.program(context);
+                const program = shader.program(gl);
                 const globs = shader.face().glob ?? {};
                 const shape = batch.shape();
                 if (!this.shape_ready(shape))
@@ -11283,38 +10923,46 @@ var $;
                 const slot = {
                     batch,
                     program,
-                    proj: program.glob('proj'),
-                    view: program.glob('view'),
-                    light_dir: 'light_dir' in globs ? program.glob('light_dir') : null,
-                    ambient: 'ambient' in globs ? program.glob('ambient') : null,
+                    proj: program.uniform('proj'),
+                    view: program.uniform('view'),
+                    light_dir: 'light_dir' in globs ? program.uniform('light_dir') : null,
+                    ambient: 'ambient' in globs ? program.uniform('ambient') : null,
                     depth: shader.depth(),
-                    geometry: new $mol_3d_geometry(gl),
+                    vao: gl.createVertexArray(),
                     trans: null,
                     tint: null,
                     layer: null,
                     uv: null,
                     atlas,
-                    sampler: atlas ? program.glob('atlas') : null,
+                    sampler: atlas ? program.uniform('atlas') : null,
                     tex: atlas ? this.tex(atlas) : null,
                     triangles: shape.mode() === 'triangles',
                     size: shape.size(),
                     cap,
                 };
-                slot.geometry.use(() => {
-                    program.param('vertex').vector(3).send([shape.geometry()]);
-                    program.param('uv')?.vector(2).send([shape.skin()]);
-                    program.param('normal')?.vector(3).send([shape.normals()]);
-                    slot.trans = program.param('inst_trans').matrices([4, 4]);
-                    gl.bufferData(gl.ARRAY_BUFFER, cap * 64, gl.DYNAMIC_DRAW);
-                    slot.tint = program.param('inst_tint').vectors(4);
-                    gl.bufferData(gl.ARRAY_BUFFER, cap * 16, gl.DYNAMIC_DRAW);
-                    slot.layer = program.param('inst_layer')?.vectors(1) ?? null;
-                    if (slot.layer)
-                        gl.bufferData(gl.ARRAY_BUFFER, cap * 4, gl.DYNAMIC_DRAW);
-                    slot.uv = program.param('inst_uv')?.vectors(4) ?? null;
-                    if (slot.uv)
-                        gl.bufferData(gl.ARRAY_BUFFER, cap * 16, gl.DYNAMIC_DRAW);
-                });
+                gl.bindVertexArray(slot.vao);
+                new $bog_gamengine_gl_buffer(gl, program.attribute('vertex'), 3, 0).send(shape.geometry());
+                const uv = program.attribute('uv');
+                if (uv !== null)
+                    new $bog_gamengine_gl_buffer(gl, uv, 2, 0).send(shape.skin());
+                const normal = program.attribute('normal');
+                if (normal !== null)
+                    new $bog_gamengine_gl_buffer(gl, normal, 3, 0).send(shape.normals());
+                slot.trans = new $bog_gamengine_gl_buffer(gl, program.attribute('inst_trans'), 16, 1);
+                slot.trans.reserve(cap * 64);
+                slot.tint = new $bog_gamengine_gl_buffer(gl, program.attribute('inst_tint'), 4, 1);
+                slot.tint.reserve(cap * 16);
+                const layer = program.attribute('inst_layer');
+                if (layer !== null) {
+                    slot.layer = new $bog_gamengine_gl_buffer(gl, layer, 1, 1);
+                    slot.layer.reserve(cap * 4);
+                }
+                const inst_uv = program.attribute('inst_uv');
+                if (inst_uv !== null) {
+                    slot.uv = new $bog_gamengine_gl_buffer(gl, inst_uv, 4, 1);
+                    slot.uv.reserve(cap * 16);
+                }
+                gl.bindVertexArray(null);
                 this.slots_all.set(batch, slot);
                 return slot;
             }
@@ -11333,33 +10981,28 @@ var $;
                 const found = this.textures_all.get(atlas);
                 if (found)
                     return found;
-                const tex = {
-                    texture: new $mol_3d_texture(this.context().native),
-                    sent: false,
-                };
+                const tex = { native: null };
                 this.textures_all.set(atlas, tex);
                 return tex;
             }
             textures() {
-                const gl = this.context().native;
+                const gl = this.context();
                 const slots = this.slots();
                 let sent = 0;
                 for (let i = 0; i < slots.length; ++i) {
                     const slot = slots[i];
-                    if (!slot.atlas || slot.tex.sent)
+                    if (!slot.atlas || slot.tex.native)
                         continue;
                     if (!slot.atlas.ready())
                         continue;
-                    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-                    slot.tex.texture.send_multi(slot.atlas.images());
-                    slot.tex.sent = true;
+                    slot.tex.native = $bog_gamengine_gl_texture_array(gl, slot.atlas.images(), slot.atlas.size());
                     ++sent;
                 }
                 return sent;
             }
             paint() {
                 this.scene().step();
-                const gl = this.context().native;
+                const gl = this.context();
                 const slots = this.slots();
                 this.textures();
                 const proj = this.proj();
@@ -11381,7 +11024,7 @@ var $;
                 const count = batch.count;
                 if (!count)
                     return;
-                if (slot.tex && !slot.tex.sent)
+                if (slot.tex && !slot.tex.native)
                     return;
                 const grown = batch.cap > slot.cap;
                 if (slot.depth) {
@@ -11394,18 +11037,16 @@ var $;
                     gl.disable(gl.CULL_FACE);
                 }
                 gl.useProgram(slot.program.native);
-                slot.proj.matrix(proj);
-                slot.view.matrix(view);
-                if (slot.light_dir)
-                    slot.light_dir.vector_float(light_dir);
-                if (slot.ambient)
-                    slot.ambient.vector_float(this.ambient_vec);
+                $bog_gamengine_gl_uniform_matrix(gl, slot.proj, proj);
+                $bog_gamengine_gl_uniform_matrix(gl, slot.view, view);
+                $bog_gamengine_gl_uniform_vector(gl, slot.light_dir, light_dir);
+                $bog_gamengine_gl_uniform_vector(gl, slot.ambient, this.ambient_vec);
                 if (slot.tex) {
                     gl.activeTexture(gl.TEXTURE0);
-                    gl.bindTexture(gl.TEXTURE_2D_ARRAY, slot.tex.texture.native);
-                    slot.sampler.vector_int(this.unit);
+                    gl.bindTexture(gl.TEXTURE_2D_ARRAY, slot.tex.native);
+                    $bog_gamengine_gl_uniform_int(gl, slot.sampler, 0);
                 }
-                gl.bindVertexArray(slot.geometry.vertexes);
+                gl.bindVertexArray(slot.vao);
                 gl.bindBuffer(gl.ARRAY_BUFFER, slot.trans.native);
                 if (grown)
                     gl.bufferData(gl.ARRAY_BUFFER, batch.cap * 64, gl.DYNAMIC_DRAW);
@@ -11431,7 +11072,7 @@ var $;
                 if (slot.triangles)
                     gl.drawArraysInstanced(gl.TRIANGLES, 0, slot.size, count);
                 else
-                    slot.program.strips(0, slot.size, count);
+                    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, slot.size, count);
             }
             measure() {
                 const now = performance.now();
@@ -11459,6 +11100,18 @@ var $;
         ], $bog_gamengine_draw.prototype, "context", null);
         __decorate([
             $mol_mem
+        ], $bog_gamengine_draw.prototype, "width", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_draw.prototype, "height", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_draw.prototype, "viewport", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_draw.prototype, "scissor", null);
+        __decorate([
+            $mol_mem
         ], $bog_gamengine_draw.prototype, "light_dir", null);
         __decorate([
             $mol_mem
@@ -11483,9 +11136,13 @@ var $;
     var $$;
     (function ($$) {
         $mol_style_define($bog_gamengine_draw, {
+            alignSelf: 'stretch',
+            justifySelf: 'stretch',
             minWidth: 0,
             minHeight: 0,
             flex: {
+                grow: 1,
+                shrink: 1,
                 basis: 0,
             },
         });

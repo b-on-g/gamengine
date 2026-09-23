@@ -3779,140 +3779,6 @@ declare namespace $ {
 }
 
 declare namespace $ {
-    class $mol_3d_texture extends $mol_object {
-        readonly api: WebGL2RenderingContext;
-        readonly native: WebGLTexture;
-        constructor(api: WebGL2RenderingContext, native?: WebGLTexture);
-        destructor(): void;
-        fill(color: Uint8Array): Uint8Array<ArrayBufferLike>;
-        send_one(data: TexImageSource): TexImageSource;
-        send_multi(data: TexImageSource[]): TexImageSource[];
-    }
-}
-
-declare namespace $ {
-    class $mol_3d_glob extends Object {
-        readonly api: WebGL2RenderingContext;
-        readonly location: WebGLUniformLocation;
-        constructor(api: WebGL2RenderingContext, location: WebGLUniformLocation);
-        vector_int(data: Int32List, offset?: number, length?: number): Int32List;
-        vector_uint(data: Int32List, offset?: number, length?: number): Int32List;
-        vector_float(data: Float32List, offset?: number, length?: number): Float32List;
-        matrix(data: Float32List, transpose?: boolean, offset?: number, length?: number): Float32List;
-        texture(): $mol_3d_texture;
-    }
-}
-
-declare namespace $ {
-    class $mol_3d_buffer extends Object {
-        readonly api: WebGL2RenderingContext;
-        readonly native: WebGLBuffer;
-        constructor(api: WebGL2RenderingContext, native: WebGLBuffer);
-        send(data: ArrayBufferView[]): ArrayBufferView<ArrayBufferLike>[];
-    }
-}
-
-declare namespace $ {
-    class $mol_3d_param extends Object {
-        readonly api: WebGL2RenderingContext;
-        readonly location: number;
-        constructor(api: WebGL2RenderingContext, location: number);
-        vector(vals: number): $mol_3d_buffer;
-        vectors(vals: number): $mol_3d_buffer;
-        vectors_byte(vals: number): $mol_3d_buffer;
-        vectors_uint(vals: number): $mol_3d_buffer;
-        matrix([cols, rows]: [number, number]): $mol_3d_buffer;
-        matrices([cols, rows]: [number, number]): $mol_3d_buffer;
-    }
-}
-
-declare namespace $ {
-    class $mol_3d_geometry extends Object {
-        readonly api: WebGL2RenderingContext;
-        readonly vertexes: WebGLVertexArrayObject;
-        constructor(api: WebGL2RenderingContext, vertexes?: WebGLVertexArrayObject);
-        destructor(): void;
-        size: number;
-        count: number;
-        use(task: (geometry: $mol_3d_geometry) => void): this;
-    }
-}
-
-declare namespace $ {
-    type Type = 'mat4' | 'mat3' | 'mat2' | 'vec4' | 'vec3' | 'vec2' | 'ivec4' | 'ivec3' | 'ivec2' | 'uvec4' | 'uvec3' | 'uvec2' | 'float' | 'int' | 'uint' | 'sampler2D' | 'sampler2DShadow' | 'sampler2DArray' | 'sampler2DArrayShadow' | 'samplerCube' | 'samplerCubeShadow' | 'sampler3D';
-    export type $mol_3d_program_face = {
-        glob?: Record<string, Type>;
-        input?: Record<string, Type>;
-        pipe?: Record<string, Type>;
-        output?: Record<string, Type>;
-    };
-    export class $mol_3d_program<Face extends $mol_3d_program_face> extends Object {
-        readonly api: WebGL2RenderingContext;
-        readonly native: WebGLProgram;
-        constructor(api: WebGL2RenderingContext, native: WebGLProgram);
-        glob(name: keyof Face['glob']): $mol_3d_glob;
-        param(name: keyof Face['input']): $mol_3d_param | null;
-        geometry(id: any): $mol_3d_geometry;
-        use(task: (geometry: $mol_3d_program<Face>) => void): this;
-        point(size: number, offset?: number): void;
-        line(size: number, offset?: number): void;
-        triangle(size: number, offset?: number): void;
-        strip(size: number, offset?: number): void;
-        points(first: number, vertices: number, instances?: number): void;
-        lines(first: number, vertices: number, instances?: number): void;
-        strips(first: number, vertices: number, instances?: number): void;
-    }
-    export {};
-}
-
-declare namespace $ {
-    class $mol_3d_context extends Object {
-        readonly native: WebGL2RenderingContext;
-        constructor(native: WebGL2RenderingContext);
-        shader(type: GLenum, code: string): WebGLShader;
-        func<Face extends $mol_3d_program_face>(name: string, face: Face): $mol_3d_program<Face>;
-        program<Face extends $mol_3d_program_face>(face: Face, vertex: string, fragment: string): $mol_3d_program<Face>;
-    }
-}
-
-declare namespace $ {
-
-	type $mol_3d_context__mol_3d_pane_1 = $mol_type_enforce<
-		[ ReturnType< $mol_3d_pane['context_native'] > ]
-		,
-		ConstructorParameters< typeof $mol_3d_context >
-	>
-	export class $mol_3d_pane extends $mol_view {
-		context_native( ): WebGL2RenderingContext
-		width( ): number
-		height( ): number
-		dom_name( ): string
-		context( ): $mol_3d_context
-		field( ): ({ 
-			'width': ReturnType< $mol_3d_pane['width'] >,
-			'height': ReturnType< $mol_3d_pane['height'] >,
-		})  & ReturnType< $mol_view['field'] >
-		paint( ): any
-	}
-	
-}
-
-//# sourceMappingURL=pane.view.tree.d.ts.map
-declare namespace $.$$ {
-    class $mol_3d_pane extends $.$mol_3d_pane {
-        context(): $mol_3d_context;
-        width(): number;
-        height(): number;
-        viewport(): readonly [0, 0, number, number];
-        scissor(): readonly [0, 0, number, number];
-        render(): void;
-    }
-}
-
-declare namespace $.$$ {
-}
-
-declare namespace $ {
     class $bog_gamengine_clock extends $mol_object2 {
         frames: number;
         now_last: number;
@@ -3929,9 +3795,43 @@ declare namespace $ {
 }
 
 declare namespace $ {
+    type $bog_gamengine_gl_type = 'mat4' | 'mat3' | 'mat2' | 'vec4' | 'vec3' | 'vec2' | 'ivec4' | 'ivec3' | 'ivec2' | 'uvec4' | 'uvec3' | 'uvec2' | 'float' | 'int' | 'uint' | 'sampler2D' | 'sampler2DShadow' | 'sampler2DArray' | 'sampler2DArrayShadow' | 'samplerCube' | 'samplerCubeShadow' | 'sampler3D';
+    type $bog_gamengine_gl_face = {
+        glob?: Record<string, $bog_gamengine_gl_type>;
+        input?: Record<string, $bog_gamengine_gl_type>;
+        pipe?: Record<string, $bog_gamengine_gl_type>;
+        output?: Record<string, $bog_gamengine_gl_type>;
+    };
+    function $bog_gamengine_gl_source(face: $bog_gamengine_gl_face, vert: string, frag: string): {
+        vert: string;
+        frag: string;
+    };
+    function $bog_gamengine_gl_shader(gl: WebGL2RenderingContext, type: GLenum, code: string): WebGLShader;
+    class $bog_gamengine_gl_program<Face extends $bog_gamengine_gl_face> extends Object {
+        readonly gl: WebGL2RenderingContext;
+        readonly native: WebGLProgram;
+        uniforms: Map<string, WebGLUniformLocation | null>;
+        constructor(gl: WebGL2RenderingContext, face: Face, vert: string, frag: string);
+        uniform(name: keyof Face['glob'] & string): WebGLUniformLocation | null;
+        attribute(name: keyof Face['input'] & string): number | null;
+    }
+    class $bog_gamengine_gl_buffer extends Object {
+        readonly gl: WebGL2RenderingContext;
+        readonly native: WebGLBuffer;
+        constructor(gl: WebGL2RenderingContext, location: number, size: number, divisor: number);
+        send(data: ArrayBufferView): ArrayBufferView<ArrayBufferLike>;
+        reserve(bytes: number): number;
+    }
+    function $bog_gamengine_gl_texture_array(gl: WebGL2RenderingContext, images: readonly TexImageSource[], size: number): WebGLTexture;
+    function $bog_gamengine_gl_uniform_matrix(gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, data: Float32Array): Float32Array<ArrayBufferLike>;
+    function $bog_gamengine_gl_uniform_vector(gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, data: Float32Array): Float32Array<ArrayBufferLike>;
+    function $bog_gamengine_gl_uniform_int(gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, value: number): number;
+}
+
+declare namespace $ {
     class $bog_gamengine_shader extends $mol_object2 {
-        programs: WeakMap<$mol_3d_context, $mol_3d_program<$mol_3d_program_face>>;
-        face(): $mol_3d_program_face;
+        programs: WeakMap<WebGL2RenderingContext, $bog_gamengine_gl_program<$bog_gamengine_gl_face>>;
+        face(): $bog_gamengine_gl_face;
         vert(): string;
         frag(): string;
         depth(): boolean;
@@ -3939,7 +3839,7 @@ declare namespace $ {
             vert: string;
             frag: string;
         };
-        program(context: $mol_3d_context): $mol_3d_program<ReturnType<this['face']>>;
+        program(gl: WebGL2RenderingContext): $bog_gamengine_gl_program<ReturnType<this['face']>>;
     }
 }
 
@@ -4143,7 +4043,14 @@ declare namespace $ {
 
 declare namespace $ {
 
-	export class $bog_gamengine_draw extends $mol_3d_pane {
+	export class $bog_gamengine_draw extends $mol_view {
+		width( ): number
+		height( ): number
+		dom_name( ): string
+		field( ): ({ 
+			'width': ReturnType< $bog_gamengine_draw['width'] >,
+			'height': ReturnType< $bog_gamengine_draw['height'] >,
+		})  & ReturnType< $mol_view['field'] >
 		scene( ): $bog_gamengine_scene
 		cam( ): $bog_gamengine_cam
 		light_dir( ): Float32Array
@@ -4175,38 +4082,41 @@ declare namespace $.$$ {
     };
     type $bog_gamengine_draw_slot = {
         batch: $bog_gamengine_batch;
-        program: $mol_3d_program<$bog_gamengine_draw_face>;
-        proj: $mol_3d_glob;
-        view: $mol_3d_glob;
-        light_dir: $mol_3d_glob | null;
-        ambient: $mol_3d_glob | null;
+        program: $bog_gamengine_gl_program<$bog_gamengine_draw_face>;
+        proj: WebGLUniformLocation | null;
+        view: WebGLUniformLocation | null;
+        light_dir: WebGLUniformLocation | null;
+        ambient: WebGLUniformLocation | null;
         depth: boolean;
-        geometry: $mol_3d_geometry;
-        trans: $mol_3d_buffer;
-        tint: $mol_3d_buffer;
-        layer: $mol_3d_buffer | null;
-        uv: $mol_3d_buffer | null;
+        vao: WebGLVertexArrayObject;
+        trans: $bog_gamengine_gl_buffer;
+        tint: $bog_gamengine_gl_buffer;
+        layer: $bog_gamengine_gl_buffer | null;
+        uv: $bog_gamengine_gl_buffer | null;
         atlas: $bog_gamengine_atlas | null;
-        sampler: $mol_3d_glob | null;
+        sampler: WebGLUniformLocation | null;
         tex: $bog_gamengine_draw_tex | null;
         triangles: boolean;
         size: number;
         cap: number;
     };
     type $bog_gamengine_draw_tex = {
-        texture: $mol_3d_texture;
-        sent: boolean;
+        native: WebGLTexture | null;
     };
     export class $bog_gamengine_draw extends $.$bog_gamengine_draw {
         slots_all: WeakMap<$bog_gamengine_batch, $bog_gamengine_draw_slot>;
         textures_all: WeakMap<$bog_gamengine_atlas, $bog_gamengine_draw_tex>;
-        unit: Int32Array<ArrayBuffer>;
         ambient_vec: Float32Array<ArrayBuffer>;
         gaps: Float32Array<ArrayBuffer>;
         ticks: Float32Array<ArrayBuffer>;
         samples: number;
         paint_at: number;
-        context(): $mol_3d_context;
+        context(): WebGL2RenderingContext;
+        width(): number;
+        height(): number;
+        viewport(): readonly [0, 0, number, number];
+        scissor(): readonly [0, 0, number, number];
+        render(): void;
         light_dir(next?: Float32Array): Float32Array<ArrayBufferLike>;
         proj(): $mol_3d_mat4;
         slots(): readonly $bog_gamengine_draw_slot[];
