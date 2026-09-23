@@ -9377,6 +9377,235 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    /** App tree: `plugins / <= Control mol_keyboard_state key <= key_map`, where `key_map()` in app ts returns `this.Key().keys()` */
+    class $bog_gamengine_key extends $mol_object2 {
+        bind(next = {}) {
+            return next;
+        }
+        states = new Map();
+        pressed(name, next) {
+            if (next !== undefined)
+                this.states.set(name, next);
+            return this.states.get(name) ?? false;
+        }
+        action(name) {
+            const keys = this.bind()[name];
+            if (!keys)
+                return false;
+            for (let i = 0; i < keys.length; ++i)
+                if (this.pressed(keys[i]))
+                    return true;
+            return false;
+        }
+        axis(neg, pos) {
+            return (this.action(pos) ? 1 : 0) - (this.action(neg) ? 1 : 0);
+        }
+        keys() {
+            const keys = {};
+            for (const names of Object.values(this.bind())) {
+                for (const name of names) {
+                    keys[name] = (state) => this.pressed(name, state);
+                }
+            }
+            return keys;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_key.prototype, "bind", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_key.prototype, "keys", null);
+    $.$bog_gamengine_key = $bog_gamengine_key;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    const button_index = {
+        a: 0, b: 1, x: 2, y: 3,
+        lb: 4, rb: 5, lt: 6, rt: 7,
+        back: 8, start: 9, ls: 10, rs: 11,
+        up: 12, down: 13, left: 14, right: 15,
+    };
+    const axis_index = {
+        'lx-': [0, -1], 'lx+': [0, 1],
+        'ly-': [1, -1], 'ly+': [1, 1],
+        'rx-': [2, -1], 'rx+': [2, 1],
+        'ry-': [3, -1], 'ry+': [3, 1],
+    };
+    class $bog_gamengine_pad extends $mol_object2 {
+        bind(next = {}) {
+            return next;
+        }
+        dead(next = 0.2) {
+            return next;
+        }
+        buttons = new Uint8Array(16);
+        axes = new Float32Array(4);
+        pads() {
+            return globalThis.navigator?.getGamepads?.() ?? [];
+        }
+        poll() {
+            const pads = this.pads();
+            let pad = null;
+            for (let i = 0; i < pads.length; ++i) {
+                if (pads[i]) {
+                    pad = pads[i];
+                    break;
+                }
+            }
+            const buttons = this.buttons;
+            const axes = this.axes;
+            if (!pad) {
+                buttons.fill(0);
+                axes.fill(0);
+                return;
+            }
+            for (let i = 0; i < buttons.length; ++i)
+                buttons[i] = pad.buttons[i]?.pressed ? 1 : 0;
+            for (let i = 0; i < axes.length; ++i)
+                axes[i] = pad.axes[i] ?? 0;
+        }
+        value(name) {
+            const button = button_index[name];
+            if (button !== undefined)
+                return this.buttons[button];
+            const axis = axis_index[name];
+            if (!axis)
+                return 0;
+            const raw = this.axes[axis[0]] * axis[1];
+            return raw > this.dead() ? raw : 0;
+        }
+        strength(name) {
+            const names = this.bind()[name];
+            if (!names)
+                return 0;
+            let max = 0;
+            for (let i = 0; i < names.length; ++i) {
+                const value = this.value(names[i]);
+                if (value > max)
+                    max = value;
+            }
+            return max;
+        }
+        action(name) {
+            return this.strength(name) > 0;
+        }
+        axis(neg, pos) {
+            return this.strength(pos) - this.strength(neg);
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_pad.prototype, "bind", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_pad.prototype, "dead", null);
+    $.$bog_gamengine_pad = $bog_gamengine_pad;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_input extends $mol_object2 {
+        key(next) {
+            return next ?? null;
+        }
+        pad(next) {
+            return next ?? null;
+        }
+        poll() {
+            this.pad()?.poll();
+        }
+        action(name) {
+            return (this.key()?.action(name) ?? false) || (this.pad()?.action(name) ?? false);
+        }
+        axis(neg, pos) {
+            const key = this.key()?.axis(neg, pos) ?? 0;
+            if (key !== 0)
+                return key;
+            return this.pad()?.axis(neg, pos) ?? 0;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_input.prototype, "key", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_input.prototype, "pad", null);
+    $.$bog_gamengine_input = $bog_gamengine_input;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_clock extends $mol_object2 {
+        frames = 0;
+        now_last = NaN;
+        dt_raw = 0;
+        time_total = 0;
+        time_frame = 0;
+        tick_at = 0;
+        frame() {
+            this.tick_at = performance.now();
+            const now = this.$.$mol_state_time.now(0);
+            this.dt_raw = isNaN(this.now_last) ? 0 : Math.min((now - this.now_last) / 1000, 0.1);
+            this.now_last = now;
+            return ++this.frames;
+        }
+        dt() {
+            this.frame();
+            if (this.paused())
+                return 0;
+            return this.dt_raw * this.speed();
+        }
+        time(next) {
+            const frame = this.frame();
+            const dt = this.dt();
+            if (next !== undefined) {
+                this.time_frame = frame;
+                this.time_total = next;
+                return next;
+            }
+            if (frame !== this.time_frame) {
+                this.time_frame = frame;
+                this.time_total += dt;
+            }
+            return this.time_total;
+        }
+        paused(next = false) {
+            return next;
+        }
+        speed(next = 1) {
+            return next;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_clock.prototype, "frame", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_clock.prototype, "dt", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_clock.prototype, "time", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_clock.prototype, "paused", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_clock.prototype, "speed", null);
+    $.$bog_gamengine_clock = $bog_gamengine_clock;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     $.$mol_3d_glsl_both = '';
     $.$mol_3d_glsl_vert = '';
     $.$mol_3d_glsl_frag = '';
@@ -9573,7 +9802,32 @@ var $;
             return next ?? null;
         }
         kids(next) {
-            return next ?? [];
+            if (!next)
+                return [];
+            for (let i = 0; i < next.length; ++i) {
+                if (!next[i].parent())
+                    next[i].parent(this);
+            }
+            return next;
+        }
+        root() {
+            let node = this;
+            for (let parent = node.parent(); parent; parent = node.parent())
+                node = parent;
+            return node;
+        }
+        is_scene() {
+            return false;
+        }
+        scene() {
+            const root = this.root();
+            return root.is_scene() ? root : null;
+        }
+        input() {
+            return this.scene()?.input() ?? null;
+        }
+        clock() {
+            return this.scene()?.clock() ?? null;
         }
         trans() {
             const rot = this.rot();
@@ -9613,82 +9867,6 @@ var $;
         $mol_mem
     ], $bog_gamengine_node.prototype, "world", null);
     $.$bog_gamengine_node = $bog_gamengine_node;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $bog_gamengine_cam extends $bog_gamengine_node {
-        view() {
-            return this.world().inversed();
-        }
-        proj(aspect) {
-            throw new Error('not implemented');
-        }
-    }
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_cam.prototype, "view", null);
-    $.$bog_gamengine_cam = $bog_gamengine_cam;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $bog_gamengine_clock extends $mol_object2 {
-        frames = 0;
-        now_last = NaN;
-        dt_raw = 0;
-        time_total = 0;
-        time_frame = 0;
-        tick_at = 0;
-        frame() {
-            this.tick_at = performance.now();
-            const now = this.$.$mol_state_time.now(0);
-            this.dt_raw = isNaN(this.now_last) ? 0 : Math.min((now - this.now_last) / 1000, 0.1);
-            this.now_last = now;
-            return ++this.frames;
-        }
-        dt() {
-            this.frame();
-            if (this.paused())
-                return 0;
-            return this.dt_raw * this.speed();
-        }
-        time() {
-            const frame = this.frame();
-            const dt = this.dt();
-            if (frame !== this.time_frame) {
-                this.time_frame = frame;
-                this.time_total += dt;
-            }
-            return this.time_total;
-        }
-        paused(next = false) {
-            return next;
-        }
-        speed(next = 1) {
-            return next;
-        }
-    }
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_clock.prototype, "frame", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_clock.prototype, "dt", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_clock.prototype, "time", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_clock.prototype, "paused", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_clock.prototype, "speed", null);
-    $.$bog_gamengine_clock = $bog_gamengine_clock;
 })($ || ($ = {}));
 
 ;
@@ -10102,6 +10280,16 @@ var $;
                 normals[i * 3 + 2] = 1;
             return normals;
         }
+        radius() {
+            const geometry = this.geometry();
+            let max = 0;
+            for (let i = 0; i < geometry.length; i += 3) {
+                const len = geometry[i] * geometry[i] + geometry[i + 1] * geometry[i + 1] + geometry[i + 2] * geometry[i + 2];
+                if (len > max)
+                    max = len;
+            }
+            return Math.sqrt(max);
+        }
         count() {
             return this.size();
         }
@@ -10112,6 +10300,9 @@ var $;
     __decorate([
         $mol_memo.method
     ], $bog_gamengine_shape.prototype, "normals", null);
+    __decorate([
+        $mol_memo.method
+    ], $bog_gamengine_shape.prototype, "radius", null);
     $.$bog_gamengine_shape = $bog_gamengine_shape;
 })($ || ($ = {}));
 
@@ -10233,10 +10424,12 @@ var $;
                 return $mol_fail(new Error(`Atlas has no layer ${name}, known: ${[...this.names().keys()].join(', ')}`));
             return index;
         }
+        static image(uri) {
+            $mol_wire_solid();
+            return this.$.$mol_3d_image.make({ uri: () => uri });
+        }
         image(uri) {
-            const image = this.$.$mol_3d_image.make({ uri: () => uri });
-            image.$ = this.$;
-            return image;
+            return this.constructor.image(uri);
         }
         images() {
             const uris = this.uris();
@@ -10273,14 +10466,14 @@ var $;
         $mol_mem
     ], $bog_gamengine_atlas.prototype, "names", null);
     __decorate([
-        $mol_mem_key
-    ], $bog_gamengine_atlas.prototype, "image", null);
-    __decorate([
         $mol_mem
     ], $bog_gamengine_atlas.prototype, "images", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_atlas.prototype, "ready", null);
+    __decorate([
+        $mol_mem_key
+    ], $bog_gamengine_atlas, "image", null);
     $.$bog_gamengine_atlas = $bog_gamengine_atlas;
 })($ || ($ = {}));
 
@@ -10288,6 +10481,13 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    function $bog_gamengine_batch_scale_max(world) {
+        const x = world[0] * world[0] + world[1] * world[1] + world[2] * world[2];
+        const y = world[4] * world[4] + world[5] * world[5] + world[6] * world[6];
+        const z = world[8] * world[8] + world[9] * world[9] + world[10] * world[10];
+        return Math.sqrt(Math.max(x, y, z));
+    }
+    $.$bog_gamengine_batch_scale_max = $bog_gamengine_batch_scale_max;
     class $bog_gamengine_batch extends $mol_object2 {
         shader(next) {
             return next ?? new $bog_gamengine_shader_flat;
@@ -10305,6 +10505,15 @@ var $;
             return next ?? null;
         }
         skip(next = 0) {
+            return next;
+        }
+        cull(next = true) {
+            return next;
+        }
+        near(next = 0) {
+            return next;
+        }
+        far(next = Infinity) {
             return next;
         }
         cap = 0;
@@ -10330,61 +10539,80 @@ var $;
             this.material = new Float32Array(cap * 4);
             this.normal_layer = new Float32Array(cap);
         }
-        fill() {
+        fill(frustum = null, eye = null) {
             const source = this.source();
             if (source)
-                return this.fill_source(source);
+                return this.fill_source(source, frustum);
             const nodes = this.nodes();
-            const count = nodes.length;
-            this.grow(count);
+            const cull = frustum && this.cull() ? frustum : null;
+            const near = this.near();
+            const far = this.far();
+            const ranged = eye && (near > 0 || far < Infinity) ? eye : null;
+            this.grow(nodes.length);
             const trans = this.trans;
             const tint = this.tint;
             const layer = this.layer;
             const uv = this.uv;
             const material = this.material;
             const normal_layer = this.normal_layer;
-            for (let i = 0; i < count; ++i) {
+            let count = 0;
+            for (let i = 0; i < nodes.length; ++i) {
                 const node = nodes[i];
-                trans.set(node.world(), i * 16);
+                const world = node.world();
+                if (ranged) {
+                    const dx = world[12] - ranged[0];
+                    const dy = world[13] - ranged[1];
+                    const dz = world[14] - ranged[2];
+                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    if (dist < near || dist >= far)
+                        continue;
+                }
+                if (cull && typeof node.radius === 'function') {
+                    const radius = node.radius() * $bog_gamengine_batch_scale_max(world);
+                    if (!$bog_gamengine_cam_frustum_sphere(cull, world[12], world[13], world[14], radius))
+                        continue;
+                }
+                trans.set(world, count * 16);
                 if (typeof node.tint === 'function') {
-                    tint.set(node.tint(), i * 4);
+                    tint.set(node.tint(), count * 4);
                 }
                 else {
-                    tint[i * 4] = 1;
-                    tint[i * 4 + 1] = 1;
-                    tint[i * 4 + 2] = 1;
-                    tint[i * 4 + 3] = 1;
+                    tint[count * 4] = 1;
+                    tint[count * 4 + 1] = 1;
+                    tint[count * 4 + 2] = 1;
+                    tint[count * 4 + 3] = 1;
                 }
-                layer[i] = typeof node.layer === 'function' ? node.layer() : 0;
+                layer[count] = typeof node.layer === 'function' ? node.layer() : 0;
                 if (typeof node.uv === 'function') {
-                    uv.set(node.uv(), i * 4);
+                    uv.set(node.uv(), count * 4);
                 }
                 else {
-                    uv[i * 4] = 0;
-                    uv[i * 4 + 1] = 0;
-                    uv[i * 4 + 2] = 1;
-                    uv[i * 4 + 3] = 1;
+                    uv[count * 4] = 0;
+                    uv[count * 4 + 1] = 0;
+                    uv[count * 4 + 2] = 1;
+                    uv[count * 4 + 3] = 1;
                 }
                 if (typeof node.material === 'function') {
-                    material.set(node.material(), i * 4);
+                    material.set(node.material(), count * 4);
                 }
                 else {
-                    material[i * 4] = 0;
-                    material[i * 4 + 1] = 0.6;
-                    material[i * 4 + 2] = 0;
-                    material[i * 4 + 3] = 0;
+                    material[count * 4] = 0;
+                    material[count * 4 + 1] = 0.6;
+                    material[count * 4 + 2] = 0;
+                    material[count * 4 + 3] = 0;
                 }
-                normal_layer[i] = typeof node.normal_layer === 'function' ? node.normal_layer() : -1;
+                normal_layer[count] = typeof node.normal_layer === 'function' ? node.normal_layer() : -1;
+                ++count;
             }
             this.count = count;
             ++this.version;
             return count;
         }
-        fill_source(source) {
+        fill_source(source, frustum = null) {
             const skip = this.skip();
-            const count = Math.max(0, source.count - skip);
+            const total = Math.max(0, source.count - skip);
             const cap = this.cap;
-            this.grow(count);
+            this.grow(total);
             if (this.cap !== cap) {
                 this.tint.fill(1);
                 this.layer.fill(0);
@@ -10402,7 +10630,26 @@ var $;
                     material[i * 4 + 3] = 0;
                 }
             }
-            this.trans.set(source.trans.subarray(skip * 16, (skip + count) * 16));
+            const aabb = source.aabb;
+            const cull = frustum && aabb && this.cull() ? frustum : null;
+            let count = total;
+            if (cull && aabb) {
+                const trans = this.trans;
+                const from = source.trans;
+                count = 0;
+                for (let i = skip; i < source.count; ++i) {
+                    if (!$bog_gamengine_cam_frustum_aabb(cull, aabb, i * 6))
+                        continue;
+                    const src = i * 16;
+                    const dst = count * 16;
+                    for (let k = 0; k < 16; ++k)
+                        trans[dst + k] = from[src + k];
+                    ++count;
+                }
+            }
+            else {
+                this.trans.set(source.trans.subarray(skip * 16, (skip + total) * 16));
+            }
             this.count = count;
             ++this.version;
             return count;
@@ -10426,6 +10673,15 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_batch.prototype, "skip", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_batch.prototype, "cull", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_batch.prototype, "near", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_batch.prototype, "far", null);
     $.$bog_gamengine_batch = $bog_gamengine_batch;
 })($ || ($ = {}));
 
@@ -13497,181 +13753,20 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    /** App tree: `plugins / <= Control mol_keyboard_state key <= key_map`, where `key_map()` in app ts returns `this.Key().keys()` */
-    class $bog_gamengine_key extends $mol_object2 {
-        bind(next = {}) {
-            return next;
-        }
-        states = new Map();
-        pressed(name, next) {
-            if (next !== undefined)
-                this.states.set(name, next);
-            return this.states.get(name) ?? false;
-        }
-        action(name) {
-            const keys = this.bind()[name];
-            if (!keys)
-                return false;
-            for (let i = 0; i < keys.length; ++i)
-                if (this.pressed(keys[i]))
-                    return true;
-            return false;
-        }
-        axis(neg, pos) {
-            return (this.action(pos) ? 1 : 0) - (this.action(neg) ? 1 : 0);
-        }
-        keys() {
-            const keys = {};
-            for (const names of Object.values(this.bind())) {
-                for (const name of names) {
-                    keys[name] = (state) => this.pressed(name, state);
-                }
-            }
-            return keys;
-        }
-    }
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_key.prototype, "bind", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_key.prototype, "keys", null);
-    $.$bog_gamengine_key = $bog_gamengine_key;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    const button_index = {
-        a: 0, b: 1, x: 2, y: 3,
-        lb: 4, rb: 5, lt: 6, rt: 7,
-        back: 8, start: 9, ls: 10, rs: 11,
-        up: 12, down: 13, left: 14, right: 15,
-    };
-    const axis_index = {
-        'lx-': [0, -1], 'lx+': [0, 1],
-        'ly-': [1, -1], 'ly+': [1, 1],
-        'rx-': [2, -1], 'rx+': [2, 1],
-        'ry-': [3, -1], 'ry+': [3, 1],
-    };
-    class $bog_gamengine_pad extends $mol_object2 {
-        bind(next = {}) {
-            return next;
-        }
-        dead(next = 0.2) {
-            return next;
-        }
-        buttons = new Uint8Array(16);
-        axes = new Float32Array(4);
-        pads() {
-            return globalThis.navigator?.getGamepads?.() ?? [];
-        }
-        poll() {
-            const pads = this.pads();
-            let pad = null;
-            for (let i = 0; i < pads.length; ++i) {
-                if (pads[i]) {
-                    pad = pads[i];
-                    break;
-                }
-            }
-            const buttons = this.buttons;
-            const axes = this.axes;
-            if (!pad) {
-                buttons.fill(0);
-                axes.fill(0);
-                return;
-            }
-            for (let i = 0; i < buttons.length; ++i)
-                buttons[i] = pad.buttons[i]?.pressed ? 1 : 0;
-            for (let i = 0; i < axes.length; ++i)
-                axes[i] = pad.axes[i] ?? 0;
-        }
-        value(name) {
-            const button = button_index[name];
-            if (button !== undefined)
-                return this.buttons[button];
-            const axis = axis_index[name];
-            if (!axis)
-                return 0;
-            const raw = this.axes[axis[0]] * axis[1];
-            return raw > this.dead() ? raw : 0;
-        }
-        strength(name) {
-            const names = this.bind()[name];
-            if (!names)
-                return 0;
-            let max = 0;
-            for (let i = 0; i < names.length; ++i) {
-                const value = this.value(names[i]);
-                if (value > max)
-                    max = value;
-            }
-            return max;
-        }
-        action(name) {
-            return this.strength(name) > 0;
-        }
-        axis(neg, pos) {
-            return this.strength(pos) - this.strength(neg);
-        }
-    }
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_pad.prototype, "bind", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_pad.prototype, "dead", null);
-    $.$bog_gamengine_pad = $bog_gamengine_pad;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $bog_gamengine_input extends $mol_object2 {
-        key(next) {
-            return next ?? null;
-        }
-        pad(next) {
-            return next ?? null;
-        }
-        poll() {
-            this.pad()?.poll();
-        }
-        action(name) {
-            return (this.key()?.action(name) ?? false) || (this.pad()?.action(name) ?? false);
-        }
-        axis(neg, pos) {
-            const key = this.key()?.axis(neg, pos) ?? 0;
-            if (key !== 0)
-                return key;
-            return this.pad()?.axis(neg, pos) ?? 0;
-        }
-    }
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_input.prototype, "key", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_input.prototype, "pad", null);
-    $.$bog_gamengine_input = $bog_gamengine_input;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
     class $bog_gamengine_scene extends $bog_gamengine_node {
         clock(next) {
             return next ?? new $bog_gamengine_clock;
+        }
+        is_scene() {
+            return true;
         }
         nodes() {
             const list = [];
             const walk = (node) => {
                 const kids = node.kids();
                 for (let i = 0; i < kids.length; ++i) {
+                    if (!kids[i].parent())
+                        kids[i].parent(node);
                     list.push(kids[i]);
                     walk(kids[i]);
                 }
@@ -13701,7 +13796,15 @@ var $;
         input(next) {
             return next ?? null;
         }
+        cam(next) {
+            return next ?? null;
+        }
+        aspect(next = 1) {
+            return next;
+        }
         frame_done = -1;
+        frustum = new Float32Array(24);
+        eye = new Float32Array(3);
         step() {
             const frame = this.clock().frame();
             const dt = this.clock().dt();
@@ -13709,6 +13812,8 @@ var $;
             const nodes = this.nodes();
             const phys = this.phys();
             const phys3 = this.phys3();
+            const cam = this.cam();
+            const aspect = this.aspect();
             if (frame !== this.frame_done) {
                 this.frame_done = frame;
                 input?.poll();
@@ -13717,9 +13822,16 @@ var $;
                 phys?.step(dt);
                 phys3?.step(dt);
             }
+            if (cam) {
+                cam.frustum(aspect, this.frustum);
+                const world = cam.world();
+                this.eye[0] = world[12];
+                this.eye[1] = world[13];
+                this.eye[2] = world[14];
+            }
             const batches = this.batches();
             for (let i = 0; i < batches.length; ++i)
-                batches[i].fill();
+                batches[i].fill(cam ? this.frustum : null, cam ? this.eye : null);
             return frame;
         }
     }
@@ -13746,8 +13858,85 @@ var $;
     ], $bog_gamengine_scene.prototype, "input", null);
     __decorate([
         $mol_mem
+    ], $bog_gamengine_scene.prototype, "cam", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_scene.prototype, "aspect", null);
+    __decorate([
+        $mol_mem
     ], $bog_gamengine_scene.prototype, "step", null);
     $.$bog_gamengine_scene = $bog_gamengine_scene;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function $bog_gamengine_cam_frustum_sphere(frustum, x, y, z, radius) {
+        for (let side = 0; side < 6; ++side) {
+            const at = side * 4;
+            if (frustum[at] * x + frustum[at + 1] * y + frustum[at + 2] * z + frustum[at + 3] < -radius)
+                return false;
+        }
+        return true;
+    }
+    $.$bog_gamengine_cam_frustum_sphere = $bog_gamengine_cam_frustum_sphere;
+    function $bog_gamengine_cam_frustum_aabb(frustum, aabb, at) {
+        for (let side = 0; side < 6; ++side) {
+            const p = side * 4;
+            const a = frustum[p];
+            const b = frustum[p + 1];
+            const c = frustum[p + 2];
+            const x = a > 0 ? aabb[at + 3] : aabb[at];
+            const y = b > 0 ? aabb[at + 4] : aabb[at + 1];
+            const z = c > 0 ? aabb[at + 5] : aabb[at + 2];
+            if (a * x + b * y + c * z + frustum[p + 3] < 0)
+                return false;
+        }
+        return true;
+    }
+    $.$bog_gamengine_cam_frustum_aabb = $bog_gamengine_cam_frustum_aabb;
+    class $bog_gamengine_cam extends $bog_gamengine_node {
+        view() {
+            return this.world().inversed();
+        }
+        proj(aspect) {
+            throw new Error('not implemented');
+        }
+        clip = new Float32Array(16);
+        frustum(aspect, out) {
+            const proj = this.proj(aspect);
+            const view = this.view();
+            const clip = this.clip;
+            for (let col = 0; col < 4; ++col) {
+                for (let row = 0; row < 4; ++row) {
+                    clip[col * 4 + row] =
+                        proj[row] * view[col * 4] +
+                            proj[4 + row] * view[col * 4 + 1] +
+                            proj[8 + row] * view[col * 4 + 2] +
+                            proj[12 + row] * view[col * 4 + 3];
+                }
+            }
+            for (let side = 0; side < 6; ++side) {
+                const row = side >> 1;
+                const sign = side & 1 ? -1 : 1;
+                const a = clip[3] + sign * clip[row];
+                const b = clip[7] + sign * clip[4 + row];
+                const c = clip[11] + sign * clip[8 + row];
+                const d = clip[15] + sign * clip[12 + row];
+                const len = Math.sqrt(a * a + b * b + c * c) || 1;
+                out[side * 4] = a / len;
+                out[side * 4 + 1] = b / len;
+                out[side * 4 + 2] = c / len;
+                out[side * 4 + 3] = d / len;
+            }
+            return out;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_cam.prototype, "view", null);
+    $.$bog_gamengine_cam = $bog_gamengine_cam;
 })($ || ($ = {}));
 
 ;
@@ -13807,11 +13996,63 @@ var $;
 (function ($) {
     var $$;
     (function ($$) {
+        class $bog_gamengine_draw_slot extends Object {
+            batch = null;
+            program = null;
+            proj = null;
+            view = null;
+            light_count = null;
+            light_pos = null;
+            light_dir = null;
+            light_color = null;
+            ambient = null;
+            cam_pos = null;
+            wireframe = null;
+            depth = false;
+            vao = null;
+            vertex = null;
+            live = false;
+            trans = null;
+            tint = null;
+            layer = null;
+            uv = null;
+            material = null;
+            normal_layer = null;
+            buffers = [];
+            atlas = null;
+            sampler = null;
+            tex = null;
+            prim = 0;
+            wire = null;
+            size = 0;
+            cap = 0;
+            dispose(gl) {
+                for (let i = 0; i < this.buffers.length; ++i)
+                    gl.deleteBuffer(this.buffers[i].native);
+                this.buffers = [];
+                gl.deleteVertexArray(this.vao);
+                return this;
+            }
+        }
+        $$.$bog_gamengine_draw_slot = $bog_gamengine_draw_slot;
+        class $bog_gamengine_draw_tex extends Object {
+            atlas = null;
+            native = null;
+            dispose(gl) {
+                if (this.native)
+                    gl.deleteTexture(this.native);
+                this.native = null;
+                return this;
+            }
+        }
+        $$.$bog_gamengine_draw_tex = $bog_gamengine_draw_tex;
         const stat_window = 30;
         const light_max = 8;
         class $bog_gamengine_draw extends $.$bog_gamengine_draw {
             slots_all = new WeakMap();
+            slots_last = [];
             textures_all = new WeakMap();
+            textures_last = [];
             ambient_vec = new Float32Array(3);
             cam_pos_vec = new Float32Array(3);
             lights_pos = new Float32Array(light_max * 4);
@@ -13867,7 +14108,33 @@ var $;
                     if (slot)
                         slots.push(slot);
                 }
+                const last = this.slots_last;
+                for (let i = 0; i < last.length; ++i) {
+                    if (slots.includes(last[i]))
+                        continue;
+                    this.slot_drop(last[i]);
+                }
+                this.slots_last = slots;
                 return slots;
+            }
+            slot_drop(slot) {
+                this.slots_all.delete(slot.batch);
+                return slot.dispose(this.context());
+            }
+            tex_drop(tex) {
+                this.textures_all.delete(tex.atlas);
+                return tex.dispose(this.context());
+            }
+            destructor() {
+                const slots = this.slots_last;
+                for (let i = 0; i < slots.length; ++i)
+                    this.slot_drop(slots[i]);
+                this.slots_last = [];
+                const textures = this.textures_last;
+                for (let i = 0; i < textures.length; ++i)
+                    this.tex_drop(textures[i]);
+                this.textures_last = [];
+                super.destructor();
             }
             slot(batch) {
                 const found = this.slots_all.get(batch);
@@ -13886,7 +14153,7 @@ var $;
                 const depth = shader.depth();
                 const wireframe = 'wireframe' in globs ? program.uniform('wireframe') : null;
                 const glob = (name) => name in globs ? program.uniform(name) : null;
-                const slot = {
+                const slot = Object.assign(new $bog_gamengine_draw_slot, {
                     batch,
                     program,
                     proj: program.uniform('proj'),
@@ -13900,14 +14167,7 @@ var $;
                     wireframe,
                     depth,
                     vao: gl.createVertexArray(),
-                    vertex: null,
                     live: mode === 'lines',
-                    trans: null,
-                    tint: null,
-                    layer: null,
-                    uv: null,
-                    material: null,
-                    normal_layer: null,
                     atlas,
                     sampler: atlas ? program.uniform('atlas') : null,
                     tex: atlas ? this.tex(atlas) : null,
@@ -13915,40 +14175,31 @@ var $;
                     wire: depth && wireframe && mode !== 'lines' ? (mode === 'triangles' ? gl.LINES : gl.LINE_STRIP) : null,
                     size: shape.size(),
                     cap,
+                });
+                const buffer = (location, size, divisor) => {
+                    if (location === null)
+                        return null;
+                    const buffer = new $bog_gamengine_gl_buffer(gl, location, size, divisor);
+                    slot.buffers.push(buffer);
+                    return buffer;
                 };
                 gl.bindVertexArray(slot.vao);
-                slot.vertex = new $bog_gamengine_gl_buffer(gl, program.attribute('vertex'), 3, 0);
+                slot.vertex = buffer(program.attribute('vertex'), 3, 0);
                 slot.vertex.send(shape.geometry());
-                const uv = program.attribute('uv');
-                if (uv !== null)
-                    new $bog_gamengine_gl_buffer(gl, uv, 2, 0).send(shape.skin());
-                const normal = program.attribute('normal');
-                if (normal !== null)
-                    new $bog_gamengine_gl_buffer(gl, normal, 3, 0).send(shape.normals());
-                slot.trans = new $bog_gamengine_gl_buffer(gl, program.attribute('inst_trans'), 16, 1);
+                buffer(program.attribute('uv'), 2, 0)?.send(shape.skin());
+                buffer(program.attribute('normal'), 3, 0)?.send(shape.normals());
+                slot.trans = buffer(program.attribute('inst_trans'), 16, 1);
                 slot.trans.reserve(cap * 64);
-                slot.tint = new $bog_gamengine_gl_buffer(gl, program.attribute('inst_tint'), 4, 1);
+                slot.tint = buffer(program.attribute('inst_tint'), 4, 1);
                 slot.tint.reserve(cap * 16);
-                const layer = program.attribute('inst_layer');
-                if (layer !== null) {
-                    slot.layer = new $bog_gamengine_gl_buffer(gl, layer, 1, 1);
-                    slot.layer.reserve(cap * 4);
-                }
-                const inst_uv = program.attribute('inst_uv');
-                if (inst_uv !== null) {
-                    slot.uv = new $bog_gamengine_gl_buffer(gl, inst_uv, 4, 1);
-                    slot.uv.reserve(cap * 16);
-                }
-                const material = program.attribute('inst_material');
-                if (material !== null) {
-                    slot.material = new $bog_gamengine_gl_buffer(gl, material, 4, 1);
-                    slot.material.reserve(cap * 16);
-                }
-                const normal_layer = program.attribute('inst_normal_layer');
-                if (normal_layer !== null) {
-                    slot.normal_layer = new $bog_gamengine_gl_buffer(gl, normal_layer, 1, 1);
-                    slot.normal_layer.reserve(cap * 4);
-                }
+                slot.layer = buffer(program.attribute('inst_layer'), 1, 1);
+                slot.layer?.reserve(cap * 4);
+                slot.uv = buffer(program.attribute('inst_uv'), 4, 1);
+                slot.uv?.reserve(cap * 16);
+                slot.material = buffer(program.attribute('inst_material'), 4, 1);
+                slot.material?.reserve(cap * 16);
+                slot.normal_layer = buffer(program.attribute('inst_normal_layer'), 1, 1);
+                slot.normal_layer?.reserve(cap * 4);
                 gl.bindVertexArray(null);
                 this.slots_all.set(batch, slot);
                 return slot;
@@ -13968,24 +14219,33 @@ var $;
                 const found = this.textures_all.get(atlas);
                 if (found)
                     return found;
-                const tex = { native: null };
+                const tex = new $bog_gamengine_draw_tex;
+                tex.atlas = atlas;
                 this.textures_all.set(atlas, tex);
                 return tex;
             }
             textures() {
                 const gl = this.context();
                 const slots = this.slots();
-                let sent = 0;
+                const textures = [];
                 for (let i = 0; i < slots.length; ++i) {
                     const slot = slots[i];
-                    if (!slot.atlas || slot.tex.native)
+                    const tex = slot.tex;
+                    if (!tex || textures.includes(tex))
                         continue;
-                    if (!slot.atlas.ready())
+                    textures.push(tex);
+                    if (tex.native || !slot.atlas.ready())
                         continue;
-                    slot.tex.native = $bog_gamengine_gl_texture_array(gl, slot.atlas.images(), slot.atlas.size());
-                    ++sent;
+                    tex.native = $bog_gamengine_gl_texture_array(gl, slot.atlas.images(), slot.atlas.size());
                 }
-                return sent;
+                const last = this.textures_last;
+                for (let i = 0; i < last.length; ++i) {
+                    if (textures.includes(last[i]))
+                        continue;
+                    this.tex_drop(last[i]);
+                }
+                this.textures_last = textures;
+                return textures;
             }
             lights_fill() {
                 const lights = this.scene().lights();
@@ -14567,79 +14827,6 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    /**
-     * @see https://mol.hyoo.ru/#!section=demos/demo=mol_audio_demo
-     */
-    class $mol_audio_room extends $mol_audio_node {
-        node() {
-            return this.context().native().destination;
-        }
-        // @ $mol_mem
-        // override context() {
-        // 	return new this.$.$mol_audio_context
-        // }
-        active(next) {
-            return this.context().active(next);
-        }
-        suspend_time(sec) {
-            return sec ?? 5;
-        }
-        suspend_timer() {
-            const time = this.suspend_time();
-            if (!time)
-                return null;
-            if (!this.active())
-                return null;
-            return new this.$.$mol_after_timeout(time * 1000, () => $mol_wire_async(this).active(false));
-        }
-        error() {
-            try {
-                this.output();
-            }
-            catch (e) {
-                if (!$mol_promise_like(e))
-                    return { value: e };
-            }
-            return null;
-        }
-        status(next) {
-            if (next === 'playing')
-                next = 'running';
-            if (next === 'error')
-                next = 'closed';
-            const state = this.context().state(next);
-            if (state === 'closed')
-                return state;
-            if (this.error())
-                return 'error';
-            if (this.inputs_active() && state === 'running')
-                return 'playing';
-            this.suspend_timer();
-            return state;
-        }
-    }
-    __decorate([
-        $mol_mem
-    ], $mol_audio_room.prototype, "node", null);
-    __decorate([
-        $mol_mem
-    ], $mol_audio_room.prototype, "suspend_time", null);
-    __decorate([
-        $mol_mem
-    ], $mol_audio_room.prototype, "suspend_timer", null);
-    __decorate([
-        $mol_mem
-    ], $mol_audio_room.prototype, "error", null);
-    __decorate([
-        $mol_mem
-    ], $mol_audio_room.prototype, "status", null);
-    $.$mol_audio_room = $mol_audio_room;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
     $.$mol_audio_tone_indices = {
         'b#': 0,
         a: 1,
@@ -14865,6 +15052,79 @@ var $;
         $mol_mem
     ], $mol_audio_sample.prototype, "output", null);
     $.$mol_audio_sample = $mol_audio_sample;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    /**
+     * @see https://mol.hyoo.ru/#!section=demos/demo=mol_audio_demo
+     */
+    class $mol_audio_room extends $mol_audio_node {
+        node() {
+            return this.context().native().destination;
+        }
+        // @ $mol_mem
+        // override context() {
+        // 	return new this.$.$mol_audio_context
+        // }
+        active(next) {
+            return this.context().active(next);
+        }
+        suspend_time(sec) {
+            return sec ?? 5;
+        }
+        suspend_timer() {
+            const time = this.suspend_time();
+            if (!time)
+                return null;
+            if (!this.active())
+                return null;
+            return new this.$.$mol_after_timeout(time * 1000, () => $mol_wire_async(this).active(false));
+        }
+        error() {
+            try {
+                this.output();
+            }
+            catch (e) {
+                if (!$mol_promise_like(e))
+                    return { value: e };
+            }
+            return null;
+        }
+        status(next) {
+            if (next === 'playing')
+                next = 'running';
+            if (next === 'error')
+                next = 'closed';
+            const state = this.context().state(next);
+            if (state === 'closed')
+                return state;
+            if (this.error())
+                return 'error';
+            if (this.inputs_active() && state === 'running')
+                return 'playing';
+            this.suspend_timer();
+            return state;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $mol_audio_room.prototype, "node", null);
+    __decorate([
+        $mol_mem
+    ], $mol_audio_room.prototype, "suspend_time", null);
+    __decorate([
+        $mol_mem
+    ], $mol_audio_room.prototype, "suspend_timer", null);
+    __decorate([
+        $mol_mem
+    ], $mol_audio_room.prototype, "error", null);
+    __decorate([
+        $mol_mem
+    ], $mol_audio_room.prototype, "status", null);
+    $.$mol_audio_room = $mol_audio_room;
 })($ || ($ = {}));
 
 ;
@@ -15142,29 +15402,87 @@ var $;
 var $;
 (function ($) {
     class $bog_gamengine_sound extends $mol_object2 {
+        voices = [];
+        music_voice = null;
+        timer = null;
+        effects_node = null;
+        music_node = null;
         uris(next = {}) {
             return next;
         }
+        listener(next = null) {
+            return next;
+        }
+        range(next = 10) {
+            return next;
+        }
+        fade(next = 1) {
+            return next;
+        }
         Room() {
-            return this.$.$mol_audio_room.make({ input: () => this.samples() });
+            return this.$.$mol_audio_room.make({});
         }
-        samples() {
-            return Object.keys(this.uris()).map(name => this.sample(name));
+        native() {
+            return this.Room().context().native();
         }
-        sample(name) {
+        time() {
+            return this.Room().context().time();
+        }
+        panner() {
+            return this.native().createStereoPanner();
+        }
+        gain() {
+            return this.native().createGain();
+        }
+        gain_to_room() {
+            const gain = this.gain();
+            gain.connect(this.Room().node());
+            return gain;
+        }
+        effects_gain() {
+            return this.effects_node ??= this.gain_to_room();
+        }
+        effects(next = 1) {
+            this.effects_gain().gain.value = next;
+            return next;
+        }
+        music_gain() {
+            return this.music_node ??= this.gain_to_room();
+        }
+        volume(next = 1) {
+            this.music_gain().gain.value = next;
+            return next;
+        }
+        uri(name) {
             const uri = this.uris()[name];
             if (!uri)
                 $mol_fail(new Error(`Sound has no sample ${name}, known: ${Object.keys(this.uris()).join(', ')}`));
+            return uri;
+        }
+        sample(name) {
+            const uri = this.uri(name);
             return this.$.$mol_audio_sample.make({ buffer: () => this.$.$mol_fetch.buffer(uri) });
         }
-        play(name) {
-            const sample = this.sample(name);
-            new this.$.$mol_after_tick(() => $mol_wire_async(this).start(sample));
+        music_sample(name) {
+            const uri = this.uri(name);
+            return this.$.$mol_audio_sample.make({
+                buffer: () => this.$.$mol_fetch.buffer(uri),
+                loop_default: () => true,
+            });
         }
-        start(sample) {
+        play(name, pos) {
+            const sample = this.sample(name);
+            new this.$.$mol_after_tick(() => $mol_wire_async(this).start(sample, pos));
+        }
+        start(sample, pos) {
             try {
                 sample.start();
-                this.Room().output();
+                const source = sample.output();
+                this.effects();
+                if (pos)
+                    this.voice_add(sample, source, pos);
+                else
+                    source.connect(this.effects_gain());
             }
             catch (error) {
                 if ($mol_promise_like(error))
@@ -15172,19 +15490,125 @@ var $;
                 $mol_fail_log(error);
             }
         }
+        voice_add(sample, source, pos) {
+            const panner = this.panner();
+            const gain = this.gain();
+            source.connect(panner);
+            panner.connect(gain);
+            gain.connect(this.effects_gain());
+            const voice = { sample, panner, gain, pos };
+            this.voices.push(voice);
+            source.addEventListener('ended', () => this.voice_drop(voice));
+            this.voice_update(voice, this.listener_world());
+            if (!this.timer)
+                this.follow();
+        }
+        voice_drop(voice) {
+            const voices = this.voices;
+            const index = voices.indexOf(voice);
+            if (index < 0)
+                return;
+            voices[index] = voices[voices.length - 1];
+            voices.pop();
+            voice.gain.disconnect();
+        }
+        listener_world() {
+            return this.listener()?.world() ?? $mol_3d_mat4.identity();
+        }
+        update() {
+            const world = this.listener_world();
+            const voices = this.voices;
+            for (let i = 0; i < voices.length; ++i)
+                this.voice_update(voices[i], world);
+        }
+        voice_update(voice, world) {
+            const pos = voice.pos;
+            const dx = pos[0] - world[12];
+            const dy = pos[1] - world[13];
+            const dz = (pos.length > 2 ? pos[2] : 0) - world[14];
+            const dist = Math.hypot(dx, dy, dz);
+            const right = Math.hypot(world[0], world[1], world[2]);
+            const side = dx * world[0] + dy * world[1] + dz * world[2];
+            const ratio = dist / this.range();
+            voice.panner.pan.value = dist && right ? side / (dist * right) : 0;
+            voice.gain.gain.value = 1 / (1 + ratio * ratio);
+        }
+        follow() {
+            this.timer = null;
+            $mol_wire_async(this).update();
+            if (this.voices.length)
+                this.timer = new this.$.$mol_after_timeout(100, () => this.follow());
+        }
+        music(next) {
+            if (next === undefined)
+                return null;
+            if (next === ($mol_wire_probe(() => this.music()) ?? null))
+                return next;
+            const sample = next === null ? null : this.music_sample(next);
+            new this.$.$mol_after_tick(() => $mol_wire_async(this).music_start(sample));
+            return next;
+        }
+        music_start(sample) {
+            try {
+                const prev = this.music_voice;
+                if (prev) {
+                    this.ramp(prev.gain, 0);
+                    prev.sample.stop_at(this.fade());
+                }
+                this.music_voice = sample && this.music_voice_add(sample);
+            }
+            catch (error) {
+                if ($mol_promise_like(error))
+                    $mol_fail_hidden(error);
+                $mol_fail_log(error);
+            }
+        }
+        music_voice_add(sample) {
+            const gain = this.gain();
+            gain.gain.value = 0;
+            this.volume();
+            sample.start();
+            sample.output().connect(gain);
+            gain.connect(this.music_gain());
+            this.ramp(gain, 1);
+            return { sample, gain };
+        }
+        ramp(gain, value) {
+            const now = this.time();
+            gain.gain.setValueAtTime(gain.gain.value, now);
+            gain.gain.linearRampToValueAtTime(value, now + this.fade());
+        }
     }
     __decorate([
         $mol_mem
     ], $bog_gamengine_sound.prototype, "uris", null);
     __decorate([
         $mol_mem
+    ], $bog_gamengine_sound.prototype, "listener", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_sound.prototype, "range", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_sound.prototype, "fade", null);
+    __decorate([
+        $mol_mem
     ], $bog_gamengine_sound.prototype, "Room", null);
     __decorate([
         $mol_mem
-    ], $bog_gamengine_sound.prototype, "samples", null);
+    ], $bog_gamengine_sound.prototype, "effects", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_sound.prototype, "volume", null);
     __decorate([
         $mol_mem_key
     ], $bog_gamengine_sound.prototype, "sample", null);
+    __decorate([
+        $mol_mem_key
+    ], $bog_gamengine_sound.prototype, "music_sample", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_sound.prototype, "music", null);
     $.$bog_gamengine_sound = $bog_gamengine_sound;
 })($ || ($ = {}));
 
@@ -15223,6 +15647,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_cam_flat.prototype, "height", null);
+    __decorate([
+        $mol_mem_key
+    ], $bog_gamengine_cam_flat.prototype, "proj", null);
     $.$bog_gamengine_cam_flat = $bog_gamengine_cam_flat;
 })($ || ($ = {}));
 
@@ -15266,6 +15693,9 @@ var $;
                 { name: 'clip', kind: 'text', get: () => this.clip(), set: next => this.clip(next) },
                 { name: 'fps', kind: 'number', get: () => this.fps(), set: next => this.fps(next) },
             ];
+        }
+        radius() {
+            return Math.SQRT1_2;
         }
         frame_now() {
             const clip = this.clip();
@@ -15387,6 +15817,922 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    const sqrt2 = Math.SQRT2;
+    class $bog_gamengine_nav_grid extends $mol_object2 {
+        tile(next) {
+            return next ?? null;
+        }
+        pad(next = 0.3) {
+            return next;
+        }
+        width() {
+            return this.tile()?.width() ?? 0;
+        }
+        height() {
+            return this.tile()?.height() ?? 0;
+        }
+        solid() {
+            const tile = this.tile();
+            const width = this.width();
+            const height = this.height();
+            const solid = new Uint8Array(width * height);
+            if (!tile)
+                return solid;
+            for (let y = 0; y < height; ++y) {
+                for (let x = 0; x < width; ++x)
+                    solid[y * width + x] = tile.cell(x, y) ? 1 : 0;
+            }
+            return solid;
+        }
+        cell(x, y) {
+            const width = this.width();
+            if (x < 0 || y < 0 || x >= width || y >= this.height())
+                return true;
+            return this.solid()[y * width + x] === 1;
+        }
+        solid_at(wx, wy) {
+            return this.cell(Math.floor(wx), Math.floor(-wy));
+        }
+        block(x, y, solid) {
+            const width = this.width();
+            if (x < 0 || y < 0 || x >= width || y >= this.height())
+                return;
+            this.solid()[y * width + x] = solid ? 1 : 0;
+        }
+        size = 0;
+        gen = 0;
+        seen = new Int32Array(0);
+        state = new Uint8Array(0);
+        cost = new Float32Array(0);
+        rank = new Float32Array(0);
+        from = new Int32Array(0);
+        heap = new Int32Array(0);
+        at = new Int32Array(0);
+        trace = new Int32Array(0);
+        heap_size = 0;
+        grow() {
+            const size = this.width() * this.height();
+            if (size <= this.size)
+                return;
+            this.size = size;
+            this.seen = new Int32Array(size);
+            this.state = new Uint8Array(size);
+            this.cost = new Float32Array(size);
+            this.rank = new Float32Array(size);
+            this.from = new Int32Array(size);
+            this.heap = new Int32Array(size);
+            this.at = new Int32Array(size);
+            this.trace = new Int32Array(size);
+        }
+        heur(x0, y0, x1, y1) {
+            const dx = Math.abs(x1 - x0);
+            const dy = Math.abs(y1 - y0);
+            return dx + dy + (sqrt2 - 2) * Math.min(dx, dy);
+        }
+        heap_push(node) {
+            const heap = this.heap;
+            let i = this.heap_size++;
+            heap[i] = node;
+            this.at[node] = i;
+            this.heap_up(i);
+        }
+        heap_up(i) {
+            const heap = this.heap;
+            const rank = this.rank;
+            const at = this.at;
+            const node = heap[i];
+            const r = rank[node];
+            while (i > 0) {
+                const p = (i - 1) >> 1;
+                if (rank[heap[p]] <= r)
+                    break;
+                heap[i] = heap[p];
+                at[heap[i]] = i;
+                i = p;
+            }
+            heap[i] = node;
+            at[node] = i;
+        }
+        heap_pop() {
+            const heap = this.heap;
+            const rank = this.rank;
+            const at = this.at;
+            const top = heap[0];
+            const size = --this.heap_size;
+            if (size === 0)
+                return top;
+            const node = heap[size];
+            const r = rank[node];
+            let i = 0;
+            for (;;) {
+                let c = i * 2 + 1;
+                if (c >= size)
+                    break;
+                if (c + 1 < size && rank[heap[c + 1]] < rank[heap[c]])
+                    ++c;
+                if (rank[heap[c]] >= r)
+                    break;
+                heap[i] = heap[c];
+                at[heap[i]] = i;
+                i = c;
+            }
+            heap[i] = node;
+            at[node] = i;
+            return top;
+        }
+        path(from, to, out) {
+            const width = this.width();
+            const height = this.height();
+            if (width === 0 || height === 0)
+                return 0;
+            this.grow();
+            const solid = this.solid();
+            const x0 = Math.floor(from[0]);
+            const y0 = Math.floor(-from[1]);
+            const x1 = Math.floor(to[0]);
+            const y1 = Math.floor(-to[1]);
+            if (x0 < 0 || y0 < 0 || x0 >= width || y0 >= height)
+                return 0;
+            if (x1 < 0 || y1 < 0 || x1 >= width || y1 >= height)
+                return 0;
+            if (solid[y1 * width + x1])
+                return 0;
+            const gen = ++this.gen;
+            const seen = this.seen;
+            const state = this.state;
+            const cost = this.cost;
+            const rank = this.rank;
+            const parent = this.from;
+            const start = y0 * width + x0;
+            const goal = y1 * width + x1;
+            this.heap_size = 0;
+            seen[start] = gen;
+            state[start] = 1;
+            cost[start] = 0;
+            rank[start] = this.heur(x0, y0, x1, y1);
+            parent[start] = -1;
+            this.heap_push(start);
+            let found = false;
+            while (this.heap_size > 0) {
+                const node = this.heap_pop();
+                if (node === goal) {
+                    found = true;
+                    break;
+                }
+                state[node] = 2;
+                const nx = node % width;
+                const ny = (node - nx) / width;
+                const g = cost[node];
+                for (let dy = -1; dy <= 1; ++dy) {
+                    const yy = ny + dy;
+                    if (yy < 0 || yy >= height)
+                        continue;
+                    for (let dx = -1; dx <= 1; ++dx) {
+                        if (dx === 0 && dy === 0)
+                            continue;
+                        const xx = nx + dx;
+                        if (xx < 0 || xx >= width)
+                            continue;
+                        const next = yy * width + xx;
+                        if (solid[next])
+                            continue;
+                        let step = 1;
+                        if (dx !== 0 && dy !== 0) {
+                            if (solid[ny * width + xx] || solid[yy * width + nx])
+                                continue;
+                            step = sqrt2;
+                        }
+                        const ng = g + step;
+                        if (seen[next] === gen) {
+                            if (state[next] === 2 || cost[next] <= ng)
+                                continue;
+                            cost[next] = ng;
+                            rank[next] = ng + this.heur(xx, yy, x1, y1);
+                            parent[next] = node;
+                            this.heap_up(this.at[next]);
+                        }
+                        else {
+                            seen[next] = gen;
+                            state[next] = 1;
+                            cost[next] = ng;
+                            rank[next] = ng + this.heur(xx, yy, x1, y1);
+                            parent[next] = node;
+                            this.heap_push(next);
+                        }
+                    }
+                }
+            }
+            if (!found)
+                return 0;
+            const trace = this.trace;
+            let len = 0;
+            for (let node = goal; node !== -1; node = parent[node])
+                trace[len++] = node;
+            const cap = out.length >> 1;
+            let count = 0;
+            for (let i = len - 1; i >= 0 && count < cap; --i) {
+                const node = trace[i];
+                const x = node % width;
+                const y = (node - x) / width;
+                out[count * 2] = x + 0.5;
+                out[count * 2 + 1] = -y - 0.5;
+                ++count;
+            }
+            out[0] = from[0];
+            out[1] = from[1];
+            if (count === len) {
+                out[count * 2 - 2] = to[0];
+                out[count * 2 - 1] = to[1];
+            }
+            return count;
+        }
+        visible(x0, y0, x1, y1) {
+            const pad = this.pad();
+            const dx = x1 - x0;
+            const dy = y1 - y0;
+            const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) * 4);
+            for (let i = 0; i <= steps; ++i) {
+                const t = steps === 0 ? 0 : i / steps;
+                const x = x0 + dx * t;
+                const y = y0 + dy * t;
+                if (this.solid_at(x - pad, y - pad))
+                    return false;
+                if (this.solid_at(x + pad, y - pad))
+                    return false;
+                if (this.solid_at(x - pad, y + pad))
+                    return false;
+                if (this.solid_at(x + pad, y + pad))
+                    return false;
+            }
+            return true;
+        }
+        smooth(path, count, out) {
+            if (count === 0)
+                return 0;
+            const cap = out.length >> 1;
+            let written = 0;
+            let i = 0;
+            out[0] = path[0];
+            out[1] = path[1];
+            written = 1;
+            while (i < count - 1 && written < cap) {
+                let j = count - 1;
+                while (j > i + 1 && !this.visible(path[i * 2], path[i * 2 + 1], path[j * 2], path[j * 2 + 1]))
+                    --j;
+                out[written * 2] = path[j * 2];
+                out[written * 2 + 1] = path[j * 2 + 1];
+                ++written;
+                i = j;
+            }
+            return written;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_grid.prototype, "tile", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_grid.prototype, "pad", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_grid.prototype, "width", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_grid.prototype, "height", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_grid.prototype, "solid", null);
+    $.$bog_gamengine_nav_grid = $bog_gamengine_nav_grid;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    const eps = 1e-5;
+    class $bog_gamengine_nav_mesh extends $mol_object2 {
+        polys(next) {
+            return next ?? [];
+        }
+        y(next = 0) {
+            return next;
+        }
+        center = new Float32Array(0);
+        portal = new Float32Array(0);
+        portal_poly = new Int32Array(0);
+        adj_start = new Int32Array(0);
+        adj_list = new Int32Array(0);
+        portal_count = 0;
+        gen = 0;
+        seen = new Int32Array(0);
+        state = new Uint8Array(0);
+        cost = new Float32Array(0);
+        rank = new Float32Array(0);
+        from = new Int32Array(0);
+        heap = new Int32Array(0);
+        at = new Int32Array(0);
+        heap_size = 0;
+        route = new Int32Array(0);
+        left = new Float32Array(0);
+        right = new Float32Array(0);
+        build() {
+            const polys = this.polys();
+            const n = polys.length;
+            const center = new Float32Array(n * 2);
+            for (let p = 0; p < n; ++p) {
+                const poly = polys[p];
+                const m = poly.length >> 1;
+                let cx = 0, cz = 0;
+                for (let i = 0; i < m; ++i) {
+                    cx += poly[i * 2];
+                    cz += poly[i * 2 + 1];
+                }
+                center[p * 2] = cx / m;
+                center[p * 2 + 1] = cz / m;
+            }
+            this.center = center;
+            const portals = [];
+            const pairs = [];
+            const degree = new Int32Array(n);
+            for (let p = 0; p < n; ++p) {
+                for (let q = p + 1; q < n; ++q) {
+                    if (!this.overlap(polys[p], polys[q], portals))
+                        continue;
+                    pairs.push(p, q);
+                    ++degree[p];
+                    ++degree[q];
+                }
+            }
+            const count = pairs.length >> 1;
+            this.portal_count = count;
+            this.portal = new Float32Array(portals);
+            this.portal_poly = new Int32Array(pairs);
+            const adj_start = new Int32Array(n + 1);
+            for (let p = 0; p < n; ++p)
+                adj_start[p + 1] = adj_start[p] + degree[p];
+            const fill = new Int32Array(n);
+            const adj_list = new Int32Array(count * 2);
+            for (let k = 0; k < count; ++k) {
+                const p = pairs[k * 2];
+                const q = pairs[k * 2 + 1];
+                adj_list[adj_start[p] + fill[p]++] = k;
+                adj_list[adj_start[q] + fill[q]++] = k;
+            }
+            this.adj_start = adj_start;
+            this.adj_list = adj_list;
+            const nodes = count + 1;
+            this.seen = new Int32Array(nodes);
+            this.state = new Uint8Array(nodes);
+            this.cost = new Float32Array(nodes);
+            this.rank = new Float32Array(nodes);
+            this.from = new Int32Array(nodes);
+            this.heap = new Int32Array(nodes);
+            this.at = new Int32Array(nodes);
+            this.route = new Int32Array(nodes);
+            this.left = new Float32Array(nodes * 2 + 2);
+            this.right = new Float32Array(nodes * 2 + 2);
+            return count;
+        }
+        overlap(a, b, portals) {
+            const am = a.length >> 1;
+            const bm = b.length >> 1;
+            for (let i = 0; i < am; ++i) {
+                const ax0 = a[i * 2], az0 = a[i * 2 + 1];
+                const ax1 = a[((i + 1) % am) * 2], az1 = a[((i + 1) % am) * 2 + 1];
+                const dx = ax1 - ax0, dz = az1 - az0;
+                const len2 = dx * dx + dz * dz;
+                if (len2 < eps)
+                    continue;
+                for (let j = 0; j < bm; ++j) {
+                    const bx0 = b[j * 2], bz0 = b[j * 2 + 1];
+                    const bx1 = b[((j + 1) % bm) * 2], bz1 = b[((j + 1) % bm) * 2 + 1];
+                    if (Math.abs(dx * (bz0 - az0) - dz * (bx0 - ax0)) > eps)
+                        continue;
+                    if (Math.abs(dx * (bz1 - az0) - dz * (bx1 - ax0)) > eps)
+                        continue;
+                    const t0 = ((bx0 - ax0) * dx + (bz0 - az0) * dz) / len2;
+                    const t1 = ((bx1 - ax0) * dx + (bz1 - az0) * dz) / len2;
+                    const lo = Math.max(0, Math.min(t0, t1));
+                    const hi = Math.min(1, Math.max(t0, t1));
+                    if (hi - lo < 1e-3)
+                        continue;
+                    portals.push(ax0 + dx * lo, az0 + dz * lo, ax0 + dx * hi, az0 + dz * hi);
+                    return true;
+                }
+            }
+            return false;
+        }
+        inside(poly, x, z) {
+            const m = poly.length >> 1;
+            let sign = 0;
+            for (let i = 0; i < m; ++i) {
+                const x0 = poly[i * 2], z0 = poly[i * 2 + 1];
+                const x1 = poly[((i + 1) % m) * 2], z1 = poly[((i + 1) % m) * 2 + 1];
+                const cross = (x1 - x0) * (z - z0) - (z1 - z0) * (x - x0);
+                if (Math.abs(cross) < eps)
+                    continue;
+                const s = cross > 0 ? 1 : -1;
+                if (sign === 0)
+                    sign = s;
+                else if (sign !== s)
+                    return false;
+            }
+            return true;
+        }
+        locate(x, z) {
+            const polys = this.polys();
+            for (let p = 0; p < polys.length; ++p)
+                if (this.inside(polys[p], x, z))
+                    return p;
+            const center = this.center;
+            let best = -1;
+            let best_d = Infinity;
+            for (let p = 0; p < polys.length; ++p) {
+                const dx = center[p * 2] - x;
+                const dz = center[p * 2 + 1] - z;
+                const d = dx * dx + dz * dz;
+                if (d < best_d) {
+                    best_d = d;
+                    best = p;
+                }
+            }
+            return best;
+        }
+        portal_x(k) {
+            return (this.portal[k * 4] + this.portal[k * 4 + 2]) / 2;
+        }
+        portal_z(k) {
+            return (this.portal[k * 4 + 1] + this.portal[k * 4 + 3]) / 2;
+        }
+        heap_push(node) {
+            const i = this.heap_size++;
+            this.heap[i] = node;
+            this.at[node] = i;
+            this.heap_up(i);
+        }
+        heap_up(i) {
+            const heap = this.heap;
+            const rank = this.rank;
+            const at = this.at;
+            const node = heap[i];
+            const r = rank[node];
+            while (i > 0) {
+                const p = (i - 1) >> 1;
+                if (rank[heap[p]] <= r)
+                    break;
+                heap[i] = heap[p];
+                at[heap[i]] = i;
+                i = p;
+            }
+            heap[i] = node;
+            at[node] = i;
+        }
+        heap_pop() {
+            const heap = this.heap;
+            const rank = this.rank;
+            const at = this.at;
+            const top = heap[0];
+            const size = --this.heap_size;
+            if (size === 0)
+                return top;
+            const node = heap[size];
+            const r = rank[node];
+            let i = 0;
+            for (;;) {
+                let c = i * 2 + 1;
+                if (c >= size)
+                    break;
+                if (c + 1 < size && rank[heap[c + 1]] < rank[heap[c]])
+                    ++c;
+                if (rank[heap[c]] >= r)
+                    break;
+                heap[i] = heap[c];
+                at[heap[i]] = i;
+                i = c;
+            }
+            heap[i] = node;
+            at[node] = i;
+            return top;
+        }
+        relax(next, ng, parent, tx, tz) {
+            const gen = this.gen;
+            const h = Math.hypot(this.portal_x(next) - tx, this.portal_z(next) - tz);
+            if (this.seen[next] === gen) {
+                if (this.state[next] === 2 || this.cost[next] <= ng)
+                    return;
+                this.cost[next] = ng;
+                this.rank[next] = ng + h;
+                this.from[next] = parent;
+                this.heap_up(this.at[next]);
+            }
+            else {
+                this.seen[next] = gen;
+                this.state[next] = 1;
+                this.cost[next] = ng;
+                this.rank[next] = ng + h;
+                this.from[next] = parent;
+                this.heap_push(next);
+            }
+        }
+        path(from, to, out) {
+            this.build();
+            const polys = this.polys();
+            if (polys.length === 0)
+                return 0;
+            const cap = Math.floor(out.length / 3);
+            if (cap < 2)
+                return 0;
+            const y = this.y();
+            const sx = from[0], sz = from[2];
+            const tx = to[0], tz = to[2];
+            const sp = this.locate(sx, sz);
+            const tp = this.locate(tx, tz);
+            if (sp < 0 || tp < 0)
+                return 0;
+            if (sp === tp) {
+                out[0] = sx;
+                out[1] = y;
+                out[2] = sz;
+                out[3] = tx;
+                out[4] = y;
+                out[5] = tz;
+                return 2;
+            }
+            const gen = ++this.gen;
+            const count = this.portal_count;
+            const adj_start = this.adj_start;
+            const adj_list = this.adj_list;
+            const portal_poly = this.portal_poly;
+            const goal = count;
+            this.heap_size = 0;
+            for (let i = adj_start[sp]; i < adj_start[sp + 1]; ++i) {
+                const k = adj_list[i];
+                this.relax(k, Math.hypot(this.portal_x(k) - sx, this.portal_z(k) - sz), -1, tx, tz);
+            }
+            let found = false;
+            while (this.heap_size > 0) {
+                const node = this.heap_pop();
+                if (node === goal) {
+                    found = true;
+                    break;
+                }
+                this.state[node] = 2;
+                const g = this.cost[node];
+                const px = this.portal_x(node);
+                const pz = this.portal_z(node);
+                for (let side = 0; side < 2; ++side) {
+                    const p = portal_poly[node * 2 + side];
+                    if (p === tp) {
+                        const ng = g + Math.hypot(tx - px, tz - pz);
+                        if (this.seen[goal] !== gen || this.cost[goal] > ng) {
+                            if (this.seen[goal] === gen) {
+                                this.cost[goal] = ng;
+                                this.rank[goal] = ng;
+                                this.from[goal] = node;
+                                this.heap_up(this.at[goal]);
+                            }
+                            else {
+                                this.seen[goal] = gen;
+                                this.state[goal] = 1;
+                                this.cost[goal] = ng;
+                                this.rank[goal] = ng;
+                                this.from[goal] = node;
+                                this.heap_push(goal);
+                            }
+                        }
+                    }
+                    for (let i = adj_start[p]; i < adj_start[p + 1]; ++i) {
+                        const k = adj_list[i];
+                        if (k === node)
+                            continue;
+                        this.relax(k, g + Math.hypot(this.portal_x(k) - px, this.portal_z(k) - pz), node, tx, tz);
+                    }
+                }
+            }
+            if (!found)
+                return 0;
+            const route = this.route;
+            let len = 0;
+            for (let node = this.from[goal]; node !== -1; node = this.from[node])
+                route[len++] = node;
+            const left = this.left;
+            const right = this.right;
+            const portal = this.portal;
+            const center = this.center;
+            let poly = sp;
+            let cx = sx, cz = sz;
+            for (let i = 0; i < len; ++i) {
+                const k = route[len - 1 - i];
+                const ax = portal[k * 4], az = portal[k * 4 + 1];
+                const bx = portal[k * 4 + 2], bz = portal[k * 4 + 3];
+                const mx = (ax + bx) / 2 - cx;
+                const mz = (az + bz) / 2 - cz;
+                const cross = mx * (az - cz) - mz * (ax - cx);
+                if (cross > 0) {
+                    left[i * 2] = ax;
+                    left[i * 2 + 1] = az;
+                    right[i * 2] = bx;
+                    right[i * 2 + 1] = bz;
+                }
+                else {
+                    left[i * 2] = bx;
+                    left[i * 2 + 1] = bz;
+                    right[i * 2] = ax;
+                    right[i * 2 + 1] = az;
+                }
+                poly = portal_poly[k * 2] === poly ? portal_poly[k * 2 + 1] : portal_poly[k * 2];
+                cx = center[poly * 2];
+                cz = center[poly * 2 + 1];
+            }
+            left[len * 2] = tx;
+            left[len * 2 + 1] = tz;
+            right[len * 2] = tx;
+            right[len * 2 + 1] = tz;
+            return this.funnel(sx, sz, len + 1, out, cap, y);
+        }
+        funnel(sx, sz, count, out, cap, y) {
+            const left = this.left;
+            const right = this.right;
+            let apex_x = sx, apex_z = sz;
+            let left_x = sx, left_z = sz;
+            let right_x = sx, right_z = sz;
+            let apex_i = 0, left_i = 0, right_i = 0;
+            out[0] = sx;
+            out[1] = y;
+            out[2] = sz;
+            let written = 1;
+            for (let i = 0; i < count && written < cap; ++i) {
+                const lx = left[i * 2], lz = left[i * 2 + 1];
+                const rx = right[i * 2], rz = right[i * 2 + 1];
+                if (this.area(apex_x, apex_z, right_x, right_z, rx, rz) <= 0) {
+                    if ((apex_x === right_x && apex_z === right_z) || this.area(apex_x, apex_z, left_x, left_z, rx, rz) > 0) {
+                        right_x = rx;
+                        right_z = rz;
+                        right_i = i;
+                    }
+                    else {
+                        apex_x = left_x;
+                        apex_z = left_z;
+                        apex_i = left_i;
+                        out[written * 3] = apex_x;
+                        out[written * 3 + 1] = y;
+                        out[written * 3 + 2] = apex_z;
+                        ++written;
+                        left_x = apex_x;
+                        left_z = apex_z;
+                        right_x = apex_x;
+                        right_z = apex_z;
+                        left_i = apex_i;
+                        right_i = apex_i;
+                        i = apex_i;
+                        continue;
+                    }
+                }
+                if (this.area(apex_x, apex_z, left_x, left_z, lx, lz) >= 0) {
+                    if ((apex_x === left_x && apex_z === left_z) || this.area(apex_x, apex_z, right_x, right_z, lx, lz) < 0) {
+                        left_x = lx;
+                        left_z = lz;
+                        left_i = i;
+                    }
+                    else {
+                        apex_x = right_x;
+                        apex_z = right_z;
+                        apex_i = right_i;
+                        out[written * 3] = apex_x;
+                        out[written * 3 + 1] = y;
+                        out[written * 3 + 2] = apex_z;
+                        ++written;
+                        left_x = apex_x;
+                        left_z = apex_z;
+                        right_x = apex_x;
+                        right_z = apex_z;
+                        left_i = apex_i;
+                        right_i = apex_i;
+                        i = apex_i;
+                        continue;
+                    }
+                }
+            }
+            if (written < cap) {
+                const tx = left[(count - 1) * 2];
+                const tz = left[(count - 1) * 2 + 1];
+                const px = out[(written - 1) * 3];
+                const pz = out[(written - 1) * 3 + 2];
+                if (px !== tx || pz !== tz) {
+                    out[written * 3] = tx;
+                    out[written * 3 + 1] = y;
+                    out[written * 3 + 2] = tz;
+                    ++written;
+                }
+            }
+            return written;
+        }
+        area(ax, az, bx, bz, cx, cz) {
+            return (cx - ax) * (bz - az) - (bx - ax) * (cz - az);
+        }
+        from_tile(tile, y = 0) {
+            const width = tile.width();
+            const height = tile.height();
+            const polys = [];
+            let open = [];
+            for (let row = 0; row <= height; ++row) {
+                const runs = [];
+                if (row < height) {
+                    let x = 0;
+                    while (x < width) {
+                        if (tile.cell(x, row)) {
+                            ++x;
+                            continue;
+                        }
+                        const x0 = x;
+                        while (x < width && !tile.cell(x, row))
+                            ++x;
+                        runs.push([x0, x]);
+                    }
+                }
+                const next = [];
+                for (let i = 0; i < runs.length; ++i) {
+                    const [x0, x1] = runs[i];
+                    let found = null;
+                    for (let j = 0; j < open.length; ++j) {
+                        if (open[j][0] === x0 && open[j][1] === x1)
+                            found = open[j];
+                    }
+                    next.push(found ?? [x0, x1, row]);
+                }
+                for (let j = 0; j < open.length; ++j) {
+                    if (next.includes(open[j]))
+                        continue;
+                    const [x0, x1, z0] = open[j];
+                    polys.push(new Float32Array([x0, z0, x1, z0, x1, row, x0, row]));
+                }
+                open = next;
+            }
+            this.y(y);
+            this.polys(polys);
+            this.build();
+            return this;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_mesh.prototype, "polys", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_mesh.prototype, "y", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_mesh.prototype, "build", null);
+    $.$bog_gamengine_nav_mesh = $bog_gamengine_nav_mesh;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_nav_agent extends $bog_gamengine_node {
+        grid(next) {
+            return next ?? null;
+        }
+        mesh(next) {
+            return next ?? null;
+        }
+        speed(next = 3) {
+            return next;
+        }
+        radius(next = 0.4) {
+            return next;
+        }
+        replan(next = 0.5) {
+            return next;
+        }
+        target(next) {
+            return next ?? null;
+        }
+        others(next) {
+            return next ?? [];
+        }
+        route = new Float32Array(0);
+        stride = 2;
+        count = 0;
+        index = 0;
+        since = Infinity;
+        vel = new Float32Array(3);
+        path_count() {
+            return this.count;
+        }
+        plan(pos, target) {
+            const grid = this.grid();
+            const mesh = this.mesh();
+            if (grid) {
+                const need = grid.width() * grid.height() * 2 + 4;
+                if (this.route.length < need)
+                    this.route = new Float32Array(need);
+                this.stride = 2;
+                this.count = grid.smooth(this.route, grid.path(pos, target, this.route), this.route);
+            }
+            else if (mesh) {
+                mesh.build();
+                const need = (mesh.portal_count + 2) * 3;
+                if (this.route.length < need)
+                    this.route = new Float32Array(need);
+                this.stride = 3;
+                this.count = mesh.path(pos, target, this.route);
+            }
+            else {
+                this.count = 0;
+            }
+            this.index = this.count > 1 ? 1 : 0;
+            this.since = 0;
+        }
+        step(dt) {
+            const target = this.target();
+            if (!target)
+                return;
+            const pos = this.pos();
+            const radius = this.radius();
+            const speed = this.speed();
+            this.since += dt;
+            if (this.since >= this.replan())
+                this.plan(pos, target);
+            const route = this.route;
+            const stride = this.stride;
+            const vel = this.vel;
+            vel[0] = 0;
+            vel[1] = 0;
+            vel[2] = 0;
+            while (this.index < this.count) {
+                const base = this.index * stride;
+                const dx = route[base] - pos[0];
+                const dy = route[base + 1] - pos[1];
+                const dz = stride === 3 ? route[base + 2] - pos[2] : 0;
+                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                if (dist < radius) {
+                    ++this.index;
+                    continue;
+                }
+                vel[0] = dx / dist * speed;
+                vel[1] = dy / dist * speed;
+                vel[2] = dz / dist * speed;
+                break;
+            }
+            const others = this.others();
+            for (let i = 0; i < others.length; ++i) {
+                const other = others[i];
+                if (other === this)
+                    continue;
+                const op = other.pos();
+                const dx = pos[0] - op[0];
+                const dy = pos[1] - op[1];
+                const dz = pos[2] - op[2];
+                const reach = radius + other.radius();
+                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                if (dist >= reach || dist === 0)
+                    continue;
+                const k = (reach - dist) / reach * speed / dist;
+                vel[0] += dx * k;
+                vel[1] += dy * k;
+                vel[2] += dz * k;
+            }
+            const len = Math.sqrt(vel[0] * vel[0] + vel[1] * vel[1] + vel[2] * vel[2]);
+            if (len === 0)
+                return;
+            const k = len > speed ? speed / len : 1;
+            const next = new Float32Array(3);
+            next[0] = pos[0] + vel[0] * k * dt;
+            next[1] = pos[1] + vel[1] * k * dt;
+            next[2] = pos[2] + vel[2] * k * dt;
+            this.pos(next);
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_agent.prototype, "grid", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_agent.prototype, "mesh", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_agent.prototype, "speed", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_agent.prototype, "radius", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_agent.prototype, "replan", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_agent.prototype, "target", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_nav_agent.prototype, "others", null);
+    $.$bog_gamengine_nav_agent = $bog_gamengine_nav_agent;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     class $bog_gamengine_demo_flat_coin extends $bog_gamengine_phys_body {
         size(next) {
             return next ?? new Float32Array([0.6, 0.6]);
@@ -15478,6 +16824,14 @@ var $;
 			(obj.sub) = () => ([(this.hero_stat())]);
 			return obj;
 		}
+		ghost_stat(){
+			return "";
+		}
+		Ghost_stat(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ([(this.ghost_stat())]);
+			return obj;
+		}
 		nodes(){
 			return [];
 		}
@@ -15526,6 +16880,15 @@ var $;
 		hero_clip(next){
 			return (this.Hero().clip(next));
 		}
+		ghost_pos(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		ghost_tint(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
 		coin_pos(id){
 			const obj = new this.$.Float32Array();
 			return obj;
@@ -15543,7 +16906,11 @@ var $;
 			return [(this.Draw()), (this.Hero_label())];
 		}
 		foot(){
-			return [(this.Stat()), (this.Hero_stat())];
+			return [
+				(this.Stat()), 
+				(this.Hero_stat()), 
+				(this.Ghost_stat())
+			];
 		}
 		Key(){
 			const obj = new this.$.$bog_gamengine_key();
@@ -15636,6 +17003,26 @@ var $;
 			]});
 			return obj;
 		}
+		Grid(){
+			const obj = new this.$.$bog_gamengine_nav_grid();
+			(obj.tile) = () => ((this.Tile()));
+			return obj;
+		}
+		Ghost(){
+			const obj = new this.$.$bog_gamengine_nav_agent();
+			(obj.grid) = () => ((this.Grid()));
+			(obj.target) = () => ((this.hero_pos()));
+			(obj.pos) = (next) => ((this.ghost_pos(next)));
+			return obj;
+		}
+		Ghost_sprite(){
+			const obj = new this.$.$bog_gamengine_sprite();
+			(obj.parent) = () => ((this.Ghost()));
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.frame) = () => ("coin");
+			(obj.tint) = () => ((this.ghost_tint()));
+			return obj;
+		}
 		Coin(id){
 			const obj = new this.$.$bog_gamengine_demo_flat_coin();
 			(obj.sound) = () => ((this.Sound()));
@@ -15656,12 +17043,15 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Hero_label"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Stat"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Hero_stat"));
+	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Ghost_stat"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Phys"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Sprite_shader"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Batch"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "cam_pos"));
 	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "cell_pos"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "hero_pos"));
+	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "ghost_pos"));
+	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "ghost_tint"));
 	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "coin_pos"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Key"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Tile"));
@@ -15674,6 +17064,9 @@ var $;
 	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "Cell"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Hero"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Hero_sprite"));
+	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Grid"));
+	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Ghost"));
+	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Ghost_sprite"));
 	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "Coin"));
 	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "Coin_sprite"));
 
@@ -15741,10 +17134,22 @@ var $;
                 return [this.Hero(), ...this.coins()];
             }
             sprites() {
-                return [...this.cells(), ...this.coin_sprites(), this.Hero_sprite()];
+                return [...this.cells(), ...this.coin_sprites(), this.Ghost_sprite(), this.Hero_sprite()];
             }
             nodes() {
-                return [...this.bodies(), ...this.sprites()];
+                return [...this.bodies(), this.Ghost(), ...this.sprites()];
+            }
+            ghost_pos(next) {
+                return next ?? new Float32Array([18.5, -13.5, 0]);
+            }
+            ghost_tint() {
+                return new Float32Array([0.7, 0.4, 1, 1]);
+            }
+            ghost_stat() {
+                if (!this.Atlas().ready())
+                    return '';
+                const pos = this.ghost_pos();
+                return `ghost ${pos[0].toFixed(2)} × ${pos[1].toFixed(2)} | path ${this.Ghost().path_count()}`;
             }
             pointer_down(event) {
                 if (!event)
@@ -15833,6 +17238,12 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_flat.prototype, "nodes", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_flat.prototype, "ghost_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_flat.prototype, "ghost_tint", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_flat.prototype, "label_pos", null);
@@ -16283,6 +17694,19 @@ var $;
 (function ($) {
     const uv_plain = new Float32Array([0, 0, 1, 1]);
     class $bog_gamengine_mesh extends $bog_gamengine_node {
+        lods(next) {
+            return next ?? [];
+        }
+        radius() {
+            try {
+                return this.shape().radius();
+            }
+            catch (error) {
+                if ($mol_promise_like(error))
+                    return Infinity;
+                return $mol_fail_hidden(error);
+            }
+        }
         shape(next) {
             return next ?? new $bog_gamengine_shape_box;
         }
@@ -16326,6 +17750,9 @@ var $;
             return $mol_3d_mat4.multiply(super.trans(), $mol_3d_mat4.scaling(this.size()));
         }
     }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_mesh.prototype, "lods", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_mesh.prototype, "shape", null);
@@ -16391,6 +17818,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_cam_deep.prototype, "far", null);
+    __decorate([
+        $mol_mem_key
+    ], $bog_gamengine_cam_deep.prototype, "proj", null);
     $.$bog_gamengine_cam_deep = $bog_gamengine_cam_deep;
 })($ || ($ = {}));
 
@@ -17379,6 +18809,9 @@ var $;
         skin() {
             return new Float32Array(this.size() * 2);
         }
+        radius() {
+            return Infinity;
+        }
         mode() {
             return 'lines';
         }
@@ -17641,6 +19074,14 @@ var $;
 			(obj.sub) = () => ([(this.phys_stat())]);
 			return obj;
 		}
+		cull_stat(){
+			return "";
+		}
+		Cull_stat(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ([(this.cull_stat())]);
+			return obj;
+		}
 		paused(next){
 			return (this.Clock().paused(next));
 		}
@@ -17649,6 +19090,9 @@ var $;
 		}
 		batches(){
 			return [];
+		}
+		aspect(){
+			return 1;
 		}
 		Solid(){
 			const obj = new this.$.$bog_gamengine_shader_solid();
@@ -17708,7 +19152,11 @@ var $;
 			return [(this.Draw())];
 		}
 		foot(){
-			return [(this.Stat()), (this.Phys_stat())];
+			return [
+				(this.Stat()), 
+				(this.Phys_stat()), 
+				(this.Cull_stat())
+			];
 		}
 		seed(next){
 			if(next !== undefined) return next;
@@ -17746,6 +19194,8 @@ var $;
 			(obj.kids) = () => ((this.nodes()));
 			(obj.phys3) = () => ((this.Phys()));
 			(obj.batches) = () => ((this.batches()));
+			(obj.cam) = () => ((this.Walker()));
+			(obj.aspect) = () => ((this.aspect()));
 			return obj;
 		}
 		Crates(){
@@ -17814,6 +19264,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Draw"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Stat"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Phys_stat"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Cull_stat"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Solid"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Box"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Plane"));
@@ -18015,6 +19466,15 @@ var $;
                 phys.joint.add($bog_gamengine_phys3_joint.type_hinge, post, leaf, new Float32Array([0.3, door_lift - 0.5, 0]), new Float32Array([-0.5, 0, 0]), new Float32Array([0, 1, 0]), new Float32Array([-Math.PI / 2, Math.PI / 2]));
                 return next;
             }
+            aspect() {
+                const aspect = this.Draw().width() / this.Draw().height();
+                return Number.isFinite(aspect) && aspect > 0 ? aspect : 1;
+            }
+            cull_stat() {
+                this.Scene().step();
+                const crates = this.Crates();
+                return `drawn ${crates.count} / ${this.Phys().count - crates.skip()}`;
+            }
             phys_stat() {
                 this.Scene().step();
                 const phys = this.Phys();
@@ -18048,6 +19508,12 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_boxes.prototype, "batches", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "aspect", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "cull_stat", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_boxes.prototype, "phys_stat", null);
@@ -18231,6 +19697,26 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo.prototype), "Cam_flat"));
 	($mol_mem(($.$bog_gamengine_demo.prototype), "Cam_deep"));
 
+
+;
+"use strict";
+var $;
+(function ($) {
+    function $mol_offline() { }
+    $.$mol_offline = $mol_offline;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    try {
+        $mol_offline();
+    }
+    catch (error) {
+        console.error(error);
+    }
+})($ || ($ = {}));
 
 ;
 "use strict";
@@ -21942,65 +23428,58 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    class $bog_gamengine_node_test_hero extends $bog_gamengine_node {
+    function key_jump() {
+        const key = new $bog_gamengine_key;
+        key.bind({ jump: ['space', 'W'] });
+        return key;
     }
-    function node_test_prop(node, name) {
-        return node.props().find(prop => prop.name === name);
+    function key_axis() {
+        const key = new $bog_gamengine_key;
+        key.bind({ left: ['A'], right: ['D'] });
+        return key;
     }
     $mol_test({
-        'child shifted by 1 under parent rotated by half pi lands at (0, 1, 0)'() {
-            const parent = new $bog_gamengine_node;
-            parent.rot(new Float32Array([0, 0, Math.PI / 2]));
-            const child = new $bog_gamengine_node;
-            child.parent(parent);
-            child.pos(new Float32Array([1, 0, 0]));
-            const world = child.world();
-            $mol_assert_ok(Math.abs(world[12] - 0) < 1e-6);
-            $mol_assert_ok(Math.abs(world[13] - 1) < 1e-6);
-            $mol_assert_ok(Math.abs(world[14] - 0) < 1e-6);
+        'action is false before any key'() {
+            const key = key_jump();
+            $mol_assert_equal(key.action('jump'), false);
         },
-        'title without name is class name without prefix'() {
-            $mol_assert_equal(new $bog_gamengine_node_test_hero().title(), 'node_test_hero');
+        'pressed key turns action on'() {
+            const key = key_jump();
+            key.keys().space(true);
+            $mol_assert_equal(key.action('jump'), true);
         },
-        'title with name is name'() {
-            const node = new $bog_gamengine_node_test_hero;
-            node.name('Hero');
-            $mol_assert_equal(node.title(), 'Hero');
+        'second key keeps action while first released'() {
+            const key = key_jump();
+            key.keys().space(true);
+            key.keys().W(true);
+            key.keys().space(false);
+            $mol_assert_equal(key.action('jump'), true);
         },
-        'base props are pos, rot, scale and tint with kinds'() {
-            const props = new $bog_gamengine_node().props();
-            $mol_assert_equal(props.map(prop => prop.name), ['pos', 'rot', 'scale', 'tint']);
-            $mol_assert_equal(props.map(prop => prop.kind), ['vec3', 'euler', 'vec3', 'vec4']);
+        'both keys released turn action off'() {
+            const key = key_jump();
+            key.keys().space(true);
+            key.keys().W(true);
+            key.keys().space(false);
+            key.keys().W(false);
+            $mol_assert_equal(key.action('jump'), false);
         },
-        'set through props changes pos'() {
-            const node = new $bog_gamengine_node;
-            node_test_prop(node, 'pos').set(new Float32Array([1, 2, 3]));
-            $mol_assert_equal([...node.pos()], [1, 2, 3]);
+        'axis is zero without keys'() {
+            const key = key_axis();
+            $mol_assert_equal(key.axis('left', 'right'), 0);
         },
-        'pos from plain array is typed array with same numbers'() {
-            const node = new $bog_gamengine_node;
-            node.pos([1, 2, 3]);
-            $mol_assert_ok(node.pos() instanceof Float32Array);
-            $mol_assert_equal([...node.pos()], [1, 2, 3]);
+        'axis is minus one on left'() {
+            const key = key_axis();
+            key.keys().A(true);
+            $mol_assert_equal(key.axis('left', 'right'), -1);
         },
-        'pos from typed array keeps the same reference'() {
-            const node = new $bog_gamengine_node;
-            const typed = new Float32Array([1, 2, 3]);
-            node.pos(typed);
-            $mol_assert_equal(node.pos(), typed);
+        'axis is one on right'() {
+            const key = key_axis();
+            key.keys().D(true);
+            $mol_assert_equal(key.axis('left', 'right'), 1);
         },
-        'kids setter stores nodes'() {
-            const a = new $bog_gamengine_node;
-            const b = new $bog_gamengine_node;
-            const parent = new $bog_gamengine_node;
-            parent.kids([a, b]);
-            $mol_assert_equal(parent.kids(), [a, b]);
-        },
-        'tint of bare node defaults to opaque white through props'() {
-            const node = new $bog_gamengine_node;
-            $mol_assert_equal([...node_test_prop(node, 'tint').get()], [1, 1, 1, 1]);
-            node_test_prop(node, 'tint').set([1, 0, 0, 0.5]);
-            $mol_assert_equal([...node.tint()], [1, 0, 0, 0.5]);
+        'unknown action is false'() {
+            const key = key_jump();
+            $mol_assert_equal(key.action('fly'), false);
         },
     });
 })($ || ($ = {}));
@@ -22009,20 +23488,137 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    class $bog_gamengine_pad_mock extends $bog_gamengine_pad {
+        state = null;
+        pads() {
+            return [this.state];
+        }
+    }
+    function pad_state(pressed, axes) {
+        const buttons = [];
+        for (let i = 0; i < 16; ++i)
+            buttons.push({ pressed: pressed.includes(i) });
+        return { buttons, axes };
+    }
+    function pad_move() {
+        const pad = new $bog_gamengine_pad_mock;
+        pad.bind({ jump: ['a'], left: ['lx-'], right: ['right', 'lx+'] });
+        return pad;
+    }
     $mol_test({
-        'view of camera shifted by (0, 0, 5) moves (0, 0, 5) to origin'() {
-            const cam = new $bog_gamengine_cam;
-            cam.pos(new Float32Array([0, 0, 5]));
-            const view = cam.view();
-            const point = [0, 0, 5, 1];
-            const out = new Float32Array(4);
-            for (let i = 0; i < 4; ++i) {
-                out[i] = view[i] * point[0] + view[4 + i] * point[1] + view[8 + i] * point[2] + view[12 + i] * point[3];
-            }
-            $mol_assert_ok(Math.abs(out[0]) < 1e-6);
-            $mol_assert_ok(Math.abs(out[1]) < 1e-6);
-            $mol_assert_ok(Math.abs(out[2]) < 1e-6);
-            $mol_assert_ok(Math.abs(out[3] - 1) < 1e-6);
+        'action is false without gamepad'() {
+            const pad = pad_move();
+            pad.poll();
+            $mol_assert_equal(pad.action('jump'), false);
+        },
+        'pressed button turns action on'() {
+            const pad = pad_move();
+            pad.state = pad_state([0], [0, 0, 0, 0]);
+            pad.poll();
+            $mol_assert_equal(pad.action('jump'), true);
+        },
+        'released button turns action off'() {
+            const pad = pad_move();
+            pad.state = pad_state([0], [0, 0, 0, 0]);
+            pad.poll();
+            pad.state = pad_state([], [0, 0, 0, 0]);
+            pad.poll();
+            $mol_assert_equal(pad.action('jump'), false);
+        },
+        'stick inside dead zone gives zero axis'() {
+            const pad = pad_move();
+            pad.state = pad_state([], [0.1, 0, 0, 0]);
+            pad.poll();
+            $mol_assert_equal(pad.axis('left', 'right'), 0);
+        },
+        'stick right gives positive axis'() {
+            const pad = pad_move();
+            pad.state = pad_state([], [0.6, 0, 0, 0]);
+            pad.poll();
+            $mol_assert_ok(Math.abs(pad.axis('left', 'right') - 0.6) < 1e-6);
+        },
+        'stick left gives negative axis'() {
+            const pad = pad_move();
+            pad.state = pad_state([], [-0.6, 0, 0, 0]);
+            pad.poll();
+            $mol_assert_ok(Math.abs(pad.axis('left', 'right') + 0.6) < 1e-6);
+        },
+        'dpad button bound with stick turns action on'() {
+            const pad = pad_move();
+            pad.state = pad_state([15], [0, 0, 0, 0]);
+            pad.poll();
+            $mol_assert_equal(pad.action('right'), true);
+        },
+        'stick bound with dpad button turns action on'() {
+            const pad = pad_move();
+            pad.state = pad_state([], [0.5, 0, 0, 0]);
+            pad.poll();
+            $mol_assert_equal(pad.action('right'), true);
+        },
+        'unknown action is false'() {
+            const pad = pad_move();
+            pad.state = pad_state([0], [0, 0, 0, 0]);
+            pad.poll();
+            $mol_assert_equal(pad.action('fly'), false);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_input_pad_mock extends $bog_gamengine_pad {
+        state = null;
+        pads() {
+            return [this.state];
+        }
+    }
+    function input_move() {
+        const key = new $bog_gamengine_key;
+        key.bind({ left: ['A'], right: ['D'] });
+        const pad = new $bog_gamengine_input_pad_mock;
+        pad.bind({ left: ['lx-'], right: ['lx+'] });
+        const input = new $bog_gamengine_input;
+        input.key(key);
+        input.pad(pad);
+        return { input, key, pad };
+    }
+    $mol_test({
+        'key held gives action while pad is silent'() {
+            const { input, key } = input_move();
+            key.keys().D(true);
+            input.poll();
+            $mol_assert_equal(input.action('right'), true);
+        },
+        'key held gives full axis while pad is silent'() {
+            const { input, key } = input_move();
+            key.keys().D(true);
+            input.poll();
+            $mol_assert_equal(input.axis('left', 'right'), 1);
+        },
+        'pad stick gives its axis while keys are silent'() {
+            const { input, pad } = input_move();
+            pad.state = { buttons: [], axes: [0.5, 0, 0, 0] };
+            input.poll();
+            $mol_assert_ok(Math.abs(input.axis('left', 'right') - 0.5) < 1e-6);
+        },
+        'key overrides pad stick'() {
+            const { input, key, pad } = input_move();
+            key.keys().A(true);
+            pad.state = { buttons: [], axes: [0.5, 0, 0, 0] };
+            input.poll();
+            $mol_assert_equal(input.axis('left', 'right'), -1);
+        },
+        'both silent give zero axis'() {
+            const { input } = input_move();
+            input.poll();
+            $mol_assert_equal(input.axis('left', 'right'), 0);
+        },
+        'both silent give false action'() {
+            const { input } = input_move();
+            input.poll();
+            $mol_assert_equal(input.action('right'), false);
         },
     });
 })($ || ($ = {}));
@@ -22097,6 +23693,159 @@ var $;
             $bog_gamengine_clock_time_mock.stamp(30);
             $mol_assert_equal(clock.time(), 0.03);
         },
+        'time set to 5 keeps accumulating dt from 5'($) {
+            const clock = clock_mock($);
+            $bog_gamengine_clock_time_mock.stamp(0);
+            clock.time();
+            $bog_gamengine_clock_time_mock.stamp(10);
+            clock.time();
+            clock.time(5);
+            $mol_assert_equal(clock.time(), 5);
+            $bog_gamengine_clock_time_mock.stamp(30);
+            $mol_assert_equal(clock.time(), 5.02);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_node_test_hero extends $bog_gamengine_node {
+    }
+    function node_test_prop(node, name) {
+        return node.props().find(prop => prop.name === name);
+    }
+    $mol_test({
+        'child shifted by 1 under parent rotated by half pi lands at (0, 1, 0)'() {
+            const parent = new $bog_gamengine_node;
+            parent.rot(new Float32Array([0, 0, Math.PI / 2]));
+            const child = new $bog_gamengine_node;
+            child.parent(parent);
+            child.pos(new Float32Array([1, 0, 0]));
+            const world = child.world();
+            $mol_assert_ok(Math.abs(world[12] - 0) < 1e-6);
+            $mol_assert_ok(Math.abs(world[13] - 1) < 1e-6);
+            $mol_assert_ok(Math.abs(world[14] - 0) < 1e-6);
+        },
+        'title without name is class name without prefix'() {
+            $mol_assert_equal(new $bog_gamengine_node_test_hero().title(), 'node_test_hero');
+        },
+        'title with name is name'() {
+            const node = new $bog_gamengine_node_test_hero;
+            node.name('Hero');
+            $mol_assert_equal(node.title(), 'Hero');
+        },
+        'base props are pos, rot, scale and tint with kinds'() {
+            const props = new $bog_gamengine_node().props();
+            $mol_assert_equal(props.map(prop => prop.name), ['pos', 'rot', 'scale', 'tint']);
+            $mol_assert_equal(props.map(prop => prop.kind), ['vec3', 'euler', 'vec3', 'vec4']);
+        },
+        'set through props changes pos'() {
+            const node = new $bog_gamengine_node;
+            node_test_prop(node, 'pos').set(new Float32Array([1, 2, 3]));
+            $mol_assert_equal([...node.pos()], [1, 2, 3]);
+        },
+        'pos from plain array is typed array with same numbers'() {
+            const node = new $bog_gamengine_node;
+            node.pos([1, 2, 3]);
+            $mol_assert_ok(node.pos() instanceof Float32Array);
+            $mol_assert_equal([...node.pos()], [1, 2, 3]);
+        },
+        'pos from typed array keeps the same reference'() {
+            const node = new $bog_gamengine_node;
+            const typed = new Float32Array([1, 2, 3]);
+            node.pos(typed);
+            $mol_assert_equal(node.pos(), typed);
+        },
+        'kids setter stores nodes'() {
+            const a = new $bog_gamengine_node;
+            const b = new $bog_gamengine_node;
+            const parent = new $bog_gamengine_node;
+            parent.kids([a, b]);
+            $mol_assert_equal(parent.kids(), [a, b]);
+        },
+        'kids setter sets parent of kids'() {
+            const a = new $bog_gamengine_node;
+            const parent = new $bog_gamengine_node;
+            parent.kids([a]);
+            $mol_assert_equal(a.parent(), parent);
+        },
+        'kids setter keeps parent already set'() {
+            const a = new $bog_gamengine_node;
+            const own = new $bog_gamengine_node;
+            a.parent(own);
+            new $bog_gamengine_node().kids([a]);
+            $mol_assert_equal(a.parent(), own);
+        },
+        'root of a bare node is itself and scene is null'() {
+            const node = new $bog_gamengine_node;
+            $mol_assert_equal(node.root(), node);
+            $mol_assert_equal(node.scene(), null);
+            $mol_assert_equal(node.input(), null);
+            $mol_assert_equal(node.clock(), null);
+        },
+        'tint of bare node defaults to opaque white through props'() {
+            const node = new $bog_gamengine_node;
+            $mol_assert_equal([...node_test_prop(node, 'tint').get()], [1, 1, 1, 1]);
+            node_test_prop(node, 'tint').set([1, 0, 0, 0.5]);
+            $mol_assert_equal([...node.tint()], [1, 0, 0, 0.5]);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_cam_test_deep extends $bog_gamengine_cam {
+        proj(aspect) {
+            return $mol_3d_mat4.perspective(Math.PI / 3, aspect, 0.1, 100);
+        }
+    }
+    function $bog_gamengine_cam_test_frustum() {
+        return new $bog_gamengine_cam_test_deep().frustum(1, new Float32Array(24));
+    }
+    $mol_test({
+        'sphere in front of camera is inside frustum'() {
+            $mol_assert_ok($bog_gamengine_cam_frustum_sphere($bog_gamengine_cam_test_frustum(), 0, 0, -5, 1));
+        },
+        'sphere behind camera is outside frustum'() {
+            $mol_assert_not($bog_gamengine_cam_frustum_sphere($bog_gamengine_cam_test_frustum(), 0, 0, 5, 1));
+        },
+        'sphere aside beyond fov is outside frustum'() {
+            $mol_assert_not($bog_gamengine_cam_frustum_sphere($bog_gamengine_cam_test_frustum(), 10, 0, -5, 1));
+        },
+        'sphere crossing near plane from behind is inside frustum'() {
+            $mol_assert_ok($bog_gamengine_cam_frustum_sphere($bog_gamengine_cam_test_frustum(), 0, 0, 0.5, 1));
+        },
+        'aabb behind camera is outside, aabb in front is inside'() {
+            const frustum = $bog_gamengine_cam_test_frustum();
+            const aabb = new Float32Array([-1, -1, 4, 1, 1, 6, -1, -1, -6, 1, 1, -4]);
+            $mol_assert_not($bog_gamengine_cam_frustum_aabb(frustum, aabb, 0));
+            $mol_assert_ok($bog_gamengine_cam_frustum_aabb(frustum, aabb, 6));
+        },
+        'frustum follows camera turned around'() {
+            const cam = new $bog_gamengine_cam_test_deep;
+            cam.rot(new Float32Array([0, Math.PI, 0]));
+            const frustum = cam.frustum(1, new Float32Array(24));
+            $mol_assert_ok($bog_gamengine_cam_frustum_sphere(frustum, 0, 0, 5, 1));
+            $mol_assert_not($bog_gamengine_cam_frustum_sphere(frustum, 0, 0, -5, 1));
+        },
+        'view of camera shifted by (0, 0, 5) moves (0, 0, 5) to origin'() {
+            const cam = new $bog_gamengine_cam;
+            cam.pos(new Float32Array([0, 0, 5]));
+            const view = cam.view();
+            const point = [0, 0, 5, 1];
+            const out = new Float32Array(4);
+            for (let i = 0; i < 4; ++i) {
+                out[i] = view[i] * point[0] + view[4 + i] * point[1] + view[8 + i] * point[2] + view[12 + i] * point[3];
+            }
+            $mol_assert_ok(Math.abs(out[0]) < 1e-6);
+            $mol_assert_ok(Math.abs(out[1]) < 1e-6);
+            $mol_assert_ok(Math.abs(out[2]) < 1e-6);
+            $mol_assert_ok(Math.abs(out[3] - 1) < 1e-6);
+        },
     });
 })($ || ($ = {}));
 
@@ -22134,428 +23883,6 @@ var $;
             const dir = light.dir();
             $mol_assert_ok(Math.abs(dir[0] + 1) < 1e-6);
             $mol_assert_ok(Math.abs(dir[2]) < 1e-6);
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($_1) {
-    $mol_test({
-        'source starts with version line'($) {
-            const source = $bog_gamengine_gl_source({}, 'void main() {}', 'void main() {}');
-            $mol_assert_ok(source.vert.startsWith('#version 300 es\n'));
-            $mol_assert_ok(source.frag.startsWith('#version 300 es\n'));
-        },
-        'glob goes to both shaders as uniform'($) {
-            const source = $bog_gamengine_gl_source({ glob: { proj: 'mat4' } }, '', '');
-            $mol_assert_ok(source.vert.includes('uniform mat4 proj;\n'));
-            $mol_assert_ok(source.frag.includes('uniform mat4 proj;\n'));
-        },
-        'input goes to vert only as in'($) {
-            const source = $bog_gamengine_gl_source({ input: { vertex: 'vec3' } }, '', '');
-            $mol_assert_ok(source.vert.includes('in vec3 vertex;\n'));
-            $mol_assert_not(source.frag.includes('vertex'));
-        },
-        'pipe is out in vert and in in frag'($) {
-            const source = $bog_gamengine_gl_source({ pipe: { pipe_tint: 'vec4' } }, '', '');
-            $mol_assert_ok(source.vert.includes('out vec4 pipe_tint;\n'));
-            $mol_assert_ok(source.frag.includes('in vec4 pipe_tint;\n'));
-        },
-        'output goes to frag only as out'($) {
-            const source = $bog_gamengine_gl_source({ output: { color: 'vec4' } }, '', '');
-            $mol_assert_ok(source.frag.includes('out vec4 color;\n'));
-            $mol_assert_not(source.vert.includes('color'));
-        },
-        'entry text ends the source'($) {
-            const source = $bog_gamengine_gl_source({}, 'void main() { v }', 'void main() { f }');
-            $mol_assert_ok(source.vert.endsWith('void main() { v }'));
-            $mol_assert_ok(source.frag.endsWith('void main() { f }'));
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($_1) {
-    $mol_test({
-        'vert and frag have main'($) {
-            const shader = new $bog_gamengine_shader_flat;
-            $mol_assert_ok(shader.vert().includes('main'));
-            $mol_assert_ok(shader.frag().includes('main'));
-        },
-        'every input and glob name is used in vert'($) {
-            const shader = new $bog_gamengine_shader_flat;
-            const vert = shader.sources().vert;
-            const face = shader.face();
-            for (const name in face.input)
-                $mol_assert_ok(vert.includes(name));
-            for (const name in face.glob)
-                $mol_assert_ok(vert.includes(name));
-        },
-        'sources mix only glsl both'($) {
-            const shader = new $bog_gamengine_shader_flat;
-            $mol_assert_equal(shader.sources().vert, $mol_3d_glsl_both + shader.vert());
-            $mol_assert_equal(shader.sources().frag, $mol_3d_glsl_both + shader.frag());
-        },
-        'every pipe name is in both vert and frag'($) {
-            const shader = new $bog_gamengine_shader_flat;
-            const face = shader.face();
-            for (const name in face.pipe) {
-                $mol_assert_ok(shader.vert().includes(name));
-                $mol_assert_ok(shader.frag().includes(name));
-            }
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($_1) {
-    $mol_test({
-        'quad array lengths'($) {
-            const quad = $bog_gamengine_shape_quad.make({ $ });
-            $mol_assert_equal(quad.geometry().length, 12);
-            $mol_assert_equal(quad.skin().length, 8);
-            $mol_assert_equal(quad.normals().length, 12);
-            $mol_assert_equal(quad.count(), 4);
-        },
-        'quad strip triangles are counter clockwise'($) {
-            const geometry = $bog_gamengine_shape_quad.make({ $ }).geometry();
-            const cross_z = (a, b, c) => {
-                const ax = geometry[b * 3] - geometry[a * 3];
-                const ay = geometry[b * 3 + 1] - geometry[a * 3 + 1];
-                const bx = geometry[c * 3] - geometry[a * 3];
-                const by = geometry[c * 3 + 1] - geometry[a * 3 + 1];
-                return ax * by - ay * bx;
-            };
-            $mol_assert_ok(cross_z(0, 1, 2) > 0);
-            $mol_assert_ok(cross_z(2, 1, 3) > 0);
-        },
-        'quad normals point to plus z'($) {
-            const normals = $bog_gamengine_shape_quad.make({ $ }).normals();
-            for (let i = 0; i < 4; ++i) {
-                $mol_assert_equal(normals[i * 3], 0);
-                $mol_assert_equal(normals[i * 3 + 1], 0);
-                $mol_assert_equal(normals[i * 3 + 2], 1);
-            }
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $bog_gamengine_atlas_mock extends $bog_gamengine_atlas {
-        sizes = {};
-        image(uri) {
-            const [width, height] = this.sizes[uri] ?? [64, 64];
-            return { data: () => ({ width, height }) };
-        }
-    }
-    function atlas_mock(uris, sizes = {}) {
-        const atlas = new $bog_gamengine_atlas_mock;
-        atlas.uris(uris);
-        atlas.sizes = sizes;
-        return atlas;
-    }
-    $mol_test({
-        'layer index equals position of file in uris'() {
-            const atlas = atlas_mock(['bog/gamengine/demo/atlas/coin.png', 'bog/gamengine/demo/atlas/hero.png']);
-            $mol_assert_equal(atlas.layer('hero'), 1);
-        },
-        'image 64×32 in atlas 64 fails with file path'() {
-            const uri = 'bog/gamengine/demo/atlas/hero.png';
-            const atlas = atlas_mock([uri], { [uri]: [64, 32] });
-            const error = $mol_assert_fail(() => atlas.images(), Error);
-            $mol_assert_equal(error.message.includes(uri), true);
-            $mol_assert_equal(error.message.includes('64×32'), true);
-        },
-        'unknown layer name fails'() {
-            const atlas = atlas_mock(['bog/gamengine/demo/atlas/hero.png']);
-            const error = $mol_assert_fail(() => atlas.layer('coin'), Error);
-            $mol_assert_equal(error.message.includes('coin'), true);
-            $mol_assert_equal(error.message.includes('hero'), true);
-        },
-        'two files with same name fail'() {
-            const atlas = atlas_mock(['bog/gamengine/demo/atlas/hero.png', 'bog/gamengine/demo/tiles/hero.png']);
-            const error = $mol_assert_fail(() => atlas.layer('hero'), Error);
-            $mol_assert_equal(error.message.includes('atlas/hero.png'), true);
-            $mol_assert_equal(error.message.includes('tiles/hero.png'), true);
-        },
-        'ready is true when all images match size'() {
-            const atlas = atlas_mock(['bog/gamengine/demo/atlas/hero.png']);
-            $mol_assert_equal(atlas.ready(), true);
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($_1) {
-    $mol_test({
-        'box array lengths'($) {
-            const box = $bog_gamengine_shape_box.make({ $ });
-            $mol_assert_equal(box.geometry().length, 102);
-            $mol_assert_equal(box.skin().length, 68);
-            $mol_assert_equal(box.normals().length, 102);
-            $mol_assert_equal(box.size(), 34);
-            $mol_assert_equal(box.count(), 24);
-            $mol_assert_equal(box.mode(), 'strip');
-        },
-        'box has six different unit normals'($) {
-            const normals = $bog_gamengine_shape_box.make({ $ }).normals();
-            const seen = new Set();
-            for (let i = 0; i < 34; ++i) {
-                const x = normals[i * 3];
-                const y = normals[i * 3 + 1];
-                const z = normals[i * 3 + 2];
-                $mol_assert_equal(x * x + y * y + z * z, 1);
-                seen.add(`${x} ${y} ${z}`);
-            }
-            $mol_assert_equal(seen.size, 6);
-        },
-        'box faces are counter clockwise from outside'($) {
-            const box = $bog_gamengine_shape_box.make({ $ });
-            const geometry = box.geometry();
-            const normals = box.normals();
-            const winding = (a, b, c) => {
-                const ax = geometry[b * 3] - geometry[a * 3];
-                const ay = geometry[b * 3 + 1] - geometry[a * 3 + 1];
-                const az = geometry[b * 3 + 2] - geometry[a * 3 + 2];
-                const bx = geometry[c * 3] - geometry[a * 3];
-                const by = geometry[c * 3 + 1] - geometry[a * 3 + 1];
-                const bz = geometry[c * 3 + 2] - geometry[a * 3 + 2];
-                const cx = ay * bz - az * by;
-                const cy = az * bx - ax * bz;
-                const cz = ax * by - ay * bx;
-                return cx * normals[a * 3] + cy * normals[a * 3 + 1] + cz * normals[a * 3 + 2];
-            };
-            for (let face = 0; face < 6; ++face) {
-                const v = face * 6;
-                $mol_assert_ok(winding(v, v + 1, v + 2) > 0);
-                $mol_assert_ok(winding(v + 2, v + 1, v + 3) > 0);
-            }
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $bog_gamengine_mesh_test_atlas extends $bog_gamengine_atlas {
-        image(uri) {
-            return { data: () => ({ width: 64, height: 64 }) };
-        }
-    }
-    function mesh_test_atlas(uris) {
-        const atlas = new $bog_gamengine_mesh_test_atlas;
-        atlas.uris(uris);
-        return atlas;
-    }
-    function mesh_test_mesh(atlas, frame) {
-        const mesh = new $bog_gamengine_mesh;
-        mesh.atlas(atlas);
-        mesh.frame(frame);
-        return mesh;
-    }
-    $mol_test({
-        'layer is taken from atlas by frame name'() {
-            const atlas = mesh_test_atlas(['bog/gamengine/demo/atlas/wall.png', 'bog/gamengine/demo/atlas/floor.png']);
-            $mol_assert_equal(mesh_test_mesh(atlas, 'floor').layer(), 1);
-        },
-        'layer without atlas is 0'() {
-            $mol_assert_equal(mesh_test_mesh(null, 'floor').layer(), 0);
-        },
-        'uv is whole layer'() {
-            $mol_assert_equal([...new $bog_gamengine_mesh().uv()], [0, 0, 1, 1]);
-        },
-        'size scales trans in three axes'() {
-            const mesh = new $bog_gamengine_mesh;
-            mesh.size(new Float32Array([2, 3, 4]));
-            const trans = mesh.trans();
-            $mol_assert_equal(trans[0], 2);
-            $mol_assert_equal(trans[5], 3);
-            $mol_assert_equal(trans[10], 4);
-        },
-        'default shape is box'() {
-            $mol_assert_ok(new $bog_gamengine_mesh().shape() instanceof $bog_gamengine_shape_box);
-        },
-        'two meshes of different atlases give two batches'() {
-            const first = mesh_test_atlas(['bog/gamengine/demo/atlas/wall.png']);
-            const second = mesh_test_atlas(['bog/gamengine/demo/atlas/floor.png']);
-            const batches = $bog_gamengine_batch_group([mesh_test_mesh(first, 'wall'), mesh_test_mesh(second, 'floor')], atlas => {
-                const batch = new $bog_gamengine_batch;
-                batch.atlas(atlas);
-                return batch;
-            });
-            $mol_assert_equal(batches.length, 2);
-            $mol_assert_equal(batches[0].atlas(), first);
-            $mol_assert_equal(batches[1].atlas(), second);
-        },
-        'filled batch has layer and tint of mesh'() {
-            const atlas = mesh_test_atlas(['bog/gamengine/demo/atlas/wall.png', 'bog/gamengine/demo/atlas/floor.png']);
-            const mesh = mesh_test_mesh(atlas, 'floor');
-            mesh.tint(new Float32Array([1, 0.5, 0.25, 1]));
-            const batch = new $bog_gamengine_batch;
-            batch.nodes([mesh]);
-            batch.fill();
-            $mol_assert_equal(batch.layer[0], 1);
-            $mol_assert_equal([...batch.tint.subarray(0, 4)], [1, 0.5, 0.25, 1]);
-        },
-        'set through props changes size'() {
-            const mesh = new $bog_gamengine_mesh;
-            mesh.props().find(prop => prop.name === 'size').set(new Float32Array([2, 3, 4]));
-            $mol_assert_equal([...mesh.size()], [2, 3, 4]);
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $bog_gamengine_batch_test_tinted extends $bog_gamengine_node {
-        tint() {
-            return new Float32Array([1, 0, 0, 0.5]);
-        }
-    }
-    class $bog_gamengine_batch_test_layered extends $bog_gamengine_node {
-        layer() {
-            return 3;
-        }
-        uv() {
-            return new Float32Array([1, 0, -1, 1]);
-        }
-    }
-    function $bog_gamengine_batch_test_node(x, y, z) {
-        const node = new $bog_gamengine_node;
-        node.pos(new Float32Array([x, y, z]));
-        return node;
-    }
-    $mol_test({
-        'two nodes give count 2 and translations at offsets 12 and 28'() {
-            const batch = new $bog_gamengine_batch;
-            batch.nodes([
-                $bog_gamengine_batch_test_node(1, 2, 3),
-                $bog_gamengine_batch_test_node(4, 5, 6),
-            ]);
-            $mol_assert_equal(batch.fill(), 2);
-            $mol_assert_equal(batch.count, 2);
-            $mol_assert_equal([...batch.trans.subarray(12, 15)], [1, 2, 3]);
-            $mol_assert_equal([...batch.trans.subarray(28, 31)], [4, 5, 6]);
-        },
-        'third node keeps buffers when cap suffices'() {
-            const batch = new $bog_gamengine_batch;
-            batch.nodes([
-                $bog_gamengine_batch_test_node(1, 2, 3),
-                $bog_gamengine_batch_test_node(4, 5, 6),
-            ]);
-            batch.fill();
-            $mol_assert_ok(batch.cap >= 3);
-            const trans = batch.trans;
-            const tint = batch.tint;
-            batch.nodes([
-                $bog_gamengine_batch_test_node(1, 2, 3),
-                $bog_gamengine_batch_test_node(4, 5, 6),
-                $bog_gamengine_batch_test_node(7, 8, 9),
-            ]);
-            $mol_assert_equal(batch.fill(), 3);
-            $mol_assert_equal(batch.trans, trans);
-            $mol_assert_equal(batch.tint, tint);
-            $mol_assert_equal([...batch.trans.subarray(44, 47)], [7, 8, 9]);
-        },
-        'grow doubles cap until it covers need'() {
-            const batch = new $bog_gamengine_batch;
-            batch.grow(1);
-            $mol_assert_equal(batch.cap, 16);
-            batch.grow(40);
-            $mol_assert_equal(batch.cap, 64);
-            $mol_assert_equal(batch.trans.length, 64 * 16);
-            $mol_assert_equal(batch.tint.length, 64 * 4);
-        },
-        'tint defaults to opaque white'() {
-            const batch = new $bog_gamengine_batch;
-            batch.nodes([$bog_gamengine_batch_test_node(0, 0, 0)]);
-            batch.fill();
-            $mol_assert_equal([...batch.tint.subarray(0, 4)], [1, 1, 1, 1]);
-        },
-        'node with tint writes its color'() {
-            const batch = new $bog_gamengine_batch;
-            batch.nodes([
-                $bog_gamengine_batch_test_node(0, 0, 0),
-                new $bog_gamengine_batch_test_tinted,
-            ]);
-            batch.fill();
-            $mol_assert_equal([...batch.tint.subarray(4, 8)], [1, 0, 0, 0.5]);
-        },
-        'node with layer and uv writes them, plain node gets 0 and whole uv'() {
-            const batch = new $bog_gamengine_batch;
-            batch.nodes([
-                $bog_gamengine_batch_test_node(0, 0, 0),
-                new $bog_gamengine_batch_test_layered,
-            ]);
-            batch.fill();
-            $mol_assert_equal([...batch.layer.subarray(0, 2)], [0, 3]);
-            $mol_assert_equal([...batch.uv.subarray(0, 8)], [0, 0, 1, 1, 1, 0, -1, 1]);
-        },
-        'material buffer is filled from mesh material, plain node gets default'() {
-            const mesh = new $bog_gamengine_mesh;
-            mesh.material(new Float32Array([0.75, 0.25, 0.5, 0]));
-            const batch = new $bog_gamengine_batch;
-            batch.nodes([$bog_gamengine_batch_test_node(0, 0, 0), mesh]);
-            batch.fill();
-            $mol_assert_equal(batch.material.subarray(0, 8), new Float32Array([0, 0.6, 0, 0, 0.75, 0.25, 0.5, 0]));
-        },
-        'normal layer is -1 without normal frame'() {
-            const batch = new $bog_gamengine_batch;
-            batch.nodes([$bog_gamengine_batch_test_node(0, 0, 0), new $bog_gamengine_mesh]);
-            batch.fill();
-            $mol_assert_equal([...batch.normal_layer.subarray(0, 2)], [-1, -1]);
-        },
-        'source fill gives default material'() {
-            const batch = new $bog_gamengine_batch;
-            batch.source({ trans: new Float32Array(16), count: 1 });
-            batch.fill();
-            $mol_assert_equal(batch.material.subarray(0, 4), new Float32Array([0, 0.6, 0, 0]));
-            $mol_assert_equal(batch.normal_layer[0], -1);
-        },
-        'version grows on every fill'() {
-            const batch = new $bog_gamengine_batch;
-            const before = batch.version;
-            batch.fill();
-            batch.fill();
-            $mol_assert_equal(batch.version, before + 2);
-        },
-        'source with two matrices gives count 2 and same translations'() {
-            const trans = new Float32Array(32);
-            trans.set([1, 2, 3], 12);
-            trans.set([4, 5, 6], 28);
-            const batch = new $bog_gamengine_batch;
-            batch.source({ trans, count: 2 });
-            $mol_assert_equal(batch.fill(), 2);
-            $mol_assert_equal(batch.count, 2);
-            $mol_assert_equal([...batch.trans.subarray(12, 15)], [1, 2, 3]);
-            $mol_assert_equal([...batch.trans.subarray(28, 31)], [4, 5, 6]);
-            $mol_assert_equal([...batch.tint.subarray(4, 8)], [1, 1, 1, 1]);
-            $mol_assert_equal([...batch.uv.subarray(4, 8)], [0, 0, 1, 1]);
-        },
-        'source with skip 1 drops the first matrix'() {
-            const trans = new Float32Array(32);
-            trans.set([1, 2, 3], 12);
-            trans.set([4, 5, 6], 28);
-            const batch = new $bog_gamengine_batch;
-            batch.source({ trans, count: 2 });
-            batch.skip(1);
-            $mol_assert_equal(batch.fill(), 1);
-            $mol_assert_equal(batch.count, 1);
-            $mol_assert_equal([...batch.trans.subarray(12, 15)], [4, 5, 6]);
         },
     });
 })($ || ($ = {}));
@@ -22928,59 +24255,142 @@ var $;
 ;
 "use strict";
 var $;
-(function ($) {
-    function key_jump() {
-        const key = new $bog_gamengine_key;
-        key.bind({ jump: ['space', 'W'] });
-        return key;
+(function ($_1) {
+    $mol_test({
+        'box array lengths'($) {
+            const box = $bog_gamengine_shape_box.make({ $ });
+            $mol_assert_equal(box.geometry().length, 102);
+            $mol_assert_equal(box.skin().length, 68);
+            $mol_assert_equal(box.normals().length, 102);
+            $mol_assert_equal(box.size(), 34);
+            $mol_assert_equal(box.count(), 24);
+            $mol_assert_equal(box.mode(), 'strip');
+        },
+        'box has six different unit normals'($) {
+            const normals = $bog_gamengine_shape_box.make({ $ }).normals();
+            const seen = new Set();
+            for (let i = 0; i < 34; ++i) {
+                const x = normals[i * 3];
+                const y = normals[i * 3 + 1];
+                const z = normals[i * 3 + 2];
+                $mol_assert_equal(x * x + y * y + z * z, 1);
+                seen.add(`${x} ${y} ${z}`);
+            }
+            $mol_assert_equal(seen.size, 6);
+        },
+        'box faces are counter clockwise from outside'($) {
+            const box = $bog_gamengine_shape_box.make({ $ });
+            const geometry = box.geometry();
+            const normals = box.normals();
+            const winding = (a, b, c) => {
+                const ax = geometry[b * 3] - geometry[a * 3];
+                const ay = geometry[b * 3 + 1] - geometry[a * 3 + 1];
+                const az = geometry[b * 3 + 2] - geometry[a * 3 + 2];
+                const bx = geometry[c * 3] - geometry[a * 3];
+                const by = geometry[c * 3 + 1] - geometry[a * 3 + 1];
+                const bz = geometry[c * 3 + 2] - geometry[a * 3 + 2];
+                const cx = ay * bz - az * by;
+                const cy = az * bx - ax * bz;
+                const cz = ax * by - ay * bx;
+                return cx * normals[a * 3] + cy * normals[a * 3 + 1] + cz * normals[a * 3 + 2];
+            };
+            for (let face = 0; face < 6; ++face) {
+                const v = face * 6;
+                $mol_assert_ok(winding(v, v + 1, v + 2) > 0);
+                $mol_assert_ok(winding(v + 2, v + 1, v + 3) > 0);
+            }
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    class $bog_gamengine_atlas_mock extends $bog_gamengine_atlas {
+        sizes = {};
+        image(uri) {
+            const [width, height] = this.sizes[uri] ?? [64, 64];
+            return { data: () => ({ width, height }) };
+        }
     }
-    function key_axis() {
-        const key = new $bog_gamengine_key;
-        key.bind({ left: ['A'], right: ['D'] });
-        return key;
+    function atlas_mock(uris, sizes = {}) {
+        const atlas = new $bog_gamengine_atlas_mock;
+        atlas.uris(uris);
+        atlas.sizes = sizes;
+        return atlas;
     }
     $mol_test({
-        'action is false before any key'() {
-            const key = key_jump();
-            $mol_assert_equal(key.action('jump'), false);
+        'layer index equals position of file in uris'() {
+            const atlas = atlas_mock(['bog/gamengine/demo/atlas/coin.png', 'bog/gamengine/demo/atlas/hero.png']);
+            $mol_assert_equal(atlas.layer('hero'), 1);
         },
-        'pressed key turns action on'() {
-            const key = key_jump();
-            key.keys().space(true);
-            $mol_assert_equal(key.action('jump'), true);
+        'image 64×32 in atlas 64 fails with file path'() {
+            const uri = 'bog/gamengine/demo/atlas/hero.png';
+            const atlas = atlas_mock([uri], { [uri]: [64, 32] });
+            const error = $mol_assert_fail(() => atlas.images(), Error);
+            $mol_assert_equal(error.message.includes(uri), true);
+            $mol_assert_equal(error.message.includes('64×32'), true);
         },
-        'second key keeps action while first released'() {
-            const key = key_jump();
-            key.keys().space(true);
-            key.keys().W(true);
-            key.keys().space(false);
-            $mol_assert_equal(key.action('jump'), true);
+        'unknown layer name fails'() {
+            const atlas = atlas_mock(['bog/gamengine/demo/atlas/hero.png']);
+            const error = $mol_assert_fail(() => atlas.layer('coin'), Error);
+            $mol_assert_equal(error.message.includes('coin'), true);
+            $mol_assert_equal(error.message.includes('hero'), true);
         },
-        'both keys released turn action off'() {
-            const key = key_jump();
-            key.keys().space(true);
-            key.keys().W(true);
-            key.keys().space(false);
-            key.keys().W(false);
-            $mol_assert_equal(key.action('jump'), false);
+        'two files with same name fail'() {
+            const atlas = atlas_mock(['bog/gamengine/demo/atlas/hero.png', 'bog/gamengine/demo/tiles/hero.png']);
+            const error = $mol_assert_fail(() => atlas.layer('hero'), Error);
+            $mol_assert_equal(error.message.includes('atlas/hero.png'), true);
+            $mol_assert_equal(error.message.includes('tiles/hero.png'), true);
         },
-        'axis is zero without keys'() {
-            const key = key_axis();
-            $mol_assert_equal(key.axis('left', 'right'), 0);
+        'two atlases share one image per uri'($) {
+            const uri = 'bog/gamengine/demo/atlas/hero.png';
+            const left = new $bog_gamengine_atlas;
+            const right = new $bog_gamengine_atlas;
+            left.$ = $;
+            right.$ = $;
+            $mol_assert_equal(left.image(uri), right.image(uri));
+            $mol_assert_equal(left.image(uri).uri(), uri);
         },
-        'axis is minus one on left'() {
-            const key = key_axis();
-            key.keys().A(true);
-            $mol_assert_equal(key.axis('left', 'right'), -1);
+        'ready is true when all images match size'() {
+            const atlas = atlas_mock(['bog/gamengine/demo/atlas/hero.png']);
+            $mol_assert_equal(atlas.ready(), true);
         },
-        'axis is one on right'() {
-            const key = key_axis();
-            key.keys().D(true);
-            $mol_assert_equal(key.axis('left', 'right'), 1);
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    $mol_test({
+        'quad array lengths'($) {
+            const quad = $bog_gamengine_shape_quad.make({ $ });
+            $mol_assert_equal(quad.geometry().length, 12);
+            $mol_assert_equal(quad.skin().length, 8);
+            $mol_assert_equal(quad.normals().length, 12);
+            $mol_assert_equal(quad.count(), 4);
         },
-        'unknown action is false'() {
-            const key = key_jump();
-            $mol_assert_equal(key.action('fly'), false);
+        'quad strip triangles are counter clockwise'($) {
+            const geometry = $bog_gamengine_shape_quad.make({ $ }).geometry();
+            const cross_z = (a, b, c) => {
+                const ax = geometry[b * 3] - geometry[a * 3];
+                const ay = geometry[b * 3 + 1] - geometry[a * 3 + 1];
+                const bx = geometry[c * 3] - geometry[a * 3];
+                const by = geometry[c * 3 + 1] - geometry[a * 3 + 1];
+                return ax * by - ay * bx;
+            };
+            $mol_assert_ok(cross_z(0, 1, 2) > 0);
+            $mol_assert_ok(cross_z(2, 1, 3) > 0);
+        },
+        'quad normals point to plus z'($) {
+            const normals = $bog_gamengine_shape_quad.make({ $ }).normals();
+            for (let i = 0; i < 4; ++i) {
+                $mol_assert_equal(normals[i * 3], 0);
+                $mol_assert_equal(normals[i * 3 + 1], 0);
+                $mol_assert_equal(normals[i * 3 + 2], 1);
+            }
         },
     });
 })($ || ($ = {}));
@@ -22989,164 +24399,102 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    class $bog_gamengine_pad_mock extends $bog_gamengine_pad {
-        state = null;
-        pads() {
-            return [this.state];
+    class $bog_gamengine_mesh_test_atlas extends $bog_gamengine_atlas {
+        image(uri) {
+            return { data: () => ({ width: 64, height: 64 }) };
         }
     }
-    function pad_state(pressed, axes) {
-        const buttons = [];
-        for (let i = 0; i < 16; ++i)
-            buttons.push({ pressed: pressed.includes(i) });
-        return { buttons, axes };
+    class $bog_gamengine_mesh_test_shape_loading extends $bog_gamengine_shape {
+        geometry() {
+            return $mol_fail(new Promise(() => { }));
+        }
     }
-    function pad_move() {
-        const pad = new $bog_gamengine_pad_mock;
-        pad.bind({ jump: ['a'], left: ['lx-'], right: ['right', 'lx+'] });
-        return pad;
+    class $bog_gamengine_mesh_test_cam extends $bog_gamengine_cam {
+        proj(aspect) {
+            return $mol_3d_mat4.perspective(Math.PI / 3, aspect, 0.1, 100);
+        }
+    }
+    function mesh_test_atlas(uris) {
+        const atlas = new $bog_gamengine_mesh_test_atlas;
+        atlas.uris(uris);
+        return atlas;
+    }
+    function mesh_test_mesh(atlas, frame) {
+        const mesh = new $bog_gamengine_mesh;
+        mesh.atlas(atlas);
+        mesh.frame(frame);
+        return mesh;
     }
     $mol_test({
-        'action is false without gamepad'() {
-            const pad = pad_move();
-            pad.poll();
-            $mol_assert_equal(pad.action('jump'), false);
+        'layer is taken from atlas by frame name'() {
+            const atlas = mesh_test_atlas(['bog/gamengine/demo/atlas/wall.png', 'bog/gamengine/demo/atlas/floor.png']);
+            $mol_assert_equal(mesh_test_mesh(atlas, 'floor').layer(), 1);
         },
-        'pressed button turns action on'() {
-            const pad = pad_move();
-            pad.state = pad_state([0], [0, 0, 0, 0]);
-            pad.poll();
-            $mol_assert_equal(pad.action('jump'), true);
+        'layer without atlas is 0'() {
+            $mol_assert_equal(mesh_test_mesh(null, 'floor').layer(), 0);
         },
-        'released button turns action off'() {
-            const pad = pad_move();
-            pad.state = pad_state([0], [0, 0, 0, 0]);
-            pad.poll();
-            pad.state = pad_state([], [0, 0, 0, 0]);
-            pad.poll();
-            $mol_assert_equal(pad.action('jump'), false);
+        'uv is whole layer'() {
+            $mol_assert_equal([...new $bog_gamengine_mesh().uv()], [0, 0, 1, 1]);
         },
-        'stick inside dead zone gives zero axis'() {
-            const pad = pad_move();
-            pad.state = pad_state([], [0.1, 0, 0, 0]);
-            pad.poll();
-            $mol_assert_equal(pad.axis('left', 'right'), 0);
+        'size scales trans in three axes'() {
+            const mesh = new $bog_gamengine_mesh;
+            mesh.size(new Float32Array([2, 3, 4]));
+            const trans = mesh.trans();
+            $mol_assert_equal(trans[0], 2);
+            $mol_assert_equal(trans[5], 3);
+            $mol_assert_equal(trans[10], 4);
         },
-        'stick right gives positive axis'() {
-            const pad = pad_move();
-            pad.state = pad_state([], [0.6, 0, 0, 0]);
-            pad.poll();
-            $mol_assert_ok(Math.abs(pad.axis('left', 'right') - 0.6) < 1e-6);
+        'default shape is box'() {
+            $mol_assert_ok(new $bog_gamengine_mesh().shape() instanceof $bog_gamengine_shape_box);
         },
-        'stick left gives negative axis'() {
-            const pad = pad_move();
-            pad.state = pad_state([], [-0.6, 0, 0, 0]);
-            pad.poll();
-            $mol_assert_ok(Math.abs(pad.axis('left', 'right') + 0.6) < 1e-6);
+        'two meshes of different atlases give two batches'() {
+            const first = mesh_test_atlas(['bog/gamengine/demo/atlas/wall.png']);
+            const second = mesh_test_atlas(['bog/gamengine/demo/atlas/floor.png']);
+            const batches = $bog_gamengine_batch_group([mesh_test_mesh(first, 'wall'), mesh_test_mesh(second, 'floor')], atlas => {
+                const batch = new $bog_gamengine_batch;
+                batch.atlas(atlas);
+                return batch;
+            });
+            $mol_assert_equal(batches.length, 2);
+            $mol_assert_equal(batches[0].atlas(), first);
+            $mol_assert_equal(batches[1].atlas(), second);
         },
-        'dpad button bound with stick turns action on'() {
-            const pad = pad_move();
-            pad.state = pad_state([15], [0, 0, 0, 0]);
-            pad.poll();
-            $mol_assert_equal(pad.action('right'), true);
+        'filled batch has layer and tint of mesh'() {
+            const atlas = mesh_test_atlas(['bog/gamengine/demo/atlas/wall.png', 'bog/gamengine/demo/atlas/floor.png']);
+            const mesh = mesh_test_mesh(atlas, 'floor');
+            mesh.tint(new Float32Array([1, 0.5, 0.25, 1]));
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([mesh]);
+            batch.fill();
+            $mol_assert_equal(batch.layer[0], 1);
+            $mol_assert_equal([...batch.tint.subarray(0, 4)], [1, 0.5, 0.25, 1]);
         },
-        'stick bound with dpad button turns action on'() {
-            const pad = pad_move();
-            pad.state = pad_state([], [0.5, 0, 0, 0]);
-            pad.poll();
-            $mol_assert_equal(pad.action('right'), true);
+        'lods are empty by default and can be set'() {
+            const mesh = new $bog_gamengine_mesh;
+            $mol_assert_equal(mesh.lods().length, 0);
+            const low = new $bog_gamengine_shape_quad;
+            mesh.lods([{ dist: 6, shape: low }]);
+            $mol_assert_equal(mesh.lods()[0].shape, low);
         },
-        'unknown action is false'() {
-            const pad = pad_move();
-            pad.state = pad_state([0], [0, 0, 0, 0]);
-            pad.poll();
-            $mol_assert_equal(pad.action('fly'), false);
+        'radius of a loading shape is infinite and batch fill with frustum keeps the mesh'() {
+            const mesh = new $bog_gamengine_mesh;
+            mesh.shape(new $bog_gamengine_mesh_test_shape_loading);
+            mesh.pos(new Float32Array([0, 0, 5]));
+            $mol_assert_equal(mesh.radius(), Infinity);
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([mesh]);
+            const cam = new $bog_gamengine_mesh_test_cam;
+            $mol_assert_equal(batch.fill(cam.frustum(1, new Float32Array(24))), 1);
         },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $bog_gamengine_input_pad_mock extends $bog_gamengine_pad {
-        state = null;
-        pads() {
-            return [this.state];
-        }
-    }
-    function input_move() {
-        const key = new $bog_gamengine_key;
-        key.bind({ left: ['A'], right: ['D'] });
-        const pad = new $bog_gamengine_input_pad_mock;
-        pad.bind({ left: ['lx-'], right: ['lx+'] });
-        const input = new $bog_gamengine_input;
-        input.key(key);
-        input.pad(pad);
-        return { input, key, pad };
-    }
-    $mol_test({
-        'key held gives action while pad is silent'() {
-            const { input, key } = input_move();
-            key.keys().D(true);
-            input.poll();
-            $mol_assert_equal(input.action('right'), true);
+        'radius of box mesh is half diagonal of unit cube'() {
+            $mol_assert_ok(Math.abs(new $bog_gamengine_mesh().radius() - Math.sqrt(3) / 2) < 1e-6);
         },
-        'key held gives full axis while pad is silent'() {
-            const { input, key } = input_move();
-            key.keys().D(true);
-            input.poll();
-            $mol_assert_equal(input.axis('left', 'right'), 1);
-        },
-        'pad stick gives its axis while keys are silent'() {
-            const { input, pad } = input_move();
-            pad.state = { buttons: [], axes: [0.5, 0, 0, 0] };
-            input.poll();
-            $mol_assert_ok(Math.abs(input.axis('left', 'right') - 0.5) < 1e-6);
-        },
-        'key overrides pad stick'() {
-            const { input, key, pad } = input_move();
-            key.keys().A(true);
-            pad.state = { buttons: [], axes: [0.5, 0, 0, 0] };
-            input.poll();
-            $mol_assert_equal(input.axis('left', 'right'), -1);
-        },
-        'both silent give zero axis'() {
-            const { input } = input_move();
-            input.poll();
-            $mol_assert_equal(input.axis('left', 'right'), 0);
-        },
-        'both silent give false action'() {
-            const { input } = input_move();
-            input.poll();
-            $mol_assert_equal(input.action('right'), false);
+        'set through props changes size'() {
+            const mesh = new $bog_gamengine_mesh;
+            mesh.props().find(prop => prop.name === 'size').set(new Float32Array([2, 3, 4]));
+            $mol_assert_equal([...mesh.size()], [2, 3, 4]);
         },
     });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    function $bog_gamengine_batch_group(nodes, make) {
-        const groups = new Map();
-        for (const node of nodes) {
-            const atlas = node.atlas();
-            const group = groups.get(atlas);
-            if (group)
-                group.push(node);
-            else
-                groups.set(atlas, [node]);
-        }
-        const batches = [];
-        for (const [atlas, group] of groups) {
-            const batch = make(atlas);
-            batch.nodes(group);
-            batches.push(batch);
-        }
-        return batches;
-    }
-    $.$bog_gamengine_batch_group = $bog_gamengine_batch_group;
 })($ || ($ = {}));
 
 ;
@@ -23795,6 +25143,352 @@ var $;
 "use strict";
 var $;
 (function ($_1) {
+    $mol_test({
+        'source starts with version line'($) {
+            const source = $bog_gamengine_gl_source({}, 'void main() {}', 'void main() {}');
+            $mol_assert_ok(source.vert.startsWith('#version 300 es\n'));
+            $mol_assert_ok(source.frag.startsWith('#version 300 es\n'));
+        },
+        'glob goes to both shaders as uniform'($) {
+            const source = $bog_gamengine_gl_source({ glob: { proj: 'mat4' } }, '', '');
+            $mol_assert_ok(source.vert.includes('uniform mat4 proj;\n'));
+            $mol_assert_ok(source.frag.includes('uniform mat4 proj;\n'));
+        },
+        'input goes to vert only as in'($) {
+            const source = $bog_gamengine_gl_source({ input: { vertex: 'vec3' } }, '', '');
+            $mol_assert_ok(source.vert.includes('in vec3 vertex;\n'));
+            $mol_assert_not(source.frag.includes('vertex'));
+        },
+        'pipe is out in vert and in in frag'($) {
+            const source = $bog_gamengine_gl_source({ pipe: { pipe_tint: 'vec4' } }, '', '');
+            $mol_assert_ok(source.vert.includes('out vec4 pipe_tint;\n'));
+            $mol_assert_ok(source.frag.includes('in vec4 pipe_tint;\n'));
+        },
+        'output goes to frag only as out'($) {
+            const source = $bog_gamengine_gl_source({ output: { color: 'vec4' } }, '', '');
+            $mol_assert_ok(source.frag.includes('out vec4 color;\n'));
+            $mol_assert_not(source.vert.includes('color'));
+        },
+        'entry text ends the source'($) {
+            const source = $bog_gamengine_gl_source({}, 'void main() { v }', 'void main() { f }');
+            $mol_assert_ok(source.vert.endsWith('void main() { v }'));
+            $mol_assert_ok(source.frag.endsWith('void main() { f }'));
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    $mol_test({
+        'vert and frag have main'($) {
+            const shader = new $bog_gamengine_shader_flat;
+            $mol_assert_ok(shader.vert().includes('main'));
+            $mol_assert_ok(shader.frag().includes('main'));
+        },
+        'every input and glob name is used in vert'($) {
+            const shader = new $bog_gamengine_shader_flat;
+            const vert = shader.sources().vert;
+            const face = shader.face();
+            for (const name in face.input)
+                $mol_assert_ok(vert.includes(name));
+            for (const name in face.glob)
+                $mol_assert_ok(vert.includes(name));
+        },
+        'sources mix only glsl both'($) {
+            const shader = new $bog_gamengine_shader_flat;
+            $mol_assert_equal(shader.sources().vert, $mol_3d_glsl_both + shader.vert());
+            $mol_assert_equal(shader.sources().frag, $mol_3d_glsl_both + shader.frag());
+        },
+        'every pipe name is in both vert and frag'($) {
+            const shader = new $bog_gamengine_shader_flat;
+            const face = shader.face();
+            for (const name in face.pipe) {
+                $mol_assert_ok(shader.vert().includes(name));
+                $mol_assert_ok(shader.frag().includes(name));
+            }
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_batch_test_tinted extends $bog_gamengine_node {
+        tint() {
+            return new Float32Array([1, 0, 0, 0.5]);
+        }
+    }
+    class $bog_gamengine_batch_test_layered extends $bog_gamengine_node {
+        layer() {
+            return 3;
+        }
+        uv() {
+            return new Float32Array([1, 0, -1, 1]);
+        }
+    }
+    function $bog_gamengine_batch_test_node(x, y, z) {
+        const node = new $bog_gamengine_node;
+        node.pos(new Float32Array([x, y, z]));
+        return node;
+    }
+    function $bog_gamengine_batch_test_mesh(x, y, z) {
+        const mesh = new $bog_gamengine_mesh;
+        mesh.pos(new Float32Array([x, y, z]));
+        return mesh;
+    }
+    class $bog_gamengine_batch_test_cam extends $bog_gamengine_cam {
+        proj(aspect) {
+            return $mol_3d_mat4.perspective(Math.PI / 3, aspect, 0.1, 100);
+        }
+    }
+    function $bog_gamengine_batch_test_frustum() {
+        return new $bog_gamengine_batch_test_cam().frustum(1, new Float32Array(24));
+    }
+    $mol_test({
+        'mesh behind frustum is not counted, mesh in front is'() {
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([
+                $bog_gamengine_batch_test_mesh(0, 0, 5),
+                $bog_gamengine_batch_test_mesh(0, 0, -5),
+            ]);
+            $mol_assert_equal(batch.fill($bog_gamengine_batch_test_frustum()), 1);
+            $mol_assert_equal(batch.count, 1);
+            $mol_assert_equal([...batch.trans.subarray(12, 15)], [0, 0, -5]);
+        },
+        'scaled mesh near frustum edge is kept by its grown radius'() {
+            const mesh = $bog_gamengine_batch_test_mesh(4, 0, -5);
+            mesh.scale(new Float32Array([4, 4, 4]));
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([mesh]);
+            $mol_assert_equal(batch.fill($bog_gamengine_batch_test_frustum()), 1);
+            mesh.scale(new Float32Array([1, 1, 1]));
+            $mol_assert_equal(batch.fill($bog_gamengine_batch_test_frustum()), 0);
+        },
+        'cull off keeps mesh behind frustum'() {
+            const batch = new $bog_gamengine_batch;
+            batch.cull(false);
+            batch.nodes([$bog_gamengine_batch_test_mesh(0, 0, 5)]);
+            $mol_assert_equal(batch.fill($bog_gamengine_batch_test_frustum()), 1);
+        },
+        'without frustum nothing is culled'() {
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([$bog_gamengine_batch_test_mesh(0, 0, 5)]);
+            $mol_assert_equal(batch.fill(), 1);
+        },
+        'source with aabb is compacted to instances inside frustum'() {
+            const trans = new Float32Array(48);
+            trans.set([1, 0, 5], 12);
+            trans.set([2, 0, -5], 28);
+            trans.set([3, 0, -8], 44);
+            const aabb = new Float32Array([
+                0, -1, 4, 2, 1, 6,
+                1, -1, -6, 3, 1, -4,
+                2, -1, -9, 4, 1, -7,
+            ]);
+            const batch = new $bog_gamengine_batch;
+            batch.source({ trans, count: 3, aabb });
+            $mol_assert_equal(batch.fill($bog_gamengine_batch_test_frustum()), 2);
+            $mol_assert_equal(batch.count, 2);
+            $mol_assert_equal([...batch.trans.subarray(12, 15)], [2, 0, -5]);
+            $mol_assert_equal([...batch.trans.subarray(28, 31)], [3, 0, -8]);
+        },
+        'source skip is applied before aabb culling'() {
+            const trans = new Float32Array(32);
+            trans.set([1, 0, -5], 12);
+            trans.set([2, 0, -5], 28);
+            const aabb = new Float32Array([0, -1, -6, 2, 1, -4, 1, -1, -6, 3, 1, -4]);
+            const batch = new $bog_gamengine_batch;
+            batch.source({ trans, count: 2, aabb });
+            batch.skip(1);
+            $mol_assert_equal(batch.fill($bog_gamengine_batch_test_frustum()), 1);
+            $mol_assert_equal([...batch.trans.subarray(12, 15)], [2, 0, -5]);
+        },
+        'near and far keep only nodes within distance to eye'() {
+            const batch = new $bog_gamengine_batch;
+            batch.near(2);
+            batch.far(10);
+            batch.nodes([
+                $bog_gamengine_batch_test_node(0, 0, -1),
+                $bog_gamengine_batch_test_node(0, 0, -5),
+                $bog_gamengine_batch_test_node(0, 0, -20),
+            ]);
+            $mol_assert_equal(batch.fill(null, new Float32Array(3)), 1);
+            $mol_assert_equal([...batch.trans.subarray(12, 15)], [0, 0, -5]);
+        },
+        'far is exclusive so two batches split nodes without overlap'() {
+            const nodes = [
+                $bog_gamengine_batch_test_node(0, 0, -3),
+                $bog_gamengine_batch_test_node(0, 0, -6),
+                $bog_gamengine_batch_test_node(0, 0, -9),
+            ];
+            const close = new $bog_gamengine_batch;
+            close.far(6);
+            close.nodes(nodes);
+            const distant = new $bog_gamengine_batch;
+            distant.near(6);
+            distant.nodes(nodes);
+            const eye = new Float32Array(3);
+            $mol_assert_equal(close.fill(null, eye), 1);
+            $mol_assert_equal(distant.fill(null, eye), 2);
+        },
+        'without eye near and far are ignored'() {
+            const batch = new $bog_gamengine_batch;
+            batch.near(2);
+            batch.nodes([$bog_gamengine_batch_test_node(0, 0, -1)]);
+            $mol_assert_equal(batch.fill(), 1);
+        },
+        'two nodes give count 2 and translations at offsets 12 and 28'() {
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([
+                $bog_gamengine_batch_test_node(1, 2, 3),
+                $bog_gamengine_batch_test_node(4, 5, 6),
+            ]);
+            $mol_assert_equal(batch.fill(), 2);
+            $mol_assert_equal(batch.count, 2);
+            $mol_assert_equal([...batch.trans.subarray(12, 15)], [1, 2, 3]);
+            $mol_assert_equal([...batch.trans.subarray(28, 31)], [4, 5, 6]);
+        },
+        'third node keeps buffers when cap suffices'() {
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([
+                $bog_gamengine_batch_test_node(1, 2, 3),
+                $bog_gamengine_batch_test_node(4, 5, 6),
+            ]);
+            batch.fill();
+            $mol_assert_ok(batch.cap >= 3);
+            const trans = batch.trans;
+            const tint = batch.tint;
+            batch.nodes([
+                $bog_gamengine_batch_test_node(1, 2, 3),
+                $bog_gamengine_batch_test_node(4, 5, 6),
+                $bog_gamengine_batch_test_node(7, 8, 9),
+            ]);
+            $mol_assert_equal(batch.fill(), 3);
+            $mol_assert_equal(batch.trans, trans);
+            $mol_assert_equal(batch.tint, tint);
+            $mol_assert_equal([...batch.trans.subarray(44, 47)], [7, 8, 9]);
+        },
+        'grow doubles cap until it covers need'() {
+            const batch = new $bog_gamengine_batch;
+            batch.grow(1);
+            $mol_assert_equal(batch.cap, 16);
+            batch.grow(40);
+            $mol_assert_equal(batch.cap, 64);
+            $mol_assert_equal(batch.trans.length, 64 * 16);
+            $mol_assert_equal(batch.tint.length, 64 * 4);
+        },
+        'tint defaults to opaque white'() {
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([$bog_gamengine_batch_test_node(0, 0, 0)]);
+            batch.fill();
+            $mol_assert_equal([...batch.tint.subarray(0, 4)], [1, 1, 1, 1]);
+        },
+        'node with tint writes its color'() {
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([
+                $bog_gamengine_batch_test_node(0, 0, 0),
+                new $bog_gamengine_batch_test_tinted,
+            ]);
+            batch.fill();
+            $mol_assert_equal([...batch.tint.subarray(4, 8)], [1, 0, 0, 0.5]);
+        },
+        'node with layer and uv writes them, plain node gets 0 and whole uv'() {
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([
+                $bog_gamengine_batch_test_node(0, 0, 0),
+                new $bog_gamengine_batch_test_layered,
+            ]);
+            batch.fill();
+            $mol_assert_equal([...batch.layer.subarray(0, 2)], [0, 3]);
+            $mol_assert_equal([...batch.uv.subarray(0, 8)], [0, 0, 1, 1, 1, 0, -1, 1]);
+        },
+        'material buffer is filled from mesh material, plain node gets default'() {
+            const mesh = new $bog_gamengine_mesh;
+            mesh.material(new Float32Array([0.75, 0.25, 0.5, 0]));
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([$bog_gamengine_batch_test_node(0, 0, 0), mesh]);
+            batch.fill();
+            $mol_assert_equal(batch.material.subarray(0, 8), new Float32Array([0, 0.6, 0, 0, 0.75, 0.25, 0.5, 0]));
+        },
+        'normal layer is -1 without normal frame'() {
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([$bog_gamengine_batch_test_node(0, 0, 0), new $bog_gamengine_mesh]);
+            batch.fill();
+            $mol_assert_equal([...batch.normal_layer.subarray(0, 2)], [-1, -1]);
+        },
+        'source fill gives default material'() {
+            const batch = new $bog_gamengine_batch;
+            batch.source({ trans: new Float32Array(16), count: 1 });
+            batch.fill();
+            $mol_assert_equal(batch.material.subarray(0, 4), new Float32Array([0, 0.6, 0, 0]));
+            $mol_assert_equal(batch.normal_layer[0], -1);
+        },
+        'version grows on every fill'() {
+            const batch = new $bog_gamengine_batch;
+            const before = batch.version;
+            batch.fill();
+            batch.fill();
+            $mol_assert_equal(batch.version, before + 2);
+        },
+        'source with two matrices gives count 2 and same translations'() {
+            const trans = new Float32Array(32);
+            trans.set([1, 2, 3], 12);
+            trans.set([4, 5, 6], 28);
+            const batch = new $bog_gamengine_batch;
+            batch.source({ trans, count: 2 });
+            $mol_assert_equal(batch.fill(), 2);
+            $mol_assert_equal(batch.count, 2);
+            $mol_assert_equal([...batch.trans.subarray(12, 15)], [1, 2, 3]);
+            $mol_assert_equal([...batch.trans.subarray(28, 31)], [4, 5, 6]);
+            $mol_assert_equal([...batch.tint.subarray(4, 8)], [1, 1, 1, 1]);
+            $mol_assert_equal([...batch.uv.subarray(4, 8)], [0, 0, 1, 1]);
+        },
+        'source with skip 1 drops the first matrix'() {
+            const trans = new Float32Array(32);
+            trans.set([1, 2, 3], 12);
+            trans.set([4, 5, 6], 28);
+            const batch = new $bog_gamengine_batch;
+            batch.source({ trans, count: 2 });
+            batch.skip(1);
+            $mol_assert_equal(batch.fill(), 1);
+            $mol_assert_equal(batch.count, 1);
+            $mol_assert_equal([...batch.trans.subarray(12, 15)], [4, 5, 6]);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function $bog_gamengine_batch_group(nodes, make) {
+        const groups = new Map();
+        for (const node of nodes) {
+            const atlas = node.atlas();
+            const group = groups.get(atlas);
+            if (group)
+                group.push(node);
+            else
+                groups.set(atlas, [node]);
+        }
+        const batches = [];
+        for (const [atlas, group] of groups) {
+            const batch = make(atlas);
+            batch.nodes(group);
+            batches.push(batch);
+        }
+        return batches;
+    }
+    $.$bog_gamengine_batch_group = $bog_gamengine_batch_group;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
     class $bog_gamengine_scene_time_mock extends $mol_state_time {
         static stamp(next = 0) {
             return next;
@@ -23820,6 +25514,11 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene_named.prototype, "kids", null);
+    class $bog_gamengine_scene_test_cam extends $bog_gamengine_cam {
+        proj(aspect) {
+            return $mol_3d_mat4.perspective(Math.PI / 3, aspect, 0.1, 100);
+        }
+    }
     class $bog_gamengine_scene_input_mock extends $bog_gamengine_input {
         polls = 0;
         poll() {
@@ -23920,6 +25619,31 @@ var $;
             scene.step();
             $mol_assert_ok(Math.abs(world.pos[i * 3] - world.timestep) < 1e-6);
         },
+        'cam is null by default and can be set'() {
+            const scene = new $bog_gamengine_scene;
+            $mol_assert_equal(scene.cam(), null);
+            const cam = new $bog_gamengine_scene_test_cam;
+            scene.cam(cam);
+            $mol_assert_equal(scene.cam(), cam);
+        },
+        'scene with cam drops mesh behind it from batch count'($) {
+            $.$mol_state_time = $bog_gamengine_scene_time_mock;
+            const front = new $bog_gamengine_mesh;
+            front.pos(new Float32Array([0, 0, -5]));
+            const behind = new $bog_gamengine_mesh;
+            behind.pos(new Float32Array([0, 0, 5]));
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([front, behind]);
+            const scene = new $bog_gamengine_scene;
+            scene.$ = $;
+            scene.batches([batch]);
+            $bog_gamengine_scene_time_mock.stamp(0);
+            scene.step();
+            $mol_assert_equal(batch.count, 2);
+            scene.cam(new $bog_gamengine_scene_test_cam);
+            scene.step();
+            $mol_assert_equal(batch.count, 1);
+        },
         'nodes lists tree depth first with parent before kids'() {
             const a = new $bog_gamengine_scene_named;
             const b = new $bog_gamengine_scene_named;
@@ -23935,6 +25659,28 @@ var $;
             const scene = new $bog_gamengine_scene;
             scene.kids([a, b]);
             $mol_assert_equal(scene.nodes(), [a, b]);
+        },
+        'node in scene kids sees scene, its input and clock'() {
+            const a = new $bog_gamengine_node;
+            const scene = new $bog_gamengine_scene;
+            const input = new $bog_gamengine_input;
+            scene.input(input);
+            scene.kids([a]);
+            $mol_assert_equal(a.scene(), scene);
+            $mol_assert_equal(a.input(), input);
+            $mol_assert_equal(a.clock(), scene.clock());
+        },
+        'grandchild of overridden kids sees scene after nodes walk'() {
+            const a = new $bog_gamengine_scene_named;
+            const b = new $bog_gamengine_node;
+            a.kids([b]);
+            const scene = new $bog_gamengine_scene;
+            scene.kids = () => [a];
+            $mol_assert_equal(a.scene(), null);
+            scene.nodes();
+            $mol_assert_equal(a.scene(), scene);
+            $mol_assert_equal(b.scene(), scene);
+            $mol_assert_equal(b.clock(), scene.clock());
         },
     });
 })($ || ($ = {}));
@@ -23954,7 +25700,53 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_draw_time_mock, "stamp", null);
+    class $bog_gamengine_draw_gl_mock extends Object {
+        deleted = [];
+        deleteVertexArray(vao) {
+            this.deleted.push(vao);
+        }
+        deleteBuffer(buffer) {
+            this.deleted.push(buffer);
+        }
+        deleteTexture(texture) {
+            this.deleted.push(texture);
+        }
+    }
+    class $bog_gamengine_draw_mock extends $$.$bog_gamengine_draw {
+        gl = new $bog_gamengine_draw_gl_mock;
+        scene_mock = new $bog_gamengine_scene;
+        context() {
+            return this.gl;
+        }
+        scene() {
+            return this.scene_mock;
+        }
+        slot(batch) {
+            const found = this.slots_all.get(batch);
+            if (found)
+                return found;
+            const slot = new $$.$bog_gamengine_draw_slot;
+            slot.batch = batch;
+            slot.vao = `vao ${batch}`;
+            slot.buffers = [{ native: `buffer ${batch}` }];
+            this.slots_all.set(batch, slot);
+            return slot;
+        }
+    }
     $mol_test({
+        'slot of a vanished batch frees vao and buffers, the kept one stays'($) {
+            const draw = new $bog_gamengine_draw_mock;
+            draw.$ = $;
+            const kept = new $bog_gamengine_batch;
+            kept[Symbol.toStringTag] = 'kept';
+            const gone = new $bog_gamengine_batch;
+            gone[Symbol.toStringTag] = 'gone';
+            draw.scene().batches([kept, gone]);
+            draw.slots();
+            draw.scene().batches([kept]);
+            draw.slots();
+            $mol_assert_equal(draw.gl.deleted, ['buffer gone', 'vao gone']);
+        },
         'stat without context is a string'($) {
             $.$mol_state_time = $bog_gamengine_draw_time_mock;
             const draw = new $bog_gamengine_draw;
@@ -24149,26 +25941,159 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    function node_stub() {
+        const targets = [];
+        return {
+            targets,
+            connect: (target) => { targets.push(target); },
+            disconnect: () => { },
+            addEventListener: () => { },
+        };
+    }
+    function gain_stub() {
+        const ramps = [];
+        return {
+            ramps,
+            gain: {
+                value: 1,
+                setValueAtTime: () => { },
+                linearRampToValueAtTime: (value) => { ramps.push(value); },
+            },
+            connect: () => { },
+            disconnect: () => { },
+        };
+    }
+    function panner_stub() {
+        return {
+            pan: { value: 0 },
+            connect: () => { },
+            disconnect: () => { },
+        };
+    }
+    function sample_stub() {
+        const source = node_stub();
+        return $mol_audio_sample.make({
+            start: () => { },
+            output: () => source,
+            stop_at: (next) => next ?? -1,
+        });
+    }
     class $bog_gamengine_sound_mute extends $bog_gamengine_sound {
+        uris() {
+            return {
+                coin: 'bog/gamengine/demo/sound/coin.wav',
+                a: 'bog/gamengine/demo/sound/a.wav',
+                b: 'bog/gamengine/demo/sound/b.wav',
+            };
+        }
+        sample_last = null;
         sample(name) {
             super.sample(name);
-            return $mol_audio_sample.make({ start: () => { } });
+            return this.sample_last = sample_stub();
+        }
+        music_sample(name) {
+            super.music_sample(name);
+            return sample_stub();
         }
         Room() {
-            return $mol_audio_room.make({ output: () => null });
+            return $mol_audio_room.make({ node: () => node_stub() });
+        }
+        time() {
+            return 0;
+        }
+        panner() {
+            return panner_stub();
+        }
+        gain() {
+            return gain_stub();
         }
     }
     function sound() {
-        const sound = new $bog_gamengine_sound_mute;
-        sound.uris({ coin: 'bog/gamengine/demo/sound/coin.wav' });
-        return sound;
+        return new $bog_gamengine_sound_mute;
+    }
+    function settle() {
+        return new Promise(done => setTimeout(done));
+    }
+    function ramps(gain) {
+        return gain.ramps;
     }
     $mol_test({
         'play known sample without AudioContext does not throw'() {
             sound().play('coin');
         },
         'play unknown sample throws with its name'() {
-            $mol_assert_fail(() => sound().play('nope'), 'Sound has no sample nope, known: coin');
+            $mol_assert_fail(() => sound().play('nope'), 'Sound has no sample nope, known: coin, a, b');
+        },
+        async 'sample to the right of listener pans right'() {
+            const snd = sound();
+            snd.play('coin', [1, 0, 0]);
+            await settle();
+            $mol_assert_ok(snd.voices[0].panner.pan.value > 0);
+        },
+        async 'sample to the left of listener pans left'() {
+            const snd = sound();
+            snd.play('coin', [-1, 0, 0]);
+            await settle();
+            $mol_assert_ok(snd.voices[0].panner.pan.value < 0);
+        },
+        async 'sample in front of listener stays centered'() {
+            const snd = sound();
+            snd.play('coin', [0, 0, -5]);
+            await settle();
+            $mol_assert_equal(snd.voices[0].panner.pan.value, 0);
+        },
+        async 'sample twice as far fades by distance'() {
+            const snd = sound();
+            snd.play('coin', [5, 0, 0]);
+            snd.play('coin', [10, 0, 0]);
+            await settle();
+            $mol_assert_equal(snd.voices[0].gain.gain.value, 0.8);
+            $mol_assert_equal(snd.voices[1].gain.gain.value, 0.5);
+        },
+        async 'listener turned around flips the pan'() {
+            const snd = sound();
+            snd.play('coin', [1, 0, 0]);
+            await settle();
+            snd.listener({ world: () => $mol_3d_mat4.rotation([0, 0, 1], Math.PI) });
+            snd.update();
+            $mol_assert_ok(snd.voices[0].panner.pan.value < 0);
+        },
+        async 'music switch fades old track out and new one in'() {
+            const snd = sound();
+            snd.music('a');
+            await settle();
+            const old = snd.music_voice;
+            snd.music('b');
+            await settle();
+            $mol_assert_equal(ramps(old.gain), [1, 0]);
+            $mol_assert_equal(ramps(snd.music_voice.gain), [1]);
+        },
+        async 'music null fades track out'() {
+            const snd = sound();
+            snd.music('a');
+            await settle();
+            const old = snd.music_voice;
+            snd.music(null);
+            await settle();
+            $mol_assert_equal(ramps(old.gain), [1, 0]);
+            $mol_assert_equal(snd.music_voice, null);
+        },
+        'volume scales music before the room'() {
+            const snd = sound();
+            snd.volume(0.5);
+            $mol_assert_equal(snd.music_gain().gain.value, 0.5);
+        },
+        'effects scales samples before the room'() {
+            const snd = sound();
+            snd.effects(0.5);
+            $mol_assert_equal(snd.effects_gain().gain.value, 0.5);
+        },
+        async 'sample without position goes through effects gain'() {
+            const snd = sound();
+            snd.play('coin');
+            await settle();
+            const source = snd.sample_last.output();
+            $mol_assert_equal(source.targets, [snd.effects_gain()]);
         },
     });
 })($ || ($ = {}));
@@ -24290,6 +26215,178 @@ var $;
             const sprite = new $bog_gamengine_sprite;
             sprite.props().find(prop => prop.name === 'flip_x').set(true);
             $mol_assert_equal(sprite.flip_x(), true);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function grid(map) {
+        const tile = new $bog_gamengine_phys_tile;
+        tile.map(map);
+        const grid = new $bog_gamengine_nav_grid;
+        grid.tile(tile);
+        return grid;
+    }
+    function length(path, count) {
+        let sum = 0;
+        for (let i = 1; i < count; ++i) {
+            sum += Math.hypot(path[i * 2] - path[i * 2 - 2], path[i * 2 + 1] - path[i * 2 - 1]);
+        }
+        return sum;
+    }
+    $mol_test({
+        'wall between points gives detour longer than straight line and outside the wall'() {
+            const nav = grid('#######\n#..#..#\n#..#..#\n#.....#\n#######');
+            const out = new Float32Array(64);
+            const count = nav.path(new Float32Array([1.5, -1.5, 0]), new Float32Array([5.5, -1.5, 0]), out);
+            $mol_assert_ok(count > 2);
+            $mol_assert_ok(length(out, count) > 4);
+            for (let i = 0; i < count; ++i)
+                $mol_assert_not(nav.solid_at(out[i * 2], out[i * 2 + 1]));
+        },
+        'unreachable target gives zero'() {
+            const nav = grid('#######\n#..#..#\n#..#..#\n#..#..#\n#######');
+            const out = new Float32Array(64);
+            const count = nav.path(new Float32Array([1.5, -1.5, 0]), new Float32Array([5.5, -1.5, 0]), out);
+            $mol_assert_equal(count, 0);
+        },
+        'smooth on empty map gives two points'() {
+            const nav = grid('########\n#......#\n#......#\n#......#\n#......#\n########');
+            const out = new Float32Array(64);
+            const count = nav.path(new Float32Array([1.5, -1.5, 0]), new Float32Array([6.5, -4.5, 0]), out);
+            $mol_assert_ok(count > 2);
+            const smooth = nav.smooth(out, count, out);
+            $mol_assert_equal(smooth, 2);
+            $mol_assert_equal(out[2], 6.5);
+            $mol_assert_equal(out[3], -4.5);
+        },
+        'diagonal path does not cut wall corner'() {
+            const nav = grid('#####\n#.#.#\n#...#\n#####');
+            const out = new Float32Array(64);
+            const count = nav.path(new Float32Array([1.5, -1.5, 0]), new Float32Array([3.5, -1.5, 0]), out);
+            $mol_assert_equal(count, 5);
+            $mol_assert_equal(out[2], 1.5);
+            $mol_assert_equal(out[3], -2.5);
+            $mol_assert_equal(out[6], 3.5);
+            $mol_assert_equal(out[7], -2.5);
+        },
+        'dynamic block changes the path'() {
+            const nav = grid('#####\n#...#\n#...#\n#####');
+            const out = new Float32Array(64);
+            const from = new Float32Array([1.5, -1.5, 0]);
+            const to = new Float32Array([3.5, -1.5, 0]);
+            $mol_assert_equal(nav.path(from, to, out), 3);
+            nav.block(2, 1, true);
+            $mol_assert_equal(nav.path(from, to, out), 5);
+            nav.block(2, 1, false);
+            $mol_assert_equal(nav.path(from, to, out), 3);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function rect(x0, z0, x1, z1) {
+        return new Float32Array([x0, z0, x1, z0, x1, z1, x0, z1]);
+    }
+    function length(path, count) {
+        let sum = 0;
+        for (let i = 1; i < count; ++i) {
+            sum += Math.hypot(path[i * 3] - path[i * 3 - 3], path[i * 3 + 2] - path[i * 3 - 1]);
+        }
+        return sum;
+    }
+    $mol_test({
+        'two rectangles with common edge give path through the edge'() {
+            const mesh = new $bog_gamengine_nav_mesh;
+            mesh.polys([rect(0, 0, 1, 1), rect(1, 0, 2, 1)]);
+            $mol_assert_equal(mesh.build(), 1);
+            const out = new Float32Array(30);
+            const count = mesh.path(new Float32Array([0.5, 0, 0.5]), new Float32Array([1.5, 0, 0.5]), out);
+            $mol_assert_equal(count, 2);
+            $mol_assert_equal(out[0], 0.5);
+            $mol_assert_equal(out[3], 1.5);
+            $mol_assert_equal(out[5], 0.5);
+        },
+        'funnel on L corridor of three rectangles gives start corner and finish'() {
+            const mesh = new $bog_gamengine_nav_mesh;
+            mesh.polys([rect(0, 0, 1, 2), rect(0, 2, 1, 3), rect(1, 2, 3, 3)]);
+            $mol_assert_equal(mesh.build(), 2);
+            const out = new Float32Array(30);
+            const count = mesh.path(new Float32Array([0.5, 0, 0.5]), new Float32Array([2.5, 0, 2.5]), out);
+            $mol_assert_equal(count, 3);
+            $mol_assert_equal(out[3], 1);
+            $mol_assert_equal(out[5], 2);
+            $mol_assert_equal(out[6], 2.5);
+            $mol_assert_equal(out[8], 2.5);
+        },
+        'from_tile of 5x5 map with one wall gives several polygons and detour'() {
+            const tile = new $bog_gamengine_phys_tile;
+            tile.map('.....\n.....\n..#..\n.....\n.....');
+            const mesh = new $bog_gamengine_nav_mesh;
+            mesh.from_tile(tile, 1);
+            $mol_assert_ok(mesh.polys().length > 1);
+            const out = new Float32Array(30);
+            const count = mesh.path(new Float32Array([2.5, 0, 0.5]), new Float32Array([2.5, 0, 4.5]), out);
+            $mol_assert_ok(count > 2);
+            $mol_assert_ok(length(out, count) > 4);
+            $mol_assert_equal(out[1], 1);
+            for (let i = 0; i < count; ++i) {
+                const inside = out[i * 3] > 2 && out[i * 3] < 3 && out[i * 3 + 2] > 2 && out[i * 3 + 2] < 3;
+                $mol_assert_not(inside);
+            }
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    $mol_test({
+        'agent reaches target behind wall within 3 seconds never entering a wall'() {
+            const tile = new $bog_gamengine_phys_tile;
+            tile.map('#######\n#..#..#\n#..#..#\n#.....#\n#######');
+            const grid = new $bog_gamengine_nav_grid;
+            grid.tile(tile);
+            const agent = new $bog_gamengine_nav_agent;
+            agent.grid(grid);
+            agent.pos(new Float32Array([1.5, -1.5, 0]));
+            const target = new Float32Array([5.5, -1.5, 0]);
+            agent.target(target);
+            for (let i = 0; i < 180; ++i) {
+                agent.step(1 / 60);
+                const pos = agent.pos();
+                $mol_assert_not(tile.solid_at(pos[0], pos[1]));
+            }
+            const pos = agent.pos();
+            $mol_assert_ok(Math.hypot(pos[0] - target[0], pos[1] - target[1]) < agent.radius());
+        },
+        'agents push each other apart'() {
+            const tile = new $bog_gamengine_phys_tile;
+            tile.map('#####\n#...#\n#...#\n#...#\n#####');
+            const grid = new $bog_gamengine_nav_grid;
+            grid.tile(tile);
+            const a = new $bog_gamengine_nav_agent;
+            const b = new $bog_gamengine_nav_agent;
+            a.grid(grid);
+            b.grid(grid);
+            a.pos(new Float32Array([2.4, -2.5, 0]));
+            b.pos(new Float32Array([2.6, -2.5, 0]));
+            a.others([a, b]);
+            b.others([a, b]);
+            a.target(new Float32Array([2.5, -2.5, 0]));
+            b.target(new Float32Array([2.5, -2.5, 0]));
+            for (let i = 0; i < 30; ++i) {
+                a.step(1 / 60);
+                b.step(1 / 60);
+            }
+            $mol_assert_ok(b.pos()[0] - a.pos()[0] > 0.2);
         },
     });
 })($ || ($ = {}));

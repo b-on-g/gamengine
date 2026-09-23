@@ -1,10 +1,23 @@
 {
-	"name": "bog_gamengine_demo",
-	"short_name": "bog_gamengine_demo",
-	"description": "",
+	"name": "Gamengine demo",
+	"short_name": "Gamengine",
+	"description": "Демо игрового движка на mol: квад, плоская сцена, комната, ящики",
 	"id": "bog_gamengine_demo",
 	"start_url": ".",
-	"display": "standalone",
+	"display": "fullscreen",
 	"background_color": "#000000",
-	"theme_color": "#000000"
+	"theme_color": "#000000",
+	"orientation": "landscape",
+	"icons": [
+		{
+			"src": "bog/gamengine/demo/icon/hero-192.png",
+			"sizes": "192x192",
+			"type": "image/png"
+		},
+		{
+			"src": "bog/gamengine/demo/icon/hero-512.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		}
+	]
 }
