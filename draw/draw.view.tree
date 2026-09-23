@@ -12,4 +12,19 @@ $bog_gamengine_draw $mol_view
 	shadows? true
 	shadow_size? 2048
 	shadow_range? 20
+	post? true
+	Tone $bog_gamengine_shader_post_tone
+	passes /
+		<= Tone
 	stat \
+	report *
+		tick 0
+		fill 0
+		shadow 0
+		main 0
+		post 0
+		batches 0
+		instances 0
+		draws 0
+		triangles 0
+		bytes 0

@@ -4,7 +4,7 @@ namespace $ {
 
 		@ $mol_mem
 		tint() {
-			return new Float32Array([ 1, 0.2, 0.2, 1 ])
+			return new Float32Array([ 1, 0.04, 0.04, 1 ])
 		}
 
 		step( dt: number ) {

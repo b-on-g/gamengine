@@ -14,6 +14,19 @@ namespace $.$$ {
 		}
 	}
 
+	type $bog_gamengine_draw_post_face = {
+		glob: {
+			source: 'sampler2D', texel: 'vec2', extra?: 'sampler2D',
+		}
+	}
+
+	export type $bog_gamengine_draw_step = {
+		readonly shader: $bog_gamengine_shader_post
+		readonly from: string
+		readonly extra: string | null
+		readonly out: string | null
+	}
+
 	export class $bog_gamengine_draw_slot extends Object {
 		batch = null! as $bog_gamengine_batch
 		program = null! as $bog_gamengine_gl_program< $bog_gamengine_draw_face >
@@ -48,6 +61,10 @@ namespace $.$$ {
 		wire = null as GLenum | null
 		size = 0
 		cap = 0
+		tris = 0
+		stride = 0
+		bytes_shape = 0
+		bytes = 0
 
 		dispose( gl: WebGL2RenderingContext ) {
 			for( let i = 0; i < this.buffers.length; ++ i ) gl.deleteBuffer( this.buffers[ i ].native )
@@ -136,6 +153,24 @@ namespace $.$$ {
 		shadow_at = -1
 		gaps = new Float32Array( stat_window )
 		ticks = new Float32Array( stat_window )
+		steps_ms = new Float32Array( stat_window )
+		fills_ms = new Float32Array( stat_window )
+		shadows_ms = new Float32Array( stat_window )
+		mains_ms = new Float32Array( stat_window )
+		posts_ms = new Float32Array( stat_window )
+		batches_ring = new Float32Array( stat_window )
+		instances_ring = new Float32Array( stat_window )
+		draws_ring = new Float32Array( stat_window )
+		triangles_ring = new Float32Array( stat_window )
+		bytes_ring = new Float32Array( stat_window )
+		count_batches = 0
+		count_instances = 0
+		count_draws = 0
+		count_triangles = 0
+		count_bytes = 0
+		texel_vec = new Float32Array( 2 )
+		post_last = new Map< string, $bog_gamengine_gl_color_target >()
+		post_vao_last = null as WebGLVertexArrayObject | null
 		samples = 0
 		paint_at = 0
 
@@ -232,7 +267,87 @@ namespace $.$$ {
 			return target
 		}
 
+		@ $mol_mem
+		post_plan() {
+			const plan = [] as $bog_gamengine_draw_step[]
+			if( !this.post() ) return plan as readonly $bog_gamengine_draw_step[]
+			const passes = this.passes() as readonly $bog_gamengine_shader_post[]
+			const turn = new Map< number, number >()
+			let input = 'scene'
+			let prev = 'scene'
+			for( let p = 0; p < passes.length; ++ p ) {
+				const steps = passes[ p ].steps()
+				for( let s = 0; s < steps.length; ++ s ) {
+					const step = steps[ s ]
+					const from = step.from === 'in' ? input : prev
+					const extra = step.extra === null ? null : step.extra === 'in' ? input : prev
+					const last = p === passes.length - 1 && s === steps.length - 1
+					let out = null as string | null
+					if( !last ) {
+						let index = turn.get( step.scale ) ?? 0
+						let key = `${ step.scale }_${ index }`
+						if( key === from || key === extra ) {
+							index = index ? 0 : 1
+							key = `${ step.scale }_${ index }`
+						}
+						turn.set( step.scale, index ? 0 : 1 )
+						out = key
+					}
+					plan.push({ shader: step.shader, from, extra, out })
+					prev = out ?? 'screen'
+				}
+				input = prev
+			}
+			return plan as readonly $bog_gamengine_draw_step[]
+		}
+
+		@ $mol_mem
+		post_targets() {
+			const plan = this.post_plan()
+			const width = this.width()
+			const height = this.height()
+			const keys = [] as string[]
+			if( plan.length ) keys.push( 'scene' )
+			for( let i = 0; i < plan.length; ++ i ) {
+				const out = plan[ i ].out
+				if( out && !keys.includes( out ) ) keys.push( out )
+			}
+			const gl = keys.length ? this.context() : null
+			for( let i = 0; i < keys.length; ++ i ) {
+				const key = keys[ i ]
+				const at = key.indexOf( '_' )
+				const scale = at < 0 ? 1 : Number( key.slice( 0, at ) )
+				const wide = Math.max( Math.round( width / scale ), 1 )
+				const high = Math.max( Math.round( height / scale ), 1 )
+				const found = this.post_last.get( key )
+				if( found ) found.resize( wide, high )
+				else this.post_last.set( key, new $bog_gamengine_gl_color_target( gl!, wide, high ) )
+			}
+			for( const key of [ ... this.post_last.keys() ] ) {
+				if( keys.includes( key ) ) continue
+				this.post_last.get( key )!.dispose()
+				this.post_last.delete( key )
+			}
+			return keys as readonly string[]
+		}
+
+		@ $mol_mem
+		post_vao() {
+			const vao = this.context().createVertexArray()!
+			this.post_vao_last = vao
+			return vao
+		}
+
+		post_drop() {
+			for( const target of this.post_last.values() ) target.dispose()
+			this.post_last.clear()
+			if( this.post_vao_last ) this.context().deleteVertexArray( this.post_vao_last )
+			this.post_vao_last = null
+			return this
+		}
+
 		destructor() {
+			this.post_drop()
 			this.shadow_last?.dispose()
 			this.shadow_last = null
 			const slots = this.slots_last
@@ -314,6 +429,15 @@ namespace $.$$ {
 			slot.normal_layer = buffer( program.attribute( 'inst_normal_layer' ), 1, 1 )
 			slot.normal_layer?.reserve( cap * 4 )
 			gl.bindVertexArray( null )
+
+			slot.tris = mode === 'lines' ? 0 : mode === 'triangles' ? slot.size / 3 : Math.max( slot.size - 2, 0 )
+			slot.stride = 80
+				+ ( slot.layer ? 4 : 0 )
+				+ ( slot.uv ? 16 : 0 )
+				+ ( slot.material ? 16 : 0 )
+				+ ( slot.normal_layer ? 4 : 0 )
+			slot.bytes_shape = shape.geometry().byteLength
+			slot.bytes = slot.stride * cap + slot.bytes_shape
 
 			this.slots_all.set( batch, slot )
 			return slot
@@ -410,11 +534,15 @@ namespace $.$$ {
 		}
 
 		paint() {
+			const at_start = performance.now()
 			this.scene().aspect( this.width() / this.height() || 1 )
 			this.scene().step()
+			const at_step = performance.now()
 			const gl = this.context()
 			const slots = this.slots()
 			this.textures()
+			const plan = this.post_plan()
+			if( plan.length ) this.post_targets()
 			const proj = this.proj()
 			const view = this.cam().view()
 			const wireframe = this.wireframe()
@@ -427,12 +555,19 @@ namespace $.$$ {
 			this.cam_pos_vec[ 1 ] = cam_world[ 13 ]
 			this.cam_pos_vec[ 2 ] = cam_world[ 14 ]
 			this.lights_fill()
+			this.count_draws = 0
+			const at_prep = performance.now()
 			for( let i = 0; i < slots.length; ++ i ) slots[ i ].ready = this.slot_send( gl, slots[ i ] )
+			const at_fill = performance.now()
 			this.shadow_pass( gl, slots )
-			gl.bindFramebuffer( gl.FRAMEBUFFER, null )
-			gl.viewport( 0, 0, this.width(), this.height() )
+			const at_shadow = performance.now()
+			const target = plan.length ? this.post_last.get( 'scene' )! : null
+			const wide = target ? target.width : this.width()
+			const high = target ? target.height : this.height()
+			gl.bindFramebuffer( gl.FRAMEBUFFER, target ? target.native : null )
+			gl.viewport( 0, 0, wide, high )
 			gl.enable( gl.SCISSOR_TEST )
-			gl.scissor( 0, 0, this.width(), this.height() )
+			gl.scissor( 0, 0, wide, high )
 			gl.cullFace( gl.BACK )
 			gl.enable( gl.BLEND )
 			gl.blendFunc( gl.ONE, gl.ONE_MINUS_SRC_ALPHA )
@@ -441,9 +576,46 @@ namespace $.$$ {
 			for( let i = 0; i < slots.length; ++ i ) {
 				if( slots[ i ].ready ) this.paint_slot( gl, slots[ i ], proj, view, wireframe )
 			}
+			const at_main = performance.now()
+			this.post_run( gl, plan )
+			const at_post = performance.now()
 			gl.bindVertexArray( null )
 			gl.useProgram( null )
-			this.measure()
+			this.count_fill( slots )
+			this.measure( at_start, at_step, at_prep, at_fill, at_shadow, at_main, at_post )
+		}
+
+		post_run( gl: WebGL2RenderingContext, plan: readonly $bog_gamengine_draw_step[] ) {
+			if( !plan.length ) return 0
+			gl.disable( gl.DEPTH_TEST )
+			gl.disable( gl.CULL_FACE )
+			gl.disable( gl.BLEND )
+			gl.disable( gl.SCISSOR_TEST )
+			gl.bindVertexArray( this.post_vao() )
+			for( let i = 0; i < plan.length; ++ i ) {
+				const step = plan[ i ]
+				const from = this.post_last.get( step.from )!
+				const out = step.out ? this.post_last.get( step.out )! : null
+				const program = step.shader.program( gl ) as $bog_gamengine_gl_program< $bog_gamengine_draw_post_face >
+				gl.bindFramebuffer( gl.FRAMEBUFFER, out ? out.native : null )
+				gl.viewport( 0, 0, out ? out.width : this.width(), out ? out.height : this.height() )
+				gl.useProgram( program.native )
+				gl.activeTexture( gl.TEXTURE2 )
+				gl.bindTexture( gl.TEXTURE_2D, from.texture )
+				$bog_gamengine_gl_uniform_int( gl, program.uniform( 'source' ), 2 )
+				if( step.extra ) {
+					gl.activeTexture( gl.TEXTURE3 )
+					gl.bindTexture( gl.TEXTURE_2D, this.post_last.get( step.extra )!.texture )
+					$bog_gamengine_gl_uniform_int( gl, program.uniform( 'extra' ), 3 )
+				}
+				this.texel_vec[ 0 ] = 1 / from.width
+				this.texel_vec[ 1 ] = 1 / from.height
+				$bog_gamengine_gl_uniform_vector( gl, program.uniform( 'texel' ), this.texel_vec )
+				gl.drawArrays( gl.TRIANGLES, 0, 3 )
+				++ this.count_draws
+			}
+			gl.activeTexture( gl.TEXTURE0 )
+			return plan.length
 		}
 
 		slot_send( gl: WebGL2RenderingContext, slot: $bog_gamengine_draw_slot ) {
@@ -485,8 +657,32 @@ namespace $.$$ {
 				if( grown ) gl.bufferData( gl.ARRAY_BUFFER, batch.cap * 4, gl.DYNAMIC_DRAW )
 				gl.bufferSubData( gl.ARRAY_BUFFER, 0, batch.normal_layer, 0, count )
 			}
-			if( grown ) slot.cap = batch.cap
+			if( grown ) {
+				slot.cap = batch.cap
+				slot.bytes = slot.stride * slot.cap + slot.bytes_shape
+			}
 			return true
+		}
+
+		count_fill( slots: readonly $bog_gamengine_draw_slot[] ) {
+			let batches = 0
+			let instances = 0
+			let triangles = 0
+			let bytes = 0
+			for( let i = 0; i < slots.length; ++ i ) {
+				const slot = slots[ i ]
+				if( !slot.ready ) continue
+				const count = slot.batch.count
+				++ batches
+				instances += count
+				triangles += slot.tris * count
+				bytes += slot.bytes
+			}
+			this.count_batches = batches
+			this.count_instances = instances
+			this.count_triangles = triangles
+			this.count_bytes = bytes
+			return instances
 		}
 
 		shadow_pass( gl: WebGL2RenderingContext, slots: readonly $bog_gamengine_draw_slot[] ) {
@@ -514,6 +710,7 @@ namespace $.$$ {
 				if( !slot.ready || !slot.depth ) continue
 				gl.bindVertexArray( slot.vao )
 				gl.drawArraysInstanced( slot.prim, 0, slot.size, slot.batch.count )
+				++ this.count_draws
 			}
 			return target
 		}
@@ -553,18 +750,53 @@ namespace $.$$ {
 			}
 			gl.bindVertexArray( slot.vao )
 			gl.drawArraysInstanced( slot.prim, 0, slot.size, count )
+			++ this.count_draws
 			if( !wireframe || slot.wire === null ) return
 			$bog_gamengine_gl_uniform_vector( gl, slot.wireframe, this.wire_on )
 			gl.drawArraysInstanced( slot.wire, 0, slot.size, count )
+			++ this.count_draws
 		}
 
-		measure() {
-			const now = performance.now()
+		measure( at_start: number, at_step: number, at_prep: number, at_fill: number, at_shadow: number, at_main: number, at_post: number ) {
 			const i = this.samples % stat_window
-			this.ticks[ i ] = now - this.scene().clock().tick_at
-			this.gaps[ i ] = this.paint_at ? now - this.paint_at : 0
-			this.paint_at = now
+			this.ticks[ i ] = at_post - this.scene().clock().tick_at
+			this.gaps[ i ] = this.paint_at ? at_post - this.paint_at : 0
+			this.steps_ms[ i ] = at_step - at_start
+			this.fills_ms[ i ] = at_fill - at_prep
+			this.shadows_ms[ i ] = at_shadow - at_fill
+			this.mains_ms[ i ] = at_main - at_shadow
+			this.posts_ms[ i ] = at_post - at_main
+			this.batches_ring[ i ] = this.count_batches
+			this.instances_ring[ i ] = this.count_instances
+			this.draws_ring[ i ] = this.count_draws
+			this.triangles_ring[ i ] = this.count_triangles
+			this.bytes_ring[ i ] = this.count_bytes
+			this.paint_at = at_post
 			++ this.samples
+		}
+
+		mean( ring: Float32Array, size: number ) {
+			let sum = 0
+			for( let i = 0; i < size; ++ i ) sum += ring[ i ]
+			return size ? sum / size : 0
+		}
+
+		@ $mol_mem
+		report() {
+			this.scene().clock().frame()
+			const size = Math.min( this.samples, stat_window )
+			return {
+				tick: this.mean( this.steps_ms, size ),
+				fill: this.mean( this.fills_ms, size ),
+				shadow: this.mean( this.shadows_ms, size ),
+				main: this.mean( this.mains_ms, size ),
+				post: this.mean( this.posts_ms, size ),
+				batches: this.mean( this.batches_ring, size ),
+				instances: this.mean( this.instances_ring, size ),
+				draws: this.mean( this.draws_ring, size ),
+				triangles: this.mean( this.triangles_ring, size ),
+				bytes: this.mean( this.bytes_ring, size ),
+			}
 		}
 
 		@ $mol_mem

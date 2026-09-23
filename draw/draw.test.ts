@@ -35,6 +35,7 @@ namespace $ {
 
 		gl = new $bog_gamengine_draw_gl_mock
 		scene_mock = new $bog_gamengine_scene
+		passes_mock = null as readonly $bog_gamengine_shader_post[] | null
 
 		context() {
 			return this.gl as unknown as WebGL2RenderingContext
@@ -42,6 +43,10 @@ namespace $ {
 
 		scene() {
 			return this.scene_mock
+		}
+
+		passes() {
+			return this.passes_mock ?? super.passes()
 		}
 
 		slot( batch: $bog_gamengine_batch ) {
@@ -97,6 +102,63 @@ namespace $ {
 			const draw = new $bog_gamengine_draw
 			draw.$ = $
 			$mol_assert_equal( draw.stat(), 'frame 1 | 0.0 ms | tick 0.0 ms' )
+		},
+
+		'report without context is all zeros'( $ ) {
+			$.$mol_state_time = $bog_gamengine_draw_time_mock
+			const draw = new $bog_gamengine_draw
+			draw.$ = $
+			$mol_assert_equal( draw.report(), {
+				tick: 0, fill: 0, shadow: 0, main: 0, post: 0,
+				batches: 0, instances: 0, draws: 0, triangles: 0, bytes: 0,
+			} )
+		},
+
+		'counters sum instances and triangles of ready slots only'( $ ) {
+			const draw = new $bog_gamengine_draw_mock
+			draw.$ = $
+			const slot = ( count: number, ready: boolean )=> {
+				const made = new $$.$bog_gamengine_draw_slot
+				made.batch = new $bog_gamengine_batch
+				made.batch.count = count
+				made.batch.cap = count
+				made.ready = ready
+				made.tris = 2
+				made.stride = 100
+				made.bytes = 100 * count
+				return made
+			}
+			draw.count_fill([ slot( 3, true ), slot( 5, true ), slot( 7, false ) ])
+			$mol_assert_equal( draw.count_batches, 2 )
+			$mol_assert_equal( draw.count_instances, 8 )
+			$mol_assert_equal( draw.count_triangles, 16 )
+			$mol_assert_equal( draw.count_bytes, 800 )
+		},
+
+		'chain of one pass draws straight to the screen'( $ ) {
+			const draw = new $bog_gamengine_draw_mock
+			draw.$ = $
+			const plan = draw.post_plan()
+			$mol_assert_equal( plan.length, 1 )
+			$mol_assert_equal( plan[ 0 ].from, 'scene' )
+			$mol_assert_equal( plan[ 0 ].out, null )
+		},
+
+		'bloom before tone ping-pongs half size targets and ends on the screen'( $ ) {
+			const draw = new $bog_gamengine_draw_mock
+			draw.$ = $
+			draw.passes_mock = [ new $bog_gamengine_shader_post_bloom, new $bog_gamengine_shader_post_tone ]
+			const plan = draw.post_plan()
+			$mol_assert_equal( plan.map( step => step.from ), [ 'scene', '2_0', '2_1', 'scene', '1_0' ] )
+			$mol_assert_equal( plan.map( step => step.out ), [ '2_0', '2_1', '2_0', '1_0', null ] )
+			$mol_assert_equal( plan.map( step => step.extra ), [ null, null, null, '2_0', null ] )
+		},
+
+		'chain is empty when post is off'( $ ) {
+			const draw = new $bog_gamengine_draw_mock
+			draw.$ = $
+			draw.post( false )
+			$mol_assert_equal( draw.post_plan().length, 0 )
 		},
 
 	})

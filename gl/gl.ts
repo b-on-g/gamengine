@@ -229,6 +229,71 @@ namespace $ {
 
 	}
 
+	export class $bog_gamengine_gl_color_target extends Object {
+
+		native = null as WebGLFramebuffer | null
+		texture = null as WebGLTexture | null
+		depth = null as WebGLRenderbuffer | null
+		width = 0
+		height = 0
+		readonly float: boolean
+
+		constructor(
+			readonly gl: WebGL2RenderingContext,
+			width: number,
+			height: number,
+		) {
+			super()
+			this.float = !!gl.getExtension( 'EXT_color_buffer_float' )
+			this.attach( width, height )
+		}
+
+		attach( width: number, height: number ) {
+			const gl = this.gl
+			this.width = Math.max( Math.round( width ), 1 )
+			this.height = Math.max( Math.round( height ), 1 )
+			this.texture = gl.createTexture()!
+			gl.bindTexture( gl.TEXTURE_2D, this.texture )
+			gl.texStorage2D( gl.TEXTURE_2D, 1, this.float ? gl.RGBA16F : gl.RGBA8, this.width, this.height )
+			gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR )
+			gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR )
+			gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE )
+			gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE )
+			gl.bindTexture( gl.TEXTURE_2D, null )
+			this.depth = gl.createRenderbuffer()!
+			gl.bindRenderbuffer( gl.RENDERBUFFER, this.depth )
+			gl.renderbufferStorage( gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, this.width, this.height )
+			gl.bindRenderbuffer( gl.RENDERBUFFER, null )
+			this.native = gl.createFramebuffer()!
+			gl.bindFramebuffer( gl.FRAMEBUFFER, this.native )
+			gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texture, 0 )
+			gl.framebufferRenderbuffer( gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, this.depth )
+			const status = gl.checkFramebufferStatus( gl.FRAMEBUFFER )
+			gl.bindFramebuffer( gl.FRAMEBUFFER, null )
+			if( status === gl.FRAMEBUFFER_COMPLETE ) return this
+			this.dispose()
+			throw new Error( `Color target is incomplete (${ status })` )
+		}
+
+		resize( width: number, height: number ) {
+			if( this.width === Math.max( Math.round( width ), 1 ) && this.height === Math.max( Math.round( height ), 1 ) ) return this
+			this.dispose()
+			return this.attach( width, height )
+		}
+
+		dispose() {
+			const gl = this.gl
+			if( this.native ) gl.deleteFramebuffer( this.native )
+			if( this.texture ) gl.deleteTexture( this.texture )
+			if( this.depth ) gl.deleteRenderbuffer( this.depth )
+			this.native = null
+			this.texture = null
+			this.depth = null
+			return this
+		}
+
+	}
+
 	export function $bog_gamengine_gl_uniform_matrix( gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, data: Float32Array ) {
 		if( !location ) return data
 		switch( data.length ) {
