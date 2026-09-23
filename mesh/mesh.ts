@@ -15,7 +15,12 @@ namespace $ {
 		}
 
 		radius() {
-			return this.shape().radius()
+			try {
+				return this.shape().radius()
+			} catch( error ) {
+				if( $mol_promise_like( error ) ) return Infinity
+				return $mol_fail_hidden( error )
+			}
 		}
 
 		@ $mol_mem

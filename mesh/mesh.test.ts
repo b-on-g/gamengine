@@ -8,6 +8,18 @@ namespace $ {
 
 	}
 
+	class $bog_gamengine_mesh_test_shape_loading extends $bog_gamengine_shape {
+		geometry() {
+			return $mol_fail( new Promise< void >( ()=> {} ) ) as unknown as Float32Array< ArrayBuffer >
+		}
+	}
+
+	class $bog_gamengine_mesh_test_cam extends $bog_gamengine_cam {
+		proj( aspect: number ) {
+			return $mol_3d_mat4.perspective( Math.PI / 3, aspect, 0.1, 100 )
+		}
+	}
+
 	function mesh_test_atlas( uris: string[] ) {
 		const atlas = new $bog_gamengine_mesh_test_atlas
 		atlas.uris( uris )
@@ -82,6 +94,17 @@ namespace $ {
 			const low = new $bog_gamengine_shape_quad
 			mesh.lods([ { dist: 6, shape: low } ])
 			$mol_assert_equal( mesh.lods()[ 0 ].shape, low )
+		},
+
+		'radius of a loading shape is infinite and batch fill with frustum keeps the mesh'() {
+			const mesh = new $bog_gamengine_mesh
+			mesh.shape( new $bog_gamengine_mesh_test_shape_loading )
+			mesh.pos( new Float32Array([ 0, 0, 5 ]) )
+			$mol_assert_equal( mesh.radius(), Infinity )
+			const batch = new $bog_gamengine_batch
+			batch.nodes([ mesh ])
+			const cam = new $bog_gamengine_mesh_test_cam
+			$mol_assert_equal( batch.fill( cam.frustum( 1, new Float32Array( 24 ) ) ), 1 )
 		},
 
 		'radius of box mesh is half diagonal of unit cube'() {
