@@ -3681,15 +3681,17 @@ declare namespace $ {
         get: () => unknown;
         set: (next: unknown) => void;
     };
+    function $bog_gamengine_node_vec(next: ArrayLike<number>): Float32Array<ArrayBufferLike>;
     class $bog_gamengine_node extends $mol_object2 {
         name(next?: string): string;
         title(): string;
         props(): readonly $bog_gamengine_prop[];
-        pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
-        rot(next?: Float32Array): Float32Array<ArrayBufferLike>;
-        scale(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        pos(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
+        rot(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
+        scale(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
+        tint(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         parent(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
-        kids(): readonly $bog_gamengine_node[];
+        kids(next?: readonly $bog_gamengine_node[]): readonly $bog_gamengine_node[];
         trans(): $mol_3d_mat4;
         world(): $mol_3d_mat4;
         step(dt: number): void;
@@ -3881,8 +3883,8 @@ declare namespace $ {
 
 declare namespace $ {
     class $bog_gamengine_phys_body extends $bog_gamengine_node {
-        vel(next?: Float32Array): Float32Array<ArrayBufferLike>;
-        size(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        vel(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
+        size(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         kind(next?: 'aabb' | 'circle'): "circle" | "aabb";
         still(next?: boolean): boolean;
         ghost(next?: boolean): boolean;
@@ -4442,9 +4444,8 @@ declare namespace $ {
         fps(next?: number): number;
         clock(next?: $bog_gamengine_clock | null): $bog_gamengine_clock | null;
         clips(next?: Record<string, readonly string[]>): Record<string, readonly string[]>;
-        tint(next?: Float32Array): Float32Array<ArrayBufferLike>;
         flip_x(next?: boolean): boolean;
-        size(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        size(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         props(): readonly $bog_gamengine_prop[];
         frame_now(): string;
         layer(): number;
@@ -4926,8 +4927,7 @@ declare namespace $ {
         shape(next?: $bog_gamengine_shape): $bog_gamengine_shape;
         atlas(next?: $bog_gamengine_atlas | null): $bog_gamengine_atlas | null;
         frame(next?: string): string;
-        tint(next?: Float32Array): Float32Array<ArrayBufferLike>;
-        size(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        size(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         props(): readonly $bog_gamengine_prop[];
         layer(): number;
         uv(): Float32Array<ArrayBuffer>;

@@ -9177,6 +9177,10 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    function $bog_gamengine_node_vec(next) {
+        return next instanceof Float32Array ? next : new Float32Array(next);
+    }
+    $.$bog_gamengine_node_vec = $bog_gamengine_node_vec;
     class $bog_gamengine_node extends $mol_object2 {
         name(next = '') {
             return next;
@@ -9193,22 +9197,26 @@ var $;
                 { name: 'pos', kind: 'vec3', get: () => this.pos(), set: next => this.pos(next) },
                 { name: 'rot', kind: 'euler', get: () => this.rot(), set: next => this.rot(next) },
                 { name: 'scale', kind: 'vec3', get: () => this.scale(), set: next => this.scale(next) },
+                { name: 'tint', kind: 'vec4', get: () => this.tint(), set: next => this.tint(next) },
             ];
         }
         pos(next) {
-            return next ?? new Float32Array([0, 0, 0]);
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array([0, 0, 0]);
         }
         rot(next) {
-            return next ?? new Float32Array([0, 0, 0]);
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array([0, 0, 0]);
         }
         scale(next) {
-            return next ?? new Float32Array([1, 1, 1]);
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1, 1]);
+        }
+        tint(next) {
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1, 1, 1]);
         }
         parent(next) {
             return next ?? null;
         }
-        kids() {
-            return [];
+        kids(next) {
+            return next ?? [];
         }
         trans() {
             const rot = this.rot();
@@ -9234,7 +9242,13 @@ var $;
     ], $bog_gamengine_node.prototype, "scale", null);
     __decorate([
         $mol_mem
+    ], $bog_gamengine_node.prototype, "tint", null);
+    __decorate([
+        $mol_mem
     ], $bog_gamengine_node.prototype, "parent", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_node.prototype, "kids", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "trans", null);
@@ -9954,10 +9968,10 @@ var $;
 (function ($) {
     class $bog_gamengine_phys_body extends $bog_gamengine_node {
         vel(next) {
-            return next ?? new Float32Array([0, 0, 0]);
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array([0, 0, 0]);
         }
         size(next) {
-            return next ?? new Float32Array([1, 1]);
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1]);
         }
         kind(next) {
             return next ?? 'aabb';
@@ -12271,20 +12285,16 @@ var $;
         clips(next) {
             return next ?? {};
         }
-        tint(next) {
-            return next ?? new Float32Array([1, 1, 1, 1]);
-        }
         flip_x(next = false) {
             return next;
         }
         size(next) {
-            return next ?? new Float32Array([1, 1]);
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1]);
         }
         props() {
             return [
                 ...super.props(),
                 { name: 'frame', kind: 'frame', get: () => this.frame(), set: next => this.frame(next) },
-                { name: 'tint', kind: 'vec4', get: () => this.tint(), set: next => this.tint(next) },
                 { name: 'flip_x', kind: 'flag', get: () => this.flip_x(), set: next => this.flip_x(next) },
                 { name: 'size', kind: 'vec2', get: () => this.size(), set: next => this.size(next) },
                 { name: 'clip', kind: 'text', get: () => this.clip(), set: next => this.clip(next) },
@@ -12332,9 +12342,6 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_sprite.prototype, "clips", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_sprite.prototype, "tint", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_sprite.prototype, "flip_x", null);
@@ -13237,17 +13244,13 @@ var $;
         frame(next = '') {
             return next;
         }
-        tint(next) {
-            return next ?? new Float32Array([1, 1, 1, 1]);
-        }
         size(next) {
-            return next ?? new Float32Array([1, 1, 1]);
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1, 1]);
         }
         props() {
             return [
                 ...super.props(),
                 { name: 'frame', kind: 'frame', get: () => this.frame(), set: next => this.frame(next) },
-                { name: 'tint', kind: 'vec4', get: () => this.tint(), set: next => this.tint(next) },
                 { name: 'size', kind: 'vec3', get: () => this.size(), set: next => this.size(next) },
             ];
         }
@@ -13271,9 +13274,6 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_mesh.prototype, "frame", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_mesh.prototype, "tint", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_mesh.prototype, "size", null);
