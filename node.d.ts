@@ -4374,7 +4374,12 @@ declare namespace $ {
         hull_points(index: number, points: Float32Array): void;
         scale_of(i: number): Float32Array<ArrayBuffer>;
         trans_write(i: number): void;
+        timestep: number;
+        max_steps: number;
+        pending: number;
+        steps_done: number;
         step(dt: number): void;
+        substep(dt: number): void;
         bounds(): void;
         bounds_of(i: number): void;
     }

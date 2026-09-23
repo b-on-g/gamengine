@@ -4152,6 +4152,33 @@ var $;
             world.hull_points(b, new Float32Array([0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3]));
             $mol_assert_equal([...world.aabb.subarray(b * 6, b * 6 + 6)], [10, 20, 30, 11, 22, 33]);
         },
+        'step of 0.1 equals six steps of 1/60 for a box over the floor'() {
+            const one = new $bog_gamengine_phys3;
+            const six = new $bog_gamengine_phys3;
+            for (const world of [one, six]) {
+                world.max_steps = 6;
+                world.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3));
+                box(world, 1, 0, 0.6, 0);
+            }
+            one.step(0.1);
+            for (let k = 0; k < 6; ++k)
+                six.step(1 / 60);
+            $mol_assert_equal(one.steps_done, 6);
+            for (let n = 0; n < 6; ++n)
+                $mol_assert_ok(Math.abs(one.pos[n] - six.pos[n]) < 1e-6);
+            for (let n = 0; n < 6; ++n)
+                $mol_assert_ok(Math.abs(one.vel[n] - six.vel[n]) < 1e-6);
+        },
+        'step of 1 makes at most four substeps and drops the debt'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 0, 0, 0);
+            world.step(1);
+            $mol_assert_equal(world.steps_done, 4);
+            world.step(0);
+            $mol_assert_equal(world.steps_done, 1);
+            world.step(0);
+            $mol_assert_equal(world.steps_done, 0);
+        },
     });
 })($ || ($ = {}));
 
@@ -4464,6 +4491,7 @@ var $;
         'step refreshes bounds and pairs'() {
             const world = new $bog_gamengine_phys3;
             world.gravity(new Float32Array(3));
+            world.timestep = 1;
             box(world, 1, 0, 0, 0);
             const i = box(world, 1, 3, 0, 0);
             world.vel[i * 3] = -2;
@@ -5120,9 +5148,9 @@ var $;
             scene.phys3(world);
             $bog_gamengine_scene_time_mock.stamp(0);
             scene.step();
-            $bog_gamengine_scene_time_mock.stamp(16);
+            $bog_gamengine_scene_time_mock.stamp(17);
             scene.step();
-            $mol_assert_ok(Math.abs(world.pos[i * 3] - 0.016) < 1e-6);
+            $mol_assert_ok(Math.abs(world.pos[i * 3] - world.timestep) < 1e-6);
         },
         'nodes lists tree depth first with parent before kids'() {
             const a = new $bog_gamengine_scene_named;
@@ -5976,6 +6004,7 @@ var $;
             body.pos(new Float32Array([1, 2, 3]));
             $mol_assert_equal([...world.pos.subarray(0, 3)], [1, 2, 3]);
             world.vel[0] = 1;
+            world.timestep = 0.5;
             world.step(0.5);
             $mol_assert_equal([...body.pos()], [1.5, 2, 3]);
         },

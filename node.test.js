@@ -13214,13 +13214,38 @@ var $;
         trans_write(i) {
             $bog_gamengine_vec_quat_to_mat4(this.trans_view[i], this.rot_view[i], this.pos_view[i], this.scale_of(i));
         }
+        timestep = 1 / 60;
+        max_steps = 4;
+        pending = 0;
+        steps_done = 0;
         step(dt) {
+            this.steps_done = 0;
+            const timestep = this.timestep;
+            let pending = this.pending + dt;
+            while (pending >= timestep - 1e-9 && this.steps_done < this.max_steps) {
+                this.substep(timestep);
+                ++this.steps_done;
+                pending -= timestep;
+            }
+            if (pending < 0)
+                pending = 0;
+            this.pending = pending < timestep ? pending : timestep;
+            const count = this.count;
+            const flags = this.flags, rot_view = this.rot_view, pos_view = this.pos_view, trans_view = this.trans_view;
+            const sleep = $bog_gamengine_phys3.flag_sleep;
+            for (let i = 0; i < count; ++i) {
+                if (flags[i] & sleep)
+                    continue;
+                $bog_gamengine_vec_quat_to_mat4(trans_view[i], rot_view[i], pos_view[i], this.scale_of(i));
+            }
+        }
+        substep(dt) {
             const count = this.count;
             const gravity = this.gravity();
             const gx = gravity[0] * dt, gy = gravity[1] * dt, gz = gravity[2] * dt;
             const pos = this.pos, vel = this.vel, ang = this.ang;
             const inv_mass = this.inv_mass, flags = this.flags, timer = this.sleep_timer;
-            const pos_view = this.pos_view, rot_view = this.rot_view, ang_view = this.ang_view, trans_view = this.trans_view;
+            const rot_view = this.rot_view, ang_view = this.ang_view;
             const sleep = $bog_gamengine_phys3.flag_sleep;
             for (let i = 0; i < count; ++i) {
                 if (flags[i] & sleep || !(inv_mass[i] > 0))
@@ -13260,7 +13285,6 @@ var $;
                     pos[p + 2] += vel[p + 2] * dt;
                     $bog_gamengine_vec_quat_integrate(rot_view[i], rot_view[i], ang_view[i], dt);
                 }
-                $bog_gamengine_vec_quat_to_mat4(trans_view[i], rot_view[i], pos_view[i], this.scale_of(i));
             }
         }
         bounds() {
@@ -22220,6 +22244,33 @@ var $;
             world.hull_points(b, new Float32Array([0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3]));
             $mol_assert_equal([...world.aabb.subarray(b * 6, b * 6 + 6)], [10, 20, 30, 11, 22, 33]);
         },
+        'step of 0.1 equals six steps of 1/60 for a box over the floor'() {
+            const one = new $bog_gamengine_phys3;
+            const six = new $bog_gamengine_phys3;
+            for (const world of [one, six]) {
+                world.max_steps = 6;
+                world.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3));
+                box(world, 1, 0, 0.6, 0);
+            }
+            one.step(0.1);
+            for (let k = 0; k < 6; ++k)
+                six.step(1 / 60);
+            $mol_assert_equal(one.steps_done, 6);
+            for (let n = 0; n < 6; ++n)
+                $mol_assert_ok(Math.abs(one.pos[n] - six.pos[n]) < 1e-6);
+            for (let n = 0; n < 6; ++n)
+                $mol_assert_ok(Math.abs(one.vel[n] - six.vel[n]) < 1e-6);
+        },
+        'step of 1 makes at most four substeps and drops the debt'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 0, 0, 0);
+            world.step(1);
+            $mol_assert_equal(world.steps_done, 4);
+            world.step(0);
+            $mol_assert_equal(world.steps_done, 1);
+            world.step(0);
+            $mol_assert_equal(world.steps_done, 0);
+        },
     });
 })($ || ($ = {}));
 
@@ -22532,6 +22583,7 @@ var $;
         'step refreshes bounds and pairs'() {
             const world = new $bog_gamengine_phys3;
             world.gravity(new Float32Array(3));
+            world.timestep = 1;
             box(world, 1, 0, 0, 0);
             const i = box(world, 1, 3, 0, 0);
             world.vel[i * 3] = -2;
@@ -23188,9 +23240,9 @@ var $;
             scene.phys3(world);
             $bog_gamengine_scene_time_mock.stamp(0);
             scene.step();
-            $bog_gamengine_scene_time_mock.stamp(16);
+            $bog_gamengine_scene_time_mock.stamp(17);
             scene.step();
-            $mol_assert_ok(Math.abs(world.pos[i * 3] - 0.016) < 1e-6);
+            $mol_assert_ok(Math.abs(world.pos[i * 3] - world.timestep) < 1e-6);
         },
         'nodes lists tree depth first with parent before kids'() {
             const a = new $bog_gamengine_scene_named;
@@ -24058,6 +24110,7 @@ var $;
             body.pos(new Float32Array([1, 2, 3]));
             $mol_assert_equal([...world.pos.subarray(0, 3)], [1, 2, 3]);
             world.vel[0] = 1;
+            world.timestep = 0.5;
             world.step(0.5);
             $mol_assert_equal([...body.pos()], [1.5, 2, 3]);
         },

@@ -12857,13 +12857,38 @@ var $;
         trans_write(i) {
             $bog_gamengine_vec_quat_to_mat4(this.trans_view[i], this.rot_view[i], this.pos_view[i], this.scale_of(i));
         }
+        timestep = 1 / 60;
+        max_steps = 4;
+        pending = 0;
+        steps_done = 0;
         step(dt) {
+            this.steps_done = 0;
+            const timestep = this.timestep;
+            let pending = this.pending + dt;
+            while (pending >= timestep - 1e-9 && this.steps_done < this.max_steps) {
+                this.substep(timestep);
+                ++this.steps_done;
+                pending -= timestep;
+            }
+            if (pending < 0)
+                pending = 0;
+            this.pending = pending < timestep ? pending : timestep;
+            const count = this.count;
+            const flags = this.flags, rot_view = this.rot_view, pos_view = this.pos_view, trans_view = this.trans_view;
+            const sleep = $bog_gamengine_phys3.flag_sleep;
+            for (let i = 0; i < count; ++i) {
+                if (flags[i] & sleep)
+                    continue;
+                $bog_gamengine_vec_quat_to_mat4(trans_view[i], rot_view[i], pos_view[i], this.scale_of(i));
+            }
+        }
+        substep(dt) {
             const count = this.count;
             const gravity = this.gravity();
             const gx = gravity[0] * dt, gy = gravity[1] * dt, gz = gravity[2] * dt;
             const pos = this.pos, vel = this.vel, ang = this.ang;
             const inv_mass = this.inv_mass, flags = this.flags, timer = this.sleep_timer;
-            const pos_view = this.pos_view, rot_view = this.rot_view, ang_view = this.ang_view, trans_view = this.trans_view;
+            const rot_view = this.rot_view, ang_view = this.ang_view;
             const sleep = $bog_gamengine_phys3.flag_sleep;
             for (let i = 0; i < count; ++i) {
                 if (flags[i] & sleep || !(inv_mass[i] > 0))
@@ -12903,7 +12928,6 @@ var $;
                     pos[p + 2] += vel[p + 2] * dt;
                     $bog_gamengine_vec_quat_integrate(rot_view[i], rot_view[i], ang_view[i], dt);
                 }
-                $bog_gamengine_vec_quat_to_mat4(trans_view[i], rot_view[i], pos_view[i], this.scale_of(i));
             }
         }
         bounds() {
