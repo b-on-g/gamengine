@@ -370,4 +370,221 @@ namespace $ {
 		return say( $bog_gamestudio_probe_ok )
 	}
 
+	export const $bog_gamestudio_probe_live_page = 'bog/gamestudio/app/-/index.html'
+
+	export const $bog_gamestudio_probe_master = 'localhost:9090'
+
+	export const $bog_gamestudio_probe_live_ok = 'второй редактор увидел правку первого в исходнике и на холсте'
+
+	export const $bog_gamestudio_probe_no_master = 'мастер Базы на 9090 не слушает, проба пропущена'
+
+	export const $bog_gamestudio_probe_live_limit = 500
+
+	export const $bog_gamestudio_probe_live_rounds = 3
+
+	export const $bog_gamestudio_probe_live_shift = 80
+
+	export const $bog_gamestudio_probe_live_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0 && /land \\S{10,}/.test( document.body.innerText )`
+
+	export const $bog_gamestudio_probe_head_script = `
+		const text = document.body.innerText
+		const me = ( /me (\\S+) \\|/.exec( text ) || [] )[ 1 ] || ''
+		const land = ( /land (\\S+)/.exec( text ) || [] )[ 1 ] || ''
+		const mates = Number( ( /mates (\\d+)/.exec( text ) || [] )[ 1 ] || -1 )
+		return { me, land, mates }
+	`
+
+	export const $bog_gamestudio_probe_drag_script = `
+		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
+		const canvas = document.querySelector( 'canvas' )
+		const gl = canvas.getContext( 'webgl2' )
+		const pixel = ( x, y )=> {
+			const out = new Uint8Array( 4 )
+			gl.readPixels( x | 0, y | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
+			return Array.from( out )
+		}
+		const at = ( x, y )=> pixel( x, canvas.height - 1 - y )
+		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+		const hero_x = ()=> Number( ( editor.value.match( /Герой[^]*?pos \\/ (\\S+)/ ) || [] )[ 1 ] )
+		const rect = canvas.getBoundingClientRect()
+		const dpr = devicePixelRatio
+		const ppu = canvas.height / 6
+		const pointer = ( type, x, y )=> canvas.dispatchEvent( new PointerEvent( type, {
+			bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: type === 'pointerup' ? 0 : 1,
+			clientX: rect.left + x / dpr, clientY: rect.top + y / dpr,
+		} ) )
+		document.querySelector( '[bog_gamestudio_app_row]' ).click()
+		await frame()
+		await frame()
+		const before = hero_x()
+		const origin_x = canvas.width / 2 + before * ppu
+		const origin_y = canvas.height / 2
+		let arrow = null
+		for( let dx = 4; dx < 90 && !arrow; ++ dx ) for( let dy = -3; dy <= 3; ++ dy ) {
+			const px = at( origin_x + dx, origin_y + dy )
+			if( px[ 0 ] > 200 && px[ 1 ] < 100 && px[ 2 ] < 100 ) { arrow = [ origin_x + dx, origin_y + dy ]; break }
+		}
+		if( !arrow ) return { t0: -1, before, after: before, arrow }
+		const shift = ${ $bog_gamestudio_probe_live_shift }
+		pointer( 'pointerdown', arrow[ 0 ], arrow[ 1 ] )
+		pointer( 'pointermove', arrow[ 0 ] + shift / 2, arrow[ 1 ] )
+		await frame()
+		pointer( 'pointermove', arrow[ 0 ] + shift, arrow[ 1 ] )
+		await frame()
+		pointer( 'pointerup', arrow[ 0 ] + shift, arrow[ 1 ] )
+		const t0 = Date.now()
+		await frame()
+		await frame()
+		return { t0, before, after: hero_x(), arrow }
+	`
+
+	export const $bog_gamestudio_probe_watch_script = `
+		const tick = ()=> new Promise( done => setTimeout( done, 2 ) )
+		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
+		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+		const hero_x = ()=> Number( ( editor.value.match( /Герой[^]*?pos \\/ (\\S+)/ ) || [] )[ 1 ] )
+		const before = hero_x()
+		const began = Date.now()
+		let t1 = -1
+		while( Date.now() - began < 8000 ) {
+			await tick()
+			const now = hero_x()
+			if( now === now && now !== before ) { t1 = Date.now(); break }
+		}
+		const after = hero_x()
+		for( let i = 0; i < 20; ++ i ) await frame()
+		const canvas = document.querySelector( 'canvas' )
+		const gl = canvas.getContext( 'webgl2' )
+		const out = new Uint8Array( 4 )
+		const ppu = canvas.height / 6
+		gl.readPixels( ( canvas.width / 2 + after * ppu ) | 0, ( canvas.height / 2 ) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
+		const mates = Number( ( /mates (\\d+)/.exec( document.body.innerText ) || [] )[ 1 ] || -1 )
+		return { t1, before, after, spot: Array.from( out ), mates }
+	`
+
+	export type $bog_gamestudio_probe_head = {
+		readonly me: string
+		readonly land: string
+		readonly mates: number
+	}
+
+	export type $bog_gamestudio_probe_drag = {
+		readonly t0: number
+		readonly before: number
+		readonly after: number
+		readonly arrow: readonly [ number, number ] | null
+	}
+
+	export type $bog_gamestudio_probe_watch = {
+		readonly t1: number
+		readonly before: number
+		readonly after: number
+		readonly spot: readonly number[]
+		readonly mates: number
+	}
+
+	export function $bog_gamestudio_probe_master_alive( port = 9090 ) {
+		return new Promise< boolean >( done => {
+			const socket = $node.net.connect( port, '127.0.0.1' )
+			socket.once( 'connect', ()=> { socket.destroy(); done( true ) } )
+			socket.once( 'error', ()=> done( false ) )
+		} )
+	}
+
+	export async function $bog_gamestudio_probe_window( bin: string, flags: readonly string[], width: number, height: number ) {
+		const profile = String( $node.fs.mkdtempSync( $node.path.join( $node.os.tmpdir(), 'bog-gamestudio-live-' ) ) )
+		const browser = new $bog_probe_browser( bin, profile, flags )
+		await browser.open()
+		await browser.viewport( width, height )
+		return { browser, profile }
+	}
+
+	export async function $bog_gamestudio_probe_live(
+		root = $node.process.cwd(),
+		flags: readonly string[] = $bog_gamestudio_probe_flags,
+	) {
+
+		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
+
+		const bin = $bog_probe_chrome_bin()
+		if( !bin ) return say( $bog_probe_skip )
+
+		if( !await $bog_gamestudio_probe_master_alive() ) return say( $bog_gamestudio_probe_no_master )
+
+		const started = Date.now()
+		const site = await new $bog_probe_static( String( $node.path.resolve( root ) ) ).open()
+		const windows = [] as { browser: $bog_probe_browser, profile: string }[]
+
+		try {
+
+			for( let i = 0; i < 2; ++ i ) windows.push( await $bog_gamestudio_probe_window( bin, flags, 1600, 800 ) )
+			const [ first, second ] = windows.map( window => window.browser )
+
+			const page = site.uri( $bog_gamestudio_probe_live_page )
+			await first.open_page( `${ page }#!master=${ $bog_gamestudio_probe_master }`, $bog_gamestudio_probe_live_ready, 60000 )
+
+			const head = await first.evaluate( $bog_gamestudio_probe_head_script, 15000 ) as $bog_gamestudio_probe_head
+			if( !head.me ) return $mol_fail( new Error( 'первый редактор не показал свой id' ) )
+			if( !head.land ) return $mol_fail( new Error( 'первый редактор не показал ленд документа' ) )
+			say( `документ ${ head.land }, первый редактор ${ head.me }` )
+
+			await second.open_page(
+				`${ page }#!land=${ head.land }/master=${ $bog_gamestudio_probe_master }`,
+				$bog_gamestudio_probe_live_ready,
+				60000,
+			)
+
+			const got_doc = await second.until( `/Герой/.test( document.querySelector( '[bog_gamestudio_app_source] textarea' ).value )`, 30000 )
+			if( got_doc < 0 ) return $mol_fail( new Error( 'второй редактор не получил документ за 30 с' ) )
+			say( `оба редактора открыты за ${ Date.now() - started } мс, второй получил документ через ${ got_doc } мс` )
+
+			await $bog_probe_pause( 1000 )
+
+			const delays = [] as number[]
+
+			for( let round = -1; round < $bog_gamestudio_probe_live_rounds; ++ round ) {
+
+				const watching = second.evaluate( $bog_gamestudio_probe_watch_script, 20000 )
+				await $bog_probe_pause( 100 )
+
+				const moved = await first.evaluate( $bog_gamestudio_probe_drag_script, 20000 ) as $bog_gamestudio_probe_drag
+				const seen = await watching as $bog_gamestudio_probe_watch
+
+				const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify({ moved, seen }) }` ) )
+				if( !moved.arrow ) return fail( 'у выбранного узла нет красной стрелки гизмо' )
+				if( !( moved.after > moved.before ) ) return fail( 'гизмо не сдвинул героя вправо в первом редакторе' )
+				if( seen.t1 < 0 ) return fail( 'второй редактор не увидел правку за 8 с' )
+				if( Math.abs( seen.after - moved.after ) > 0.001 ) return fail( 'во втором редакторе другая позиция героя' )
+				if( seen.spot[ 0 ] < 40 && seen.spot[ 1 ] < 40 && seen.spot[ 2 ] < 40 ) return fail( 'во втором редакторе на холсте в новой точке чёрный пиксель' )
+
+				if( round < 0 ) say( `прогрев: ${ seen.t1 - moved.t0 } мс, в замер не идёт` )
+				else {
+					delays.push( seen.t1 - moved.t0 )
+					say( `раунд ${ round + 1 }: ${ seen.t1 - moved.t0 } мс, ${ JSON.stringify({ moved, seen }) }` )
+				}
+
+				await $bog_probe_pause( 1500 )
+			}
+
+			const mates = await second.evaluate( $bog_gamestudio_probe_head_script, 15000 ) as $bog_gamestudio_probe_head
+			if( mates.mates < 1 ) return $mol_fail( new Error( `второй редактор не видит первого в присутствии: ${ JSON.stringify( mates ) }` ) )
+			say( `второй редактор видит ${ mates.mates } чужой курсор` )
+
+			say( `задержка: ${ delays.join( ', ' ) } мс, порог ${ $bog_gamestudio_probe_live_limit } мс` )
+
+			const slow = delays.filter( delay => delay >= $bog_gamestudio_probe_live_limit )
+			if( slow.length ) return $mol_fail( new Error( `задержка выше порога: ${ delays.join( ', ' ) } мс` ) )
+
+			return say( $bog_gamestudio_probe_live_ok )
+
+		} finally {
+			for( const { browser, profile } of windows ) {
+				browser.close()
+				try { $node.fs.rmSync( profile, { recursive: true, force: true } ) } catch( error ) {}
+			}
+			site.close()
+		}
+
+	}
+
 }

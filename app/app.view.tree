@@ -1,6 +1,8 @@
 $bog_gamestudio_app $mol_view
 	selected? null
 	source? \
+	source_own? \
+	land_link? \
 	plugins /
 		<= Control $mol_keyboard_state
 			key <= key_map *
@@ -55,9 +57,12 @@ $bog_gamestudio_app $mol_view
 							pointerdown? <=> pointer_down? null
 							pointermove? <=> pointer_move? null
 							pointerup? <=> pointer_up? null
-			foot /
+			foot <= canvas_foot /
 				<= Status $mol_status
 					status <= scene_status null
+				<= Live $mol_view
+					sub /
+						<= live_stat \
 		<= Inspect $mol_page
 			title \Свойства
 			body /
@@ -70,24 +75,54 @@ $bog_gamestudio_app $mol_view
 				<= Editor $mol_textarea
 					value? <=> source?
 	Doc $bog_gamestudio_doc
-		source? <=> source?
+		source_own? <=> source_own?
+		land <= doc_land null
 		input <= scene_input null
-		overlay /
-			<= Gizmo_arrows $bog_gamengine_batch
-				shader <= Gizmo_shader $bog_gamengine_shader_flat
-				shape <= Gizmo_arrow $bog_gamengine_shape_lines
-				nodes <= gizmo_arrow_nodes /
-			<= Gizmo_boxes $bog_gamengine_batch
-				shader <= Gizmo_shader
-				shape <= Gizmo_box $bog_gamengine_shape_lines
-				nodes <= gizmo_box_nodes /
-			<= Rect_lines $bog_gamengine_batch
-				shader <= Gizmo_shader
-				shape <= Rect_shape $bog_gamengine_shape_lines
-				nodes <= rect_nodes /
+		overlay <= overlay_batches /
 		clock <= Clock $bog_gamengine_clock
 			paused <= clock_paused true
 		scene => Scene
+	Gizmo_arrows $bog_gamengine_batch
+		shader <= Gizmo_shader $bog_gamengine_shader_flat
+		shape <= Gizmo_arrow $bog_gamengine_shape_lines
+		nodes <= gizmo_arrow_nodes /
+	Gizmo_boxes $bog_gamengine_batch
+		shader <= Gizmo_shader
+		shape <= Gizmo_box $bog_gamengine_shape_lines
+		nodes <= gizmo_box_nodes /
+	Rect_lines $bog_gamengine_batch
+		shader <= Gizmo_shader
+		shape <= Rect_shape $bog_gamengine_shape_lines
+		nodes <= rect_nodes /
+	Land $bog_gamestudio_doc_land
+		link? <=> land_link?
+		name <= mate_name \
+	Mate_shape $bog_gamengine_shape_lines
+	Mate_lines $bog_gamengine_batch
+		shader <= Gizmo_shader
+		shape <= Mate_shape
+		nodes <= mate_nodes /
+	Mate* $bog_gamengine_node
+		pos <= mate_pos* Float32Array
+		scale <= mate_scale Float32Array
+		tint <= mate_tint* Float32Array
+	Font $bog_gamengine_text_font
+		size 32
+	Font_atlas $bog_gamengine_atlas
+		size 32
+		sources <= font_sources /
+	Text_shader $bog_gamengine_shader_sprite
+	Mate_text* $bog_gamengine_text
+		font <= Font
+		atlas <= Font_atlas
+		value <= mate_title* \
+		height <= mate_text_height 0
+		color <= mate_tint*
+		pos <= mate_text_pos* Float32Array
+	Mate_text_batch* $bog_gamengine_batch
+		shader <= Text_shader
+		atlas <= Font_atlas
+		source <= mate_pool* null
 	Assets $bog_gamestudio_assets
 		list /
 			*
@@ -166,6 +201,9 @@ $bog_gamestudio_app $mol_view
 	Row* $mol_check
 		title <= row_title* \
 		checked? <=> row_selected*? false
+		attr *
+			^
+			bog_gamestudio_app_shared <= row_shared* false
 	Asset* $mol_drag
 		transfer *
 			^

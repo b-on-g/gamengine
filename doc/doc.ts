@@ -14,8 +14,19 @@ namespace $ {
 	export class $bog_gamestudio_doc extends $mol_object2 {
 
 		@ $mol_mem
-		source( next = '' ) {
+		land( next?: $bog_gamestudio_doc_land | null ) {
+			return next ?? null
+		}
+
+		@ $mol_mem
+		source_own( next = '' ) {
 			return next
+		}
+
+		source( next?: string ) {
+			const land = this.land()
+			if( land ) return land.source( next )
+			return this.source_own( next )
 		}
 
 		@ $mol_mem

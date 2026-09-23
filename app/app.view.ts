@@ -52,6 +52,12 @@ namespace $.$$ {
 		-box, box, 0, -box, -box, 0,
 	])
 
+	const cursor_points = new Float32Array([
+		0, 0, 0, 0.6, -0.6, 0,
+		0, 0, 0, 0.15, -0.75, 0,
+		0.6, -0.6, 0, 0.15, -0.75, 0,
+	])
+
 	const tint_x = new Float32Array([ 1, 0, 0, 1 ])
 	const tint_y = new Float32Array([ 0, 1, 0, 1 ])
 	const tint_xy = new Float32Array([ 1, 1, 0, 1 ])
@@ -60,8 +66,12 @@ namespace $.$$ {
 	export class $bog_gamestudio_app extends $.$bog_gamestudio_app {
 
 		@ $mol_mem
-		source( next = $bog_gamestudio_sample ) {
+		source_own( next = $bog_gamestudio_sample ) {
 			return next
+		}
+
+		source( next?: string ) {
+			return this.Doc().source( next )
 		}
 
 		@ $mol_mem
@@ -93,6 +103,181 @@ namespace $.$$ {
 		@ $mol_mem
 		key_map() {
 			return this.Key().keys()
+		}
+
+		land_arg() {
+			return this.$.$mol_state_arg.value( 'land' ) ?? ''
+		}
+
+		master_arg() {
+			return this.$.$mol_state_arg.value( 'master' ) ?? ''
+		}
+
+		master_url() {
+			const master = this.master_arg()
+			if( !master ) return ''
+			return ( /^(https?|wss?):/.test( master ) ? master : 'http://' + master ).replace( /\/?$/, '/' )
+		}
+
+		pinned = null as typeof $giper_baza_yard | null
+
+		pin() {
+			const url = this.master_url()
+			if( !url ) return
+			const yard = this.$.$giper_baza_yard
+			if( this.pinned === yard ) return
+			this.pinned = yard
+			yard.masters_default.length = 0
+			yard.masters = ()=> [ url ]
+			const live = this.$.$giper_baza_glob.yard()
+			live.master_cursor( 1 )
+			live.master_cursor( 0 )
+		}
+
+		@ $mol_mem
+		land_link( next?: string ) {
+			return next ?? this.land_arg()
+		}
+
+		@ $mol_mem
+		doc_land() {
+			if( !this.land_arg() && !this.master_arg() ) return null
+			this.pin()
+			return this.Land()
+		}
+
+		@ $mol_mem
+		mate_name() {
+			return this.Land().me().slice( 0, 6 )
+		}
+
+		@ $mol_mem
+		spot( next?: Float32Array ) {
+			return next ?? new Float32Array( 2 )
+		}
+
+		pick_title() {
+			return this.node()?.title() ?? ''
+		}
+
+		auto() {
+			const land = this.doc_land()
+			if( !land ) return
+			land.ready()
+			if( !this.land_arg() && !land.source() ) land.source( this.source_own() )
+			land.push( this.pick_title(), this.spot() )
+		}
+
+		@ $mol_mem
+		mates() {
+			return this.doc_land()?.mates() ?? []
+		}
+
+		@ $mol_mem
+		picks() {
+			const land = this.doc_land()
+			const out = {} as Record< string, string >
+			if( land ) for( const id of land.mates() ) out[ land.pick( id ) ] = id
+			return out
+		}
+
+		row_shared( index: number ) {
+			const title = this.Scene().nodes()[ index ]?.title() ?? ''
+			return Boolean( title && this.picks()[ title ] )
+		}
+
+		@ $mol_mem
+		Mate_shape() {
+			const shape = super.Mate_shape()
+			shape.points( cursor_points )
+			return shape
+		}
+
+		@ $mol_mem
+		mate_scale() {
+			const size = this.gizmo_size() * 0.5
+			return new Float32Array([ size, size, 1 ])
+		}
+
+		@ $mol_mem
+		mate_text_height() {
+			return this.gizmo_size() * 0.3
+		}
+
+		@ $mol_mem_key
+		mate_pos( id: string ) {
+			const spot = this.doc_land()!.spot( id )
+			return new Float32Array([ spot[ 0 ], spot[ 1 ], 0 ])
+		}
+
+		@ $mol_mem_key
+		mate_text_pos( id: string ) {
+			const spot = this.doc_land()!.spot( id )
+			const size = this.gizmo_size()
+			return new Float32Array([ spot[ 0 ] + size * 0.45, spot[ 1 ] - size * 0.95, 0 ])
+		}
+
+		@ $mol_mem_key
+		mate_tint( id: string ) {
+			let hash = 0
+			for( let i = 0; i < id.length; ++ i ) hash = ( hash * 31 + id.charCodeAt( i ) ) % 360
+			const hue = hash / 60
+			const part = ( shift: number )=> {
+				const k = ( shift + hue ) % 6
+				return 0.4 + 0.6 * Math.max( 0, Math.min( 1, Math.min( k, 4 - k, 1 ) ) )
+			}
+			return new Float32Array([ part( 5 ), part( 3 ), part( 1 ), 1 ])
+		}
+
+		mate_title( id: string ) {
+			return this.doc_land()?.mate_name( id ) || id.slice( 0, 6 )
+		}
+
+		@ $mol_mem
+		font_sources() {
+			return this.Font().sources()
+		}
+
+		@ $mol_mem_key
+		mate_pool( id: string ) {
+			const text = this.Mate_text( id )
+			text.emit()
+			return text.pool()
+		}
+
+		@ $mol_mem
+		mate_nodes() {
+			return this.mates().map( id => this.Mate( id ) )
+		}
+
+		@ $mol_mem
+		mate_batches() {
+			const ids = this.mates()
+			if( !ids.length ) return []
+			return [ this.Mate_lines(), ... ids.map( id => this.Mate_text_batch( id ) ) ]
+		}
+
+		@ $mol_mem
+		overlay_batches() {
+			return [ this.Gizmo_arrows(), this.Gizmo_boxes(), this.Rect_lines(), ... this.mate_batches() ]
+		}
+
+		@ $mol_mem
+		canvas_foot() {
+			return this.doc_land() ? [ this.Status(), this.Live() ] : [ this.Status() ]
+		}
+
+		live_stat() {
+			const land = this.doc_land()
+			if( !land ) return ''
+			const ids = land.mates()
+			return [
+				`me ${ land.me() }`,
+				`land ${ land.land_link() }`,
+				`mates ${ ids.length }`,
+				ids.map( id => `${ id } ${ land.spot( id )[ 0 ].toFixed( 2 ) } × ${ land.spot( id )[ 1 ].toFixed( 2 ) } ${ land.pick( id ) }` ).join( ', ' ) || 'nobody',
+				`master ${ this.$.$giper_baza_glob.yard().master_current() ?? 'none' }`,
+			].join( ' | ' )
 		}
 
 		@ $mol_mem
@@ -578,12 +763,17 @@ namespace $.$$ {
 		}
 
 		pointer_move( event?: PointerEvent ) {
-			if( event && this.brush_from ) {
+			if( !event ) return null
+			if( this.doc_land() ) {
+				const at = this.Point().world( this.point_world, this.point_x( event ), this.point_y( event ) )
+				this.spot( new Float32Array([ at[ 0 ], at[ 1 ] ]) )
+			}
+			if( this.brush_from ) {
 				this.brush_move( this.brush_cell( event ) )
 				return event
 			}
 			const axis = this.drag_axis
-			if( !event || !axis ) return null
+			if( !axis ) return null
 			const node = this.node()
 			if( !node ) return null
 			const at = this.Point().world( this.point_world, this.point_x( event ), this.point_y( event ) )

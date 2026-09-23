@@ -55,6 +55,20 @@ namespace $.$$ {
 					},
 				},
 			},
+			'[bog_gamestudio_app_shared]': {
+				true: {
+					color: $mol_theme.special,
+				},
+			},
+		},
+
+		Live: {
+			padding: $mol_gap.text,
+			color: $mol_theme.shade,
+			font: { size: '0.75rem' },
+			overflow: 'hidden',
+			textOverflow: 'ellipsis',
+			whiteSpace: 'nowrap',
 		},
 
 		Canvas: {
