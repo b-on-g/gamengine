@@ -9386,6 +9386,294 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    const prefix = `#version 300 es
+				precision highp float;
+				precision highp sampler2D;
+				precision highp sampler2DArray;
+				precision highp sampler2DShadow;
+			`;
+    function $bog_gamengine_gl_decl(kind, type, name) {
+        const open = type.indexOf('[');
+        if (open < 0)
+            return `${kind} ${type} ${name};\n`;
+        return `${kind} ${type.slice(0, open)} ${name}${type.slice(open)};\n`;
+    }
+    $.$bog_gamengine_gl_decl = $bog_gamengine_gl_decl;
+    function $bog_gamengine_gl_slots(type) {
+        switch (type) {
+            case 'mat4': return 4;
+            case 'mat3': return 3;
+            case 'mat2': return 2;
+            default: return 1;
+        }
+    }
+    $.$bog_gamengine_gl_slots = $bog_gamengine_gl_slots;
+    function $bog_gamengine_gl_source(face, vert, frag) {
+        let revert = prefix;
+        let refrag = prefix;
+        for (const name in face.glob ?? {}) {
+            const decl = $bog_gamengine_gl_decl('uniform', face.glob[name], name);
+            revert += decl;
+            refrag += decl;
+        }
+        let location = 0;
+        for (const name in face.input ?? {}) {
+            const type = face.input[name];
+            revert += `layout( location = ${location} ) in ${type} ${name};\n`;
+            location += $bog_gamengine_gl_slots(type);
+        }
+        for (const name in face.pipe ?? {}) {
+            revert += `out ${face.pipe[name]} ${name};\n`;
+            refrag += `in ${face.pipe[name]} ${name};\n`;
+        }
+        for (const name in face.output ?? {}) {
+            refrag += `out ${face.output[name]} ${name};\n`;
+        }
+        return { vert: revert + vert, frag: refrag + frag };
+    }
+    $.$bog_gamengine_gl_source = $bog_gamengine_gl_source;
+    function $bog_gamengine_gl_shader(gl, type, code) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, code);
+        gl.compileShader(shader);
+        if (gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+            return shader;
+        const log = gl.getShaderInfoLog(shader);
+        gl.deleteShader(shader);
+        throw new Error(String(log));
+    }
+    $.$bog_gamengine_gl_shader = $bog_gamengine_gl_shader;
+    class $bog_gamengine_gl_program extends Object {
+        gl;
+        native;
+        uniforms = new Map();
+        constructor(gl, face, vert, frag) {
+            super();
+            this.gl = gl;
+            const source = $bog_gamengine_gl_source(face, vert, frag);
+            const program = gl.createProgram();
+            gl.attachShader(program, $bog_gamengine_gl_shader(gl, gl.VERTEX_SHADER, source.vert));
+            gl.attachShader(program, $bog_gamengine_gl_shader(gl, gl.FRAGMENT_SHADER, source.frag));
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                const log = gl.getProgramInfoLog(program);
+                gl.deleteProgram(program);
+                throw new Error(String(log));
+            }
+            this.native = program;
+        }
+        uniform(name) {
+            let location = this.uniforms.get(name);
+            if (location === undefined) {
+                location = this.gl.getUniformLocation(this.native, name);
+                this.uniforms.set(name, location);
+            }
+            return location;
+        }
+        attribute(name) {
+            const location = this.gl.getAttribLocation(this.native, name);
+            return location === -1 ? null : location;
+        }
+    }
+    $.$bog_gamengine_gl_program = $bog_gamengine_gl_program;
+    class $bog_gamengine_gl_buffer extends Object {
+        gl;
+        native;
+        constructor(gl, location, size, divisor) {
+            super();
+            this.gl = gl;
+            this.native = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.native);
+            if (size === 16) {
+                for (let row = 0; row < 4; ++row) {
+                    gl.enableVertexAttribArray(location + row);
+                    gl.vertexAttribPointer(location + row, 4, gl.FLOAT, false, 64, row * 16);
+                    gl.vertexAttribDivisor(location + row, divisor);
+                }
+            }
+            else {
+                gl.enableVertexAttribArray(location);
+                gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
+                gl.vertexAttribDivisor(location, divisor);
+            }
+        }
+        send(data) {
+            const gl = this.gl;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.native);
+            gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+            return data;
+        }
+        reserve(bytes) {
+            const gl = this.gl;
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.native);
+            gl.bufferData(gl.ARRAY_BUFFER, bytes, gl.DYNAMIC_DRAW);
+            return bytes;
+        }
+    }
+    $.$bog_gamengine_gl_buffer = $bog_gamengine_gl_buffer;
+    function $bog_gamengine_gl_texture_array(gl, images, size) {
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+        gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA, size, size, images.length, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        for (let i = 0; i < images.length; ++i) {
+            gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, size, size, 1, gl.RGBA, gl.UNSIGNED_BYTE, images[i]);
+        }
+        const anisotropic = gl.getExtension('EXT_texture_filter_anisotropic');
+        if (anisotropic) {
+            const max = gl.getParameter(anisotropic.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+            gl.texParameterf(gl.TEXTURE_2D_ARRAY, anisotropic.TEXTURE_MAX_ANISOTROPY_EXT, max);
+        }
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+        return texture;
+    }
+    $.$bog_gamengine_gl_texture_array = $bog_gamengine_gl_texture_array;
+    class $bog_gamengine_gl_depth_target extends Object {
+        gl;
+        size;
+        native;
+        texture;
+        constructor(gl, size) {
+            super();
+            this.gl = gl;
+            this.size = size;
+            this.texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, this.texture);
+            gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, size, size);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+            this.native = gl.createFramebuffer();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.native);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.texture, 0);
+            gl.drawBuffers([gl.NONE]);
+            gl.readBuffer(gl.NONE);
+            const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            if (status === gl.FRAMEBUFFER_COMPLETE)
+                return;
+            this.dispose();
+            throw new Error(`Depth target is incomplete (${status})`);
+        }
+        dispose() {
+            this.gl.deleteFramebuffer(this.native);
+            this.gl.deleteTexture(this.texture);
+            return this;
+        }
+    }
+    $.$bog_gamengine_gl_depth_target = $bog_gamengine_gl_depth_target;
+    function $bog_gamengine_gl_uniform_matrix(gl, location, data) {
+        if (!location)
+            return data;
+        switch (data.length) {
+            case 16:
+                gl.uniformMatrix4fv(location, false, data);
+                break;
+            case 9:
+                gl.uniformMatrix3fv(location, false, data);
+                break;
+            case 4:
+                gl.uniformMatrix2fv(location, false, data);
+                break;
+            default: throw new Error(`Wrong matrix data length (${data.length})`);
+        }
+        return data;
+    }
+    $.$bog_gamengine_gl_uniform_matrix = $bog_gamengine_gl_uniform_matrix;
+    function $bog_gamengine_gl_uniform_vector(gl, location, data) {
+        if (!location)
+            return data;
+        switch (data.length) {
+            case 4:
+                gl.uniform4fv(location, data);
+                break;
+            case 3:
+                gl.uniform3fv(location, data);
+                break;
+            case 2:
+                gl.uniform2fv(location, data);
+                break;
+            case 1:
+                gl.uniform1fv(location, data);
+                break;
+            default: throw new Error(`Wrong vector data length (${data.length})`);
+        }
+        return data;
+    }
+    $.$bog_gamengine_gl_uniform_vector = $bog_gamengine_gl_uniform_vector;
+    function $bog_gamengine_gl_uniform_vec4s(gl, location, data) {
+        if (location)
+            gl.uniform4fv(location, data);
+        return data;
+    }
+    $.$bog_gamengine_gl_uniform_vec4s = $bog_gamengine_gl_uniform_vec4s;
+    function $bog_gamengine_gl_uniform_int(gl, location, value) {
+        if (location)
+            gl.uniform1i(location, value);
+        return value;
+    }
+    $.$bog_gamengine_gl_uniform_int = $bog_gamengine_gl_uniform_int;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    $.$mol_3d_glsl_both = '';
+    $.$mol_3d_glsl_vert = '';
+    $.$mol_3d_glsl_frag = '';
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_shader extends $mol_object2 {
+        programs = new WeakMap();
+        face() {
+            return {};
+        }
+        vert() {
+            return `void main() {}`;
+        }
+        frag() {
+            return `void main() {}`;
+        }
+        depth() {
+            return false;
+        }
+        sources() {
+            return {
+                vert: $mol_3d_glsl_both + this.vert(),
+                frag: $mol_3d_glsl_both + this.frag(),
+            };
+        }
+        program(gl) {
+            let program = this.programs.get(gl);
+            if (!program) {
+                const sources = this.sources();
+                program = new $bog_gamengine_gl_program(gl, this.face(), sources.vert, sources.frag);
+                this.programs.set(gl, program);
+            }
+            return program;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_shader.prototype, "sources", null);
+    $.$bog_gamengine_shader = $bog_gamengine_shader;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     /** App tree: `plugins / <= Control mol_keyboard_state key <= key_map`, where `key_map()` in app ts returns `this.Key().keys()` */
     class $bog_gamengine_key extends $mol_object2 {
         bind(next = {}) {
@@ -9967,15 +10255,6 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    $.$mol_3d_glsl_both = '';
-    $.$mol_3d_glsl_vert = '';
-    $.$mol_3d_glsl_frag = '';
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
     class $mol_3d_mat4 extends Float32Array {
         static identity() {
             return new $mol_3d_mat4([
@@ -10159,6 +10438,9 @@ var $;
         tint(next) {
             return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1, 1, 1]);
         }
+        shader(next) {
+            return next ?? null;
+        }
         parent(next) {
             return next ?? null;
         }
@@ -10215,6 +10497,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "tint", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_node.prototype, "shader", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "parent", null);
@@ -10301,291 +10586,12 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    const prefix = `#version 300 es
-				precision highp float;
-				precision highp sampler2D;
-				precision highp sampler2DArray;
-				precision highp sampler2DShadow;
-			`;
-    function $bog_gamengine_gl_decl(kind, type, name) {
-        const open = type.indexOf('[');
-        if (open < 0)
-            return `${kind} ${type} ${name};\n`;
-        return `${kind} ${type.slice(0, open)} ${name}${type.slice(open)};\n`;
-    }
-    $.$bog_gamengine_gl_decl = $bog_gamengine_gl_decl;
-    function $bog_gamengine_gl_slots(type) {
-        switch (type) {
-            case 'mat4': return 4;
-            case 'mat3': return 3;
-            case 'mat2': return 2;
-            default: return 1;
-        }
-    }
-    $.$bog_gamengine_gl_slots = $bog_gamengine_gl_slots;
-    function $bog_gamengine_gl_source(face, vert, frag) {
-        let revert = prefix;
-        let refrag = prefix;
-        for (const name in face.glob ?? {}) {
-            const decl = $bog_gamengine_gl_decl('uniform', face.glob[name], name);
-            revert += decl;
-            refrag += decl;
-        }
-        let location = 0;
-        for (const name in face.input ?? {}) {
-            const type = face.input[name];
-            revert += `layout( location = ${location} ) in ${type} ${name};\n`;
-            location += $bog_gamengine_gl_slots(type);
-        }
-        for (const name in face.pipe ?? {}) {
-            revert += `out ${face.pipe[name]} ${name};\n`;
-            refrag += `in ${face.pipe[name]} ${name};\n`;
-        }
-        for (const name in face.output ?? {}) {
-            refrag += `out ${face.output[name]} ${name};\n`;
-        }
-        return { vert: revert + vert, frag: refrag + frag };
-    }
-    $.$bog_gamengine_gl_source = $bog_gamengine_gl_source;
-    function $bog_gamengine_gl_shader(gl, type, code) {
-        const shader = gl.createShader(type);
-        gl.shaderSource(shader, code);
-        gl.compileShader(shader);
-        if (gl.getShaderParameter(shader, gl.COMPILE_STATUS))
-            return shader;
-        const log = gl.getShaderInfoLog(shader);
-        gl.deleteShader(shader);
-        throw new Error(String(log));
-    }
-    $.$bog_gamengine_gl_shader = $bog_gamengine_gl_shader;
-    class $bog_gamengine_gl_program extends Object {
-        gl;
-        native;
-        uniforms = new Map();
-        constructor(gl, face, vert, frag) {
-            super();
-            this.gl = gl;
-            const source = $bog_gamengine_gl_source(face, vert, frag);
-            const program = gl.createProgram();
-            gl.attachShader(program, $bog_gamengine_gl_shader(gl, gl.VERTEX_SHADER, source.vert));
-            gl.attachShader(program, $bog_gamengine_gl_shader(gl, gl.FRAGMENT_SHADER, source.frag));
-            gl.linkProgram(program);
-            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-                const log = gl.getProgramInfoLog(program);
-                gl.deleteProgram(program);
-                throw new Error(String(log));
-            }
-            this.native = program;
-        }
-        uniform(name) {
-            let location = this.uniforms.get(name);
-            if (location === undefined) {
-                location = this.gl.getUniformLocation(this.native, name);
-                this.uniforms.set(name, location);
-            }
-            return location;
-        }
-        attribute(name) {
-            const location = this.gl.getAttribLocation(this.native, name);
-            return location === -1 ? null : location;
-        }
-    }
-    $.$bog_gamengine_gl_program = $bog_gamengine_gl_program;
-    class $bog_gamengine_gl_buffer extends Object {
-        gl;
-        native;
-        constructor(gl, location, size, divisor) {
-            super();
-            this.gl = gl;
-            this.native = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.native);
-            if (size === 16) {
-                for (let row = 0; row < 4; ++row) {
-                    gl.enableVertexAttribArray(location + row);
-                    gl.vertexAttribPointer(location + row, 4, gl.FLOAT, false, 64, row * 16);
-                    gl.vertexAttribDivisor(location + row, divisor);
-                }
-            }
-            else {
-                gl.enableVertexAttribArray(location);
-                gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
-                gl.vertexAttribDivisor(location, divisor);
-            }
-        }
-        send(data) {
-            const gl = this.gl;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.native);
-            gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-            return data;
-        }
-        reserve(bytes) {
-            const gl = this.gl;
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.native);
-            gl.bufferData(gl.ARRAY_BUFFER, bytes, gl.DYNAMIC_DRAW);
-            return bytes;
-        }
-    }
-    $.$bog_gamengine_gl_buffer = $bog_gamengine_gl_buffer;
-    function $bog_gamengine_gl_texture_array(gl, images, size) {
-        const texture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
-        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-        gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA, size, size, images.length, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-        for (let i = 0; i < images.length; ++i) {
-            gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, size, size, 1, gl.RGBA, gl.UNSIGNED_BYTE, images[i]);
-        }
-        const anisotropic = gl.getExtension('EXT_texture_filter_anisotropic');
-        if (anisotropic) {
-            const max = gl.getParameter(anisotropic.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
-            gl.texParameterf(gl.TEXTURE_2D_ARRAY, anisotropic.TEXTURE_MAX_ANISOTROPY_EXT, max);
-        }
-        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
-        return texture;
-    }
-    $.$bog_gamengine_gl_texture_array = $bog_gamengine_gl_texture_array;
-    class $bog_gamengine_gl_depth_target extends Object {
-        gl;
-        size;
-        native;
-        texture;
-        constructor(gl, size) {
-            super();
-            this.gl = gl;
-            this.size = size;
-            this.texture = gl.createTexture();
-            gl.bindTexture(gl.TEXTURE_2D, this.texture);
-            gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, size, size);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
-            gl.bindTexture(gl.TEXTURE_2D, null);
-            this.native = gl.createFramebuffer();
-            gl.bindFramebuffer(gl.FRAMEBUFFER, this.native);
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.texture, 0);
-            gl.drawBuffers([gl.NONE]);
-            gl.readBuffer(gl.NONE);
-            const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            if (status === gl.FRAMEBUFFER_COMPLETE)
-                return;
-            this.dispose();
-            throw new Error(`Depth target is incomplete (${status})`);
-        }
-        dispose() {
-            this.gl.deleteFramebuffer(this.native);
-            this.gl.deleteTexture(this.texture);
-            return this;
-        }
-    }
-    $.$bog_gamengine_gl_depth_target = $bog_gamengine_gl_depth_target;
-    function $bog_gamengine_gl_uniform_matrix(gl, location, data) {
-        if (!location)
-            return data;
-        switch (data.length) {
-            case 16:
-                gl.uniformMatrix4fv(location, false, data);
-                break;
-            case 9:
-                gl.uniformMatrix3fv(location, false, data);
-                break;
-            case 4:
-                gl.uniformMatrix2fv(location, false, data);
-                break;
-            default: throw new Error(`Wrong matrix data length (${data.length})`);
-        }
-        return data;
-    }
-    $.$bog_gamengine_gl_uniform_matrix = $bog_gamengine_gl_uniform_matrix;
-    function $bog_gamengine_gl_uniform_vector(gl, location, data) {
-        if (!location)
-            return data;
-        switch (data.length) {
-            case 4:
-                gl.uniform4fv(location, data);
-                break;
-            case 3:
-                gl.uniform3fv(location, data);
-                break;
-            case 2:
-                gl.uniform2fv(location, data);
-                break;
-            case 1:
-                gl.uniform1fv(location, data);
-                break;
-            default: throw new Error(`Wrong vector data length (${data.length})`);
-        }
-        return data;
-    }
-    $.$bog_gamengine_gl_uniform_vector = $bog_gamengine_gl_uniform_vector;
-    function $bog_gamengine_gl_uniform_vec4s(gl, location, data) {
-        if (location)
-            gl.uniform4fv(location, data);
-        return data;
-    }
-    $.$bog_gamengine_gl_uniform_vec4s = $bog_gamengine_gl_uniform_vec4s;
-    function $bog_gamengine_gl_uniform_int(gl, location, value) {
-        if (location)
-            gl.uniform1i(location, value);
-        return value;
-    }
-    $.$bog_gamengine_gl_uniform_int = $bog_gamengine_gl_uniform_int;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $bog_gamengine_shader extends $mol_object2 {
-        programs = new WeakMap();
-        face() {
-            return {};
-        }
-        vert() {
-            return `void main() {}`;
-        }
-        frag() {
-            return `void main() {}`;
-        }
-        depth() {
-            return false;
-        }
-        sources() {
-            return {
-                vert: $mol_3d_glsl_both + this.vert(),
-                frag: $mol_3d_glsl_both + this.frag(),
-            };
-        }
-        program(gl) {
-            let program = this.programs.get(gl);
-            if (!program) {
-                const sources = this.sources();
-                program = new $bog_gamengine_gl_program(gl, this.face(), sources.vert, sources.frag);
-                this.programs.set(gl, program);
-            }
-            return program;
-        }
-    }
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_shader.prototype, "sources", null);
-    $.$bog_gamengine_shader = $bog_gamengine_shader;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $bog_gamengine_shader_flat extends $bog_gamengine_shader {
+    class $bog_gamengine_shader_sprite extends $bog_gamengine_shader {
         face() {
             return {
-                glob: { proj: 'mat4', view: 'mat4' },
-                input: { vertex: 'vec3', inst_trans: 'mat4', inst_tint: 'vec4' },
-                pipe: { pipe_tint: 'vec4' },
+                glob: { proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray' },
+                input: { vertex: 'vec3', uv: 'vec2', inst_trans: 'mat4', inst_tint: 'vec4', inst_layer: 'float', inst_uv: 'vec4' },
+                pipe: { pipe_uv: 'vec2', pipe_layer: 'float', pipe_tint: 'vec4' },
                 output: { color: 'vec4' },
             };
         }
@@ -10593,6 +10599,8 @@ var $;
             return `
 				void main() {
 					gl_Position = proj * view * inst_trans * vec4( vertex, 1.0 );
+					pipe_uv = uv * inst_uv.zw + inst_uv.xy;
+					pipe_layer = inst_layer;
 					pipe_tint = inst_tint;
 				}
 			`;
@@ -10600,12 +10608,249 @@ var $;
         frag() {
             return `
 				void main() {
-					color = pipe_tint;
+					color = texture( atlas, vec3( pipe_uv, pipe_layer ) ) * pipe_tint;
 				}
 			`;
         }
     }
-    $.$bog_gamengine_shader_flat = $bog_gamengine_shader_flat;
+    $.$bog_gamengine_shader_sprite = $bog_gamengine_shader_sprite;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_shader_solid extends $bog_gamengine_shader {
+        face() {
+            return {
+                glob: {
+                    proj: 'mat4',
+                    view: 'mat4',
+                    atlas: 'sampler2DArray',
+                    light_count: 'int',
+                    light_pos: 'vec4[8]',
+                    light_dir: 'vec4[8]',
+                    light_color: 'vec4[8]',
+                    ambient: 'vec3',
+                    cam_pos: 'vec3',
+                    wireframe: 'float',
+                    shadow_mat: 'mat4',
+                    shadow_map: 'sampler2DShadow',
+                    shadow_light: 'int',
+                },
+                input: {
+                    vertex: 'vec3',
+                    uv: 'vec2',
+                    normal: 'vec3',
+                    inst_trans: 'mat4',
+                    inst_tint: 'vec4',
+                    inst_layer: 'float',
+                    inst_uv: 'vec4',
+                    inst_material: 'vec4',
+                    inst_normal_layer: 'float',
+                },
+                pipe: {
+                    pipe_uv: 'vec2',
+                    pipe_layer: 'float',
+                    pipe_tint: 'vec4',
+                    pipe_normal: 'vec3',
+                    pipe_pos: 'vec3',
+                    pipe_material: 'vec4',
+                    pipe_normal_layer: 'float',
+                },
+                output: { color: 'vec4' },
+            };
+        }
+        depth() {
+            return true;
+        }
+        vert() {
+            return `
+				void main() {
+					vec4 world = inst_trans * vec4( vertex, 1.0 );
+					gl_Position = proj * view * world;
+					if( wireframe > 0.5 ) gl_Position.z -= 0.001;
+					pipe_pos = world.xyz;
+					pipe_normal = normalize( mat3( inst_trans ) * normal );
+					pipe_uv = uv * inst_uv.zw + inst_uv.xy;
+					pipe_layer = inst_layer;
+					pipe_tint = inst_tint;
+					pipe_material = inst_material;
+					pipe_normal_layer = inst_normal_layer;
+				}
+			`;
+        }
+        frag() {
+            return `
+				vec3 perturb( vec3 normal, vec3 bump, vec3 pos, vec2 uv ) {
+					vec3 dpx = dFdx( pos );
+					vec3 dpy = dFdy( pos );
+					vec2 dux = dFdx( uv );
+					vec2 duy = dFdy( uv );
+					vec3 px = cross( dpy, normal );
+					vec3 py = cross( normal, dpx );
+					vec3 tangent = px * dux.x + py * duy.x;
+					vec3 bitangent = px * dux.y + py * duy.y;
+					float scale = inversesqrt( max( dot( tangent, tangent ), dot( bitangent, bitangent ) ) );
+					return normalize( mat3( tangent * scale, bitangent * scale, normal ) * bump );
+				}
+				float shade( vec3 pos, vec3 normal, vec3 light ) {
+					float slope = 1.0 - max( dot( normal, light ), 0.0 );
+					vec4 clip = shadow_mat * vec4( pos + normal * ( 0.03 + 0.09 * slope ), 1.0 );
+					if( any( greaterThan( abs( clip.xyz ), vec3( 1.0 ) ) ) ) return 1.0;
+					vec3 coord = clip.xyz * 0.5 + 0.5;
+					coord.z -= 0.0015;
+					vec2 texel = 1.0 / vec2( textureSize( shadow_map, 0 ) );
+					float sum = 0.0;
+					for( int y = -1; y <= 1; ++ y ) {
+						for( int x = -1; x <= 1; ++ x ) {
+							sum += texture( shadow_map, coord + vec3( vec2( x, y ) * texel, 0.0 ) );
+						}
+					}
+					return sum / 9.0;
+				}
+				void main() {
+					if( wireframe > 0.5 ) {
+						color = vec4( 1.0 );
+						return;
+					}
+					vec4 base = texture( atlas, vec3( pipe_uv, pipe_layer ) ) * pipe_tint;
+					vec3 normal = normalize( pipe_normal );
+					if( pipe_normal_layer >= 0.0 ) {
+						vec3 bump = texture( atlas, vec3( pipe_uv, pipe_normal_layer ) ).xyz * 2.0 - 1.0;
+						normal = perturb( normal, bump, pipe_pos, pipe_uv );
+					}
+					vec3 eye = normalize( cam_pos - pipe_pos );
+					float metallic = pipe_material.x;
+					float roughness = max( pipe_material.y, 0.05 );
+					vec3 albedo = base.rgb;
+					vec3 f0 = mix( vec3( 0.04 ), albedo, metallic );
+					vec3 diffuse = albedo * ( 1.0 - metallic );
+					vec3 sum = albedo * ( ambient + pipe_material.z );
+					float lit = 1.0;
+					if( shadow_light >= 0 ) lit = shade( pipe_pos, normal, - normalize( light_dir[ shadow_light ].xyz ) );
+					for( int i = 0; i < 8; ++ i ) {
+						if( i < light_count ) {
+							vec3 way = light_pos[ i ].xyz - pipe_pos;
+							float dist = length( way );
+							vec3 aim = normalize( light_dir[ i ].xyz );
+							vec3 light = - aim;
+							float atten = i == shadow_light ? lit : 1.0;
+							if( light_pos[ i ].w > 0.5 ) {
+								light = way / max( dist, 0.0001 );
+								atten = bog_gamengine_pbr_window( dist, light_color[ i ].w );
+								if( light_dir[ i ].w > -0.5 ) atten *= bog_gamengine_pbr_cone( dot( - light, aim ), light_dir[ i ].w );
+							}
+							float ndl = max( dot( normal, light ), 0.0 );
+							if( ndl > 0.0 && atten > 0.0 ) {
+								sum += bog_gamengine_pbr_brdf( normal, eye, light, diffuse, f0, roughness ) * light_color[ i ].rgb * ( atten * ndl );
+							}
+						}
+					}
+					color = vec4( sum, base.a );
+				}
+			`;
+        }
+    }
+    $.$bog_gamengine_shader_solid = $bog_gamengine_shader_solid;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    $.$mol_3d_glsl_both += "float bog_gamengine_pbr_ggx( float ndh, float alpha ) {\n\tfloat a2 = alpha * alpha;\n\tfloat d = ndh * ndh * ( a2 - 1.0 ) + 1.0;\n\treturn a2 / max( d * d, 0.0000001 );\n}\n\nfloat bog_gamengine_pbr_smith( float ndl, float ndv, float alpha ) {\n\tfloat a2 = alpha * alpha;\n\tfloat shadowv = ndl * sqrt( ndv * ndv * ( 1.0 - a2 ) + a2 );\n\tfloat shadowl = ndv * sqrt( ndl * ndl * ( 1.0 - a2 ) + a2 );\n\treturn 0.5 / max( shadowv + shadowl, 0.0001 );\n}\n\nvec3 bog_gamengine_pbr_fresnel( vec3 f0, float vdh ) {\n\tfloat fade = pow( 1.0 - vdh, 5.0 );\n\treturn f0 + ( 1.0 - f0 ) * fade;\n}\n\nvec3 bog_gamengine_pbr_brdf( vec3 normal, vec3 eye, vec3 light, vec3 diffuse, vec3 f0, float roughness ) {\n\tvec3 mid = normalize( eye + light );\n\tfloat ndl = max( dot( normal, light ), 0.001 );\n\tfloat ndv = max( dot( normal, eye ), 0.001 );\n\tfloat ndh = max( dot( normal, mid ), 0.0 );\n\tfloat vdh = max( dot( eye, mid ), 0.0 );\n\tfloat alpha = roughness * roughness;\n\tvec3 fresnel = bog_gamengine_pbr_fresnel( f0, vdh );\n\tvec3 spec = fresnel * bog_gamengine_pbr_ggx( ndh, alpha ) * bog_gamengine_pbr_smith( ndl, ndv, alpha );\n\treturn ( 1.0 - fresnel ) * diffuse + spec;\n}\n\nfloat bog_gamengine_pbr_window( float dist, float range ) {\n\tfloat ratio = dist / max( range, 0.0001 );\n\tfloat fade = clamp( 1.0 - ratio * ratio * ratio * ratio, 0.0, 1.0 );\n\treturn fade * fade / max( dist * dist, 0.01 );\n}\n\nfloat bog_gamengine_pbr_cone( float cosine, float edge ) {\n\treturn smoothstep( edge, mix( edge, 1.0, 0.2 ), cosine );\n}\n";
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_shader_solid_plain extends $bog_gamengine_shader {
+        face() {
+            return {
+                glob: {
+                    proj: 'mat4',
+                    view: 'mat4',
+                    light_count: 'int',
+                    light_pos: 'vec4[8]',
+                    light_dir: 'vec4[8]',
+                    light_color: 'vec4[8]',
+                    ambient: 'vec3',
+                    cam_pos: 'vec3',
+                    wireframe: 'float',
+                },
+                input: {
+                    vertex: 'vec3',
+                    normal: 'vec3',
+                    inst_trans: 'mat4',
+                    inst_tint: 'vec4',
+                    inst_material: 'vec4',
+                },
+                pipe: {
+                    pipe_tint: 'vec4',
+                    pipe_normal: 'vec3',
+                    pipe_pos: 'vec3',
+                    pipe_material: 'vec4',
+                },
+                output: { color: 'vec4' },
+            };
+        }
+        depth() {
+            return true;
+        }
+        vert() {
+            return `
+				void main() {
+					vec4 world = inst_trans * vec4( vertex, 1.0 );
+					gl_Position = proj * view * world;
+					if( wireframe > 0.5 ) gl_Position.z -= 0.001;
+					pipe_pos = world.xyz;
+					pipe_normal = normalize( mat3( inst_trans ) * normal );
+					pipe_tint = inst_tint;
+					pipe_material = inst_material;
+				}
+			`;
+        }
+        frag() {
+            return `
+				void main() {
+					if( wireframe > 0.5 ) {
+						color = vec4( 1.0 );
+						return;
+					}
+					vec3 normal = normalize( pipe_normal );
+					vec3 eye = normalize( cam_pos - pipe_pos );
+					float metallic = pipe_material.x;
+					float roughness = max( pipe_material.y, 0.05 );
+					vec3 albedo = pipe_tint.rgb;
+					vec3 f0 = mix( vec3( 0.04 ), albedo, metallic );
+					vec3 diffuse = albedo * ( 1.0 - metallic );
+					vec3 sum = albedo * ( ambient + pipe_material.z );
+					for( int i = 0; i < 8; ++ i ) {
+						if( i < light_count ) {
+							vec3 way = light_pos[ i ].xyz - pipe_pos;
+							float dist = length( way );
+							vec3 aim = normalize( light_dir[ i ].xyz );
+							vec3 light = - aim;
+							float atten = 1.0;
+							if( light_pos[ i ].w > 0.5 ) {
+								light = way / max( dist, 0.0001 );
+								atten = bog_gamengine_pbr_window( dist, light_color[ i ].w );
+								if( light_dir[ i ].w > -0.5 ) atten *= bog_gamengine_pbr_cone( dot( - light, aim ), light_dir[ i ].w );
+							}
+							float ndl = max( dot( normal, light ), 0.0 );
+							if( ndl > 0.0 && atten > 0.0 ) {
+								sum += bog_gamengine_pbr_brdf( normal, eye, light, diffuse, f0, roughness ) * light_color[ i ].rgb * ( atten * ndl );
+							}
+						}
+					}
+					color = vec4( sum, pipe_tint.a );
+				}
+			`;
+        }
+    }
+    $.$bog_gamengine_shader_solid_plain = $bog_gamengine_shader_solid_plain;
 })($ || ($ = {}));
 
 ;
@@ -10747,6 +10992,38 @@ var $;
         $mol_memo.method
     ], $bog_gamengine_shape_quad.prototype, "skin", null);
     $.$bog_gamengine_shape_quad = $bog_gamengine_shape_quad;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_shader_flat extends $bog_gamengine_shader {
+        face() {
+            return {
+                glob: { proj: 'mat4', view: 'mat4' },
+                input: { vertex: 'vec3', inst_trans: 'mat4', inst_tint: 'vec4' },
+                pipe: { pipe_tint: 'vec4' },
+                output: { color: 'vec4' },
+            };
+        }
+        vert() {
+            return `
+				void main() {
+					gl_Position = proj * view * inst_trans * vec4( vertex, 1.0 );
+					pipe_tint = inst_tint;
+				}
+			`;
+        }
+        frag() {
+            return `
+				void main() {
+					color = pipe_tint;
+				}
+			`;
+        }
+    }
+    $.$bog_gamengine_shader_flat = $bog_gamengine_shader_flat;
 })($ || ($ = {}));
 
 ;
@@ -11137,6 +11414,41 @@ var $;
         $mol_mem
     ], $bog_gamengine_batch.prototype, "far", null);
     $.$bog_gamengine_batch = $bog_gamengine_batch;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    const group_ids = new WeakMap();
+    let group_id_last = 0;
+    function $bog_gamengine_batch_group_id(item) {
+        if (!item)
+            return '0';
+        let id = group_ids.get(item);
+        if (!id)
+            group_ids.set(item, id = String(++group_id_last));
+        return id;
+    }
+    $.$bog_gamengine_batch_group_id = $bog_gamengine_batch_group_id;
+    function $bog_gamengine_batch_group(nodes, shader, shape) {
+        const parts = new Map();
+        for (const node of nodes) {
+            const node_shader = shader(node);
+            const node_shape = shape(node);
+            const atlas = node.atlas();
+            const key = $bog_gamengine_batch_group_id(node_shader)
+                + ' ' + $bog_gamengine_batch_group_id(node_shape)
+                + ' ' + $bog_gamengine_batch_group_id(atlas);
+            const part = parts.get(key);
+            if (part)
+                part.nodes.push(node);
+            else
+                parts.set(key, { key, shader: node_shader, shape: node_shape, atlas, nodes: [node] });
+        }
+        return [...parts.values()];
+    }
+    $.$bog_gamengine_batch_group = $bog_gamengine_batch_group;
 })($ || ($ = {}));
 
 ;
@@ -14238,8 +14550,60 @@ var $;
             }
             return lights;
         }
+        Shader_sprite(next) {
+            return next ?? new this.$.$bog_gamengine_shader_sprite;
+        }
+        Shader_solid(next) {
+            return next ?? new this.$.$bog_gamengine_shader_solid;
+        }
+        Shader_plain(next) {
+            return next ?? new this.$.$bog_gamengine_shader_solid_plain;
+        }
+        Shape_quad(next) {
+            return next ?? new this.$.$bog_gamengine_shape_quad;
+        }
+        Batch(key) {
+            return new this.$.$bog_gamengine_batch;
+        }
+        node_drawn(node) {
+            const probe = node;
+            return typeof probe.atlas === 'function'
+                && typeof probe.layer === 'function'
+                && typeof probe.uv === 'function';
+        }
+        node_shader(node) {
+            const own = node.shader?.();
+            if (own)
+                return own;
+            if (typeof node.normal_layer !== 'function')
+                return this.Shader_sprite();
+            return node.atlas() ? this.Shader_solid() : this.Shader_plain();
+        }
+        node_shape(node) {
+            return typeof node.shape === 'function' ? node.shape() : this.Shape_quad();
+        }
+        auto_batches() {
+            const nodes = this.nodes();
+            const drawn = [];
+            for (let i = 0; i < nodes.length; ++i) {
+                if (this.node_drawn(nodes[i]))
+                    drawn.push(nodes[i]);
+            }
+            const parts = $bog_gamengine_batch_group(drawn, node => this.node_shader(node), node => this.node_shape(node));
+            const batches = [];
+            for (let i = 0; i < parts.length; ++i) {
+                const part = parts[i];
+                const batch = this.Batch(part.key);
+                batch.shader(part.shader);
+                batch.shape(part.shape);
+                batch.atlas(part.atlas);
+                batch.nodes(part.nodes);
+                batches.push(batch);
+            }
+            return batches;
+        }
         batches(next) {
-            return next ?? [];
+            return next ?? this.auto_batches();
         }
         phys(next) {
             return next ?? null;
@@ -14298,6 +14662,24 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "lights", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_scene.prototype, "Shader_sprite", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_scene.prototype, "Shader_solid", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_scene.prototype, "Shader_plain", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_scene.prototype, "Shape_quad", null);
+    __decorate([
+        $mol_mem_key
+    ], $bog_gamengine_scene.prototype, "Batch", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_scene.prototype, "auto_batches", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "batches", null);
@@ -15153,40 +15535,6 @@ var $;
 ;
 "use strict";
 
-
-;
-"use strict";
-var $;
-(function ($) {
-    class $bog_gamengine_shader_sprite extends $bog_gamengine_shader {
-        face() {
-            return {
-                glob: { proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray' },
-                input: { vertex: 'vec3', uv: 'vec2', inst_trans: 'mat4', inst_tint: 'vec4', inst_layer: 'float', inst_uv: 'vec4' },
-                pipe: { pipe_uv: 'vec2', pipe_layer: 'float', pipe_tint: 'vec4' },
-                output: { color: 'vec4' },
-            };
-        }
-        vert() {
-            return `
-				void main() {
-					gl_Position = proj * view * inst_trans * vec4( vertex, 1.0 );
-					pipe_uv = uv * inst_uv.zw + inst_uv.xy;
-					pipe_layer = inst_layer;
-					pipe_tint = inst_tint;
-				}
-			`;
-        }
-        frag() {
-            return `
-				void main() {
-					color = texture( atlas, vec3( pipe_uv, pipe_layer ) ) * pipe_tint;
-				}
-			`;
-        }
-    }
-    $.$bog_gamengine_shader_sprite = $bog_gamengine_shader_sprite;
-})($ || ($ = {}));
 
 ;
 "use strict";
@@ -18765,152 +19113,6 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    class $bog_gamengine_shader_solid extends $bog_gamengine_shader {
-        face() {
-            return {
-                glob: {
-                    proj: 'mat4',
-                    view: 'mat4',
-                    atlas: 'sampler2DArray',
-                    light_count: 'int',
-                    light_pos: 'vec4[8]',
-                    light_dir: 'vec4[8]',
-                    light_color: 'vec4[8]',
-                    ambient: 'vec3',
-                    cam_pos: 'vec3',
-                    wireframe: 'float',
-                    shadow_mat: 'mat4',
-                    shadow_map: 'sampler2DShadow',
-                    shadow_light: 'int',
-                },
-                input: {
-                    vertex: 'vec3',
-                    uv: 'vec2',
-                    normal: 'vec3',
-                    inst_trans: 'mat4',
-                    inst_tint: 'vec4',
-                    inst_layer: 'float',
-                    inst_uv: 'vec4',
-                    inst_material: 'vec4',
-                    inst_normal_layer: 'float',
-                },
-                pipe: {
-                    pipe_uv: 'vec2',
-                    pipe_layer: 'float',
-                    pipe_tint: 'vec4',
-                    pipe_normal: 'vec3',
-                    pipe_pos: 'vec3',
-                    pipe_material: 'vec4',
-                    pipe_normal_layer: 'float',
-                },
-                output: { color: 'vec4' },
-            };
-        }
-        depth() {
-            return true;
-        }
-        vert() {
-            return `
-				void main() {
-					vec4 world = inst_trans * vec4( vertex, 1.0 );
-					gl_Position = proj * view * world;
-					if( wireframe > 0.5 ) gl_Position.z -= 0.001;
-					pipe_pos = world.xyz;
-					pipe_normal = normalize( mat3( inst_trans ) * normal );
-					pipe_uv = uv * inst_uv.zw + inst_uv.xy;
-					pipe_layer = inst_layer;
-					pipe_tint = inst_tint;
-					pipe_material = inst_material;
-					pipe_normal_layer = inst_normal_layer;
-				}
-			`;
-        }
-        frag() {
-            return `
-				vec3 perturb( vec3 normal, vec3 bump, vec3 pos, vec2 uv ) {
-					vec3 dpx = dFdx( pos );
-					vec3 dpy = dFdy( pos );
-					vec2 dux = dFdx( uv );
-					vec2 duy = dFdy( uv );
-					vec3 px = cross( dpy, normal );
-					vec3 py = cross( normal, dpx );
-					vec3 tangent = px * dux.x + py * duy.x;
-					vec3 bitangent = px * dux.y + py * duy.y;
-					float scale = inversesqrt( max( dot( tangent, tangent ), dot( bitangent, bitangent ) ) );
-					return normalize( mat3( tangent * scale, bitangent * scale, normal ) * bump );
-				}
-				float shade( vec3 pos, vec3 normal, vec3 light ) {
-					float slope = 1.0 - max( dot( normal, light ), 0.0 );
-					vec4 clip = shadow_mat * vec4( pos + normal * ( 0.03 + 0.09 * slope ), 1.0 );
-					if( any( greaterThan( abs( clip.xyz ), vec3( 1.0 ) ) ) ) return 1.0;
-					vec3 coord = clip.xyz * 0.5 + 0.5;
-					coord.z -= 0.0015;
-					vec2 texel = 1.0 / vec2( textureSize( shadow_map, 0 ) );
-					float sum = 0.0;
-					for( int y = -1; y <= 1; ++ y ) {
-						for( int x = -1; x <= 1; ++ x ) {
-							sum += texture( shadow_map, coord + vec3( vec2( x, y ) * texel, 0.0 ) );
-						}
-					}
-					return sum / 9.0;
-				}
-				void main() {
-					if( wireframe > 0.5 ) {
-						color = vec4( 1.0 );
-						return;
-					}
-					vec4 base = texture( atlas, vec3( pipe_uv, pipe_layer ) ) * pipe_tint;
-					vec3 normal = normalize( pipe_normal );
-					if( pipe_normal_layer >= 0.0 ) {
-						vec3 bump = texture( atlas, vec3( pipe_uv, pipe_normal_layer ) ).xyz * 2.0 - 1.0;
-						normal = perturb( normal, bump, pipe_pos, pipe_uv );
-					}
-					vec3 eye = normalize( cam_pos - pipe_pos );
-					float metallic = pipe_material.x;
-					float roughness = max( pipe_material.y, 0.05 );
-					vec3 albedo = base.rgb;
-					vec3 f0 = mix( vec3( 0.04 ), albedo, metallic );
-					vec3 diffuse = albedo * ( 1.0 - metallic );
-					vec3 sum = albedo * ( ambient + pipe_material.z );
-					float lit = 1.0;
-					if( shadow_light >= 0 ) lit = shade( pipe_pos, normal, - normalize( light_dir[ shadow_light ].xyz ) );
-					for( int i = 0; i < 8; ++ i ) {
-						if( i < light_count ) {
-							vec3 way = light_pos[ i ].xyz - pipe_pos;
-							float dist = length( way );
-							vec3 aim = normalize( light_dir[ i ].xyz );
-							vec3 light = - aim;
-							float atten = i == shadow_light ? lit : 1.0;
-							if( light_pos[ i ].w > 0.5 ) {
-								light = way / max( dist, 0.0001 );
-								atten = bog_gamengine_pbr_window( dist, light_color[ i ].w );
-								if( light_dir[ i ].w > -0.5 ) atten *= bog_gamengine_pbr_cone( dot( - light, aim ), light_dir[ i ].w );
-							}
-							float ndl = max( dot( normal, light ), 0.0 );
-							if( ndl > 0.0 && atten > 0.0 ) {
-								sum += bog_gamengine_pbr_brdf( normal, eye, light, diffuse, f0, roughness ) * light_color[ i ].rgb * ( atten * ndl );
-							}
-						}
-					}
-					color = vec4( sum, base.a );
-				}
-			`;
-        }
-    }
-    $.$bog_gamengine_shader_solid = $bog_gamengine_shader_solid;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    $.$mol_3d_glsl_both += "float bog_gamengine_pbr_ggx( float ndh, float alpha ) {\n\tfloat a2 = alpha * alpha;\n\tfloat d = ndh * ndh * ( a2 - 1.0 ) + 1.0;\n\treturn a2 / max( d * d, 0.0000001 );\n}\n\nfloat bog_gamengine_pbr_smith( float ndl, float ndv, float alpha ) {\n\tfloat a2 = alpha * alpha;\n\tfloat shadowv = ndl * sqrt( ndv * ndv * ( 1.0 - a2 ) + a2 );\n\tfloat shadowl = ndv * sqrt( ndl * ndl * ( 1.0 - a2 ) + a2 );\n\treturn 0.5 / max( shadowv + shadowl, 0.0001 );\n}\n\nvec3 bog_gamengine_pbr_fresnel( vec3 f0, float vdh ) {\n\tfloat fade = pow( 1.0 - vdh, 5.0 );\n\treturn f0 + ( 1.0 - f0 ) * fade;\n}\n\nvec3 bog_gamengine_pbr_brdf( vec3 normal, vec3 eye, vec3 light, vec3 diffuse, vec3 f0, float roughness ) {\n\tvec3 mid = normalize( eye + light );\n\tfloat ndl = max( dot( normal, light ), 0.001 );\n\tfloat ndv = max( dot( normal, eye ), 0.001 );\n\tfloat ndh = max( dot( normal, mid ), 0.0 );\n\tfloat vdh = max( dot( eye, mid ), 0.0 );\n\tfloat alpha = roughness * roughness;\n\tvec3 fresnel = bog_gamengine_pbr_fresnel( f0, vdh );\n\tvec3 spec = fresnel * bog_gamengine_pbr_ggx( ndh, alpha ) * bog_gamengine_pbr_smith( ndl, ndv, alpha );\n\treturn ( 1.0 - fresnel ) * diffuse + spec;\n}\n\nfloat bog_gamengine_pbr_window( float dist, float range ) {\n\tfloat ratio = dist / max( range, 0.0001 );\n\tfloat fade = clamp( 1.0 - ratio * ratio * ratio * ratio, 0.0, 1.0 );\n\treturn fade * fade / max( dist * dist, 0.01 );\n}\n\nfloat bog_gamengine_pbr_cone( float cosine, float edge ) {\n\treturn smoothstep( edge, mix( edge, 1.0, 0.2 ), cosine );\n}\n";
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
     const faces = [
         [[0, 0, 1], [1, 0, 0], [0, 1, 0]],
         [[1, 0, 0], [0, 0, -1], [0, 1, 0]],
@@ -20649,11 +20851,6 @@ var $;
 			const obj = new this.$.$bog_gamengine_shape_box();
 			return obj;
 		}
-		Plane(){
-			const obj = new this.$.$bog_gamengine_shape_plane();
-			(obj.tile) = () => (60);
-			return obj;
-		}
 		Flat(){
 			const obj = new this.$.$bog_gamengine_shader_flat();
 			return obj;
@@ -20665,6 +20862,11 @@ var $;
 		Lines(){
 			const obj = new this.$.$bog_gamengine_shape_lines();
 			(obj.points) = () => ((this.contact_points()));
+			return obj;
+		}
+		Plane(){
+			const obj = new this.$.$bog_gamengine_shape_plane();
+			(obj.tile) = () => (60);
 			return obj;
 		}
 		floor_size(){
@@ -20749,6 +20951,7 @@ var $;
 			(obj.batches) = () => ((this.batches()));
 			(obj.cam) = () => ((this.Walker()));
 			(obj.aspect) = () => ((this.aspect()));
+			(obj.Shader_solid) = () => ((this.Solid()));
 			return obj;
 		}
 		Crates(){
@@ -20758,14 +20961,6 @@ var $;
 			(obj.atlas) = () => ((this.Atlas()));
 			(obj.source) = () => ((this.Phys()));
 			(obj.skip) = () => (1);
-			return obj;
-		}
-		Floor_batch(){
-			const obj = new this.$.$bog_gamengine_batch();
-			(obj.shader) = () => ((this.Solid()));
-			(obj.shape) = () => ((this.Plane()));
-			(obj.atlas) = () => ((this.Atlas()));
-			(obj.nodes) = () => ([(this.Floor())]);
 			return obj;
 		}
 		Contact_batch(){
@@ -20820,10 +21015,10 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Cull_stat"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Solid"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Box"));
-	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Plane"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Flat"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "contact_points"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Lines"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Plane"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "floor_size"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "walker_pos"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "walker_rot"));
@@ -20835,7 +21030,6 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Phys"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Scene"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Crates"));
-	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Floor_batch"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Contact_batch"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Debug"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Floor"));
@@ -20938,7 +21132,7 @@ var $;
                 return [this.Floor(), this.Walker(), ...this.thrown()];
             }
             batches() {
-                const list = [this.Crates(), this.Floor_batch()];
+                const list = [this.Crates(), ...this.Scene().auto_batches()];
                 if (this.contacts())
                     list.push(this.Contact_batch());
                 return list;

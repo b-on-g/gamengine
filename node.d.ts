@@ -3738,6 +3738,73 @@ declare namespace $ {
 
 //# sourceMappingURL=box.view.tree.d.ts.map
 declare namespace $ {
+    type $bog_gamengine_gl_type = 'mat4' | 'mat3' | 'mat2' | 'vec4' | 'vec3' | 'vec2' | 'ivec4' | 'ivec3' | 'ivec2' | 'uvec4' | 'uvec3' | 'uvec2' | 'float' | 'int' | 'uint' | 'sampler2D' | 'sampler2DShadow' | 'sampler2DArray' | 'sampler2DArrayShadow' | 'samplerCube' | 'samplerCubeShadow' | 'sampler3D';
+    type $bog_gamengine_gl_type_array = `${$bog_gamengine_gl_type}[${number}]`;
+    type $bog_gamengine_gl_face = {
+        glob?: Record<string, $bog_gamengine_gl_type | $bog_gamengine_gl_type_array>;
+        input?: Record<string, $bog_gamengine_gl_type>;
+        pipe?: Record<string, $bog_gamengine_gl_type>;
+        output?: Record<string, $bog_gamengine_gl_type>;
+    };
+    function $bog_gamengine_gl_decl(kind: string, type: string, name: string): string;
+    function $bog_gamengine_gl_slots(type: $bog_gamengine_gl_type): 1 | 2 | 3 | 4;
+    function $bog_gamengine_gl_source(face: $bog_gamengine_gl_face, vert: string, frag: string): {
+        vert: string;
+        frag: string;
+    };
+    function $bog_gamengine_gl_shader(gl: WebGL2RenderingContext, type: GLenum, code: string): WebGLShader;
+    class $bog_gamengine_gl_program<Face extends $bog_gamengine_gl_face> extends Object {
+        readonly gl: WebGL2RenderingContext;
+        readonly native: WebGLProgram;
+        uniforms: Map<string, WebGLUniformLocation | null>;
+        constructor(gl: WebGL2RenderingContext, face: Face, vert: string, frag: string);
+        uniform(name: keyof Face['glob'] & string): WebGLUniformLocation | null;
+        attribute(name: keyof Face['input'] & string): number | null;
+    }
+    class $bog_gamengine_gl_buffer extends Object {
+        readonly gl: WebGL2RenderingContext;
+        readonly native: WebGLBuffer;
+        constructor(gl: WebGL2RenderingContext, location: number, size: number, divisor: number);
+        send(data: ArrayBufferView): ArrayBufferView<ArrayBufferLike>;
+        reserve(bytes: number): number;
+    }
+    function $bog_gamengine_gl_texture_array(gl: WebGL2RenderingContext, images: readonly TexImageSource[], size: number): WebGLTexture;
+    class $bog_gamengine_gl_depth_target extends Object {
+        readonly gl: WebGL2RenderingContext;
+        readonly size: number;
+        readonly native: WebGLFramebuffer;
+        readonly texture: WebGLTexture;
+        constructor(gl: WebGL2RenderingContext, size: number);
+        dispose(): this;
+    }
+    function $bog_gamengine_gl_uniform_matrix(gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, data: Float32Array): Float32Array<ArrayBufferLike>;
+    function $bog_gamengine_gl_uniform_vector(gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, data: Float32Array): Float32Array<ArrayBufferLike>;
+    function $bog_gamengine_gl_uniform_vec4s(gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, data: Float32Array): Float32Array<ArrayBufferLike>;
+    function $bog_gamengine_gl_uniform_int(gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, value: number): number;
+}
+
+declare namespace $ {
+    let $mol_3d_glsl_both: string;
+    let $mol_3d_glsl_vert: string;
+    let $mol_3d_glsl_frag: string;
+}
+
+declare namespace $ {
+    class $bog_gamengine_shader extends $mol_object2 {
+        programs: WeakMap<WebGL2RenderingContext, $bog_gamengine_gl_program<$bog_gamengine_gl_face>>;
+        face(): $bog_gamengine_gl_face;
+        vert(): string;
+        frag(): string;
+        depth(): boolean;
+        sources(): {
+            vert: string;
+            frag: string;
+        };
+        program(gl: WebGL2RenderingContext): $bog_gamengine_gl_program<ReturnType<this['face']>>;
+    }
+}
+
+declare namespace $ {
     /** App tree: `plugins / <= Control mol_keyboard_state key <= key_map`, where `key_map()` in app ts returns `this.Key().keys()` */
     class $bog_gamengine_key extends $mol_object2 {
         bind(next?: Record<string, readonly string[]>): Record<string, readonly string[]>;
@@ -3922,12 +3989,6 @@ declare namespace $ {
 }
 
 declare namespace $ {
-    let $mol_3d_glsl_both: string;
-    let $mol_3d_glsl_vert: string;
-    let $mol_3d_glsl_frag: string;
-}
-
-declare namespace $ {
     class $mol_3d_mat4 extends Float32Array {
         static identity(): $mol_3d_mat4;
         static translation([x, y, z]: Float32List): $mol_3d_mat4;
@@ -3958,6 +4019,7 @@ declare namespace $ {
         rot(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         scale(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         tint(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
+        shader(next?: $bog_gamengine_shader | null): $bog_gamengine_shader | null;
         parent(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
         kids(next?: readonly $bog_gamengine_node[]): readonly $bog_gamengine_node[];
         root(): $bog_gamengine_node;
@@ -3985,85 +4047,117 @@ declare namespace $ {
 }
 
 declare namespace $ {
-    type $bog_gamengine_gl_type = 'mat4' | 'mat3' | 'mat2' | 'vec4' | 'vec3' | 'vec2' | 'ivec4' | 'ivec3' | 'ivec2' | 'uvec4' | 'uvec3' | 'uvec2' | 'float' | 'int' | 'uint' | 'sampler2D' | 'sampler2DShadow' | 'sampler2DArray' | 'sampler2DArrayShadow' | 'samplerCube' | 'samplerCubeShadow' | 'sampler3D';
-    type $bog_gamengine_gl_type_array = `${$bog_gamengine_gl_type}[${number}]`;
-    type $bog_gamengine_gl_face = {
-        glob?: Record<string, $bog_gamengine_gl_type | $bog_gamengine_gl_type_array>;
-        input?: Record<string, $bog_gamengine_gl_type>;
-        pipe?: Record<string, $bog_gamengine_gl_type>;
-        output?: Record<string, $bog_gamengine_gl_type>;
-    };
-    function $bog_gamengine_gl_decl(kind: string, type: string, name: string): string;
-    function $bog_gamengine_gl_slots(type: $bog_gamengine_gl_type): 1 | 2 | 3 | 4;
-    function $bog_gamengine_gl_source(face: $bog_gamengine_gl_face, vert: string, frag: string): {
-        vert: string;
-        frag: string;
-    };
-    function $bog_gamengine_gl_shader(gl: WebGL2RenderingContext, type: GLenum, code: string): WebGLShader;
-    class $bog_gamengine_gl_program<Face extends $bog_gamengine_gl_face> extends Object {
-        readonly gl: WebGL2RenderingContext;
-        readonly native: WebGLProgram;
-        uniforms: Map<string, WebGLUniformLocation | null>;
-        constructor(gl: WebGL2RenderingContext, face: Face, vert: string, frag: string);
-        uniform(name: keyof Face['glob'] & string): WebGLUniformLocation | null;
-        attribute(name: keyof Face['input'] & string): number | null;
-    }
-    class $bog_gamengine_gl_buffer extends Object {
-        readonly gl: WebGL2RenderingContext;
-        readonly native: WebGLBuffer;
-        constructor(gl: WebGL2RenderingContext, location: number, size: number, divisor: number);
-        send(data: ArrayBufferView): ArrayBufferView<ArrayBufferLike>;
-        reserve(bytes: number): number;
-    }
-    function $bog_gamengine_gl_texture_array(gl: WebGL2RenderingContext, images: readonly TexImageSource[], size: number): WebGLTexture;
-    class $bog_gamengine_gl_depth_target extends Object {
-        readonly gl: WebGL2RenderingContext;
-        readonly size: number;
-        readonly native: WebGLFramebuffer;
-        readonly texture: WebGLTexture;
-        constructor(gl: WebGL2RenderingContext, size: number);
-        dispose(): this;
-    }
-    function $bog_gamengine_gl_uniform_matrix(gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, data: Float32Array): Float32Array<ArrayBufferLike>;
-    function $bog_gamengine_gl_uniform_vector(gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, data: Float32Array): Float32Array<ArrayBufferLike>;
-    function $bog_gamengine_gl_uniform_vec4s(gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, data: Float32Array): Float32Array<ArrayBufferLike>;
-    function $bog_gamengine_gl_uniform_int(gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, value: number): number;
-}
-
-declare namespace $ {
-    class $bog_gamengine_shader extends $mol_object2 {
-        programs: WeakMap<WebGL2RenderingContext, $bog_gamengine_gl_program<$bog_gamengine_gl_face>>;
-        face(): $bog_gamengine_gl_face;
-        vert(): string;
-        frag(): string;
-        depth(): boolean;
-        sources(): {
-            vert: string;
-            frag: string;
-        };
-        program(gl: WebGL2RenderingContext): $bog_gamengine_gl_program<ReturnType<this['face']>>;
-    }
-}
-
-declare namespace $ {
-    class $bog_gamengine_shader_flat extends $bog_gamengine_shader {
+    class $bog_gamengine_shader_sprite extends $bog_gamengine_shader {
         face(): {
             readonly glob: {
                 readonly proj: "mat4";
                 readonly view: "mat4";
+                readonly atlas: "sampler2DArray";
             };
             readonly input: {
                 readonly vertex: "vec3";
+                readonly uv: "vec2";
                 readonly inst_trans: "mat4";
                 readonly inst_tint: "vec4";
+                readonly inst_layer: "float";
+                readonly inst_uv: "vec4";
             };
             readonly pipe: {
+                readonly pipe_uv: "vec2";
+                readonly pipe_layer: "float";
                 readonly pipe_tint: "vec4";
             };
             readonly output: {
                 readonly color: "vec4";
             };
         };
+        vert(): string;
+        frag(): string;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_shader_solid extends $bog_gamengine_shader {
+        face(): {
+            readonly glob: {
+                readonly proj: "mat4";
+                readonly view: "mat4";
+                readonly atlas: "sampler2DArray";
+                readonly light_count: "int";
+                readonly light_pos: "vec4[8]";
+                readonly light_dir: "vec4[8]";
+                readonly light_color: "vec4[8]";
+                readonly ambient: "vec3";
+                readonly cam_pos: "vec3";
+                readonly wireframe: "float";
+                readonly shadow_mat: "mat4";
+                readonly shadow_map: "sampler2DShadow";
+                readonly shadow_light: "int";
+            };
+            readonly input: {
+                readonly vertex: "vec3";
+                readonly uv: "vec2";
+                readonly normal: "vec3";
+                readonly inst_trans: "mat4";
+                readonly inst_tint: "vec4";
+                readonly inst_layer: "float";
+                readonly inst_uv: "vec4";
+                readonly inst_material: "vec4";
+                readonly inst_normal_layer: "float";
+            };
+            readonly pipe: {
+                readonly pipe_uv: "vec2";
+                readonly pipe_layer: "float";
+                readonly pipe_tint: "vec4";
+                readonly pipe_normal: "vec3";
+                readonly pipe_pos: "vec3";
+                readonly pipe_material: "vec4";
+                readonly pipe_normal_layer: "float";
+            };
+            readonly output: {
+                readonly color: "vec4";
+            };
+        };
+        depth(): boolean;
+        vert(): string;
+        frag(): string;
+    }
+}
+
+declare namespace $ { }
+
+declare namespace $ {
+    class $bog_gamengine_shader_solid_plain extends $bog_gamengine_shader {
+        face(): {
+            readonly glob: {
+                readonly proj: "mat4";
+                readonly view: "mat4";
+                readonly light_count: "int";
+                readonly light_pos: "vec4[8]";
+                readonly light_dir: "vec4[8]";
+                readonly light_color: "vec4[8]";
+                readonly ambient: "vec3";
+                readonly cam_pos: "vec3";
+                readonly wireframe: "float";
+            };
+            readonly input: {
+                readonly vertex: "vec3";
+                readonly normal: "vec3";
+                readonly inst_trans: "mat4";
+                readonly inst_tint: "vec4";
+                readonly inst_material: "vec4";
+            };
+            readonly pipe: {
+                readonly pipe_tint: "vec4";
+                readonly pipe_normal: "vec3";
+                readonly pipe_pos: "vec3";
+                readonly pipe_material: "vec4";
+            };
+            readonly output: {
+                readonly color: "vec4";
+            };
+        };
+        depth(): boolean;
         vert(): string;
         frag(): string;
     }
@@ -4098,6 +4192,30 @@ declare namespace $ {
     class $bog_gamengine_shape_quad extends $bog_gamengine_shape {
         geometry(): Float32Array<ArrayBuffer>;
         skin(): Float32Array<ArrayBuffer>;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_shader_flat extends $bog_gamengine_shader {
+        face(): {
+            readonly glob: {
+                readonly proj: "mat4";
+                readonly view: "mat4";
+            };
+            readonly input: {
+                readonly vertex: "vec3";
+                readonly inst_trans: "mat4";
+                readonly inst_tint: "vec4";
+            };
+            readonly pipe: {
+                readonly pipe_tint: "vec4";
+            };
+            readonly output: {
+                readonly color: "vec4";
+            };
+        };
+        vert(): string;
+        frag(): string;
     }
 }
 
@@ -4146,6 +4264,8 @@ declare namespace $ {
         material?(): Float32Array;
         normal_layer?(): number;
         radius?(): number;
+        shape?(): $bog_gamengine_shape;
+        shader?(): $bog_gamengine_shader | null;
     };
     type $bog_gamengine_batch_source = {
         trans: Float32Array;
@@ -4179,6 +4299,21 @@ declare namespace $ {
         fill(frustum?: Float32Array | null, eye?: Float32Array | null): number;
         fill_source(source: $bog_gamengine_batch_source, frustum?: Float32Array | null): number;
     }
+}
+
+declare namespace $ {
+    type $bog_gamengine_batch_group_node = $bog_gamengine_batch_node & {
+        atlas(): $bog_gamengine_atlas | null;
+    };
+    type $bog_gamengine_batch_group_part = {
+        key: string;
+        shader: $bog_gamengine_shader;
+        shape: $bog_gamengine_shape;
+        atlas: $bog_gamengine_atlas | null;
+        nodes: $bog_gamengine_batch_group_node[];
+    };
+    function $bog_gamengine_batch_group_id(item: object | null): string;
+    function $bog_gamengine_batch_group(nodes: readonly $bog_gamengine_batch_group_node[], shader: (node: $bog_gamengine_batch_group_node) => $bog_gamengine_shader, shape: (node: $bog_gamengine_batch_group_node) => $bog_gamengine_shape): readonly $bog_gamengine_batch_group_part[];
 }
 
 declare namespace $ {
@@ -4606,6 +4741,15 @@ declare namespace $ {
         is_scene(): boolean;
         nodes(): readonly $bog_gamengine_node[];
         lights(): readonly $bog_gamengine_light[];
+        Shader_sprite(next?: $bog_gamengine_shader): $bog_gamengine_shader | $bog_gamengine_shader_sprite;
+        Shader_solid(next?: $bog_gamengine_shader): $bog_gamengine_shader | $bog_gamengine_shader_solid;
+        Shader_plain(next?: $bog_gamengine_shader): $bog_gamengine_shader | $bog_gamengine_shader_solid_plain;
+        Shape_quad(next?: $bog_gamengine_shape): $bog_gamengine_shape;
+        Batch(key: string): $bog_gamengine_batch;
+        node_drawn(node: $bog_gamengine_node): boolean;
+        node_shader(node: $bog_gamengine_batch_group_node): $bog_gamengine_shader | $bog_gamengine_shader_sprite | $bog_gamengine_shader_solid | $bog_gamengine_shader_solid_plain;
+        node_shape(node: $bog_gamengine_batch_group_node): $bog_gamengine_shape;
+        auto_batches(): readonly $bog_gamengine_batch[];
         batches(next?: readonly $bog_gamengine_batch[]): readonly $bog_gamengine_batch[];
         phys(next?: $bog_gamengine_phys | null): $bog_gamengine_phys | null;
         phys3(next?: $bog_gamengine_phys3 | null): $bog_gamengine_phys3 | null;
@@ -4837,36 +4981,6 @@ declare namespace $ {
 }
 
 //# sourceMappingURL=labeler.view.tree.d.ts.map
-declare namespace $ {
-    class $bog_gamengine_shader_sprite extends $bog_gamengine_shader {
-        face(): {
-            readonly glob: {
-                readonly proj: "mat4";
-                readonly view: "mat4";
-                readonly atlas: "sampler2DArray";
-            };
-            readonly input: {
-                readonly vertex: "vec3";
-                readonly uv: "vec2";
-                readonly inst_trans: "mat4";
-                readonly inst_tint: "vec4";
-                readonly inst_layer: "float";
-                readonly inst_uv: "vec4";
-            };
-            readonly pipe: {
-                readonly pipe_uv: "vec2";
-                readonly pipe_layer: "float";
-                readonly pipe_tint: "vec4";
-            };
-            readonly output: {
-                readonly color: "vec4";
-            };
-        };
-        vert(): string;
-        frag(): string;
-    }
-}
-
 declare namespace $ {
     type $bog_gamengine_point_node = $bog_gamengine_node & {
         size?(): Float32Array;
@@ -6032,56 +6146,6 @@ declare namespace $.$$ {
 }
 
 declare namespace $ {
-    class $bog_gamengine_shader_solid extends $bog_gamengine_shader {
-        face(): {
-            readonly glob: {
-                readonly proj: "mat4";
-                readonly view: "mat4";
-                readonly atlas: "sampler2DArray";
-                readonly light_count: "int";
-                readonly light_pos: "vec4[8]";
-                readonly light_dir: "vec4[8]";
-                readonly light_color: "vec4[8]";
-                readonly ambient: "vec3";
-                readonly cam_pos: "vec3";
-                readonly wireframe: "float";
-                readonly shadow_mat: "mat4";
-                readonly shadow_map: "sampler2DShadow";
-                readonly shadow_light: "int";
-            };
-            readonly input: {
-                readonly vertex: "vec3";
-                readonly uv: "vec2";
-                readonly normal: "vec3";
-                readonly inst_trans: "mat4";
-                readonly inst_tint: "vec4";
-                readonly inst_layer: "float";
-                readonly inst_uv: "vec4";
-                readonly inst_material: "vec4";
-                readonly inst_normal_layer: "float";
-            };
-            readonly pipe: {
-                readonly pipe_uv: "vec2";
-                readonly pipe_layer: "float";
-                readonly pipe_tint: "vec4";
-                readonly pipe_normal: "vec3";
-                readonly pipe_pos: "vec3";
-                readonly pipe_material: "vec4";
-                readonly pipe_normal_layer: "float";
-            };
-            readonly output: {
-                readonly color: "vec4";
-            };
-        };
-        depth(): boolean;
-        vert(): string;
-        frag(): string;
-    }
-}
-
-declare namespace $ { }
-
-declare namespace $ {
     class $bog_gamengine_shape_box extends $bog_gamengine_shape {
         geometry(): Float32Array<ArrayBuffer>;
         skin(): Float32Array<ArrayBuffer>;
@@ -7062,15 +7126,15 @@ declare namespace $ {
 		,
 		Parameters< ReturnType< $bog_gamengine_demo_boxes['Clock'] >['paused'] >[0]
 	>
-	type $bog_gamengine_shape_plane__tile_bog_gamengine_demo_boxes_23 = $mol_type_enforce<
-		number
-		,
-		ReturnType< $bog_gamengine_shape_plane['tile'] >
-	>
-	type $bog_gamengine_shape_lines__points_bog_gamengine_demo_boxes_24 = $mol_type_enforce<
+	type $bog_gamengine_shape_lines__points_bog_gamengine_demo_boxes_23 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['contact_points'] >
 		,
 		ReturnType< $bog_gamengine_shape_lines['points'] >
+	>
+	type $bog_gamengine_shape_plane__tile_bog_gamengine_demo_boxes_24 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_shape_plane['tile'] >
 	>
 	type $bog_gamengine_input__key_bog_gamengine_demo_boxes_25 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Key'] >
@@ -7134,107 +7198,92 @@ declare namespace $ {
 		,
 		ReturnType< $bog_gamengine_scene['aspect'] >
 	>
-	type $bog_gamengine_batch__shader_bog_gamengine_demo_boxes_36 = $mol_type_enforce<
+	type $bog_gamengine_scene__Shader_solid_bog_gamengine_demo_boxes_36 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Solid'] >
+		,
+		ReturnType< $bog_gamengine_scene['Shader_solid'] >
+	>
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_boxes_37 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Solid'] >
 		,
 		ReturnType< $bog_gamengine_batch['shader'] >
 	>
-	type $bog_gamengine_batch__shape_bog_gamengine_demo_boxes_37 = $mol_type_enforce<
+	type $bog_gamengine_batch__shape_bog_gamengine_demo_boxes_38 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Box'] >
 		,
 		ReturnType< $bog_gamengine_batch['shape'] >
 	>
-	type $bog_gamengine_batch__atlas_bog_gamengine_demo_boxes_38 = $mol_type_enforce<
+	type $bog_gamengine_batch__atlas_bog_gamengine_demo_boxes_39 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Atlas'] >
 		,
 		ReturnType< $bog_gamengine_batch['atlas'] >
 	>
-	type $bog_gamengine_batch__source_bog_gamengine_demo_boxes_39 = $mol_type_enforce<
+	type $bog_gamengine_batch__source_bog_gamengine_demo_boxes_40 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Phys'] >
 		,
 		ReturnType< $bog_gamengine_batch['source'] >
 	>
-	type $bog_gamengine_batch__skip_bog_gamengine_demo_boxes_40 = $mol_type_enforce<
+	type $bog_gamengine_batch__skip_bog_gamengine_demo_boxes_41 = $mol_type_enforce<
 		number
 		,
 		ReturnType< $bog_gamengine_batch['skip'] >
 	>
-	type $bog_gamengine_batch__shader_bog_gamengine_demo_boxes_41 = $mol_type_enforce<
-		ReturnType< $bog_gamengine_demo_boxes['Solid'] >
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_boxes_42 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Flat'] >
 		,
 		ReturnType< $bog_gamengine_batch['shader'] >
 	>
-	type $bog_gamengine_batch__shape_bog_gamengine_demo_boxes_42 = $mol_type_enforce<
-		ReturnType< $bog_gamengine_demo_boxes['Plane'] >
+	type $bog_gamengine_batch__shape_bog_gamengine_demo_boxes_43 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Lines'] >
 		,
 		ReturnType< $bog_gamengine_batch['shape'] >
-	>
-	type $bog_gamengine_batch__atlas_bog_gamengine_demo_boxes_43 = $mol_type_enforce<
-		ReturnType< $bog_gamengine_demo_boxes['Atlas'] >
-		,
-		ReturnType< $bog_gamengine_batch['atlas'] >
 	>
 	type $bog_gamengine_batch__nodes_bog_gamengine_demo_boxes_44 = $mol_type_enforce<
 		readonly(any)[]
 		,
 		ReturnType< $bog_gamengine_batch['nodes'] >
 	>
-	type $bog_gamengine_batch__shader_bog_gamengine_demo_boxes_45 = $mol_type_enforce<
-		ReturnType< $bog_gamengine_demo_boxes['Flat'] >
-		,
-		ReturnType< $bog_gamengine_batch['shader'] >
-	>
-	type $bog_gamengine_batch__shape_bog_gamengine_demo_boxes_46 = $mol_type_enforce<
-		ReturnType< $bog_gamengine_demo_boxes['Lines'] >
-		,
-		ReturnType< $bog_gamengine_batch['shape'] >
-	>
-	type $bog_gamengine_batch__nodes_bog_gamengine_demo_boxes_47 = $mol_type_enforce<
-		readonly(any)[]
-		,
-		ReturnType< $bog_gamengine_batch['nodes'] >
-	>
-	type $bog_gamengine_phys3_debug__phys3_bog_gamengine_demo_boxes_48 = $mol_type_enforce<
+	type $bog_gamengine_phys3_debug__phys3_bog_gamengine_demo_boxes_45 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Phys'] >
 		,
 		ReturnType< $bog_gamengine_phys3_debug['phys3'] >
 	>
-	type $bog_gamengine_mesh__shape_bog_gamengine_demo_boxes_49 = $mol_type_enforce<
+	type $bog_gamengine_mesh__shape_bog_gamengine_demo_boxes_46 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Plane'] >
 		,
 		ReturnType< $bog_gamengine_mesh['shape'] >
 	>
-	type $bog_gamengine_mesh__atlas_bog_gamengine_demo_boxes_50 = $mol_type_enforce<
+	type $bog_gamengine_mesh__atlas_bog_gamengine_demo_boxes_47 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Atlas'] >
 		,
 		ReturnType< $bog_gamengine_mesh['atlas'] >
 	>
-	type $bog_gamengine_mesh__frame_bog_gamengine_demo_boxes_51 = $mol_type_enforce<
+	type $bog_gamengine_mesh__frame_bog_gamengine_demo_boxes_48 = $mol_type_enforce<
 		string
 		,
 		ReturnType< $bog_gamengine_mesh['frame'] >
 	>
-	type $bog_gamengine_mesh__size_bog_gamengine_demo_boxes_52 = $mol_type_enforce<
+	type $bog_gamengine_mesh__size_bog_gamengine_demo_boxes_49 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['floor_size'] >
 		,
 		ReturnType< $bog_gamengine_mesh['size'] >
 	>
-	type $bog_gamengine_phys3_body__name_bog_gamengine_demo_boxes_53 = $mol_type_enforce<
+	type $bog_gamengine_phys3_body__name_bog_gamengine_demo_boxes_50 = $mol_type_enforce<
 		string
 		,
 		ReturnType< $bog_gamengine_phys3_body['name'] >
 	>
-	type $bog_gamengine_demo_room_walker__input_bog_gamengine_demo_boxes_54 = $mol_type_enforce<
+	type $bog_gamengine_demo_room_walker__input_bog_gamengine_demo_boxes_51 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Input'] >
 		,
 		ReturnType< $bog_gamengine_demo_room_walker['input'] >
 	>
-	type $bog_gamengine_demo_room_walker__pos_bog_gamengine_demo_boxes_55 = $mol_type_enforce<
+	type $bog_gamengine_demo_room_walker__pos_bog_gamengine_demo_boxes_52 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['walker_pos'] >
 		,
 		ReturnType< $bog_gamengine_demo_room_walker['pos'] >
 	>
-	type $bog_gamengine_demo_room_walker__rot_bog_gamengine_demo_boxes_56 = $mol_type_enforce<
+	type $bog_gamengine_demo_room_walker__rot_bog_gamengine_demo_boxes_53 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['walker_rot'] >
 		,
 		ReturnType< $bog_gamengine_demo_room_walker['rot'] >
@@ -7267,10 +7316,10 @@ declare namespace $ {
 		aspect( ): number
 		Solid( ): $bog_gamengine_shader_solid
 		Box( ): $bog_gamengine_shape_box
-		Plane( ): $bog_gamengine_shape_plane
 		Flat( ): $bog_gamengine_shader_flat
 		contact_points( ): Float32Array
 		Lines( ): $bog_gamengine_shape_lines
+		Plane( ): $bog_gamengine_shape_plane
 		floor_size( ): Float32Array
 		walker_pos( next?: Float32Array ): Float32Array
 		walker_rot( next?: Float32Array ): Float32Array
@@ -7286,7 +7335,6 @@ declare namespace $ {
 		Phys( ): $bog_gamengine_demo_boxes_phys
 		Scene( ): $bog_gamengine_scene
 		Crates( ): $bog_gamengine_batch
-		Floor_batch( ): $bog_gamengine_batch
 		Contact_batch( ): $bog_gamengine_batch
 		Debug( ): $bog_gamengine_phys3_debug
 		Floor( ): $bog_gamengine_mesh
