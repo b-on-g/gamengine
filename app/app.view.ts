@@ -95,6 +95,113 @@ namespace $.$$ {
 			return this.Key().keys()
 		}
 
+		@ $mol_mem
+		tab_stored( next = '0' ) {
+			return next
+		}
+
+		tab( next?: string ) {
+			if( next ) this.tab_stored( next )
+			return this.tab_stored()
+		}
+
+		@ $mol_mem
+		asset( next?: string | null ) {
+			return next ?? null
+		}
+
+		placing() {
+			return this.asset() !== null && this.editing()
+		}
+
+		@ $mol_mem
+		asset_rows() {
+			return this.Assets().list().map( item => this.Asset( item.uri ) )
+		}
+
+		asset_uri( uri: string ) {
+			return uri
+		}
+
+		asset_file( uri: string ) {
+			return this.Assets().file( uri )
+		}
+
+		asset_icon( uri: string ) {
+			switch( this.Assets().kind( uri ) ) {
+				case 'image': return this.Asset_image( uri )
+				case 'model': return this.Asset_model( uri )
+				case 'sound': return this.Asset_sound( uri )
+			}
+			return null
+		}
+
+		asset_selected( uri: string, next?: boolean ) {
+			if( next !== undefined ) this.asset( next ? uri : null )
+			return this.asset() === uri
+		}
+
+		asset_drop( event?: DragEvent | null ) {
+			if( !event ) return null
+			event.preventDefault()
+			this.Drop().status( 'ready' )
+			const uri = event.dataTransfer?.getData( 'text/plain' ) ?? ''
+			if( !this.Assets().kind( uri ) || !this.editing() ) return event
+			const at = this.Point().world( this.point_world, this.point_x( event ), this.point_y( event ) )
+			this.place( uri, at )
+			return event
+		}
+
+		atlas_frame() {
+			const atlas = this.Doc().decls().get( 'Atlas' )
+			const first = atlas?.select( 'uris', '/', null ).kids[ 0 ]?.value
+			return first ? this.Assets().name( first ) : ''
+		}
+
+		place( uri: string, at: ArrayLike< number > ) {
+			const doc = this.Doc()
+			const name = this.Assets().name( uri )
+			const pos = `/ ${ doc.token( at[ 0 ] ) } ${ doc.token( at[ 1 ] ) } 0`
+			switch( this.Assets().kind( uri ) ) {
+				case 'image': {
+					doc.add_uri( 'Atlas', 'uris', uri )
+					return doc.add( '$bog_gamengine_sprite', { name: `\\${ name }`, atlas: '<= Atlas', frame: `\\${ name }`, pos } )
+				}
+				case 'model': {
+					const frame = this.atlas_frame()
+					const mesh = doc.free_name( '$bog_gamengine_mesh' )
+					doc.add( '$bog_gamengine_mesh', {
+						name: `\\${ name }`,
+						atlas: '<= Atlas',
+						frame: `\\${ frame }`,
+						pos,
+						shape: `<= ${ mesh }_shape $bog_gamestudio_assets_gltf\n\turi \\${ uri }`,
+					} )
+					doc.add( '$bog_gamengine_batch', {
+						shader: `<= ${ mesh }_shader $bog_gamengine_shader_solid`,
+						shape: `<= ${ mesh }_shape`,
+						atlas: '<= Atlas',
+						nodes: `/ <= ${ mesh }`,
+					}, 'batches' )
+					return mesh
+				}
+				case 'sound': {
+					if( doc.decls().has( 'Sound' ) ) doc.add_uri( 'Sound', 'uris', uri, name )
+					else doc.declare( 'Sound', '$bog_gamengine_sound', { uris: `*\n\t${ name } \\${ uri }` } )
+					return 'Sound'
+				}
+			}
+			return $mol_fail( new Error( `Unknown asset ${ uri }` ) )
+		}
+
+		scene_status() {
+			for( const batch of this.Scene().batches() ) {
+				batch.atlas()?.images()
+				batch.shape().geometry()
+			}
+			return ''
+		}
+
 		snap = [] as readonly $bog_gamestudio_app_snap[]
 		snap_scene = null as $bog_gamengine_scene | null
 
@@ -315,11 +422,11 @@ namespace $.$$ {
 		drag_b = new Float32Array( 3 )
 		point_world = new Float32Array( 3 )
 
-		point_x( event: PointerEvent ) {
+		point_x( event: MouseEvent ) {
 			return event.offsetX * this.$.$mol_dom_context.devicePixelRatio
 		}
 
-		point_y( event: PointerEvent ) {
+		point_y( event: MouseEvent ) {
 			return event.offsetY * this.$.$mol_dom_context.devicePixelRatio
 		}
 
@@ -328,6 +435,12 @@ namespace $.$$ {
 			const x = this.point_x( event )
 			const y = this.point_y( event )
 			const point = this.Point()
+			const asset = this.asset()
+			if( asset && this.editing() ) {
+				this.place( asset, point.world( this.point_world, x, y ) )
+				this.asset( null )
+				return event
+			}
 			const node = this.node()
 			if( node && this.editing() ) {
 				const at = point.world( this.point_world, x, y )

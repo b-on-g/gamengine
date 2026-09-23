@@ -105,6 +105,54 @@ namespace $ {
 			$mol_assert_equal( Math.round( app.Scene().nodes()[ 0 ].rot()[ 2 ] * 1e6 ) / 1e6, Math.round( Math.PI / 2 * 1e6 ) / 1e6 )
 		},
 
+		'assets tab lists every asset of the pack with its file name'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			$mol_assert_equal( app.asset_rows().length, 8 )
+			$mol_assert_equal( app.Asset_row( 'bog/gamengine/demo/atlas/coin.png' ).title(), 'coin.png' )
+			$mol_assert_ok( app.asset_icon( 'bog/gamengine/demo/atlas/coin.png' ) instanceof $mol_image )
+			$mol_assert_ok( app.asset_icon( 'bog/gamengine/demo/sound/coin.wav' ) instanceof $mol_icon_music )
+		},
+
+		'picked image placed by a canvas click becomes a sprite at the click point'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			$mol_assert_ok( app.placing() )
+			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 1, -2, 0 ] )
+			$mol_assert_equal( app.node_rows().length, 4 )
+			$mol_assert_equal( app.row_title( 3 ), 'floor' )
+			$mol_assert_equal( app.Scene().nodes()[ 3 ].pos()[ 1 ], -2 )
+			$mol_assert_ok( app.source().includes( '\t\t\t\\bog/gamengine/demo/atlas/floor.png\n' ) )
+			$mol_assert_ok( app.source().includes( '\t\t<= Sprite_1 $bog_gamengine_sprite\n\t\t\tname \\floor\n\t\t\tatlas <= Atlas\n\t\t\tframe \\floor\n\t\t\tpos / 1 -2 0\n' ) )
+		},
+
+		'placed model gets a loader shape and its own batch'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.place( 'bog/gamengine/demo/room/model/pillar.glb', [ 0, 1, 0 ] )
+			$mol_assert_equal( app.row_title( 3 ), 'pillar' )
+			$mol_assert_ok( app.source().includes( '\t\t\tshape <= Mesh_1_shape $bog_gamestudio_assets_gltf\n\t\t\t\turi \\bog/gamengine/demo/room/model/pillar.glb\n' ) )
+			$mol_assert_ok( app.source().includes( '\t\t<= Batch_1 $bog_gamengine_batch\n' ) )
+			$mol_assert_ok( app.Scene().batches().some( batch => batch.shape() instanceof $bog_gamestudio_assets_gltf ) )
+			$mol_assert_ok( app.Scene().nodes()[ 3 ] instanceof $bog_gamengine_mesh )
+		},
+
+		'placed sound is written into the sound dictionary'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.place( 'bog/gamengine/demo/sound/coin.wav', [ 0, 0, 0 ] )
+			$mol_assert_ok( app.source().endsWith( '\tSound $bog_gamengine_sound\n\t\turis *\n\t\t\tcoin \\bog/gamengine/demo/sound/coin.wav\n' ) )
+			app.place( 'bog/gamengine/demo/sound/coin.wav', [ 0, 0, 0 ] )
+			$mol_assert_equal( app.source().split( 'coin.wav' ).length, 2 )
+			$mol_assert_equal( app.node_rows().length, 3 )
+		},
+
+		'assets tab survives the scene rebuild'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.Side().current( '1' )
+			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 1, -2, 0 ] )
+			$mol_assert_equal( app.Side().current(), '1' )
+			app.Side().current( '' )
+			$mol_assert_equal( app.Side().current(), '1' )
+		},
+
 		'gizmo hit on the x arrow'( $ ) {
 			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
 		},

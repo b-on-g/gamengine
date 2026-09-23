@@ -2,7 +2,7 @@ namespace $ {
 
 	export const $bog_gamestudio_probe_page = 'bog/gamestudio/app/-/index.html'
 
-	export const $bog_gamestudio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник, клик по холсту выбрал монету, стрелка гизмо перенесла её в исходнике, клик мимо снял выбор, игра с зажатой D сдвинула героя вправо, стоп вернул его на место и не тронул исходник, пять правок pos героя не мигают и не копят текстуры и буферы'
+	export const $bog_gamestudio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник, клик по холсту выбрал монету, стрелка гизмо перенесла её в исходнике, клик мимо снял выбор, игра с зажатой D сдвинула героя вправо, стоп вернул его на место и не тронул исходник, пять правок pos героя не мигают и не копят текстуры и буферы, вкладка «Ассеты» показала файлы пака, монета с панели встала на холст по клику и записалась в исходник спрайтом, столб мешем с загрузчиком, звук строкой в Sound'
 
 	export const $bog_gamestudio_probe_moves = [ -2, -1, -2.5, -1.5, -2 ] as const
 
@@ -46,6 +46,17 @@ namespace $ {
 		readonly buffers: { readonly created: number, readonly deleted: number, readonly scene: number }
 		readonly images: number
 		readonly moves: readonly { readonly x: number, readonly first: $bog_gamestudio_probe_pixel, readonly pixel: $bog_gamestudio_probe_pixel }[]
+		readonly asset_files: readonly string[]
+		readonly drop_before: $bog_gamestudio_probe_pixel
+		readonly drop_after: $bog_gamestudio_probe_pixel
+		readonly cursor: string
+		readonly tab_after: string
+		readonly rows_assets: number
+		readonly sprite_line: string
+		readonly mesh_line: string
+		readonly sound_line: string
+		readonly status: string
+		readonly mesh_pixel: $bog_gamestudio_probe_pixel
 	}
 
 	export function $bog_gamestudio_probe_script( selectors: readonly string[] ) {
@@ -176,7 +187,52 @@ namespace $ {
 			}
 			const textures = { created: tex_created.count, deleted: tex_deleted.count }
 			const buffers = { created: buf_created.count, deleted: buf_deleted.count, scene: scene_buffers }
-			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after, ppu, fields_coin, row_coin, arrow, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after, textures, buffers, images: images.count, moves }
+			const tab = title => Array.from( document.querySelectorAll( '[bog_gamestudio_app_side] [mol_switch] [mol_check]' ) ).find( el => el.innerText.trim() === title )
+			tab( 'Ассеты' ).click()
+			await frame()
+			await frame()
+			const asset_rows = document.querySelectorAll( '[bog_gamestudio_app_asset_row]' )
+			const asset = file => Array.from( asset_rows ).find( el => el.innerText.trim() === file )
+			const asset_files = Array.from( asset_rows ).map( el => el.innerText.trim() )
+			const drop_x = canvas.width / 2 - ppu
+			const drop_y = canvas.height / 2 + 2 * ppu
+			const drop_before = at( drop_x, drop_y )
+			asset( 'coin.png' ).click()
+			await frame()
+			const cursor = getComputedStyle( canvas ).cursor
+			pointer( 'pointerdown', drop_x, drop_y )
+			pointer( 'pointerup', drop_x, drop_y )
+			let drop_after = drop_before
+			for( let i = 0; i < 120 && same( drop_after, drop_before ); ++ i ) {
+				await frame()
+				drop_after = at( drop_x, drop_y )
+			}
+			asset( 'pillar.glb' ).click()
+			await frame()
+			pointer( 'pointerdown', drop_x + 2 * ppu, drop_y )
+			pointer( 'pointerup', drop_x + 2 * ppu, drop_y )
+			await frame()
+			await frame()
+			asset( 'coin.wav' ).click()
+			await frame()
+			pointer( 'pointerdown', drop_x, drop_y )
+			pointer( 'pointerup', drop_x, drop_y )
+			await frame()
+			await frame()
+			const tab_after = document.querySelector( '[bog_gamestudio_app_side] [mol_switch] [mol_check_checked="true"]' ).innerText.trim()
+			tab( 'Сцена' ).click()
+			await frame()
+			await frame()
+			const rows_assets = document.querySelectorAll( '[bog_gamestudio_app_row]' ).length
+			const line = re => ( editor.value.match( re ) || [ '' ] )[ 0 ]
+			const sprite_line = line( /<= Sprite_1[^]*?frame \\\\[^\\n]*/ )
+			const mesh_line = line( /<= Mesh_1_shape[^]*?uri \\\\[^\\n]*/ )
+			const sound_line = line( /Sound [^]*?coin \\\\[^\\n]*/ )
+			for( let i = 0; i < 60; ++ i ) await frame()
+			const status_node = document.querySelector( '[bog_gamestudio_app_status]' )
+			const status = status_node ? status_node.innerText.trim() : ''
+			const mesh_pixel = at( drop_x + 2 * ppu, drop_y )
+			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after, ppu, fields_coin, row_coin, arrow, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after, textures, buffers, images: images.count, moves, asset_files, drop_before, drop_after, cursor, tab_after, rows_assets, sprite_line, mesh_line, sound_line, status, mesh_pixel }
 		`
 	}
 
@@ -241,6 +297,18 @@ namespace $ {
 		if( got.textures.created - got.textures.deleted > 1 ) return fail( 'правки исходника копят текстуры' )
 		if( got.buffers.created - got.buffers.deleted > got.buffers.scene ) return fail( 'правки исходника копят буферы' )
 		if( got.images !== 0 ) return fail( 'правки исходника грузят картинки заново' )
+		if( got.asset_files.length < 3 ) return fail( 'на вкладке «Ассеты» меньше трёх строк' )
+		if( !got.asset_files.includes( 'coin.png' ) || !got.asset_files.includes( 'pillar.glb' ) || !got.asset_files.includes( 'coin.wav' ) ) return fail( 'на вкладке «Ассеты» нет coin.png, pillar.glb или coin.wav' )
+		if( got.cursor !== 'copy' ) return fail( 'после выбора ассета курсор над холстом не «поставить»' )
+		if( got.drop_before.every( ( value, index )=> Math.abs( value - got.drop_after[ index ] ) < 8 ) ) return fail( 'клик по холсту с выбранной монетой не нарисовал её в точке клика' )
+		if( !got.hero_after.every( ( value, index )=> Math.abs( value - got.drop_after[ index ] ) < 8 ) ) return fail( 'пиксель в точке клика не цвета монеты' )
+		if( got.tab_after !== 'Ассеты' ) return fail( 'вкладка «Ассеты» сбросилась после пересборки сцены' )
+		if( got.rows_assets !== 5 ) return fail( 'после монеты и модели в дереве не пять строк' )
+		if( !got.sprite_line.endsWith( 'frame \\coin' ) ) return fail( 'у нового спрайта в исходнике нет frame \\coin' )
+		if( !got.mesh_line.endsWith( 'uri \\bog/gamengine/demo/room/model/pillar.glb' ) ) return fail( 'у новой модели в исходнике нет uri столба' )
+		if( !got.sound_line.endsWith( 'coin \\bog/gamengine/demo/sound/coin.wav' ) ) return fail( 'звук не записался в Sound uris' )
+		if( got.status ) return fail( 'подвал холста показал ошибку: ' + got.status )
+		if( got.mesh_pixel[ 0 ] < 40 && got.mesh_pixel[ 1 ] < 40 && got.mesh_pixel[ 2 ] < 40 ) return fail( 'в точке модели пиксель чёрный' )
 
 		return say( $bog_gamestudio_probe_ok )
 	}

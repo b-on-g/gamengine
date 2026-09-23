@@ -66,6 +66,70 @@ namespace $ {
 			this.source( this.print( swap( tree ) ) )
 		}
 
+		end_row( tree: $mol_tree2 ): number {
+			let row = tree.span.row
+			for( const kid of tree.kids ) row = Math.max( row, this.end_row( kid ) )
+			return row
+		}
+
+		indent( row: number ) {
+			return this.source().split( '\n' )[ row - 1 ]?.match( /^\t*/ )![ 0 ].length ?? 0
+		}
+
+		insert( row: number, indent: number, lines: readonly string[] ) {
+			const tabs = '\t'.repeat( indent )
+			const text = lines.map( line => line.split( '\n' ).map( part => tabs + part ).join( '\n' ) + '\n' ).join( '' )
+			const source = this.source()
+			let at = 0
+			for( let i = 0; i < row; ++ i ) at = source.indexOf( '\n', at ) + 1
+			this.source( source.slice( 0, at ) + text + source.slice( at ) )
+		}
+
+		free_name( klass: string ) {
+			const word = klass.replace( /^.*_/, '' )
+			const base = word[ 0 ].toUpperCase() + word.slice( 1 )
+			for( let i = 1; ; ++ i ) {
+				if( !this.decls().has( `${ base }_${ i }` ) ) return `${ base }_${ i }`
+			}
+		}
+
+		block( name: string, klass: string, props: Readonly< Record< string, string > > ) {
+			return [ `${ name } ${ klass }`, ... Object.entries( props ).map( ( [ prop, value ] )=> `\t${ prop } ${ value.replace( /\n/g, '\n\t' ) }` ) ].join( '\n' )
+		}
+
+		add( klass: string, props: Readonly< Record< string, string > >, list = 'kids' ) {
+			const root = this.decls().get( '' )
+			if( !root ) return $mol_fail( new Error( `Scene has no root class` ) )
+			const items = root.select( list, '/' ).kids[ 0 ]
+			if( !items ) return $mol_fail( new Error( `Scene has no ${ list } list` ) )
+			const name = this.free_name( klass )
+			this.insert( this.end_row( items ), this.indent( items.span.row ) + 1, [ '<= ' + this.block( name, klass, props ) ] )
+			return name
+		}
+
+		declare( name: string, klass: string, props: Readonly< Record< string, string > > ) {
+			const root = this.decls().get( '' )
+			if( !root ) return $mol_fail( new Error( `Scene has no root class` ) )
+			if( this.decls().has( name ) ) return $mol_fail( new Error( `Node ${ name } is already declared` ) )
+			this.insert( this.end_row( root ), this.indent( root.span.row ) + 1, [ this.block( name, klass, props ) ] )
+			return name
+		}
+
+		add_uri( owner: string, prop: string, uri: string, name?: string ) {
+			const klass = this.decls().get( owner )
+			if( !klass ) return $mol_fail( new Error( `Node ${ owner } is not declared` ) )
+			const item = name ? `${ name } \\${ uri }` : `\\${ uri }`
+			const line = klass.kids.find( kid => kid.type === prop )
+			const list = line?.kids[ 0 ]
+			if( !list ) {
+				this.insert( this.end_row( klass ), this.indent( klass.span.row ) + 1, [ `${ prop } ${ name ? '*' : '/' }\n\t${ item }` ] )
+				return
+			}
+			const known = list.kids.some( kid => name ? kid.type === name : kid.value === uri )
+			if( known ) return
+			this.insert( this.end_row( list ), this.indent( list.span.row ) + 1, [ item ] )
+		}
+
 		print( tree: $mol_tree2 ) {
 			const out = [] as string[]
 			this.dump( tree, '', out )

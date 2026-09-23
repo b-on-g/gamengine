@@ -1,3 +1,8 @@
 deploy \/bog/gamengine/demo/atlas/hero.png
+deploy \/bog/gamengine/demo/atlas/hero_1.png
+deploy \/bog/gamengine/demo/atlas/hero_2.png
 deploy \/bog/gamengine/demo/atlas/coin.png
 deploy \/bog/gamengine/demo/atlas/wall.png
+deploy \/bog/gamengine/demo/atlas/floor.png
+deploy \/bog/gamengine/demo/room/model/pillar.glb
+deploy \/bog/gamengine/demo/sound/coin.wav
