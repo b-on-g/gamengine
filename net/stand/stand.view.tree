@@ -1,0 +1,54 @@
+$bog_gamengine_net_stand $mol_page
+	title \Сеть
+	plugins /
+		<= Control $mol_keyboard_state
+			key <= key_map *
+	body /
+		<= Draw $bog_gamengine_draw
+			scene <= Scene
+			cam <= Cam
+	foot /
+		<= Net_stat $mol_view
+			sub / <= net_stat \
+	Key $bog_gamengine_key
+		bind *
+			left / \A
+			right / \D
+			up / \W
+			down / \S
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/atlas/hero.png
+		size 64
+	Clock $bog_gamengine_clock
+	Room $bog_gamengine_net_room
+		link? <=> room_link? \
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		kids <= nodes /
+		batches /
+			<= Batch $bog_gamengine_batch
+				shader <= Sprite_shader $bog_gamengine_shader_sprite
+				atlas <= Atlas
+				nodes <= sprites /
+	Cam $bog_gamengine_cam_flat
+		height 15
+		pos <= cam_pos Float32Array
+	Hero $bog_gamengine_net_stand_hero
+		key <= Key
+		pos? <=> hero_pos? Float32Array
+	Hero_sprite $bog_gamengine_sprite
+		parent <= Hero
+		atlas <= Atlas
+		frame \hero
+	Self $bog_gamengine_net_self
+		room <= Room
+		body <= Hero
+	Other* $bog_gamengine_net_other
+		room <= Room
+		id <= other_id* \
+	Other_sprite* $bog_gamengine_sprite
+		parent <= Other*
+		atlas <= Atlas
+		frame \hero
+		tint <= other_tint Float32Array
