@@ -43,6 +43,26 @@ namespace $ {
 
 	$mol_test({
 
+		'phys set by code survives a recompute within the frame'( $ ) {
+			$.$mol_state_time = $bog_gamengine_scene_time_mock
+			const body = new $bog_gamengine_phys_body
+			body.vel( new Float32Array([ 1, 0, 0 ]) )
+			const phys = new $bog_gamengine_phys
+			phys.bodies([ body ])
+			const scene = new $bog_gamengine_scene
+			scene.$ = $
+			scene.phys( phys )
+			$bog_gamengine_scene_time_mock.stamp( 0 )
+			scene.step()
+			scene.batches([])
+			scene.step()
+			$bog_gamengine_scene_time_mock.stamp( 16 )
+			scene.step()
+			$bog_gamengine_scene_time_mock.stamp( 32 )
+			scene.step()
+			$mol_assert_ok( Math.abs( body.pos()[ 0 ] - 0.032 ) < 1e-6 )
+		},
+
 		'scene polls input once per frame'( $ ) {
 			$.$mol_state_time = $bog_gamengine_scene_time_mock
 			const input = new $bog_gamengine_scene_input_mock

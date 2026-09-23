@@ -46,14 +46,17 @@ namespace $ {
 		@ $mol_mem
 		step() {
 			const frame = this.clock().frame()
+			const dt = this.clock().dt()
+			const input = this.input()
+			const nodes = this.nodes()
+			const phys = this.phys()
+			const phys3 = this.phys3()
 			if( frame !== this.frame_done ) {
 				this.frame_done = frame
-				this.input()?.poll()
-				const dt = this.clock().dt()
-				const nodes = this.nodes()
+				input?.poll()
 				for( let i = 0; i < nodes.length; ++i ) nodes[ i ].step( dt )
-				this.phys()?.step( dt )
-				this.phys3()?.step( dt )
+				phys?.step( dt )
+				phys3?.step( dt )
 			}
 			const batches = this.batches()
 			for( let i = 0; i < batches.length; ++i ) batches[ i ].fill()
