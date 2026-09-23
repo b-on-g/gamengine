@@ -16,6 +16,26 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		clip( next = '' ) {
+			return next
+		}
+
+		@ $mol_mem
+		fps( next = 8 ) {
+			return next
+		}
+
+		@ $mol_mem
+		clock( next?: $bog_gamengine_clock | null ) {
+			return next ?? null
+		}
+
+		@ $mol_mem
+		clips( next?: Record< string, readonly string[] > ) {
+			return next ?? {}
+		}
+
+		@ $mol_mem
 		tint( next?: Float32Array ) {
 			return next ?? new Float32Array([ 1, 1, 1, 1 ])
 		}
@@ -30,10 +50,19 @@ namespace $ {
 			return next ?? new Float32Array([ 1, 1 ])
 		}
 
-		@ $mol_mem
+		frame_now() {
+			const clip = this.clip()
+			if( !clip ) return this.frame()
+			const list = this.clips()[ clip ]
+			if( !list ) return this.frame()
+			const clock = this.clock()
+			const time = clock ? clock.time() : 0
+			return list[ Math.floor( time * this.fps() ) % list.length ]
+		}
+
 		layer() {
 			const atlas = this.atlas()
-			return atlas ? atlas.layer( this.frame() ) : 0
+			return atlas ? atlas.layer( this.frame_now() ) : 0
 		}
 
 		@ $mol_mem

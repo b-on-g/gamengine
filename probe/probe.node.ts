@@ -10,7 +10,7 @@ namespace $ {
 
 	export const $bog_gamengine_probe_ok = 'центр красный, буферы не создаются'
 
-	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя, клик собирает монету, подпись едет за героем'
+	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя, клик собирает монету, подпись едет за героем, кадры ходьбы сменяются'
 
 	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени'
 
@@ -78,15 +78,24 @@ namespace $ {
 		const label = document.querySelector( '[bog_gamengine_demo_flat_hero_label]' )
 		const label_text = label ? label.textContent : ''
 		const label_before = label ? label.getBoundingClientRect().left : NaN
+		const frame_name = ()=> {
+			const found = document.body.innerText.match( /\\| frame (\\S+)/ )
+			return found ? found[ 1 ] : ''
+		}
 		document.body.dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 68, bubbles: true } ) )
-		for( let i = 0; i < 60; ++ i ) await frame()
+		for( let i = 0; i < 50; ++ i ) await frame()
+		const frame_walk_a = frame_name()
+		for( let i = 0; i < 10; ++ i ) await frame()
+		const frame_walk_b = frame_name()
 		const moved = read()
 		document.body.dispatchEvent( new KeyboardEvent( 'keyup', { keyCode: 68, bubbles: true } ) )
-		await frame()
+		for( let i = 0; i < 10; ++ i ) await frame()
+		const frame_idle = frame_name()
 		const label_after = label ? label.getBoundingClientRect().left : NaN
 		return {
 			webgl: true, loaded: true, start, moved, center, hero, corner, floor,
 			taken_before, taken_after, label_text, label_before, label_after,
+			frame_walk_a, frame_walk_b, frame_idle,
 			size: [ canvas.width, canvas.height ],
 		}
 	`
@@ -153,6 +162,9 @@ namespace $ {
 		readonly label_text?: string
 		readonly label_before?: number
 		readonly label_after?: number
+		readonly frame_walk_a?: string
+		readonly frame_walk_b?: string
+		readonly frame_idle?: string
 		readonly size?: readonly [ number, number ]
 	}
 
@@ -252,6 +264,8 @@ namespace $ {
 		if( got.taken_after !== 1 ) return fail( 'клик по монете не собрал её' )
 		if( got.label_text !== 'Герой' ) return fail( 'подписи над героем нет в DOM' )
 		if( !( got.label_after! > got.label_before! ) ) return fail( 'подпись не поехала за героем' )
+		if( !got.frame_walk_a || got.frame_walk_a === got.frame_walk_b ) return fail( 'кадр героя не сменился за 10 кадров ходьбы' )
+		if( got.frame_idle !== 'hero' ) return fail( 'кадр героя после остановки не hero' )
 
 		return say( $bog_gamengine_probe_flat_ok )
 	}

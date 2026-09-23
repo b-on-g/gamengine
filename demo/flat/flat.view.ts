@@ -131,7 +131,7 @@ namespace $.$$ {
 		hero_stat() {
 			if( !this.Atlas().ready() ) return ''
 			const pos = this.hero_pos()
-			return `hero ${ pos[ 0 ].toFixed( 2 ) } × ${ pos[ 1 ].toFixed( 2 ) }`
+			return `hero ${ pos[ 0 ].toFixed( 2 ) } × ${ pos[ 1 ].toFixed( 2 ) } | frame ${ this.Hero_sprite().frame_now() }`
 		}
 
 	}

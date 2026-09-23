@@ -21,6 +21,27 @@ namespace $ {
 		return sprite
 	}
 
+	class $bog_gamengine_sprite_test_clock extends $bog_gamengine_clock {
+
+		at = 0
+
+		time() {
+			return this.at
+		}
+
+	}
+
+	function sprite_test_walk( at: number ) {
+		const clock = new $bog_gamengine_sprite_test_clock
+		clock.at = at
+		const sprite = sprite_test_sprite( null, 'a' )
+		sprite.clock( clock )
+		sprite.clips({ walk: [ 'a', 'b', 'c', 'd' ] })
+		sprite.fps( 4 )
+		sprite.clip( 'walk' )
+		return sprite
+	}
+
 	function sprite_test_group( sprites: readonly $bog_gamengine_sprite[] ) {
 		return $bog_gamengine_batch_group( sprites, atlas => {
 			const batch = new $bog_gamengine_batch
@@ -59,6 +80,25 @@ namespace $ {
 
 		'layer without atlas is 0'() {
 			$mol_assert_equal( sprite_test_sprite( null, 'coin' ).layer(), 0 )
+		},
+
+		'clip frame at 0.5 s with fps 4 is third'() {
+			$mol_assert_equal( sprite_test_walk( 0.5 ).frame_now(), 'c' )
+		},
+
+		'clip frame at 0.26 s with fps 4 is second'() {
+			$mol_assert_equal( sprite_test_walk( 0.26 ).frame_now(), 'b' )
+		},
+
+		'frame_now without clip is frame'() {
+			$mol_assert_equal( sprite_test_sprite( null, 'hero' ).frame_now(), 'hero' )
+		},
+
+		'layer follows clip frame'() {
+			const atlas = sprite_test_atlas([ 'atlas/a.png', 'atlas/b.png', 'atlas/c.png', 'atlas/d.png' ])
+			const sprite = sprite_test_walk( 0.26 )
+			sprite.atlas( atlas )
+			$mol_assert_equal( sprite.layer(), 1 )
 		},
 
 		'flip_x mirrors uv'() {

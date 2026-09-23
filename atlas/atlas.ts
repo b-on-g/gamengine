@@ -14,20 +14,21 @@ namespace $ {
 
 		@ $mol_mem
 		names() {
-			const names = new Map< string, string >()
-			for( const uri of this.uris() ) {
-				const name = uri.replace( /^.*\//, '' ).replace( /\.[^.]*$/, '' )
+			const uris = this.uris()
+			const names = new Map< string, number >()
+			for( let i = 0; i < uris.length; ++i ) {
+				const name = uris[ i ].replace( /^.*\//, '' ).replace( /\.[^.]*$/, '' )
 				const known = names.get( name )
-				if( known ) $mol_fail( new Error( `Atlas layer name ${ name } is used twice: ${ known } and ${ uri }` ) )
-				names.set( name, uri )
+				if( known !== undefined ) $mol_fail( new Error( `Atlas layer name ${ name } is used twice: ${ uris[ known ] } and ${ uris[ i ] }` ) )
+				names.set( name, i )
 			}
 			return names
 		}
 
 		layer( name: string ) {
-			const uri = this.names().get( name )
-			if( !uri ) $mol_fail( new Error( `Atlas has no layer ${ name }, known: ${ [ ... this.names().keys() ].join( ', ' ) }` ) )
-			return this.uris().indexOf( uri )
+			const index = this.names().get( name )
+			if( index === undefined ) return $mol_fail( new Error( `Atlas has no layer ${ name }, known: ${ [ ... this.names().keys() ].join( ', ' ) }` ) )
+			return index
 		}
 
 		@ $mol_mem_key

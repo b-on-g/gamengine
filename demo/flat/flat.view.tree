@@ -60,6 +60,8 @@ $bog_gamengine_demo_flat $mol_page
 	Atlas $bog_gamengine_atlas
 		uris /
 			\bog/gamengine/demo/atlas/hero.png
+			\bog/gamengine/demo/atlas/hero_1.png
+			\bog/gamengine/demo/atlas/hero_2.png
 			\bog/gamengine/demo/atlas/coin.png
 			\bog/gamengine/demo/atlas/wall.png
 			\bog/gamengine/demo/atlas/floor.png
@@ -94,11 +96,21 @@ $bog_gamengine_demo_flat $mol_page
 		key <= Key
 		pos? <=> hero_pos? Float32Array
 		face_left? => hero_face_left?
+		clip? => hero_clip?
 	Hero_sprite $bog_gamengine_sprite
 		parent <= Hero
 		atlas <= Atlas
 		frame \hero
 		flip_x <= hero_face_left
+		clock <= Clock
+		clip <= hero_clip
+		fps 6
+		clips *
+			walk /
+				\hero
+				\hero_1
+				\hero_2
+				\hero_1
 	Coin* $bog_gamengine_demo_flat_coin
 		sound <= Sound
 		pos <= coin_pos* Float32Array

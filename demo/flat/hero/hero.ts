@@ -22,6 +22,11 @@ namespace $ {
 			return next
 		}
 
+		@ $mol_mem
+		clip( next = '' ) {
+			return next
+		}
+
 		step( dt: number ) {
 			const key = this.key()
 			if( !key ) return
@@ -29,6 +34,8 @@ namespace $ {
 			const vx = key.axis( 'left', 'right' ) * speed
 			const vy = key.axis( 'down', 'up' ) * speed
 			if( vx !== 0 ) this.face_left( vx < 0 )
+			const clip = vx !== 0 || vy !== 0 ? 'walk' : ''
+			if( this.clip() !== clip ) this.clip( clip )
 			const vel = this.vel()
 			if( vel[ 0 ] === vx && vel[ 1 ] === vy ) return
 			const next = new Float32Array( 3 )
