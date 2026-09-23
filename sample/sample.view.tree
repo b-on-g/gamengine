@@ -1,0 +1,28 @@
+$bog_gamestudio_sample $bog_gamengine_scene
+	clock <= Clock $bog_gamengine_clock
+	kids /
+		<= Hero $bog_gamengine_sprite
+			atlas <= Atlas
+			frame? <=> hero_frame? \hero
+			pos? <=> hero_pos? Float32Array
+		<= Coin $bog_gamengine_sprite
+			atlas <= Atlas
+			frame? <=> coin_frame? \coin
+			pos? <=> coin_pos? Float32Array
+		<= Wall $bog_gamengine_sprite
+			atlas <= Atlas
+			frame? <=> wall_frame? \wall
+			pos? <=> wall_pos? Float32Array
+	batches /
+		<= Batch $bog_gamengine_batch
+			shader <= Shader $bog_gamengine_shader_sprite
+			atlas <= Atlas
+			nodes <= kids
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/atlas/hero.png
+			\bog/gamengine/demo/atlas/coin.png
+			\bog/gamengine/demo/atlas/wall.png
+		size 64
+	Cam $bog_gamengine_cam_flat
+		height 6

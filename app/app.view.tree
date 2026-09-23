@@ -1,0 +1,43 @@
+$bog_gamestudio_app $mol_view
+	selected? null
+	sub /
+		<= Tree $mol_page
+			title \Сцена
+			body /
+				<= Nodes $mol_list
+					rows <= node_rows /
+		<= Canvas $mol_page
+			title \Холст
+			body /
+				<= Draw $bog_gamengine_draw
+					scene <= Scene
+					cam <= Cam
+		<= Inspect $mol_page
+			title \Свойства
+			body /
+				<= Form $mol_form
+					form_fields <= fields /
+					foot /
+	Scene $bog_gamestudio_sample
+		Cam => Cam
+	Row* $mol_check
+		title <= row_title* \
+		checked? <=> row_selected*? false
+	Vec_field* $mol_form_field
+		name <= vec_name* \
+		content <= vec_nums* /
+	Vec_num* $mol_number
+		precision_view 0.01
+		precision_change 0.1
+		value? <=> vec_value*? +NaN
+	Frame_field $mol_form_field
+		name \frame
+		content /
+			<= Frame $mol_select
+				value? <=> frame? \
+				options <= frame_options /string
+	Flip_field $mol_form_field
+		name \flip_x
+		content /
+			<= Flip $mol_check_box
+				checked? <=> flip_x? false
