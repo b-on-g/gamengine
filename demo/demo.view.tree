@@ -25,6 +25,7 @@ $bog_gamengine_demo $mol_book2_catalog
 					sub / <= stat
 		flat <= Flat $bog_gamengine_demo_flat
 		room <= Room $bog_gamengine_demo_room
+		rapier <= Rapier $bog_gamengine_spike_rapier
 	Clock $bog_gamengine_clock
 		paused? => paused?
 	Scene $bog_gamengine_scene
