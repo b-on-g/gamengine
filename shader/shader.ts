@@ -16,6 +16,10 @@ namespace $ {
 			return `void main() {}`
 		}
 
+		depth() {
+			return false
+		}
+
 		@ $mol_mem
 		sources() {
 			return {
