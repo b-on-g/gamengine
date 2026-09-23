@@ -1,4 +1,6 @@
 $bog_gamengine_draw $mol_3d_pane
 	scene $bog_gamengine_scene
 	cam $bog_gamengine_cam
+	light_dir Float32Array
+	ambient 0.35
 	stat \

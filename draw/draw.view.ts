@@ -1,8 +1,8 @@
 namespace $.$$ {
 
 	type $bog_gamengine_draw_face = {
-		glob: { proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray' }
-		input: { vertex: 'vec3', uv: 'vec2', inst_trans: 'mat4', inst_tint: 'vec4', inst_layer: 'float', inst_uv: 'vec4' }
+		glob: { proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray', light_dir: 'vec3', ambient: 'float' }
+		input: { vertex: 'vec3', uv: 'vec2', normal: 'vec3', inst_trans: 'mat4', inst_tint: 'vec4', inst_layer: 'float', inst_uv: 'vec4' }
 	}
 
 	type $bog_gamengine_draw_slot = {
@@ -10,6 +10,9 @@ namespace $.$$ {
 		program: $mol_3d_program< $bog_gamengine_draw_face >
 		proj: $mol_3d_glob
 		view: $mol_3d_glob
+		light_dir: $mol_3d_glob | null
+		ambient: $mol_3d_glob | null
+		depth: boolean
 		geometry: $mol_3d_geometry
 		trans: $mol_3d_buffer
 		tint: $mol_3d_buffer
@@ -34,6 +37,7 @@ namespace $.$$ {
 		slots_all = new WeakMap< $bog_gamengine_batch, $bog_gamengine_draw_slot >()
 		textures_all = new WeakMap< $bog_gamengine_atlas, $bog_gamengine_draw_tex >()
 		unit = new Int32Array([ 0 ])
+		ambient_vec = new Float32Array( 1 )
 		gaps = new Float32Array( stat_window )
 		ticks = new Float32Array( stat_window )
 		samples = 0
@@ -44,6 +48,11 @@ namespace $.$$ {
 			const canvas = this.dom_node() as HTMLCanvasElement
 			const native = canvas.getContext( 'webgl2', { preserveDrawingBuffer: true } )!
 			return new $mol_3d_context( native )
+		}
+
+		@ $mol_mem
+		light_dir( next?: Float32Array ) {
+			return next ?? new Float32Array([ 0.4, 1, 0.6 ])
 		}
 
 		@ $mol_mem
@@ -67,7 +76,9 @@ namespace $.$$ {
 
 			const context = this.context()
 			const gl = context.native
-			const program = batch.shader().program( context ) as $mol_3d_program< $bog_gamengine_draw_face >
+			const shader = batch.shader()
+			const program = shader.program( context ) as $mol_3d_program< $bog_gamengine_draw_face >
+			const globs = shader.face().glob ?? {}
 			const shape = batch.shape()
 			const atlas = batch.atlas()
 			const cap = Math.max( batch.cap, 16 )
@@ -77,6 +88,9 @@ namespace $.$$ {
 				program,
 				proj: program.glob( 'proj' ),
 				view: program.glob( 'view' ),
+				light_dir: 'light_dir' in globs ? program.glob( 'light_dir' ) : null,
+				ambient: 'ambient' in globs ? program.glob( 'ambient' ) : null,
+				depth: shader.depth(),
 				geometry: new $mol_3d_geometry( gl ),
 				trans: null!,
 				tint: null!,
@@ -92,6 +106,7 @@ namespace $.$$ {
 			slot.geometry.use( ()=> {
 				program.param( 'vertex' )!.vector( 3 ).send([ shape.geometry() ])
 				program.param( 'uv' )?.vector( 2 ).send([ shape.skin() ])
+				program.param( 'normal' )?.vector( 3 ).send([ shape.normals() ])
 				slot.trans = program.param( 'inst_trans' )!.matrices([ 4, 4 ])
 				gl.bufferData( gl.ARRAY_BUFFER, cap * 64, gl.DYNAMIC_DRAW )
 				slot.tint = program.param( 'inst_tint' )!.vectors( 4 )
@@ -141,27 +156,37 @@ namespace $.$$ {
 			this.textures()
 			const proj = this.proj()
 			const view = this.cam().view()
-			gl.disable( gl.DEPTH_TEST )
-			gl.disable( gl.CULL_FACE )
+			const light_dir = this.light_dir()
+			this.ambient_vec[ 0 ] = this.ambient()
 			gl.enable( gl.BLEND )
 			gl.blendFunc( gl.ONE, gl.ONE_MINUS_SRC_ALPHA )
 			gl.clearColor( 0.08, 0.08, 0.1, 1 )
-			gl.clear( gl.COLOR_BUFFER_BIT )
-			for( let i = 0; i < slots.length; ++ i ) this.paint_slot( gl, slots[ i ], proj, view )
+			gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT )
+			for( let i = 0; i < slots.length; ++ i ) this.paint_slot( gl, slots[ i ], proj, view, light_dir )
 			gl.bindVertexArray( null )
 			gl.useProgram( null )
 			this.measure()
 		}
 
-		paint_slot( gl: WebGL2RenderingContext, slot: $bog_gamengine_draw_slot, proj: Float32Array, view: Float32Array ) {
+		paint_slot( gl: WebGL2RenderingContext, slot: $bog_gamengine_draw_slot, proj: Float32Array, view: Float32Array, light_dir: Float32Array ) {
 			const batch = slot.batch
 			const count = batch.count
 			if( !count ) return
 			if( slot.tex && !slot.tex.sent ) return
 			const grown = batch.cap > slot.cap
+			if( slot.depth ) {
+				gl.enable( gl.DEPTH_TEST )
+				gl.enable( gl.CULL_FACE )
+				gl.cullFace( gl.BACK )
+			} else {
+				gl.disable( gl.DEPTH_TEST )
+				gl.disable( gl.CULL_FACE )
+			}
 			gl.useProgram( slot.program.native )
 			slot.proj.matrix( proj )
 			slot.view.matrix( view )
+			if( slot.light_dir ) slot.light_dir.vector_float( light_dir )
+			if( slot.ambient ) slot.ambient.vector_float( this.ambient_vec )
 			if( slot.tex ) {
 				gl.activeTexture( gl.TEXTURE0 )
 				gl.bindTexture( gl.TEXTURE_2D_ARRAY, slot.tex.texture.native )
