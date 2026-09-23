@@ -127,6 +127,18 @@ namespace $ {
 			$mol_assert_equal( [ ...batch.uv.subarray( 0, 4 ) ], [ 1, 0, -1, 1 ] )
 		},
 
+		'props contain frame and flip_x'() {
+			const names = new $bog_gamengine_sprite().props().map( prop => prop.name )
+			$mol_assert_ok( names.includes( 'frame' ) )
+			$mol_assert_ok( names.includes( 'flip_x' ) )
+		},
+
+		'set through props changes flip_x'() {
+			const sprite = new $bog_gamengine_sprite
+			sprite.props().find( prop => prop.name === 'flip_x' )!.set( true )
+			$mol_assert_equal( sprite.flip_x(), true )
+		},
+
 	})
 
 }

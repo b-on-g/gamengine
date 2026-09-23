@@ -27,6 +27,17 @@ namespace $ {
 			return next ?? false
 		}
 
+		props(): readonly $bog_gamengine_prop[] {
+			return [
+				... super.props(),
+				{ name: 'vel', kind: 'vec3', get: ()=> this.vel(), set: next => this.vel( next as Float32Array ) },
+				{ name: 'size', kind: 'vec2', get: ()=> this.size(), set: next => this.size( next as Float32Array ) },
+				{ name: 'kind', kind: 'text', get: ()=> this.kind(), set: next => this.kind( next as 'aabb' | 'circle' ) },
+				{ name: 'still', kind: 'flag', get: ()=> this.still(), set: next => this.still( next as boolean ) },
+				{ name: 'ghost', kind: 'flag', get: ()=> this.ghost(), set: next => this.ghost( next as boolean ) },
+			]
+		}
+
 		hit( other: $bog_gamengine_phys_body | null ) {}
 
 	}

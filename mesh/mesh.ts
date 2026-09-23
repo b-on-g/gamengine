@@ -29,6 +29,15 @@ namespace $ {
 			return next ?? new Float32Array([ 1, 1, 1 ])
 		}
 
+		props(): readonly $bog_gamengine_prop[] {
+			return [
+				... super.props(),
+				{ name: 'frame', kind: 'frame', get: ()=> this.frame(), set: next => this.frame( next as string ) },
+				{ name: 'tint', kind: 'vec4', get: ()=> this.tint(), set: next => this.tint( next as Float32Array ) },
+				{ name: 'size', kind: 'vec3', get: ()=> this.size(), set: next => this.size( next as Float32Array ) },
+			]
+		}
+
 		@ $mol_mem
 		layer() {
 			const atlas = this.atlas()

@@ -1,6 +1,33 @@
 namespace $ {
 
+	export type $bog_gamengine_prop = {
+		name: string
+		kind: 'vec2' | 'vec3' | 'vec4' | 'number' | 'flag' | 'text' | 'frame' | 'euler'
+		get: ()=> unknown
+		set: ( next: unknown )=> void
+	}
+
 	export class $bog_gamengine_node extends $mol_object2 {
+
+		@ $mol_mem
+		name( next = '' ) {
+			return next
+		}
+
+		title() {
+			const name = this.name()
+			if( name ) return name
+			const cls = this.constructor as typeof $bog_gamengine_node
+			return cls.$.$mol_func_name( cls ).replace( /^\$bog_gamengine_/, '' )
+		}
+
+		props(): readonly $bog_gamengine_prop[] {
+			return [
+				{ name: 'pos', kind: 'vec3', get: ()=> this.pos(), set: next => this.pos( next as Float32Array ) },
+				{ name: 'rot', kind: 'euler', get: ()=> this.rot(), set: next => this.rot( next as Float32Array ) },
+				{ name: 'scale', kind: 'vec3', get: ()=> this.scale(), set: next => this.scale( next as Float32Array ) },
+			]
+		}
 
 		@ $mol_mem
 		pos( next?: Float32Array ) {

@@ -18,5 +18,11 @@ namespace $ {
 
 		},
 
+		'set through props changes zoom'() {
+			const cam = new $bog_gamengine_cam_flat
+			cam.props().find( prop => prop.name === 'zoom' )!.set( 2 )
+			$mol_assert_equal( cam.zoom(), 2 )
+		},
+
 	})
 }

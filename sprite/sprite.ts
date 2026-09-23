@@ -50,6 +50,18 @@ namespace $ {
 			return next ?? new Float32Array([ 1, 1 ])
 		}
 
+		props(): readonly $bog_gamengine_prop[] {
+			return [
+				... super.props(),
+				{ name: 'frame', kind: 'frame', get: ()=> this.frame(), set: next => this.frame( next as string ) },
+				{ name: 'tint', kind: 'vec4', get: ()=> this.tint(), set: next => this.tint( next as Float32Array ) },
+				{ name: 'flip_x', kind: 'flag', get: ()=> this.flip_x(), set: next => this.flip_x( next as boolean ) },
+				{ name: 'size', kind: 'vec2', get: ()=> this.size(), set: next => this.size( next as Float32Array ) },
+				{ name: 'clip', kind: 'text', get: ()=> this.clip(), set: next => this.clip( next as string ) },
+				{ name: 'fps', kind: 'number', get: ()=> this.fps(), set: next => this.fps( next as number ) },
+			]
+		}
+
 		frame_now() {
 			const clip = this.clip()
 			if( !clip ) return this.frame()

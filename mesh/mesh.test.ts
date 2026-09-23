@@ -76,6 +76,12 @@ namespace $ {
 			$mol_assert_equal( [ ... batch.tint.subarray( 0, 4 ) ], [ 1, 0.5, 0.25, 1 ] )
 		},
 
+		'set through props changes size'() {
+			const mesh = new $bog_gamengine_mesh
+			mesh.props().find( prop => prop.name === 'size' )!.set( new Float32Array([ 2, 3, 4 ]) )
+			$mol_assert_equal( [ ... mesh.size() ], [ 2, 3, 4 ] )
+		},
+
 	})
 
 }
