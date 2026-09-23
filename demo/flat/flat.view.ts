@@ -79,12 +79,28 @@ namespace $.$$ {
 
 		@ $mol_mem
 		sprites() {
-			return [ ... this.cells(), ... this.coin_sprites(), this.Hero_sprite() ]
+			return [ ... this.cells(), ... this.coin_sprites(), this.Ghost_sprite(), this.Hero_sprite() ]
 		}
 
 		@ $mol_mem
 		nodes() {
-			return [ ... this.bodies(), ... this.sprites() ]
+			return [ ... this.bodies(), this.Ghost(), ... this.sprites() ]
+		}
+
+		@ $mol_mem
+		ghost_pos( next?: Float32Array ) {
+			return next ?? new Float32Array([ 18.5, -13.5, 0 ])
+		}
+
+		@ $mol_mem
+		ghost_tint() {
+			return new Float32Array([ 0.7, 0.4, 1, 1 ])
+		}
+
+		ghost_stat() {
+			if( !this.Atlas().ready() ) return ''
+			const pos = this.ghost_pos()
+			return `ghost ${ pos[ 0 ].toFixed( 2 ) } × ${ pos[ 1 ].toFixed( 2 ) } | path ${ this.Ghost().path_count() }`
 		}
 
 		pointer_down( event?: PointerEvent ) {

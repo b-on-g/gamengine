@@ -23,6 +23,8 @@ $bog_gamengine_demo_flat $mol_page
 			sub / <= stat
 		<= Hero_stat $mol_view
 			sub / <= hero_stat \
+		<= Ghost_stat $mol_view
+			sub / <= ghost_stat \
 	Key $bog_gamengine_key
 		bind *
 			left /
@@ -109,6 +111,17 @@ $bog_gamengine_demo_flat $mol_page
 				\hero_1
 				\hero_2
 				\hero_1
+	Grid $bog_gamengine_nav_grid
+		tile <= Tile
+	Ghost $bog_gamengine_nav_agent
+		grid <= Grid
+		target <= hero_pos
+		pos? <=> ghost_pos? Float32Array
+	Ghost_sprite $bog_gamengine_sprite
+		parent <= Ghost
+		atlas <= Atlas
+		frame \coin
+		tint <= ghost_tint Float32Array
 	Coin* $bog_gamengine_demo_flat_coin
 		sound <= Sound
 		pos <= coin_pos* Float32Array
