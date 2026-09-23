@@ -23,21 +23,21 @@ $bog_gamestudio_app $mol_view
 	Row* $mol_check
 		title <= row_title* \
 		checked? <=> row_selected*? false
-	Vec_field* $mol_form_field
-		name <= vec_name* \
-		content <= vec_nums* /
+	Field* $mol_form_field
+		name <= field_name* \
+		content <= field_content* /
 	Vec_num* $mol_number
 		precision_view 0.01
 		precision_change 0.1
 		value? <=> vec_value*? +NaN
-	Frame_field $mol_form_field
-		name \frame
-		content /
-			<= Frame $mol_select
-				value? <=> frame? \
-				options <= frame_options /string
-	Flip_field $mol_form_field
-		name \flip_x
-		content /
-			<= Flip $mol_check_box
-				checked? <=> flip_x? false
+	Num* $mol_number
+		precision_view 0.01
+		precision_change 0.1
+		value? <=> num_value*? +NaN
+	Flag* $mol_check_box
+		checked? <=> flag_value*? false
+	Text* $mol_string
+		value? <=> text_value*? \
+	Frame* $mol_select
+		value? <=> text_value*? \
+		options <= frame_options /string

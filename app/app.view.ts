@@ -22,8 +22,7 @@ namespace $.$$ {
 		}
 
 		row_title( index: number ) {
-			const node = this.Scene().nodes()[ index ]
-			return `${ node.constructor.name.replace( /^\$bog_gamengine_/, '' ) } ${ index }`
+			return this.Scene().nodes()[ index ].title()
 		}
 
 		row_selected( index: number, next?: boolean ) {
@@ -32,71 +31,86 @@ namespace $.$$ {
 		}
 
 		@ $mol_mem
+		props() {
+			return this.node()?.props() ?? []
+		}
+
+		prop( name: string ) {
+			return this.props().find( prop => prop.name === name ) ?? null
+		}
+
+		@ $mol_mem
 		fields() {
-			const node = this.node()
-			if( !node ) return []
-			const list = [ this.Vec_field( 'pos' ), this.Vec_field( 'rot' ), this.Vec_field( 'scale' ) ]
-			if( node instanceof $bog_gamengine_sprite ) {
-				list.push( this.Frame_field(), this.Vec_field( 'tint' ), this.Flip_field(), this.Vec_field( 'size' ) )
-			}
-			if( node instanceof $bog_gamengine_mesh ) {
-				list.push( this.Frame_field(), this.Vec_field( 'tint' ), this.Vec_field( 'size' ) )
-			}
-			return list
+			return this.props().map( prop => this.Field( prop.name ) )
 		}
 
-		vec( prop: string, next?: Float32Array ) {
-			const node = this.node()
-			if( !node ) return vec_empty
-			switch( prop ) {
-				case 'pos': return node.pos( next )
-				case 'rot': return node.rot( next )
-				case 'scale': return node.scale( next )
-			}
-			if( node instanceof $bog_gamengine_sprite || node instanceof $bog_gamengine_mesh ) {
-				switch( prop ) {
-					case 'tint': return node.tint( next )
-					case 'size': return node.size( next )
-				}
-			}
-			return vec_empty
+		field_name( name: string ) {
+			return name
 		}
 
-		vec_name( prop: string ) {
-			return prop
+		field_content( name: string ) {
+			switch( this.prop( name )?.kind ) {
+				case 'vec2':
+				case 'vec3':
+				case 'vec4':
+				case 'euler': return this.vec_nums( name )
+				case 'number': return [ this.Num( name ) ]
+				case 'flag': return [ this.Flag( name ) ]
+				case 'text': return [ this.Text( name ) ]
+				case 'frame': return [ this.frame_options().length ? this.Frame( name ) : this.Text( name ) ]
+			}
+			return []
 		}
 
-		vec_nums( prop: string ) {
-			return Array.from( this.vec( prop ), ( value, index )=> this.Vec_num( `${ prop }_${ index }` ) )
+		vec( name: string ) {
+			return ( this.prop( name )?.get() as Float32Array | undefined ) ?? vec_empty
+		}
+
+		vec_nums( name: string ) {
+			return Array.from( this.vec( name ), ( value, index )=> this.Vec_num( `${ name }_${ index }` ) )
 		}
 
 		vec_value( key: string, next?: number ) {
-			const [ prop, index ] = key.split( '_' )
-			const at = Number( index )
-			if( next === undefined ) return this.vec( prop )[ at ]
-			const vec = new Float32Array( this.vec( prop ) )
-			vec[ at ] = next
-			return this.vec( prop, vec )[ at ]
+			const cut = key.lastIndexOf( '_' )
+			const name = key.slice( 0, cut )
+			const at = Number( key.slice( cut + 1 ) )
+			const prop = this.prop( name )
+			if( !prop ) return NaN
+			const scale = prop.kind === 'euler' ? 180 / Math.PI : 1
+			const vec = prop.get() as Float32Array
+			if( next === undefined ) return vec[ at ] * scale
+			const fresh = new Float32Array( vec )
+			fresh[ at ] = next / scale
+			prop.set( fresh )
+			return next
 		}
 
-		frame( next?: string ) {
-			const node = this.node()
-			if( node instanceof $bog_gamengine_sprite || node instanceof $bog_gamengine_mesh ) return node.frame( next )
-			return ''
+		num_value( name: string, next?: number ) {
+			const prop = this.prop( name )
+			if( !prop ) return NaN
+			if( next !== undefined ) prop.set( next )
+			return prop.get() as number
+		}
+
+		flag_value( name: string, next?: boolean ) {
+			const prop = this.prop( name )
+			if( !prop ) return false
+			if( next !== undefined ) prop.set( next )
+			return prop.get() as boolean
+		}
+
+		text_value( name: string, next?: string ) {
+			const prop = this.prop( name )
+			if( !prop ) return ''
+			if( next !== undefined ) prop.set( next )
+			return prop.get() as string
 		}
 
 		@ $mol_mem
 		frame_options() {
-			const node = this.node()
-			if( !( node instanceof $bog_gamengine_sprite || node instanceof $bog_gamengine_mesh ) ) return []
-			const atlas = node.atlas()
+			const node = this.node() as $bog_gamengine_node & { atlas?(): $bog_gamengine_atlas | null } | null
+			const atlas = node?.atlas?.()
 			return atlas ? [ ... atlas.names().keys() ] : []
-		}
-
-		flip_x( next?: boolean ) {
-			const node = this.node()
-			if( node instanceof $bog_gamengine_sprite ) return node.flip_x( next )
-			return false
 		}
 
 	}

@@ -2,14 +2,17 @@ $bog_gamestudio_sample $bog_gamengine_scene
 	clock <= Clock $bog_gamengine_clock
 	kids /
 		<= Hero $bog_gamengine_sprite
+			name \Герой
 			atlas <= Atlas
 			frame? <=> hero_frame? \hero
 			pos? <=> hero_pos? Float32Array
 		<= Coin $bog_gamengine_sprite
+			name \Монета
 			atlas <= Atlas
 			frame? <=> coin_frame? \coin
 			pos? <=> coin_pos? Float32Array
 		<= Wall $bog_gamengine_sprite
+			name \Стена
 			atlas <= Atlas
 			frame? <=> wall_frame? \wall
 			pos? <=> wall_pos? Float32Array

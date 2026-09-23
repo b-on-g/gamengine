@@ -2,7 +2,7 @@ namespace $ {
 
 	export const $bog_gamestudio_probe_page = 'bog/gamestudio/app/-/index.html'
 
-	export const $bog_gamestudio_probe_ok = 'три колонки в ряд, холст нарисован, клик по строке дерева показал pos в инспекторе'
+	export const $bog_gamestudio_probe_ok = 'три колонки в ряд, холст нарисован, строки дерева названы именами узлов, клик по строке показал pos в инспекторе'
 
 	export const $bog_gamestudio_probe_flags = [ '--use-angle=swiftshader' ] as const
 
@@ -22,6 +22,7 @@ namespace $ {
 		readonly waited: number
 		readonly center: $bog_gamestudio_probe_pixel
 		readonly rows: number
+		readonly tree_text: string
 		readonly fields_before: string
 		readonly fields_after: string
 	}
@@ -45,11 +46,13 @@ namespace $ {
 			const inspect = document.querySelector( '[bog_gamestudio_app_inspect]' )
 			const fields_before = inspect ? inspect.innerText : ''
 			const rows = document.querySelectorAll( '[bog_gamestudio_app_row]' )
+			const tree = document.querySelector( '[bog_gamestudio_app_tree]' )
+			const tree_text = tree ? tree.innerText : ''
 			if( rows[ 1 ] ) rows[ 1 ].click()
 			await frame()
 			await frame()
 			const fields_after = inspect ? inspect.innerText : ''
-			return { ... base, webgl: true, waited, center, rows: rows.length, fields_before, fields_after }
+			return { ... base, webgl: true, waited, center, rows: rows.length, tree_text, fields_before, fields_after }
 		`
 	}
 
@@ -89,6 +92,7 @@ namespace $ {
 		if( !( holst.height > 300 ) ) return fail( 'холст ниже 300 px' )
 		if( got.center[ 0 ] < 40 && got.center[ 1 ] < 40 && got.center[ 2 ] < 40 ) return fail( 'центр холста чёрный' )
 		if( got.rows !== 3 ) return fail( 'в дереве не три строки' )
+		if( !got.tree_text.includes( 'Герой' ) ) return fail( 'в дереве нет имени «Герой»' )
 		if( got.fields_before.includes( 'pos' ) ) return fail( 'инспектор показал pos до выбора' )
 		if( !got.fields_after.includes( 'pos' ) ) return fail( 'клик по второй строке не показал pos' )
 
