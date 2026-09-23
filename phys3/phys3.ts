@@ -11,6 +11,9 @@ namespace $ {
 		static flag_sleep = 1
 		static flag_ghost = 2
 
+		static sleep_speed = 0.05
+		static sleep_time = 0.5
+
 		cap = 0
 		count = 0
 		pos = new Float32Array( 0 )
@@ -25,6 +28,7 @@ namespace $ {
 		flags = new Uint8Array( 0 )
 		trans = new Float32Array( 0 )
 		aabb = new Float32Array( 0 )
+		sleep_timer = new Float32Array( 0 )
 		hull_off = new Uint32Array( 0 )
 		hull_count = new Uint32Array( 0 )
 		hull = new Float32Array( 0 )
@@ -37,10 +41,27 @@ namespace $ {
 		tmp_scale = new Float32Array( 3 )
 		tmp_point = new Float32Array( 3 )
 		broad = new $bog_gamengine_phys3_broad
+		narrow = new $bog_gamengine_phys3_narrow
+		solve = new $bog_gamengine_phys3_solve
 
 		@ $mol_mem
 		gravity( next?: Float32Array ) {
 			return next ?? new Float32Array([ 0, -9.81, 0 ])
+		}
+
+		@ $mol_mem
+		friction( next?: number ) {
+			return next ?? 0.5
+		}
+
+		@ $mol_mem
+		restitution( next?: number ) {
+			return next ?? 0
+		}
+
+		@ $mol_mem
+		iterations( next?: number ) {
+			return next ?? 8
 		}
 
 		grow( need: number ) {
@@ -58,6 +79,7 @@ namespace $ {
 			this.size = this.grow_f32( this.size, cap * 3 )
 			this.trans = this.grow_f32( this.trans, cap * 16 )
 			this.aabb = this.grow_f32( this.aabb, cap * 6 )
+			this.sleep_timer = this.grow_f32( this.sleep_timer, cap )
 			const shape = new Uint8Array( cap )
 			shape.set( this.shape )
 			this.shape = shape
@@ -100,6 +122,7 @@ namespace $ {
 			this.vel.fill( 0, i * 3, i * 3 + 3 )
 			this.ang.fill( 0, i * 3, i * 3 + 3 )
 			this.flags[ i ] = 0
+			this.sleep_timer[ i ] = 0
 			this.hull_off[ i ] = 0
 			this.hull_count[ i ] = 0
 			this.mass_set( i, mass )
@@ -161,6 +184,7 @@ namespace $ {
 				this.flags[ index ] = this.flags[ last ]
 				this.trans.copyWithin( index * 16, last * 16, last * 16 + 16 )
 				this.aabb.copyWithin( index * 6, last * 6, last * 6 + 6 )
+				this.sleep_timer[ index ] = this.sleep_timer[ last ]
 				this.hull_off[ index ] = this.hull_off[ last ]
 				this.hull_count[ index ] = this.hull_count[ last ]
 			}
@@ -214,17 +238,38 @@ namespace $ {
 			const count = this.count
 			const gravity = this.gravity()
 			const gx = gravity[ 0 ] * dt, gy = gravity[ 1 ] * dt, gz = gravity[ 2 ] * dt
-			const pos = this.pos, vel = this.vel
-			const inv_mass = this.inv_mass, flags = this.flags
+			const pos = this.pos, vel = this.vel, ang = this.ang
+			const inv_mass = this.inv_mass, flags = this.flags, timer = this.sleep_timer
 			const pos_view = this.pos_view, rot_view = this.rot_view, ang_view = this.ang_view, trans_view = this.trans_view
 			const sleep = $bog_gamengine_phys3.flag_sleep
+			for( let i = 0; i < count; ++ i ) {
+				if( flags[ i ] & sleep || !( inv_mass[ i ] > 0 ) ) continue
+				const p = i * 3
+				vel[ p ] += gx
+				vel[ p + 1 ] += gy
+				vel[ p + 2 ] += gz
+			}
+			this.bounds()
+			this.broad.find( this )
+			this.narrow.collide( this, this.broad.pairs, this.broad.pair_count )
+			this.solve.solve( this, this.narrow, dt )
+			const speed2 = $bog_gamengine_phys3.sleep_speed * $bog_gamengine_phys3.sleep_speed
+			const sleep_time = $bog_gamengine_phys3.sleep_time
 			for( let i = 0; i < count; ++ i ) {
 				if( flags[ i ] & sleep ) continue
 				const p = i * 3
 				if( inv_mass[ i ] > 0 ) {
-					vel[ p ] += gx
-					vel[ p + 1 ] += gy
-					vel[ p + 2 ] += gz
+					const v2 = vel[ p ] * vel[ p ] + vel[ p + 1 ] * vel[ p + 1 ] + vel[ p + 2 ] * vel[ p + 2 ]
+					const w2 = ang[ p ] * ang[ p ] + ang[ p + 1 ] * ang[ p + 1 ] + ang[ p + 2 ] * ang[ p + 2 ]
+					if( v2 < speed2 && w2 < speed2 ) {
+						timer[ i ] += dt
+						if( timer[ i ] >= sleep_time ) {
+							flags[ i ] |= sleep
+							vel.fill( 0, p, p + 3 )
+							ang.fill( 0, p, p + 3 )
+							continue
+						}
+					} else timer[ i ] = 0
 					pos[ p ] += vel[ p ] * dt
 					pos[ p + 1 ] += vel[ p + 1 ] * dt
 					pos[ p + 2 ] += vel[ p + 2 ] * dt
@@ -232,8 +277,6 @@ namespace $ {
 				}
 				$bog_gamengine_vec_quat_to_mat4( trans_view[ i ], rot_view[ i ], pos_view[ i ], this.scale_of( i ) )
 			}
-			this.bounds()
-			this.broad.find( this )
 		}
 
 		bounds() {

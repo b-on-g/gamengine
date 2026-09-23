@@ -100,6 +100,15 @@ namespace $ {
 			$mol_assert_equal( [ ...world.hull.subarray( 6, 9 ) ], [ 0, 1, 0 ] )
 		},
 
+		'hull of four tetrahedron points gives aabb by these points'() {
+			const world = new $bog_gamengine_phys3
+			const a = world.add( $bog_gamengine_phys3.shape_hull, new Float32Array( 3 ), 1, new Float32Array( 3 ) )
+			const b = world.add( $bog_gamengine_phys3.shape_hull, new Float32Array( 3 ), 1, new Float32Array([ 10, 20, 30 ]) )
+			world.hull_points( a, new Float32Array([ 5, 5, 5, 6, 6, 6 ]) )
+			world.hull_points( b, new Float32Array([ 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3 ]) )
+			$mol_assert_equal( [ ...world.aabb.subarray( b * 6, b * 6 + 6 ) ], [ 10, 20, 30, 11, 22, 33 ] )
+		},
+
 	})
 
 }

@@ -124,6 +124,7 @@ namespace $ {
 			const i = box( world, 1, 3, 0, 0 )
 			world.vel[ i * 3 ] = -2
 			world.step( 1 )
+			world.step( 1 )
 			$mol_assert_equal( world.aabb[ i * 6 ], 0.5 )
 			$mol_assert_equal( world.broad.pair_count, 1 )
 		},
