@@ -39,6 +39,22 @@ namespace $ {
 			$mol_assert_equal( Math.round( app.Scene().nodes()[ 0 ].rot()[ 2 ] * 1e6 ) / 1e6, Math.round( Math.PI / 2 * 1e6 ) / 1e6 )
 		},
 
+		'gizmo hit on the x arrow'( $ ) {
+			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
+		},
+
+		'gizmo hit on the y arrow'( $ ) {
+			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( -0.05, 0.9, 1 ), 'y' )
+		},
+
+		'gizmo hit on the box'( $ ) {
+			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.1, -0.1, 1 ), 'xy' )
+		},
+
+		'gizmo miss'( $ ) {
+			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.5, 0.5, 1 ), null )
+		},
+
 	})
 
 }

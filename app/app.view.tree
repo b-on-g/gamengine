@@ -13,6 +13,12 @@ $bog_gamestudio_app $mol_view
 				<= Draw $bog_gamengine_draw
 					scene <= Scene
 					cam <= Cam
+					width => draw_width
+					height => draw_height
+					event *
+						pointerdown? <=> pointer_down? null
+						pointermove? <=> pointer_move? null
+						pointerup? <=> pointer_up? null
 		<= Inspect $mol_page
 			title \Свойства
 			body /
@@ -26,9 +32,37 @@ $bog_gamestudio_app $mol_view
 					value? <=> source?
 	Doc $bog_gamestudio_doc
 		source? <=> source?
+		overlay /
+			<= Gizmo_arrows $bog_gamengine_batch
+				shader <= Gizmo_shader $bog_gamengine_shader_flat
+				shape <= Gizmo_arrow $bog_gamestudio_app_lines
+					points <= gizmo_arrow_points Float32Array
+				nodes <= gizmo_arrow_nodes /
+			<= Gizmo_boxes $bog_gamengine_batch
+				shader <= Gizmo_shader
+				shape <= Gizmo_box $bog_gamestudio_app_lines
+					points <= gizmo_box_points Float32Array
+				nodes <= gizmo_box_nodes /
 		scene => Scene
 	Cam $bog_gamengine_cam_flat
 		height 6
+	Point $bog_gamengine_point
+		cam <= Cam
+		width <= draw_width
+		height <= draw_height
+	Gizmo_x $bog_gamengine_sprite
+		pos <= gizmo_pos Float32Array
+		scale <= gizmo_scale Float32Array
+		tint <= gizmo_tint_x Float32Array
+	Gizmo_y $bog_gamengine_sprite
+		pos <= gizmo_pos
+		scale <= gizmo_scale
+		rot <= gizmo_rot_y Float32Array
+		tint <= gizmo_tint_y Float32Array
+	Gizmo_xy $bog_gamengine_sprite
+		pos <= gizmo_pos
+		scale <= gizmo_scale
+		tint <= gizmo_tint_xy Float32Array
 	Row* $mol_check
 		title <= row_title* \
 		checked? <=> row_selected*? false

@@ -203,15 +203,28 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		overlay( next?: readonly $bog_gamengine_batch[] ) {
+			return next ?? []
+		}
+
+		@ $mol_mem
+		batches() {
+			const own = ( this.value( '.batches' ) as readonly $bog_gamengine_batch[] | undefined ) ?? []
+			return [ ... own, ... this.overlay() ] as readonly $bog_gamengine_batch[]
+		}
+
+		@ $mol_mem
 		scene() {
-			if( !this.decl_text( '' ) ) {
-				const empty = new this.$.$bog_gamengine_scene
-				empty.$ = this.$
-				return empty
-			}
-			const scene = this.part( '' )
-			if( scene instanceof $bog_gamengine_scene ) return scene
-			return $mol_fail( new Error( `Scene class ${ this.decl( '' )!.type } is not a scene` ) )
+			const scene = this.decl_text( '' ) ? this.part( '' ) : this.empty()
+			if( !( scene instanceof $bog_gamengine_scene ) ) return $mol_fail( new Error( `Scene class ${ this.decl( '' )!.type } is not a scene` ) )
+			scene.batches = ()=> this.batches()
+			return scene
+		}
+
+		empty() {
+			const scene = new this.$.$bog_gamengine_scene
+			scene.$ = this.$
+			return scene
 		}
 
 	}

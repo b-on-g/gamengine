@@ -2,7 +2,7 @@ namespace $ {
 
 	export const $bog_gamestudio_probe_page = 'bog/gamestudio/app/-/index.html'
 
-	export const $bog_gamestudio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник'
+	export const $bog_gamestudio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник, клик по холсту выбрал монету, стрелка гизмо перенесла её в исходнике, клик мимо снял выбор'
 
 	export const $bog_gamestudio_probe_flags = [ '--use-angle=swiftshader' ] as const
 
@@ -29,6 +29,12 @@ namespace $ {
 		readonly fields_before: string
 		readonly fields_after: string
 		readonly source_after: string
+		readonly ppu: number
+		readonly fields_coin: string
+		readonly row_coin: string | null
+		readonly arrow: readonly [ number, number ] | null
+		readonly source_moved: string
+		readonly fields_clear: string
 	}
 
 	export function $bog_gamestudio_probe_script( selectors: readonly string[] ) {
@@ -75,7 +81,44 @@ namespace $ {
 			await frame()
 			await frame()
 			const source_after = editor.value
-			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after }
+			const rect = canvas.getBoundingClientRect()
+			const dpr = devicePixelRatio
+			const ppu = canvas.height / 6
+			const coin_x = canvas.width / 2 + 2 * ppu
+			const coin_y = canvas.height / 2
+			const pointer = ( type, x, y )=> canvas.dispatchEvent( new PointerEvent( type, {
+				bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: type === 'pointerup' ? 0 : 1,
+				clientX: rect.left + x / dpr, clientY: rect.top + y / dpr,
+			} ) )
+			const at = ( x, y )=> pixel( x, canvas.height - 1 - y )
+			pointer( 'pointerdown', coin_x, coin_y )
+			pointer( 'pointerup', coin_x, coin_y )
+			await frame()
+			await frame()
+			const fields_coin = inspect ? inspect.innerText : ''
+			const row_coin = rows[ 1 ] ? rows[ 1 ].getAttribute( 'mol_check_checked' ) : null
+			let arrow = null
+			for( let dx = 4; dx < 90 && !arrow; ++ dx ) for( let dy = -3; dy <= 3; ++ dy ) {
+				const px = at( coin_x + dx, coin_y + dy )
+				if( px[ 0 ] > 200 && px[ 1 ] < 100 && px[ 2 ] < 100 ) { arrow = [ coin_x + dx, coin_y + dy ]; break }
+			}
+			if( arrow ) {
+				pointer( 'pointerdown', arrow[ 0 ], arrow[ 1 ] )
+				pointer( 'pointermove', arrow[ 0 ] + 40, arrow[ 1 ] + 30 )
+				await frame()
+				pointer( 'pointermove', arrow[ 0 ] + 80, arrow[ 1 ] + 30 )
+				await frame()
+				pointer( 'pointerup', arrow[ 0 ] + 80, arrow[ 1 ] + 30 )
+				await frame()
+				await frame()
+			}
+			const source_moved = editor.value
+			pointer( 'pointerdown', canvas.width / 2 + ppu, canvas.height / 2 - 2 * ppu )
+			pointer( 'pointerup', canvas.width / 2 + ppu, canvas.height / 2 - 2 * ppu )
+			await frame()
+			await frame()
+			const fields_clear = inspect ? inspect.innerText : ''
+			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after, ppu, fields_coin, row_coin, arrow, source_moved, fields_clear }
 		`
 	}
 
@@ -121,6 +164,14 @@ namespace $ {
 		if( got.fields_before.includes( 'pos' ) ) return fail( 'инспектор показал pos до выбора' )
 		if( !got.fields_after.includes( 'pos' ) ) return fail( 'клик по строке «Герой» не показал pos' )
 		if( !got.source_after.includes( 'pos / 5 0 0' ) ) return fail( 'число из инспектора не попало в исходник' )
+		if( !got.fields_coin.includes( 'coin' ) ) return fail( 'клик по монете на холсте не показал её в инспекторе' )
+		if( got.row_coin !== 'true' ) return fail( 'строка «Монета» в дереве не подсвечена' )
+		if( !got.arrow ) return fail( 'справа от монеты нет красной стрелки гизмо' )
+		const moved = got.source_moved.match( /Монета[^]*?pos \/ (\S+) (\S+) (\S+)/ )
+		if( !moved ) return fail( 'в исходнике нет pos монеты' )
+		if( Math.abs( Number( moved[ 1 ] ) - 2 - 80 / got.ppu ) > 0.1 ) return fail( 'x монеты после переноса по стрелке не вырос на 80 px' )
+		if( Number( moved[ 2 ] ) !== 0 ) return fail( 'перенос по стрелке X сдвинул y' )
+		if( got.fields_clear.includes( 'pos' ) ) return fail( 'клик мимо не снял выбор' )
 
 		return say( $bog_gamestudio_probe_ok )
 	}
