@@ -2,6 +2,26 @@ namespace $ {
 
 	export class $bog_gamengine_phys_body extends $bog_gamengine_node {
 
+		static readonly side_down = 1
+		static readonly side_up = 2
+		static readonly side_left = 4
+		static readonly side_right = 8
+
+		touched = 0
+
+		on_ground() {
+			return ( this.touched & $bog_gamengine_phys_body.side_down ) !== 0
+		}
+
+		on_ceil() {
+			return ( this.touched & $bog_gamengine_phys_body.side_up ) !== 0
+		}
+
+		on_wall() {
+			const body = $bog_gamengine_phys_body
+			return ( this.touched & ( body.side_left | body.side_right ) ) !== 0
+		}
+
 		@ $mol_mem
 		vel( next?: ArrayLike< number > ) {
 			return next ? $bog_gamengine_node_vec( next ) : new Float32Array([ 0, 0, 0 ])
@@ -38,7 +58,7 @@ namespace $ {
 			]
 		}
 
-		hit( other: $bog_gamengine_phys_body | null ) {}
+		hit( other: $bog_gamengine_phys_body | null, normal?: ArrayLike< number > ) {}
 
 	}
 

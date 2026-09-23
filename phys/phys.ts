@@ -12,18 +12,41 @@ namespace $ {
 			return next ?? null
 		}
 
+		@ $mol_mem
+		gravity( next?: ArrayLike< number > ) {
+			return next ? $bog_gamengine_node_vec( next ) : new Float32Array([ 0, 0 ])
+		}
+
 		eps = 1e-4
+
+		normal = new Float32Array( 2 )
 
 		step( dt: number ) {
 			const bodies = this.bodies()
 			const tile = this.tile()
+			const gravity = this.gravity()
+			const gx = gravity[ 0 ] * dt
+			const gy = gravity[ 1 ] * dt
 			for( let i = 0; i < bodies.length; ++i ) {
-				if( bodies[ i ].still() ) continue
-				this.move( bodies[ i ], bodies[ i ].ghost() ? null : tile, dt )
+				const body = bodies[ i ]
+				body.touched = 0
+				if( body.still() ) continue
+				const ghost = body.ghost()
+				if( !ghost && ( gx !== 0 || gy !== 0 ) ) this.fall( body, gx, gy )
+				this.move( body, ghost ? null : tile, dt )
 			}
 			for( let i = 0; i < bodies.length; ++i ) {
 				for( let j = i + 1; j < bodies.length; ++j ) this.touch( bodies[ i ], bodies[ j ] )
 			}
+		}
+
+		fall( body: $bog_gamengine_phys_body, gx: number, gy: number ) {
+			const vel = body.vel()
+			const next = new Float32Array( 3 )
+			next[ 0 ] = vel[ 0 ] + gx
+			next[ 1 ] = vel[ 1 ] + gy
+			next[ 2 ] = vel[ 2 ]
+			body.vel( next )
 		}
 
 		move( body: $bog_gamengine_phys_body, tile: $bog_gamengine_phys_tile | null, dt: number ) {
@@ -34,12 +57,15 @@ namespace $ {
 			const hw = size[ 0 ] / 2
 			const hh = body.kind() === 'circle' ? hw : size[ 1 ] / 2
 			const eps = this.eps
+			const side = $bog_gamengine_phys_body
 
 			let x = pos[ 0 ] + vel[ 0 ] * dt
 			let y = pos[ 1 ]
 			let vx = vel[ 0 ]
 			let vy = vel[ 1 ]
 			let hit = false
+			let nx = 0
+			let ny = 0
 
 			if( tile ) {
 
@@ -49,10 +75,12 @@ namespace $ {
 				if( vx >= 0 ) {
 					const cx = Math.floor( x + hw )
 					if( this.col_solid( tile, cx, ry0, ry1 ) ) {
-						const nx = cx - hw
-						if( nx !== x || vx !== 0 ) {
-							x = nx
+						body.touched |= side.side_right
+						const at = cx - hw
+						if( at !== x || vx !== 0 ) {
+							x = at
 							vx = 0
+							nx = -1
 							hit = true
 						}
 					}
@@ -61,10 +89,12 @@ namespace $ {
 				if( vx <= 0 ) {
 					const cx = Math.floor( x - hw )
 					if( this.col_solid( tile, cx, ry0, ry1 ) ) {
-						const nx = cx + 1 + hw
-						if( nx !== x || vx !== 0 ) {
-							x = nx
+						body.touched |= side.side_left
+						const at = cx + 1 + hw
+						if( at !== x || vx !== 0 ) {
+							x = at
 							vx = 0
+							nx = 1
 							hit = true
 						}
 					}
@@ -82,10 +112,12 @@ namespace $ {
 				if( vy >= 0 ) {
 					const cy = Math.floor( - ( y + hh ) )
 					if( this.row_solid( tile, cy, cx0, cx1 ) ) {
-						const ny = - cy - 1 - hh
-						if( ny !== y || vy !== 0 ) {
-							y = ny
+						body.touched |= side.side_up
+						const at = - cy - 1 - hh
+						if( at !== y || vy !== 0 ) {
+							y = at
 							vy = 0
+							ny = -1
 							hit = true
 						}
 					}
@@ -94,10 +126,12 @@ namespace $ {
 				if( vy <= 0 ) {
 					const cy = Math.floor( - ( y - hh ) )
 					if( this.row_solid( tile, cy, cx0, cx1 ) ) {
-						const ny = - cy + hh
-						if( ny !== y || vy !== 0 ) {
-							y = ny
+						body.touched |= side.side_down
+						const at = - cy + hh
+						if( at !== y || vy !== 0 ) {
+							y = at
 							vy = 0
+							ny = 1
 							hit = true
 						}
 					}
@@ -111,6 +145,11 @@ namespace $ {
 			next[ 2 ] = pos[ 2 ]
 			body.pos( next )
 
+			const back = body.pos()
+			if( back[ 0 ] !== next[ 0 ] || back[ 1 ] !== next[ 1 ] ) {
+				$mol_fail( new Error( `${ body.title() }: pos is read-only, declare it as \`pos? <=>\`` ) )
+			}
+
 			if( !hit ) return
 
 			const next_vel = new Float32Array( 3 )
@@ -118,7 +157,12 @@ namespace $ {
 			next_vel[ 1 ] = vy
 			next_vel[ 2 ] = vel[ 2 ]
 			body.vel( next_vel )
-			body.hit( null )
+
+			const normal = this.normal
+			const len = Math.sqrt( nx * nx + ny * ny )
+			normal[ 0 ] = len === 0 ? 0 : nx / len
+			normal[ 1 ] = len === 0 ? 0 : ny / len
+			body.hit( null, normal )
 
 		}
 
@@ -176,8 +220,14 @@ namespace $ {
 
 			if( !a.ghost() && !b.ghost() ) this.push( a, b, px, py )
 
-			a.hit( b )
-			b.hit( a )
+			const normal = this.normal
+			const len = Math.sqrt( px * px + py * py )
+			normal[ 0 ] = len === 0 ? 0 : - px / len
+			normal[ 1 ] = len === 0 ? 0 : - py / len
+			a.hit( b, normal )
+			normal[ 0 ] = - normal[ 0 ]
+			normal[ 1 ] = - normal[ 1 ]
+			b.hit( a, normal )
 
 		}
 
@@ -193,6 +243,12 @@ namespace $ {
 		}
 
 		shift( body: $bog_gamengine_phys_body, sx: number, sy: number, stop: boolean ) {
+
+			const side = $bog_gamengine_phys_body
+			if( sx > 0 ) body.touched |= side.side_left
+			else if( sx < 0 ) body.touched |= side.side_right
+			if( sy > 0 ) body.touched |= side.side_down
+			else if( sy < 0 ) body.touched |= side.side_up
 
 			const pos = body.pos()
 			const next = new Float32Array( 3 )
