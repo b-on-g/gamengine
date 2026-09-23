@@ -8,10 +8,14 @@ namespace $ {
 		const input = new $bog_gamengine_input
 		input.key( key )
 		const hero = new $bog_jumper_hero
-		hero.tile( tile )
 		hero.input( input )
 		hero.start( new Float32Array([ 0.5, -0.6, 0 ]) )
 		hero.pos( new Float32Array([ 0.5, y, 0 ]) )
+		hero.vel( new Float32Array([ 0, -1, 0 ]) )
+		const phys = new $bog_gamengine_phys
+		phys.tile( tile )
+		phys.bodies([ hero ])
+		phys.step( 1 / 60 )
 		return { hero, key }
 	}
 
@@ -19,7 +23,7 @@ namespace $ {
 
 		'hero standing on the ground jumps up'() {
 			const { hero, key } = hero_test( -0.6 )
-			$mol_assert_equal( hero.ground(), true )
+			$mol_assert_equal( hero.on_ground(), true )
 			key.pressed( 'space', true )
 			hero.step( 1 / 60 )
 			$mol_assert_ok( hero.vel()[ 1 ] > 0 )
@@ -27,7 +31,7 @@ namespace $ {
 
 		'hero in the air does not jump'() {
 			const { hero, key } = hero_test( -0.3 )
-			$mol_assert_equal( hero.ground(), false )
+			$mol_assert_equal( hero.on_ground(), false )
 			key.pressed( 'space', true )
 			hero.step( 1 / 60 )
 			$mol_assert_ok( hero.vel()[ 1 ] < 0 )

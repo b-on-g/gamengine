@@ -8,11 +8,6 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		tile( next?: $bog_gamengine_phys_tile | null ) {
-			return next ?? null
-		}
-
-		@ $mol_mem
 		sound( next?: $bog_gamengine_sound | null ) {
 			return next ?? null
 		}
@@ -85,17 +80,6 @@ namespace $ {
 			return this.won() || this.over()
 		}
 
-		ground() {
-			const tile = this.tile()
-			if( !tile ) return false
-			const pos = this.pos()
-			const size = this.size()
-			const hw = size[ 0 ] / 2 - 0.02
-			const hh = size[ 1 ] / 2
-			const y = pos[ 1 ] - hh - 0.05
-			return tile.solid_at( pos[ 0 ] - hw, y ) || tile.solid_at( pos[ 0 ] + hw, y )
-		}
-
 		step( dt: number ) {
 
 			const input = this.input()
@@ -107,11 +91,9 @@ namespace $ {
 				return
 			}
 
-			const ground = this.ground()
+			const ground = this.on_ground()
 			const vx = input.axis( 'left', 'right' ) * this.speed()
 			let vy = vel[ 1 ] - this.gravity() * dt
-
-			if( ground && vy < 0 ) vy = 0
 
 			if( ground && input.action( 'jump' ) ) {
 				vy = this.jump_speed()

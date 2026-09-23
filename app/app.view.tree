@@ -119,7 +119,6 @@ $bog_jumper_app $mol_page
 		pos <= cell_pos* Float32Array
 	Hero $bog_jumper_hero
 		input <= Input
-		tile <= Tile
 		sound <= Sound
 		start <= hero_start Float32Array
 		pos? <=> hero_pos? Float32Array
