@@ -444,6 +444,9 @@ $bog_gamengine_draw $mol_view
 	light_dir Float32Array
 	ambient 0.35
 	wireframe? false
+	shadows? true
+	shadow_size? 2048
+	shadow_range? 20
 	stat \
 
 $mol_labeler $mol_list
@@ -607,6 +610,9 @@ $bog_gamengine_demo_room $mol_page
 		<= Shine $mol_check_box
 			title \Блики
 			checked? <=> shine? false
+		<= Shadows $mol_check_box
+			title \Тени
+			checked? <=> shadows?
 		<= Pause $mol_check_box
 			title \Пауза
 			checked? <=> paused?
@@ -618,6 +624,7 @@ $bog_gamengine_demo_room $mol_page
 			scene <= Scene
 			cam <= Walker
 			wireframe? => wireframe?
+			shadows? => shadows?
 			stat => stat
 		<= Screen $bog_gamengine_input_screen
 			shown? <=> screen_shown? false

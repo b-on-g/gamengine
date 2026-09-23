@@ -5182,6 +5182,17 @@ var $;
             $mol_assert_ok(source.vert.includes('in vec3 vertex;\n'));
             $mol_assert_not(source.frag.includes('vertex'));
         },
+        'sampler2DShadow glob is declared as uniform in frag'($) {
+            const source = $bog_gamengine_gl_source({ glob: { shadow_map: 'sampler2DShadow' } }, '', '');
+            $mol_assert_ok(source.frag.includes('uniform sampler2DShadow shadow_map;\n'));
+            $mol_assert_ok(source.frag.includes('precision highp sampler2DShadow;'));
+        },
+        'inputs get layout locations in face order, mat4 takes four'($) {
+            const source = $bog_gamengine_gl_source({ input: { vertex: 'vec3', inst_trans: 'mat4', inst_tint: 'vec4' } }, '', '');
+            $mol_assert_ok(source.vert.includes('layout( location = 0 ) in vec3 vertex;\n'));
+            $mol_assert_ok(source.vert.includes('layout( location = 1 ) in mat4 inst_trans;\n'));
+            $mol_assert_ok(source.vert.includes('layout( location = 5 ) in vec4 inst_tint;\n'));
+        },
         'pipe is out in vert and in in frag'($) {
             const source = $bog_gamengine_gl_source({ pipe: { pipe_tint: 'vec4' } }, '', '');
             $mol_assert_ok(source.vert.includes('out vec4 pipe_tint;\n'));
@@ -5737,6 +5748,133 @@ var $;
 "use strict";
 var $;
 (function ($_1) {
+    $mol_test({
+        'vert and frag have main'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            $mol_assert_ok(shader.vert().includes('main'));
+            $mol_assert_ok(shader.frag().includes('main'));
+        },
+        'every input name is used in vert'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            const vert = shader.sources().vert;
+            const face = shader.face();
+            for (const name in face.input)
+                $mol_assert_ok(vert.includes(name));
+        },
+        'every glob name is used in vert or frag'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            const both = shader.sources().vert + shader.sources().frag;
+            const face = shader.face();
+            for (const name in face.glob)
+                $mol_assert_ok(both.includes(name));
+        },
+        'sources mix only glsl both'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            $mol_assert_equal(shader.sources().vert, $mol_3d_glsl_both + shader.vert());
+            $mol_assert_equal(shader.sources().frag, $mol_3d_glsl_both + shader.frag());
+        },
+        'every pipe name is in both vert and frag'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            const face = shader.face();
+            for (const name in face.pipe) {
+                $mol_assert_ok(shader.vert().includes(name));
+                $mol_assert_ok(shader.frag().includes(name));
+            }
+        },
+        'wireframe glob is float and used in both vert and frag'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            $mol_assert_equal(shader.face().glob.wireframe, 'float');
+            $mol_assert_ok(shader.vert().includes('wireframe'));
+            $mol_assert_ok(shader.frag().includes('wireframe'));
+        },
+        'light uniforms are arrays of eight in face and used in frag'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            const glob = shader.face().glob;
+            $mol_assert_equal(glob.light_count, 'int');
+            $mol_assert_equal(glob.light_pos, 'vec4[8]');
+            $mol_assert_equal(glob.light_dir, 'vec4[8]');
+            $mol_assert_equal(glob.light_color, 'vec4[8]');
+            $mol_assert_equal(glob.ambient, 'vec3');
+            $mol_assert_equal(glob.cam_pos, 'vec3');
+            const frag = shader.frag();
+            for (const name of ['light_count', 'light_pos', 'light_dir', 'light_color', 'ambient', 'cam_pos'])
+                $mol_assert_ok(frag.includes(name));
+        },
+        'material and normal layer come per instance and reach frag'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            $mol_assert_equal(shader.face().input.inst_material, 'vec4');
+            $mol_assert_equal(shader.face().input.inst_normal_layer, 'float');
+            $mol_assert_ok(shader.vert().includes('inst_material'));
+            $mol_assert_ok(shader.frag().includes('pipe_material'));
+            $mol_assert_ok(shader.frag().includes('pipe_normal_layer'));
+        },
+        'shadow uniforms are in face and frag has a pcf function over shadow_map'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            const glob = shader.face().glob;
+            $mol_assert_equal(glob.shadow_mat, 'mat4');
+            $mol_assert_equal(glob.shadow_map, 'sampler2DShadow');
+            $mol_assert_equal(glob.shadow_light, 'int');
+            const frag = shader.frag();
+            $mol_assert_ok(frag.includes('float shade( vec3 pos, vec3 normal, vec3 light )'));
+            $mol_assert_ok(frag.includes('texture( shadow_map, coord + vec3( vec2( x, y ) * texel, 0.0 ) )'));
+            $mol_assert_ok(frag.includes('return sum / 9.0;'));
+        },
+        'shadow multiplies only the light it was built for'($) {
+            const frag = new $bog_gamengine_shader_solid().frag();
+            $mol_assert_ok(frag.includes('float atten = i == shadow_light ? lit : 1.0;'));
+            $mol_assert_not(frag.includes('break'));
+        },
+        'array uniform is declared with size after name'($) {
+            const source = $bog_gamengine_gl_source({ glob: { light_pos: 'vec4[8]' } }, '', '');
+            $mol_assert_ok(source.frag.includes('uniform vec4 light_pos[8];'));
+        },
+        'solid wants depth, flat does not'($) {
+            $mol_assert_equal(new $bog_gamengine_shader_solid().depth(), true);
+            $mol_assert_equal(new $bog_gamengine_shader_flat().depth(), false);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    $mol_test({
+        'vert has main and frag is empty main'($) {
+            const shader = new $bog_gamengine_shader_depth;
+            $mol_assert_ok(shader.vert().includes('void main()'));
+            $mol_assert_equal(shader.frag().trim(), 'void main() {}');
+        },
+        'vert uses shadow_mat, inst_trans and vertex'($) {
+            const shader = new $bog_gamengine_shader_depth;
+            const vert = shader.vert();
+            $mol_assert_ok(vert.includes('shadow_mat'));
+            $mol_assert_ok(vert.includes('inst_trans'));
+            $mol_assert_ok(vert.includes('vertex'));
+        },
+        'inputs match solid inputs in order so the same vao fits both programs'($) {
+            const depth = Object.keys(new $bog_gamengine_shader_depth().face().input);
+            const solid = Object.keys(new $bog_gamengine_shader_solid().face().input);
+            $mol_assert_equal(depth, solid);
+        },
+        'sources mix only glsl both'($) {
+            const shader = new $bog_gamengine_shader_depth;
+            $mol_assert_equal(shader.sources().vert, $mol_3d_glsl_both + shader.vert());
+            $mol_assert_equal(shader.sources().frag, $mol_3d_glsl_both + shader.frag());
+        },
+        'source declares shadow_mat uniform and no outputs'($) {
+            const shader = new $bog_gamengine_shader_depth;
+            const source = $bog_gamengine_gl_source(shader.face(), shader.vert(), shader.frag());
+            $mol_assert_ok(source.vert.includes('uniform mat4 shadow_mat;'));
+            $mol_assert_not(source.frag.includes('out '));
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
     class $bog_gamengine_draw_time_mock extends $mol_state_time {
         static stamp(next = 0) {
             return next;
@@ -5794,6 +5932,20 @@ var $;
             draw.scene().batches([kept]);
             draw.slots();
             $mol_assert_equal(draw.gl.deleted, ['buffer gone', 'vao gone']);
+        },
+        'light matrix puts a point on the sphere border into ±1'($) {
+            const mat = $$.$bog_gamengine_draw_shadow_mat(new Float32Array([0, -1, 0]), 0, new Float32Array([1, 2, 3]), 10, new Float32Array(16));
+            const round = (value) => Math.round(value * 1e6) / 1e6 + 0;
+            const at = (x, y, z) => [
+                round(mat[0] * x + mat[4] * y + mat[8] * z + mat[12]),
+                round(mat[1] * x + mat[5] * y + mat[9] * z + mat[13]),
+                round(mat[2] * x + mat[6] * y + mat[10] * z + mat[14]),
+            ];
+            $mol_assert_equal(at(1, 2, 3), [0, 0, 0]);
+            $mol_assert_equal(at(11, 2, 3), [1, 0, 0]);
+            $mol_assert_equal(at(1, 2, 13), [0, 1, 0]);
+            $mol_assert_equal(at(1, -8, 3), [0, 0, 1]);
+            $mol_assert_equal(at(1, 12, 3), [0, 0, -1]);
         },
         'stat without context is a string'($) {
             $.$mol_state_time = $bog_gamengine_draw_time_mock;
@@ -6562,81 +6714,6 @@ var $;
                 $mol_assert_ok(Math.abs(vel[i * 3 + 1]) < 1e-6);
                 $mol_assert_ok(Math.abs(vel[i * 3 + 2] + 2) < 1e-6);
             }
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($_1) {
-    $mol_test({
-        'vert and frag have main'($) {
-            const shader = new $bog_gamengine_shader_solid;
-            $mol_assert_ok(shader.vert().includes('main'));
-            $mol_assert_ok(shader.frag().includes('main'));
-        },
-        'every input name is used in vert'($) {
-            const shader = new $bog_gamengine_shader_solid;
-            const vert = shader.sources().vert;
-            const face = shader.face();
-            for (const name in face.input)
-                $mol_assert_ok(vert.includes(name));
-        },
-        'every glob name is used in vert or frag'($) {
-            const shader = new $bog_gamengine_shader_solid;
-            const both = shader.sources().vert + shader.sources().frag;
-            const face = shader.face();
-            for (const name in face.glob)
-                $mol_assert_ok(both.includes(name));
-        },
-        'sources mix only glsl both'($) {
-            const shader = new $bog_gamengine_shader_solid;
-            $mol_assert_equal(shader.sources().vert, $mol_3d_glsl_both + shader.vert());
-            $mol_assert_equal(shader.sources().frag, $mol_3d_glsl_both + shader.frag());
-        },
-        'every pipe name is in both vert and frag'($) {
-            const shader = new $bog_gamengine_shader_solid;
-            const face = shader.face();
-            for (const name in face.pipe) {
-                $mol_assert_ok(shader.vert().includes(name));
-                $mol_assert_ok(shader.frag().includes(name));
-            }
-        },
-        'wireframe glob is float and used in both vert and frag'($) {
-            const shader = new $bog_gamengine_shader_solid;
-            $mol_assert_equal(shader.face().glob.wireframe, 'float');
-            $mol_assert_ok(shader.vert().includes('wireframe'));
-            $mol_assert_ok(shader.frag().includes('wireframe'));
-        },
-        'light uniforms are arrays of eight in face and used in frag'($) {
-            const shader = new $bog_gamengine_shader_solid;
-            const glob = shader.face().glob;
-            $mol_assert_equal(glob.light_count, 'int');
-            $mol_assert_equal(glob.light_pos, 'vec4[8]');
-            $mol_assert_equal(glob.light_dir, 'vec4[8]');
-            $mol_assert_equal(glob.light_color, 'vec4[8]');
-            $mol_assert_equal(glob.ambient, 'vec3');
-            $mol_assert_equal(glob.cam_pos, 'vec3');
-            const frag = shader.frag();
-            for (const name of ['light_count', 'light_pos', 'light_dir', 'light_color', 'ambient', 'cam_pos'])
-                $mol_assert_ok(frag.includes(name));
-        },
-        'material and normal layer come per instance and reach frag'($) {
-            const shader = new $bog_gamengine_shader_solid;
-            $mol_assert_equal(shader.face().input.inst_material, 'vec4');
-            $mol_assert_equal(shader.face().input.inst_normal_layer, 'float');
-            $mol_assert_ok(shader.vert().includes('inst_material'));
-            $mol_assert_ok(shader.frag().includes('pipe_material'));
-            $mol_assert_ok(shader.frag().includes('pipe_normal_layer'));
-        },
-        'array uniform is declared with size after name'($) {
-            const source = $bog_gamengine_gl_source({ glob: { light_pos: 'vec4[8]' } }, '', '');
-            $mol_assert_ok(source.frag.includes('uniform vec4 light_pos[8];'));
-        },
-        'solid wants depth, flat does not'($) {
-            $mol_assert_equal(new $bog_gamengine_shader_solid().depth(), true);
-            $mol_assert_equal(new $bog_gamengine_shader_flat().depth(), false);
         },
     });
 })($ || ($ = {}));

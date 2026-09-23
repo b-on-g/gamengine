@@ -228,6 +228,7 @@
     "$mol_media",
     "$mol_3d_mat4",
     "$bog_gamengine_draw",
+    "$bog_gamengine_shader_depth",
     "$bog_gamengine_demo_flat",
     "$mol_labeler",
     "$bog_gamengine_shader_sprite",

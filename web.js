@@ -9939,6 +9939,7 @@ var $;
 				precision highp float;
 				precision highp sampler2D;
 				precision highp sampler2DArray;
+				precision highp sampler2DShadow;
 			`;
     function $bog_gamengine_gl_decl(kind, type, name) {
         const open = type.indexOf('[');
@@ -9947,6 +9948,15 @@ var $;
         return `${kind} ${type.slice(0, open)} ${name}${type.slice(open)};\n`;
     }
     $.$bog_gamengine_gl_decl = $bog_gamengine_gl_decl;
+    function $bog_gamengine_gl_slots(type) {
+        switch (type) {
+            case 'mat4': return 4;
+            case 'mat3': return 3;
+            case 'mat2': return 2;
+            default: return 1;
+        }
+    }
+    $.$bog_gamengine_gl_slots = $bog_gamengine_gl_slots;
     function $bog_gamengine_gl_source(face, vert, frag) {
         let revert = prefix;
         let refrag = prefix;
@@ -9955,8 +9965,11 @@ var $;
             revert += decl;
             refrag += decl;
         }
+        let location = 0;
         for (const name in face.input ?? {}) {
-            revert += `in ${face.input[name]} ${name};\n`;
+            const type = face.input[name];
+            revert += `layout( location = ${location} ) in ${type} ${name};\n`;
+            location += $bog_gamengine_gl_slots(type);
         }
         for (const name in face.pipe ?? {}) {
             revert += `out ${face.pipe[name]} ${name};\n`;
@@ -10066,6 +10079,44 @@ var $;
         return texture;
     }
     $.$bog_gamengine_gl_texture_array = $bog_gamengine_gl_texture_array;
+    class $bog_gamengine_gl_depth_target extends Object {
+        gl;
+        size;
+        native;
+        texture;
+        constructor(gl, size) {
+            super();
+            this.gl = gl;
+            this.size = size;
+            this.texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, this.texture);
+            gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, size, size);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+            this.native = gl.createFramebuffer();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.native);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.texture, 0);
+            gl.drawBuffers([gl.NONE]);
+            gl.readBuffer(gl.NONE);
+            const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            if (status === gl.FRAMEBUFFER_COMPLETE)
+                return;
+            this.dispose();
+            throw new Error(`Depth target is incomplete (${status})`);
+        }
+        dispose() {
+            this.gl.deleteFramebuffer(this.native);
+            this.gl.deleteTexture(this.texture);
+            return this;
+        }
+    }
+    $.$bog_gamengine_gl_depth_target = $bog_gamengine_gl_depth_target;
     function $bog_gamengine_gl_uniform_matrix(gl, location, data) {
         if (!location)
             return data;
@@ -13988,6 +14039,18 @@ var $;
 			if(next !== undefined) return next;
 			return false;
 		}
+		shadows(next){
+			if(next !== undefined) return next;
+			return true;
+		}
+		shadow_size(next){
+			if(next !== undefined) return next;
+			return 2048;
+		}
+		shadow_range(next){
+			if(next !== undefined) return next;
+			return 20;
+		}
 		stat(){
 			return "";
 		}
@@ -13996,7 +14059,49 @@ var $;
 	($mol_mem(($.$bog_gamengine_draw.prototype), "cam"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "light_dir"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "wireframe"));
+	($mol_mem(($.$bog_gamengine_draw.prototype), "shadows"));
+	($mol_mem(($.$bog_gamengine_draw.prototype), "shadow_size"));
+	($mol_mem(($.$bog_gamengine_draw.prototype), "shadow_range"));
 
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_shader_depth extends $bog_gamengine_shader {
+        face() {
+            return {
+                glob: {
+                    shadow_mat: 'mat4',
+                },
+                input: {
+                    vertex: 'vec3',
+                    uv: 'vec2',
+                    normal: 'vec3',
+                    inst_trans: 'mat4',
+                    inst_tint: 'vec4',
+                    inst_layer: 'float',
+                    inst_uv: 'vec4',
+                    inst_material: 'vec4',
+                    inst_normal_layer: 'float',
+                },
+            };
+        }
+        vert() {
+            return `
+				void main() {
+					gl_Position = shadow_mat * inst_trans * vec4( vertex, 1.0 );
+				}
+			`;
+        }
+        frag() {
+            return `
+				void main() {}
+			`;
+        }
+    }
+    $.$bog_gamengine_shader_depth = $bog_gamengine_shader_depth;
+})($ || ($ = {}));
 
 ;
 "use strict";
@@ -14020,7 +14125,11 @@ var $;
             ambient = null;
             cam_pos = null;
             wireframe = null;
+            shadow_mat = null;
+            shadow_map = null;
+            shadow_light = null;
             depth = false;
+            ready = false;
             vao = null;
             vertex = null;
             live = false;
@@ -14060,6 +14169,50 @@ var $;
         $$.$bog_gamengine_draw_tex = $bog_gamengine_draw_tex;
         const stat_window = 30;
         const light_max = 8;
+        function $bog_gamengine_draw_shadow_mat(dir, at, center, range, out) {
+            let dx = dir[at];
+            let dy = dir[at + 1];
+            let dz = dir[at + 2];
+            const len = Math.hypot(dx, dy, dz) || 1;
+            dx /= len;
+            dy /= len;
+            dz /= len;
+            const flat = Math.abs(dy) > 0.99;
+            const ax = 0;
+            const ay = flat ? 0 : 1;
+            const az = flat ? 1 : 0;
+            let rx = ay * dz - az * dy;
+            let ry = az * dx - ax * dz;
+            let rz = ax * dy - ay * dx;
+            const rl = Math.hypot(rx, ry, rz) || 1;
+            rx /= rl;
+            ry /= rl;
+            rz /= rl;
+            const ux = dy * rz - dz * ry;
+            const uy = dz * rx - dx * rz;
+            const uz = dx * ry - dy * rx;
+            const cx = center[0];
+            const cy = center[1];
+            const cz = center[2];
+            out[0] = rx / range;
+            out[1] = ux / range;
+            out[2] = dx / range;
+            out[3] = 0;
+            out[4] = ry / range;
+            out[5] = uy / range;
+            out[6] = dy / range;
+            out[7] = 0;
+            out[8] = rz / range;
+            out[9] = uz / range;
+            out[10] = dz / range;
+            out[11] = 0;
+            out[12] = -(rx * cx + ry * cy + rz * cz) / range;
+            out[13] = -(ux * cx + uy * cy + uz * cz) / range;
+            out[14] = -(dx * cx + dy * cy + dz * cz) / range;
+            out[15] = 1;
+            return out;
+        }
+        $$.$bog_gamengine_draw_shadow_mat = $bog_gamengine_draw_shadow_mat;
         class $bog_gamengine_draw extends $.$bog_gamengine_draw {
             slots_all = new WeakMap();
             slots_last = [];
@@ -14073,6 +14226,10 @@ var $;
             lights_count = 0;
             wire_off = new Float32Array(1);
             wire_on = new Float32Array([1]);
+            shadow_mat_buf = new Float32Array(16);
+            shadow_last = null;
+            sun_at = -1;
+            shadow_at = -1;
             gaps = new Float32Array(stat_window);
             ticks = new Float32Array(stat_window);
             samples = 0;
@@ -14137,7 +14294,21 @@ var $;
                 this.textures_all.delete(tex.atlas);
                 return tex.dispose(this.context());
             }
+            shadow_shader() {
+                return new $bog_gamengine_shader_depth;
+            }
+            shadow_target() {
+                const gl = this.context();
+                const size = this.shadow_size();
+                this.shadow_last?.dispose();
+                this.shadow_last = null;
+                const target = new $bog_gamengine_gl_depth_target(gl, size);
+                this.shadow_last = target;
+                return target;
+            }
             destructor() {
+                this.shadow_last?.dispose();
+                this.shadow_last = null;
                 const slots = this.slots_last;
                 for (let i = 0; i < slots.length; ++i)
                     this.slot_drop(slots[i]);
@@ -14177,6 +14348,9 @@ var $;
                     ambient: glob('ambient'),
                     cam_pos: glob('cam_pos'),
                     wireframe,
+                    shadow_mat: glob('shadow_mat'),
+                    shadow_map: glob('shadow_map'),
+                    shadow_light: glob('shadow_light'),
                     depth,
                     vao: gl.createVertexArray(),
                     live: mode === 'lines',
@@ -14280,9 +14454,11 @@ var $;
                     color[2] = 1;
                     color[3] = 0;
                     this.lights_count = 1;
+                    this.sun_at = 0;
                     return 1;
                 }
                 const count = Math.min(lights.length, light_max);
+                this.sun_at = -1;
                 for (let i = 0; i < count; ++i) {
                     const light = lights[i];
                     const kind = light.kind();
@@ -14294,6 +14470,8 @@ var $;
                     pos[at + 1] = world[13];
                     pos[at + 2] = world[14];
                     pos[at + 3] = kind === 'sun' ? 0 : 1;
+                    if (kind === 'sun' && this.sun_at < 0)
+                        this.sun_at = i;
                     $bog_gamengine_light_dir(world, dir, at);
                     dir[at + 3] = kind === 'spot' ? Math.cos(light.angle()) : -1;
                     color[at] = tone[0] * power;
@@ -14305,6 +14483,7 @@ var $;
                 return count;
             }
             paint() {
+                this.scene().aspect(this.width() / this.height() || 1);
                 this.scene().step();
                 const gl = this.context();
                 const slots = this.slots();
@@ -14321,55 +14500,41 @@ var $;
                 this.cam_pos_vec[1] = cam_world[13];
                 this.cam_pos_vec[2] = cam_world[14];
                 this.lights_fill();
+                for (let i = 0; i < slots.length; ++i)
+                    slots[i].ready = this.slot_send(gl, slots[i]);
+                this.shadow_pass(gl, slots);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.viewport(0, 0, this.width(), this.height());
+                gl.enable(gl.SCISSOR_TEST);
+                gl.scissor(0, 0, this.width(), this.height());
+                gl.cullFace(gl.BACK);
                 gl.enable(gl.BLEND);
                 gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
                 gl.clearColor(0.08, 0.08, 0.1, 1);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-                for (let i = 0; i < slots.length; ++i)
-                    this.paint_slot(gl, slots[i], proj, view, wireframe);
+                for (let i = 0; i < slots.length; ++i) {
+                    if (slots[i].ready)
+                        this.paint_slot(gl, slots[i], proj, view, wireframe);
+                }
                 gl.bindVertexArray(null);
                 gl.useProgram(null);
                 this.measure();
             }
-            paint_slot(gl, slot, proj, view, wireframe) {
+            slot_send(gl, slot) {
                 const batch = slot.batch;
                 const count = batch.count;
                 if (!count)
-                    return;
+                    return false;
                 if (slot.tex && !slot.tex.native)
-                    return;
+                    return false;
                 if (slot.live) {
                     const geometry = batch.shape().geometry();
                     slot.vertex.send(geometry);
                     slot.size = geometry.length / 3;
                 }
                 if (!slot.size)
-                    return;
+                    return false;
                 const grown = batch.cap > slot.cap;
-                if (slot.depth) {
-                    gl.enable(gl.DEPTH_TEST);
-                    gl.enable(gl.CULL_FACE);
-                    gl.cullFace(gl.BACK);
-                }
-                else {
-                    gl.disable(gl.DEPTH_TEST);
-                    gl.disable(gl.CULL_FACE);
-                }
-                gl.useProgram(slot.program.native);
-                $bog_gamengine_gl_uniform_matrix(gl, slot.proj, proj);
-                $bog_gamengine_gl_uniform_matrix(gl, slot.view, view);
-                $bog_gamengine_gl_uniform_int(gl, slot.light_count, this.lights_count);
-                $bog_gamengine_gl_uniform_vec4s(gl, slot.light_pos, this.lights_pos);
-                $bog_gamengine_gl_uniform_vec4s(gl, slot.light_dir, this.lights_dir);
-                $bog_gamengine_gl_uniform_vec4s(gl, slot.light_color, this.lights_color);
-                $bog_gamengine_gl_uniform_vector(gl, slot.ambient, this.ambient_vec);
-                $bog_gamengine_gl_uniform_vector(gl, slot.cam_pos, this.cam_pos_vec);
-                $bog_gamengine_gl_uniform_vector(gl, slot.wireframe, this.wire_off);
-                if (slot.tex) {
-                    gl.activeTexture(gl.TEXTURE0);
-                    gl.bindTexture(gl.TEXTURE_2D_ARRAY, slot.tex.native);
-                    $bog_gamengine_gl_uniform_int(gl, slot.sampler, 0);
-                }
                 gl.bindVertexArray(slot.vao);
                 gl.bindBuffer(gl.ARRAY_BUFFER, slot.trans.native);
                 if (grown)
@@ -14405,6 +14570,73 @@ var $;
                 }
                 if (grown)
                     slot.cap = batch.cap;
+                return true;
+            }
+            shadow_pass(gl, slots) {
+                this.shadow_at = this.shadows() ? this.sun_at : -1;
+                const target = this.shadow_target();
+                if (this.shadow_at < 0)
+                    return target;
+                $bog_gamengine_draw_shadow_mat(this.lights_dir, this.shadow_at * 4, this.cam_pos_vec, this.shadow_range(), this.shadow_mat_buf);
+                const program = this.shadow_shader().program(gl);
+                gl.activeTexture(gl.TEXTURE1);
+                gl.bindTexture(gl.TEXTURE_2D, null);
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, target.native);
+                gl.viewport(0, 0, target.size, target.size);
+                gl.disable(gl.SCISSOR_TEST);
+                gl.disable(gl.BLEND);
+                gl.enable(gl.DEPTH_TEST);
+                gl.depthMask(true);
+                gl.enable(gl.CULL_FACE);
+                gl.cullFace(gl.FRONT);
+                gl.clear(gl.DEPTH_BUFFER_BIT);
+                gl.useProgram(program.native);
+                $bog_gamengine_gl_uniform_matrix(gl, program.uniform('shadow_mat'), this.shadow_mat_buf);
+                for (let i = 0; i < slots.length; ++i) {
+                    const slot = slots[i];
+                    if (!slot.ready || !slot.depth)
+                        continue;
+                    gl.bindVertexArray(slot.vao);
+                    gl.drawArraysInstanced(slot.prim, 0, slot.size, slot.batch.count);
+                }
+                return target;
+            }
+            paint_slot(gl, slot, proj, view, wireframe) {
+                const batch = slot.batch;
+                const count = batch.count;
+                if (slot.depth) {
+                    gl.enable(gl.DEPTH_TEST);
+                    gl.enable(gl.CULL_FACE);
+                    gl.cullFace(gl.BACK);
+                }
+                else {
+                    gl.disable(gl.DEPTH_TEST);
+                    gl.disable(gl.CULL_FACE);
+                }
+                gl.useProgram(slot.program.native);
+                $bog_gamengine_gl_uniform_matrix(gl, slot.proj, proj);
+                $bog_gamengine_gl_uniform_matrix(gl, slot.view, view);
+                $bog_gamengine_gl_uniform_int(gl, slot.light_count, this.lights_count);
+                $bog_gamengine_gl_uniform_vec4s(gl, slot.light_pos, this.lights_pos);
+                $bog_gamengine_gl_uniform_vec4s(gl, slot.light_dir, this.lights_dir);
+                $bog_gamengine_gl_uniform_vec4s(gl, slot.light_color, this.lights_color);
+                $bog_gamengine_gl_uniform_vector(gl, slot.ambient, this.ambient_vec);
+                $bog_gamengine_gl_uniform_vector(gl, slot.cam_pos, this.cam_pos_vec);
+                $bog_gamengine_gl_uniform_vector(gl, slot.wireframe, this.wire_off);
+                $bog_gamengine_gl_uniform_matrix(gl, slot.shadow_mat, this.shadow_mat_buf);
+                $bog_gamengine_gl_uniform_int(gl, slot.shadow_light, this.shadow_at);
+                if (slot.shadow_map) {
+                    gl.activeTexture(gl.TEXTURE1);
+                    gl.bindTexture(gl.TEXTURE_2D, this.shadow_target().texture);
+                    $bog_gamengine_gl_uniform_int(gl, slot.shadow_map, 1);
+                }
+                if (slot.tex) {
+                    gl.activeTexture(gl.TEXTURE0);
+                    gl.bindTexture(gl.TEXTURE_2D_ARRAY, slot.tex.native);
+                    $bog_gamengine_gl_uniform_int(gl, slot.sampler, 0);
+                }
+                gl.bindVertexArray(slot.vao);
                 gl.drawArraysInstanced(slot.prim, 0, slot.size, count);
                 if (!wireframe || slot.wire === null)
                     return;
@@ -14456,6 +14688,12 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_draw.prototype, "slots", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_draw.prototype, "shadow_shader", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_draw.prototype, "shadow_target", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_draw.prototype, "textures", null);
@@ -17515,6 +17753,9 @@ var $;
                     ambient: 'vec3',
                     cam_pos: 'vec3',
                     wireframe: 'float',
+                    shadow_mat: 'mat4',
+                    shadow_map: 'sampler2DShadow',
+                    shadow_light: 'int',
                 },
                 input: {
                     vertex: 'vec3',
@@ -17572,6 +17813,21 @@ var $;
 					float scale = inversesqrt( max( dot( tangent, tangent ), dot( bitangent, bitangent ) ) );
 					return normalize( mat3( tangent * scale, bitangent * scale, normal ) * bump );
 				}
+				float shade( vec3 pos, vec3 normal, vec3 light ) {
+					float slope = 1.0 - max( dot( normal, light ), 0.0 );
+					vec4 clip = shadow_mat * vec4( pos + normal * ( 0.03 + 0.09 * slope ), 1.0 );
+					if( any( greaterThan( abs( clip.xyz ), vec3( 1.0 ) ) ) ) return 1.0;
+					vec3 coord = clip.xyz * 0.5 + 0.5;
+					coord.z -= 0.0015;
+					vec2 texel = 1.0 / vec2( textureSize( shadow_map, 0 ) );
+					float sum = 0.0;
+					for( int y = -1; y <= 1; ++ y ) {
+						for( int x = -1; x <= 1; ++ x ) {
+							sum += texture( shadow_map, coord + vec3( vec2( x, y ) * texel, 0.0 ) );
+						}
+					}
+					return sum / 9.0;
+				}
 				void main() {
 					if( wireframe > 0.5 ) {
 						color = vec4( 1.0 );
@@ -17590,13 +17846,15 @@ var $;
 					vec3 f0 = mix( vec3( 0.04 ), albedo, metallic );
 					vec3 diffuse = albedo * ( 1.0 - metallic );
 					vec3 sum = albedo * ( ambient + pipe_material.z );
+					float lit = 1.0;
+					if( shadow_light >= 0 ) lit = shade( pipe_pos, normal, - normalize( light_dir[ shadow_light ].xyz ) );
 					for( int i = 0; i < 8; ++ i ) {
 						if( i < light_count ) {
 							vec3 way = light_pos[ i ].xyz - pipe_pos;
 							float dist = length( way );
 							vec3 aim = normalize( light_dir[ i ].xyz );
 							vec3 light = - aim;
-							float atten = 1.0;
+							float atten = i == shadow_light ? lit : 1.0;
 							if( light_pos[ i ].w > 0.5 ) {
 								light = way / max( dist, 0.0001 );
 								atten = bog_gamengine_pbr_window( dist, light_color[ i ].w );
@@ -18152,6 +18410,12 @@ var $;
 			(obj.checked) = (next) => ((this.shine(next)));
 			return obj;
 		}
+		Shadows(){
+			const obj = new this.$.$mol_check_box();
+			(obj.title) = () => ("Тени");
+			(obj.checked) = (next) => ((this.shadows(next)));
+			return obj;
+		}
 		Pause(){
 			const obj = new this.$.$mol_check_box();
 			(obj.title) = () => ("Пауза");
@@ -18170,6 +18434,9 @@ var $;
 		}
 		wireframe(next){
 			return (this.Draw().wireframe(next));
+		}
+		shadows(next){
+			return (this.Draw().shadows(next));
 		}
 		stat(){
 			return (this.Draw().stat());
@@ -18338,6 +18605,7 @@ var $;
 			return [
 				(this.Wireframe()), 
 				(this.Shine()), 
+				(this.Shadows()), 
 				(this.Pause()), 
 				(this.Screen_switch())
 			];
@@ -18474,6 +18742,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Wireframe"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "shine"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Shine"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Shadows"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pause"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "screen_shown"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Screen_switch"));
@@ -18574,7 +18843,7 @@ var $;
                 return next ?? new Float32Array([0, 0, 0]);
             }
             sun_rot() {
-                return new Float32Array([-Math.PI / 4, 0.3, 0]);
+                return new Float32Array([-0.6, 1.1, 0]);
             }
             light_warm_pos() {
                 return new Float32Array([4.5, 1.7, 4.5]);
