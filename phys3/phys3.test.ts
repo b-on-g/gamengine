@@ -129,8 +129,10 @@ namespace $ {
 			box( world, 1, 0, 0, 0 )
 			world.step( 1 )
 			$mol_assert_equal( world.steps_done, 4 )
-			world.step( 1 / 60 )
+			world.step( 0 )
 			$mol_assert_equal( world.steps_done, 1 )
+			world.step( 0 )
+			$mol_assert_equal( world.steps_done, 0 )
 		},
 
 	})

@@ -250,15 +250,13 @@ namespace $ {
 			this.steps_done = 0
 			const timestep = this.timestep
 			let pending = this.pending + dt
-			let steps = Math.floor( pending / timestep + 1e-6 )
-			if( steps > this.max_steps ) steps = this.max_steps
-			pending -= steps * timestep
-			if( pending >= timestep || pending < 0 ) pending = 0
-			this.pending = pending
-			for( let k = 0; k < steps; ++ k ) {
+			while( pending >= timestep - 1e-9 && this.steps_done < this.max_steps ) {
 				this.substep( timestep )
 				++ this.steps_done
+				pending -= timestep
 			}
+			if( pending < 0 ) pending = 0
+			this.pending = pending < timestep ? pending : timestep
 			const count = this.count
 			const flags = this.flags, rot_view = this.rot_view, pos_view = this.pos_view, trans_view = this.trans_view
 			const sleep = $bog_gamengine_phys3.flag_sleep
