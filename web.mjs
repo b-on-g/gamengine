@@ -9178,6 +9178,23 @@ var $;
 var $;
 (function ($) {
     class $bog_gamengine_node extends $mol_object2 {
+        name(next = '') {
+            return next;
+        }
+        title() {
+            const name = this.name();
+            if (name)
+                return name;
+            const cls = this.constructor;
+            return cls.$.$mol_func_name(cls).replace(/^\$bog_gamengine_/, '');
+        }
+        props() {
+            return [
+                { name: 'pos', kind: 'vec3', get: () => this.pos(), set: next => this.pos(next) },
+                { name: 'rot', kind: 'euler', get: () => this.rot(), set: next => this.rot(next) },
+                { name: 'scale', kind: 'vec3', get: () => this.scale(), set: next => this.scale(next) },
+            ];
+        }
         pos(next) {
             return next ?? new Float32Array([0, 0, 0]);
         }
@@ -9203,6 +9220,9 @@ var $;
         }
         step(dt) { }
     }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_node.prototype, "name", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "pos", null);
@@ -9918,6 +9938,16 @@ var $;
         }
         ghost(next) {
             return next ?? false;
+        }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'vel', kind: 'vec3', get: () => this.vel(), set: next => this.vel(next) },
+                { name: 'size', kind: 'vec2', get: () => this.size(), set: next => this.size(next) },
+                { name: 'kind', kind: 'text', get: () => this.kind(), set: next => this.kind(next) },
+                { name: 'still', kind: 'flag', get: () => this.still(), set: next => this.still(next) },
+                { name: 'ghost', kind: 'flag', get: () => this.ghost(), set: next => this.ghost(next) },
+            ];
         }
         hit(other) { }
     }
@@ -11579,6 +11609,13 @@ var $;
         height(next) {
             return next ?? 10;
         }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'zoom', kind: 'number', get: () => this.zoom(), set: next => this.zoom(next) },
+                { name: 'height', kind: 'number', get: () => this.height(), set: next => this.height(next) },
+            ];
+        }
         proj(aspect) {
             const h = this.height() / this.zoom();
             return $mol_3d_mat4.orthographic(-h * aspect / 2, h * aspect / 2, -h / 2, h / 2, -100, 100);
@@ -11629,6 +11666,17 @@ var $;
         }
         size(next) {
             return next ?? new Float32Array([1, 1]);
+        }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'frame', kind: 'frame', get: () => this.frame(), set: next => this.frame(next) },
+                { name: 'tint', kind: 'vec4', get: () => this.tint(), set: next => this.tint(next) },
+                { name: 'flip_x', kind: 'flag', get: () => this.flip_x(), set: next => this.flip_x(next) },
+                { name: 'size', kind: 'vec2', get: () => this.size(), set: next => this.size(next) },
+                { name: 'clip', kind: 'text', get: () => this.clip(), set: next => this.clip(next) },
+                { name: 'fps', kind: 'number', get: () => this.fps(), set: next => this.fps(next) },
+            ];
         }
         frame_now() {
             const clip = this.clip();
@@ -12577,6 +12625,14 @@ var $;
         size(next) {
             return next ?? new Float32Array([1, 1, 1]);
         }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'frame', kind: 'frame', get: () => this.frame(), set: next => this.frame(next) },
+                { name: 'tint', kind: 'vec4', get: () => this.tint(), set: next => this.tint(next) },
+                { name: 'size', kind: 'vec3', get: () => this.size(), set: next => this.size(next) },
+            ];
+        }
         layer() {
             const atlas = this.atlas();
             return atlas ? atlas.layer(this.frame()) : 0;
@@ -12625,6 +12681,14 @@ var $;
         }
         far(next) {
             return next ?? 100;
+        }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'fov', kind: 'number', get: () => this.fov(), set: next => this.fov(next) },
+                { name: 'near', kind: 'number', get: () => this.near(), set: next => this.near(next) },
+                { name: 'far', kind: 'number', get: () => this.far(), set: next => this.far(next) },
+            ];
         }
         proj(aspect) {
             return $mol_3d_mat4.perspective(this.fov(), aspect, this.near(), this.far());

@@ -9535,6 +9535,23 @@ var $;
 var $;
 (function ($) {
     class $bog_gamengine_node extends $mol_object2 {
+        name(next = '') {
+            return next;
+        }
+        title() {
+            const name = this.name();
+            if (name)
+                return name;
+            const cls = this.constructor;
+            return cls.$.$mol_func_name(cls).replace(/^\$bog_gamengine_/, '');
+        }
+        props() {
+            return [
+                { name: 'pos', kind: 'vec3', get: () => this.pos(), set: next => this.pos(next) },
+                { name: 'rot', kind: 'euler', get: () => this.rot(), set: next => this.rot(next) },
+                { name: 'scale', kind: 'vec3', get: () => this.scale(), set: next => this.scale(next) },
+            ];
+        }
         pos(next) {
             return next ?? new Float32Array([0, 0, 0]);
         }
@@ -9560,6 +9577,9 @@ var $;
         }
         step(dt) { }
     }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_node.prototype, "name", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "pos", null);
@@ -10275,6 +10295,16 @@ var $;
         }
         ghost(next) {
             return next ?? false;
+        }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'vel', kind: 'vec3', get: () => this.vel(), set: next => this.vel(next) },
+                { name: 'size', kind: 'vec2', get: () => this.size(), set: next => this.size(next) },
+                { name: 'kind', kind: 'text', get: () => this.kind(), set: next => this.kind(next) },
+                { name: 'still', kind: 'flag', get: () => this.still(), set: next => this.still(next) },
+                { name: 'ghost', kind: 'flag', get: () => this.ghost(), set: next => this.ghost(next) },
+            ];
         }
         hit(other) { }
     }
@@ -12198,6 +12228,13 @@ var $;
         height(next) {
             return next ?? 10;
         }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'zoom', kind: 'number', get: () => this.zoom(), set: next => this.zoom(next) },
+                { name: 'height', kind: 'number', get: () => this.height(), set: next => this.height(next) },
+            ];
+        }
         proj(aspect) {
             const h = this.height() / this.zoom();
             return $mol_3d_mat4.orthographic(-h * aspect / 2, h * aspect / 2, -h / 2, h / 2, -100, 100);
@@ -12248,6 +12285,17 @@ var $;
         }
         size(next) {
             return next ?? new Float32Array([1, 1]);
+        }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'frame', kind: 'frame', get: () => this.frame(), set: next => this.frame(next) },
+                { name: 'tint', kind: 'vec4', get: () => this.tint(), set: next => this.tint(next) },
+                { name: 'flip_x', kind: 'flag', get: () => this.flip_x(), set: next => this.flip_x(next) },
+                { name: 'size', kind: 'vec2', get: () => this.size(), set: next => this.size(next) },
+                { name: 'clip', kind: 'text', get: () => this.clip(), set: next => this.clip(next) },
+                { name: 'fps', kind: 'number', get: () => this.fps(), set: next => this.fps(next) },
+            ];
         }
         frame_now() {
             const clip = this.clip();
@@ -13196,6 +13244,14 @@ var $;
         size(next) {
             return next ?? new Float32Array([1, 1, 1]);
         }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'frame', kind: 'frame', get: () => this.frame(), set: next => this.frame(next) },
+                { name: 'tint', kind: 'vec4', get: () => this.tint(), set: next => this.tint(next) },
+                { name: 'size', kind: 'vec3', get: () => this.size(), set: next => this.size(next) },
+            ];
+        }
         layer() {
             const atlas = this.atlas();
             return atlas ? atlas.layer(this.frame()) : 0;
@@ -13244,6 +13300,14 @@ var $;
         }
         far(next) {
             return next ?? 100;
+        }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'fov', kind: 'number', get: () => this.fov(), set: next => this.fov(next) },
+                { name: 'near', kind: 'number', get: () => this.near(), set: next => this.near(next) },
+                { name: 'far', kind: 'number', get: () => this.far(), set: next => this.far(next) },
+            ];
         }
         proj(aspect) {
             return $mol_3d_mat4.perspective(this.fov(), aspect, this.near(), this.far());
@@ -17577,6 +17641,11 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    class $bog_gamengine_node_test_hero extends $bog_gamengine_node {
+    }
+    function node_test_prop(node, name) {
+        return node.props().find(prop => prop.name === name);
+    }
     $mol_test({
         'child shifted by 1 under parent rotated by half pi lands at (0, 1, 0)'() {
             const parent = new $bog_gamengine_node;
@@ -17588,6 +17657,24 @@ var $;
             $mol_assert_ok(Math.abs(world[12] - 0) < 1e-6);
             $mol_assert_ok(Math.abs(world[13] - 1) < 1e-6);
             $mol_assert_ok(Math.abs(world[14] - 0) < 1e-6);
+        },
+        'title without name is class name without prefix'() {
+            $mol_assert_equal(new $bog_gamengine_node_test_hero().title(), 'node_test_hero');
+        },
+        'title with name is name'() {
+            const node = new $bog_gamengine_node_test_hero;
+            node.name('Hero');
+            $mol_assert_equal(node.title(), 'Hero');
+        },
+        'base props are pos, rot and scale with kinds'() {
+            const props = new $bog_gamengine_node().props();
+            $mol_assert_equal(props.map(prop => prop.name), ['pos', 'rot', 'scale']);
+            $mol_assert_equal(props.map(prop => prop.kind), ['vec3', 'euler', 'vec3']);
+        },
+        'set through props changes pos'() {
+            const node = new $bog_gamengine_node;
+            node_test_prop(node, 'pos').set(new Float32Array([1, 2, 3]));
+            $mol_assert_equal([...node.pos()], [1, 2, 3]);
         },
     });
 })($ || ($ = {}));
@@ -17937,6 +18024,19 @@ var $;
             batch.fill();
             batch.fill();
             $mol_assert_equal(batch.version, before + 2);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    $mol_test({
+        'set through props changes still'() {
+            const body = new $bog_gamengine_phys_body;
+            body.props().find(prop => prop.name === 'still').set(true);
+            $mol_assert_equal(body.still(), true);
         },
     });
 })($ || ($ = {}));
@@ -18494,6 +18594,11 @@ var $;
             $mol_assert_ok(Math.abs(out[0] - 1) < 1e-6);
             $mol_assert_ok(Math.abs(out[1] - 1) < 1e-6);
         },
+        'set through props changes zoom'() {
+            const cam = new $bog_gamengine_cam_flat;
+            cam.props().find(prop => prop.name === 'zoom').set(2);
+            $mol_assert_equal(cam.zoom(), 2);
+        },
     });
 })($ || ($ = {}));
 
@@ -18773,6 +18878,16 @@ var $;
             batch.fill();
             $mol_assert_equal(batch.layer[0], 1);
             $mol_assert_equal([...batch.uv.subarray(0, 4)], [1, 0, -1, 1]);
+        },
+        'props contain frame and flip_x'() {
+            const names = new $bog_gamengine_sprite().props().map(prop => prop.name);
+            $mol_assert_ok(names.includes('frame'));
+            $mol_assert_ok(names.includes('flip_x'));
+        },
+        'set through props changes flip_x'() {
+            const sprite = new $bog_gamengine_sprite;
+            sprite.props().find(prop => prop.name === 'flip_x').set(true);
+            $mol_assert_equal(sprite.flip_x(), true);
         },
     });
 })($ || ($ = {}));
@@ -19057,6 +19172,11 @@ var $;
             batch.fill();
             $mol_assert_equal(batch.layer[0], 1);
             $mol_assert_equal([...batch.tint.subarray(0, 4)], [1, 0.5, 0.25, 1]);
+        },
+        'set through props changes size'() {
+            const mesh = new $bog_gamengine_mesh;
+            mesh.props().find(prop => prop.name === 'size').set(new Float32Array([2, 3, 4]));
+            $mol_assert_equal([...mesh.size()], [2, 3, 4]);
         },
     });
 })($ || ($ = {}));

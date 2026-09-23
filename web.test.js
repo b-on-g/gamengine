@@ -3381,6 +3381,11 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    class $bog_gamengine_node_test_hero extends $bog_gamengine_node {
+    }
+    function node_test_prop(node, name) {
+        return node.props().find(prop => prop.name === name);
+    }
     $mol_test({
         'child shifted by 1 under parent rotated by half pi lands at (0, 1, 0)'() {
             const parent = new $bog_gamengine_node;
@@ -3392,6 +3397,24 @@ var $;
             $mol_assert_ok(Math.abs(world[12] - 0) < 1e-6);
             $mol_assert_ok(Math.abs(world[13] - 1) < 1e-6);
             $mol_assert_ok(Math.abs(world[14] - 0) < 1e-6);
+        },
+        'title without name is class name without prefix'() {
+            $mol_assert_equal(new $bog_gamengine_node_test_hero().title(), 'node_test_hero');
+        },
+        'title with name is name'() {
+            const node = new $bog_gamengine_node_test_hero;
+            node.name('Hero');
+            $mol_assert_equal(node.title(), 'Hero');
+        },
+        'base props are pos, rot and scale with kinds'() {
+            const props = new $bog_gamengine_node().props();
+            $mol_assert_equal(props.map(prop => prop.name), ['pos', 'rot', 'scale']);
+            $mol_assert_equal(props.map(prop => prop.kind), ['vec3', 'euler', 'vec3']);
+        },
+        'set through props changes pos'() {
+            const node = new $bog_gamengine_node;
+            node_test_prop(node, 'pos').set(new Float32Array([1, 2, 3]));
+            $mol_assert_equal([...node.pos()], [1, 2, 3]);
         },
     });
 })($ || ($ = {}));
@@ -3741,6 +3764,19 @@ var $;
             batch.fill();
             batch.fill();
             $mol_assert_equal(batch.version, before + 2);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    $mol_test({
+        'set through props changes still'() {
+            const body = new $bog_gamengine_phys_body;
+            body.props().find(prop => prop.name === 'still').set(true);
+            $mol_assert_equal(body.still(), true);
         },
     });
 })($ || ($ = {}));
@@ -4298,6 +4334,11 @@ var $;
             $mol_assert_ok(Math.abs(out[0] - 1) < 1e-6);
             $mol_assert_ok(Math.abs(out[1] - 1) < 1e-6);
         },
+        'set through props changes zoom'() {
+            const cam = new $bog_gamengine_cam_flat;
+            cam.props().find(prop => prop.name === 'zoom').set(2);
+            $mol_assert_equal(cam.zoom(), 2);
+        },
     });
 })($ || ($ = {}));
 
@@ -4563,6 +4604,16 @@ var $;
             batch.fill();
             $mol_assert_equal(batch.layer[0], 1);
             $mol_assert_equal([...batch.uv.subarray(0, 4)], [1, 0, -1, 1]);
+        },
+        'props contain frame and flip_x'() {
+            const names = new $bog_gamengine_sprite().props().map(prop => prop.name);
+            $mol_assert_ok(names.includes('frame'));
+            $mol_assert_ok(names.includes('flip_x'));
+        },
+        'set through props changes flip_x'() {
+            const sprite = new $bog_gamengine_sprite;
+            sprite.props().find(prop => prop.name === 'flip_x').set(true);
+            $mol_assert_equal(sprite.flip_x(), true);
         },
     });
 })($ || ($ = {}));
@@ -4847,6 +4898,11 @@ var $;
             batch.fill();
             $mol_assert_equal(batch.layer[0], 1);
             $mol_assert_equal([...batch.tint.subarray(0, 4)], [1, 0.5, 0.25, 1]);
+        },
+        'set through props changes size'() {
+            const mesh = new $bog_gamengine_mesh;
+            mesh.props().find(prop => prop.name === 'size').set(new Float32Array([2, 3, 4]));
+            $mol_assert_equal([...mesh.size()], [2, 3, 4]);
         },
     });
 })($ || ($ = {}));

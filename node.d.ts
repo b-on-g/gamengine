@@ -3759,7 +3759,16 @@ declare namespace $ {
 declare namespace $ { }
 
 declare namespace $ {
+    type $bog_gamengine_prop = {
+        name: string;
+        kind: 'vec2' | 'vec3' | 'vec4' | 'number' | 'flag' | 'text' | 'frame' | 'euler';
+        get: () => unknown;
+        set: (next: unknown) => void;
+    };
     class $bog_gamengine_node extends $mol_object2 {
+        name(next?: string): string;
+        title(): string;
+        props(): readonly $bog_gamengine_prop[];
         pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
         rot(next?: Float32Array): Float32Array<ArrayBufferLike>;
         scale(next?: Float32Array): Float32Array<ArrayBufferLike>;
@@ -3955,6 +3964,7 @@ declare namespace $ {
         kind(next?: 'aabb' | 'circle'): "circle" | "aabb";
         still(next?: boolean): boolean;
         ghost(next?: boolean): boolean;
+        props(): readonly $bog_gamengine_prop[];
         hit(other: $bog_gamengine_phys_body | null): void;
     }
 }
@@ -4523,6 +4533,7 @@ declare namespace $ {
         zoom(next?: number): number;
         pixels_per_unit(next?: number): number;
         height(next?: number): number;
+        props(): readonly $bog_gamengine_prop[];
         proj(aspect: number): $mol_3d_mat4;
     }
 }
@@ -4538,6 +4549,7 @@ declare namespace $ {
         tint(next?: Float32Array): Float32Array<ArrayBufferLike>;
         flip_x(next?: boolean): boolean;
         size(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        props(): readonly $bog_gamengine_prop[];
         frame_now(): string;
         layer(): number;
         uv(): Float32Array<ArrayBuffer>;
@@ -5019,6 +5031,7 @@ declare namespace $ {
         frame(next?: string): string;
         tint(next?: Float32Array): Float32Array<ArrayBufferLike>;
         size(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        props(): readonly $bog_gamengine_prop[];
         layer(): number;
         uv(): Float32Array<ArrayBuffer>;
         trans(): $mol_3d_mat4;
@@ -5030,6 +5043,7 @@ declare namespace $ {
         fov(next?: number): number;
         near(next?: number): number;
         far(next?: number): number;
+        props(): readonly $bog_gamengine_prop[];
         proj(aspect: number): $mol_3d_mat4;
     }
 }
