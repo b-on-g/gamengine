@@ -4,13 +4,55 @@ namespace $ {
 		meshes?: readonly { primitives?: readonly { attributes: Record< string, number >, indices?: number }[] }[]
 		accessors?: readonly { bufferView?: number, byteOffset?: number, componentType: number, count: number, type: string }[]
 		bufferViews?: readonly { buffer: number, byteOffset?: number, byteLength: number, byteStride?: number }[]
+		nodes?: readonly {
+			name?: string
+			children?: readonly number[]
+			translation?: readonly number[]
+			rotation?: readonly number[]
+			scale?: readonly number[]
+		}[]
+		skins?: readonly { joints: readonly number[], inverseBindMatrices?: number }[]
+		animations?: readonly {
+			name?: string
+			channels: readonly { sampler: number, target: { node?: number, path: string } }[]
+			samplers: readonly { input: number, output: number, interpolation?: string }[]
+		}[]
+	}
+
+	export type $bog_gamengine_shape_gltf_skeleton = {
+		count: number
+		names: readonly string[]
+		parents: Int32Array
+		order: Int32Array
+		base: Float32Array
+		binds: Float32Array
+	}
+
+	export type $bog_gamengine_shape_gltf_path = 'translation' | 'rotation' | 'scale'
+
+	export type $bog_gamengine_shape_gltf_channel = {
+		joint: number
+		path: $bog_gamengine_shape_gltf_path
+		step: boolean
+		times: Float32Array
+		values: Float32Array
+	}
+
+	export type $bog_gamengine_shape_gltf_clip = {
+		name: string
+		duration: number
+		channels: readonly $bog_gamengine_shape_gltf_channel[]
 	}
 
 	const magic = 0x46546C67
 	const chunk_json = 0x4E4F534A
 	const chunk_bin = 0x004E4942
 
-	const dims: Record< string, number > = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }
+	const dims: Record< string, number > = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 }
+
+	const zero3 = [ 0, 0, 0 ] as readonly number[]
+	const one3 = [ 1, 1, 1 ] as readonly number[]
+	const unit4 = [ 0, 0, 0, 1 ] as readonly number[]
 
 	export class $bog_gamengine_shape_gltf extends $bog_gamengine_shape {
 
@@ -86,11 +128,15 @@ namespace $ {
 			const pos = this.accessor( attrs.POSITION )
 			const norm = attrs.NORMAL === undefined ? null : this.accessor( attrs.NORMAL )
 			const tex = attrs.TEXCOORD_0 === undefined ? null : this.accessor( attrs.TEXCOORD_0 )
+			const bone = attrs.JOINTS_0 === undefined ? null : this.accessor( attrs.JOINTS_0 )
+			const load = attrs.WEIGHTS_0 === undefined ? null : this.accessor( attrs.WEIGHTS_0 )
 			const index = prim.indices === undefined ? null : this.accessor( prim.indices )
 			const size = index ? index.length : pos.length / 3
 			const geometry = new Float32Array( size * 3 )
 			const normals = new Float32Array( size * 3 )
 			const skin = new Float32Array( size * 2 )
+			const joints = new Float32Array( bone ? size * 4 : 0 )
+			const weights = new Float32Array( load ? size * 4 : 0 )
 			for( let i = 0; i < size; ++ i ) {
 				const v = index ? index[ i ] : i
 				for( let axis = 0; axis < 3; ++ axis ) {
@@ -100,6 +146,10 @@ namespace $ {
 				if( tex ) {
 					skin[ i * 2 ] = tex[ v * 2 ]
 					skin[ i * 2 + 1 ] = 1 - tex[ v * 2 + 1 ]
+				}
+				for( let k = 0; k < 4; ++ k ) {
+					if( bone ) joints[ i * 4 + k ] = bone[ v * 4 + k ]
+					if( load ) weights[ i * 4 + k ] = load[ v * 4 + k ]
 				}
 			}
 			if( !norm ) {
@@ -127,7 +177,7 @@ namespace $ {
 					}
 				}
 			}
-			return { geometry, normals, skin }
+			return { geometry, normals, skin, joints, weights }
 		}
 
 		geometry() {
@@ -140,6 +190,104 @@ namespace $ {
 
 		skin() {
 			return this.arrays().skin
+		}
+
+		joints() {
+			return this.arrays().joints
+		}
+
+		weights() {
+			return this.arrays().weights
+		}
+
+		@ $mol_mem
+		skeleton(): $bog_gamengine_shape_gltf_skeleton | null {
+			const doc = this.json()
+			const skin = doc.skins?.[ 0 ]
+			if( !skin ) return null
+			const nodes = doc.nodes ?? []
+			const count = skin.joints.length
+			const at_joint = new Map< number, number >()
+			for( let i = 0; i < count; ++ i ) at_joint.set( skin.joints[ i ], i )
+			const parents = new Int32Array( count ).fill( -1 )
+			for( let i = 0; i < nodes.length; ++ i ) {
+				const kids = nodes[ i ].children
+				if( !kids ) continue
+				for( let k = 0; k < kids.length; ++ k ) {
+					const kid = at_joint.get( kids[ k ] )
+					if( kid === undefined ) continue
+					parents[ kid ] = at_joint.get( i ) ?? -1
+				}
+			}
+			const names = [] as string[]
+			const base = new Float32Array( count * 10 )
+			for( let i = 0; i < count; ++ i ) {
+				const node = nodes[ skin.joints[ i ] ] ?? {}
+				names.push( node.name ?? `joint${ i }` )
+				const move = node.translation ?? zero3
+				const turn = node.rotation ?? unit4
+				const size = node.scale ?? one3
+				for( let k = 0; k < 3; ++ k ) base[ i * 10 + k ] = move[ k ]
+				for( let k = 0; k < 4; ++ k ) base[ i * 10 + 3 + k ] = turn[ k ]
+				for( let k = 0; k < 3; ++ k ) base[ i * 10 + 7 + k ] = size[ k ]
+			}
+			const binds = new Float32Array( count * 16 )
+			if( skin.inverseBindMatrices === undefined ) {
+				for( let i = 0; i < count; ++ i ) for( let k = 0; k < 4; ++ k ) binds[ i * 16 + k * 5 ] = 1
+			} else {
+				const source = this.accessor( skin.inverseBindMatrices )
+				for( let k = 0; k < binds.length && k < source.length; ++ k ) binds[ k ] = source[ k ]
+			}
+			const order = new Int32Array( count )
+			const ready = new Uint8Array( count )
+			let done = 0
+			while( done < count ) {
+				const was = done
+				for( let i = 0; i < count; ++ i ) {
+					if( ready[ i ] ) continue
+					const parent = parents[ i ]
+					if( parent >= 0 && !ready[ parent ] ) continue
+					ready[ i ] = 1
+					order[ done ++ ] = i
+				}
+				if( done === was ) return $mol_fail( new Error( 'glTF skeleton has a cycle' ) )
+			}
+			return { count, names, parents, order, base, binds }
+		}
+
+		@ $mol_mem
+		clips() {
+			const doc = this.json()
+			const clips = new Map< string, $bog_gamengine_shape_gltf_clip >()
+			const skin = doc.skins?.[ 0 ]
+			if( !skin ) return clips
+			const at_joint = new Map< number, number >()
+			for( let i = 0; i < skin.joints.length; ++ i ) at_joint.set( skin.joints[ i ], i )
+			const anims = doc.animations ?? []
+			for( let a = 0; a < anims.length; ++ a ) {
+				const anim = anims[ a ]
+				const channels = [] as $bog_gamengine_shape_gltf_channel[]
+				let duration = 0
+				for( let c = 0; c < anim.channels.length; ++ c ) {
+					const target = anim.channels[ c ].target
+					if( target.path !== 'translation' && target.path !== 'rotation' && target.path !== 'scale' ) continue
+					const joint = target.node === undefined ? undefined : at_joint.get( target.node )
+					if( joint === undefined ) continue
+					const sampler = anim.samplers[ anim.channels[ c ].sampler ]
+						?? $mol_fail( new Error( `glTF animation has no sampler ${ anim.channels[ c ].sampler }` ) )
+					const interp = sampler.interpolation ?? 'LINEAR'
+					if( interp !== 'LINEAR' && interp !== 'STEP' ) {
+						return $mol_fail( new Error( `glTF animation interpolation ${ interp } is not supported` ) )
+					}
+					const times = this.accessor( sampler.input )
+					const values = this.accessor( sampler.output )
+					if( times.length ) duration = Math.max( duration, times[ times.length - 1 ] )
+					channels.push({ joint, path: target.path, step: interp === 'STEP', times, values })
+				}
+				const name = anim.name ?? `clip${ a }`
+				clips.set( name, { name, duration, channels } )
+			}
+			return clips
 		}
 
 		mode() {
