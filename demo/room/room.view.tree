@@ -6,7 +6,7 @@ $bog_gamengine_demo_room $mol_page
 			checked? <=> wireframe?
 		<= Shine $mol_check_box
 			title \Блики
-			checked? <=> shine?
+			checked? <=> shine? false
 		<= Pause $mol_check_box
 			title \Пауза
 			checked? <=> paused?
