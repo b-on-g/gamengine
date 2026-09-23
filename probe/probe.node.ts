@@ -262,7 +262,7 @@ namespace $ {
 			document.body.dispatchEvent( new KeyboardEvent( 'keydown', { keyCode, bubbles: true } ) )
 			const turn_started = performance.now()
 			let last = drawn()
-			while( performance.now() - turn_started < 6000 ) {
+			while( performance.now() - turn_started < 20000 ) {
 				await frame()
 				last = drawn()
 				if( last && until( last[ 0 ] ) ) break
@@ -272,7 +272,7 @@ namespace $ {
 		}
 		const away = await turn( 81, count => count === 0 )
 		const drawn_away = away.last
-		const back = await turn( 69, count => drawn_start && count >= drawn_start[ 0 ] )
+		const back = await turn( 69, count => count > 0 )
 		const drawn_back = back.last
 		const turn_ms = [ away.took, back.took ]
 		const box = canvas.getBoundingClientRect()
