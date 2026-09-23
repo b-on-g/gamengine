@@ -3,12 +3,12 @@ namespace $ {
 	export class $bog_gamengine_shape_lines extends $bog_gamengine_shape {
 
 		@ $mol_mem
-		points( next?: Float32Array< ArrayBuffer > ) {
-			return next ?? new Float32Array( 0 )
+		points( next?: ArrayLike< number > ) {
+			return next ? $bog_gamengine_node_vec( next ) : new Float32Array( 0 )
 		}
 
 		geometry() {
-			return this.points()
+			return this.points() as Float32Array< ArrayBuffer >
 		}
 
 		@ $mol_mem
