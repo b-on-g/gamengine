@@ -36,6 +36,16 @@ namespace $.$$ {
 		}
 
 		@ $mol_mem
+		pillar_data() {
+			return $mol_fetch.buffer( 'bog/gamengine/demo/room/model/pillar.glb' )
+		}
+
+		@ $mol_mem
+		pillar_pos() {
+			return new Float32Array([ 6.5, 0.5, 3.5 ])
+		}
+
+		@ $mol_mem
 		walker_pos( next?: Float32Array ) {
 			return next ?? new Float32Array([ 6, 0.5, 7.5 ])
 		}
@@ -47,7 +57,16 @@ namespace $.$$ {
 
 		@ $mol_mem
 		nodes() {
-			return [ ... this.walls(), this.Floor(), this.Walker() ]
+			return [ ... this.walls(), this.Floor(), this.Pillar(), this.Walker() ]
+		}
+
+		pillar_stat() {
+			try {
+				return `pillar ${ this.Pillar_shape().size() }`
+			} catch( error ) {
+				if( $mol_promise_like( error ) ) return ''
+				return $mol_fail_hidden( error )
+			}
 		}
 
 		walker_stat() {

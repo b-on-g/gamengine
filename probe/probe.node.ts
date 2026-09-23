@@ -12,7 +12,7 @@ namespace $ {
 
 	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя, клик собирает монету, подпись едет за героем, кадры ходьбы сменяются'
 
-	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени'
+	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола'
 
 	export const $bog_gamengine_probe_flags = [ '--use-angle=swiftshader' ] as const
 
@@ -105,13 +105,18 @@ namespace $ {
 		const canvas = document.querySelector( 'canvas' )
 		const gl = canvas && canvas.getContext( 'webgl2' )
 		if( !gl ) return { webgl: false, loaded: false }
+		const pillar_size = ()=> {
+			const found = document.body.innerText.match( /pillar (\\d+)/ )
+			return found ? Number( found[ 1 ] ) : 0
+		}
 		const read = ()=> {
 			const found = document.body.innerText.match( /walker (-?[\\d.]+) × (-?[\\d.]+) yaw (-?[\\d.]+)/ )
 			return found ? [ Number( found[ 1 ] ), Number( found[ 2 ] ), Number( found[ 3 ] ) ] : null
 		}
 		let start = null
-		for( let i = 0; i < 600 && !start; ++ i ) { await frame(); start = read() }
+		for( let i = 0; i < 600 && !( start && pillar_size() ); ++ i ) { await frame(); start = read() }
 		if( !start ) return { webgl: true, loaded: false }
+		const pillar = pillar_size()
 		await frame()
 		await frame()
 		const pixel = ( x, y )=> {
@@ -132,11 +137,19 @@ namespace $ {
 		const shade_at = at( 8, 0.5, 3.5 )
 		const lit = pixel( ... lit_at )
 		const shade = pixel( ... shade_at )
+		const pillar_at = at( 6.6, 0.5, 3.5 )
+		const floor_at = at( 6.5, 0, 4.2 )
+		const pillar_pixel = pixel( ... pillar_at )
+		const floor_pixel = pixel( ... floor_at )
 		document.body.dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 87, bubbles: true } ) )
 		for( let i = 0; i < 60; ++ i ) await frame()
 		const moved = read()
 		document.body.dispatchEvent( new KeyboardEvent( 'keyup', { keyCode: 87, bubbles: true } ) )
-		return { webgl: true, loaded: true, start, moved, center, lit, shade, lit_at, shade_at, size: [ canvas.width, canvas.height ] }
+		return {
+			webgl: true, loaded: true, start, moved, center, lit, shade, lit_at, shade_at,
+			pillar, pillar_at, floor_at, pillar_pixel, floor_pixel,
+			size: [ canvas.width, canvas.height ],
+		}
 	`
 
 	export type $bog_gamengine_probe_result = {
@@ -178,6 +191,11 @@ namespace $ {
 		readonly shade?: $bog_gamengine_probe_pixel
 		readonly lit_at?: readonly [ number, number ]
 		readonly shade_at?: readonly [ number, number ]
+		readonly pillar?: number
+		readonly pillar_at?: readonly [ number, number ]
+		readonly floor_at?: readonly [ number, number ]
+		readonly pillar_pixel?: $bog_gamengine_probe_pixel
+		readonly floor_pixel?: $bog_gamengine_probe_pixel
 		readonly size?: readonly [ number, number ]
 	}
 
@@ -301,6 +319,9 @@ namespace $ {
 		if( $bog_gamengine_probe_dark( got.center! ) ) return fail( 'центр чёрный, комната не нарисована' )
 		if( $bog_gamengine_probe_dark( got.lit! ) ) return fail( 'освещённая грань чёрная' )
 		if( !( $bog_gamengine_probe_sum( got.lit! ) > $bog_gamengine_probe_sum( got.shade! ) * 1.3 ) ) return fail( 'грань к свету не ярче грани в тени' )
+		if( !( got.pillar! > 0 ) ) return fail( 'подвал не показал вершины столба' )
+		if( $bog_gamengine_probe_dark( got.pillar_pixel! ) ) return fail( 'столб чёрный' )
+		if( $bog_gamengine_probe_near( got.pillar_pixel!, got.floor_pixel! ) ) return fail( 'столб совпал с полом у его основания' )
 
 		return say( $bog_gamengine_probe_room_ok )
 	}

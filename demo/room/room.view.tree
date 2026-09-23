@@ -14,6 +14,8 @@ $bog_gamengine_demo_room $mol_page
 			sub / <= stat
 		<= Walker_stat $mol_view
 			sub / <= walker_stat \
+		<= Pillar_stat $mol_view
+			sub / <= pillar_stat \
 	Key $bog_gamengine_key
 		bind *
 			forward / \W
@@ -56,6 +58,12 @@ $bog_gamengine_demo_room $mol_page
 					tile 12
 				atlas <= Atlas
 				nodes / <= Floor
+			<= Pillar_batch $bog_gamengine_batch
+				shader <= Solid
+				shape <= Pillar_shape $bog_gamengine_shape_gltf
+					data <= pillar_data ArrayBuffer
+				atlas <= Atlas
+				nodes / <= Pillar
 	Wall* $bog_gamengine_mesh
 		shape <= Box
 		atlas <= Atlas
@@ -67,6 +75,11 @@ $bog_gamengine_demo_room $mol_page
 		frame \floor
 		pos <= floor_pos Float32Array
 		size <= floor_size Float32Array
+	Pillar $bog_gamengine_mesh
+		shape <= Pillar_shape
+		atlas <= Atlas
+		frame \wall
+		pos <= pillar_pos Float32Array
 	Walker $bog_gamengine_demo_room_walker
 		key <= Key
 		tile <= Tile

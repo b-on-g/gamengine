@@ -21,6 +21,7 @@ namespace $.$$ {
 		atlas: $bog_gamengine_atlas | null
 		sampler: $mol_3d_glob | null
 		tex: $bog_gamengine_draw_tex | null
+		triangles: boolean
 		size: number
 		cap: number
 	}
@@ -65,7 +66,10 @@ namespace $.$$ {
 		slots() {
 			const batches = this.scene().batches()
 			const slots = [] as $bog_gamengine_draw_slot[]
-			for( let i = 0; i < batches.length; ++ i ) slots.push( this.slot( batches[ i ] ) )
+			for( let i = 0; i < batches.length; ++ i ) {
+				const slot = this.slot( batches[ i ] )
+				if( slot ) slots.push( slot )
+			}
 			return slots as readonly $bog_gamengine_draw_slot[]
 		}
 
@@ -80,6 +84,7 @@ namespace $.$$ {
 			const program = shader.program( context ) as $mol_3d_program< $bog_gamengine_draw_face >
 			const globs = shader.face().glob ?? {}
 			const shape = batch.shape()
+			if( !this.shape_ready( shape ) ) return null
 			const atlas = batch.atlas()
 			const cap = Math.max( batch.cap, 16 )
 
@@ -99,6 +104,7 @@ namespace $.$$ {
 				atlas,
 				sampler: atlas ? program.glob( 'atlas' ) : null,
 				tex: atlas ? this.tex( atlas ) : null,
+				triangles: shape.mode() === 'triangles',
 				size: shape.size(),
 				cap,
 			}
@@ -119,6 +125,16 @@ namespace $.$$ {
 
 			this.slots_all.set( batch, slot )
 			return slot
+		}
+
+		shape_ready( shape: $bog_gamengine_shape ) {
+			try {
+				shape.geometry()
+				return true
+			} catch( error ) {
+				if( $mol_promise_like( error ) ) return false
+				return $mol_fail_hidden( error )
+			}
 		}
 
 		tex( atlas: $bog_gamengine_atlas ) {
@@ -210,7 +226,8 @@ namespace $.$$ {
 				gl.bufferSubData( gl.ARRAY_BUFFER, 0, batch.uv, 0, count * 4 )
 			}
 			if( grown ) slot.cap = batch.cap
-			slot.program.strips( 0, slot.size, count )
+			if( slot.triangles ) gl.drawArraysInstanced( gl.TRIANGLES, 0, slot.size, count )
+			else slot.program.strips( 0, slot.size, count )
 		}
 
 		measure() {
