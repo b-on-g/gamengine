@@ -52,11 +52,7 @@
 
 | Модуль мола | Зачем |
 |---|---|
-| `$mol_3d_pane` | холст, контекст WebGL2, viewport под DPR, `paint()` |
-| `$mol_3d_context`, `$mol_3d_program` | компиляция шейдеров по `face`, draw-вызовы, инстансинг |
-| `$mol_3d_param`, `$mol_3d_glob`, `$mol_3d_buffer` | атрибуты, юниформы, заливка буферов |
-| `$mol_3d_texture` | одиночная текстура и texture array |
-| `$mol_3d_geometry` | VAO на пару программа×фигура |
+| свой `gl/` вместо `$mol_3d_pane/context/program/param/glob/buffer/geometry/texture` | холст и контекст в `draw`, префикс шейдера по `face`, программа, буферы атрибутов, texture array, юниформы |
 | `$mol_3d_mat4` | матрицы, перспектива, ортография, инверсия |
 | `$mol_3d_image` | загрузка картинки по uri с заглушкой при ошибке |
 | `$mol_3d_shape` | фигуры как пары буферов: вершины и uv |
@@ -75,6 +71,15 @@
 ## 3. Грабли `$mol_3d`, найденные чтением исходников
 
 Это не мнения, это строки кода. Каждая меняет архитектуру.
+
+Часть грабель сняло решение завести свой слой `gl/`. Толчком стал
+`mol/3d/texture/texture.ts:66`: `data[0].width` на `TexImageSource` не проходит
+аудит под TS 6, а ошибка типов в чужом файле не лечится наследованием, подменённый
+`send_multi` файл из бандла не убирает. Файл попадает туда по цепочке классов
+`$mol_3d_pane → context → program → glob → texture`, и вырезать одно звено нельзя.
+Поэтому `draw` это `$mol_view` с `dom_name \canvas`, а программа, буферы, texture
+array и юниформы это функции и маленькие классы в `gl/` без единого мол-объекта.
+Из `$mol_3d` остались только `mat4`, `shape`, `image` и строки `glsl`.
 
 ### 3.1. Весь GLSL бандла попадает в каждую программу
 
@@ -95,7 +100,7 @@ identifier`. Там же выяснилось, что подмешивать в 
 Решение: `.glsl` файлы только для чистых функций с аргументами, как `sdf.glsl` и
 `mat4.glsl` в моле, и без `.vert.`/`.frag.` в имени, чтобы попадать в `both`. Точка
 входа программы живёт строкой в TS-файле шейдера и собирается через
-`context.program( face, $mol_3d_glsl_both + vert, $mol_3d_glsl_both + frag )`.
+`$bog_gamengine_gl_program( gl, face, $mol_3d_glsl_both + vert, $mol_3d_glsl_both + frag )`.
 Подробно в разделе 8.
 
 ### 3.1а. Подчёркивание в `.glsl` это путь модуля
@@ -117,7 +122,8 @@ identifier`. Там же выяснилось, что подмешивать в 
 драйвер её терпит.
 
 Решение: **GL-объекты кэширует только `draw`**, по ключу «программа × фигура × имя
-атрибута». Узлы сцены к контексту доступа не имеют вообще.
+атрибута». Узлы сцены к контексту доступа не имеют вообще. Снято своим слоем `gl/`:
+`$bog_gamengine_gl_buffer` создаётся один раз в слоте батча.
 
 ### 3.3. Texture array только из одинаковых квадратов
 
@@ -136,7 +142,8 @@ identifier`. Там же выяснилось, что подмешивать в 
 premultiplied blend, для объёма наоборот.
 
 Решение: `draw` перед каждым батчем сам выставляет depth, cull и blend по типу
-батча. На состояние по умолчанию не полагаемся.
+батча. На состояние по умолчанию не полагаемся. Снято своим слоем `gl/`: программа
+из `$bog_gamengine_gl_program` состояние контекста не трогает.
 
 ### 3.5. Кадр не тикает в фоновой вкладке
 
@@ -167,9 +174,10 @@ premultiplied blend, для объёма наоборот.
 `deleteVertexArray`. Когда список батчей пересчитывается, ячейка старого ключа никем
 не прочитана, мол её сметает, и VAO удаляется под живым батчем. Найдено в задаче 1.9.
 
-Решение: `draw` создаёт `new $mol_3d_geometry( gl )` сам и держит в слоте батча
+Решение: `draw` создаёт VAO сам и держит в слоте батча
 (`WeakMap< batch, slot >`), вместе с программой, юниформами и буферами. Слоты
-создаются в мемо по `scene.batches()`, `paint()` только заливает.
+создаются в мемо по `scene.batches()`, `paint()` только заливает. Снято своим слоем
+`gl/`: VAO это `gl.createVertexArray()` в слоте, без мемо и деструктора.
 
 ### 3.9. Панель в теле `$mol_page` схлопывается в ноль
 
@@ -189,7 +197,9 @@ premultiply, а blend уже premultiplied. Полупрозрачные кра�
 на `null`, под SwiftShader расширения может не быть. Найдено в задаче 2.3.
 
 Решение: `draw` ставит `pixelStorei` сам до `send_multi`. Про анизотропию:
-если проба падает на `null`, `draw` заливает слои сам теми же вызовами.
+если проба падает на `null`, `draw` заливает слои сам теми же вызовами. Снято своим
+слоем `gl/`: `$bog_gamengine_gl_texture_array` ставит premultiply до заливки, размер
+берёт из атласа, анизотропию включает только при наличии расширения.
 
 ### 3.11. Объект в ключе `@$mol_mem_key` слипается
 
@@ -212,7 +222,7 @@ premultiply, а blend уже premultiplied. Полупрозрачные кра�
 | `cam` | `$bog_gamengine_cam` | `$bog_gamengine_node` | `view()` из world, `proj()` абстрактный |
 | `cam/flat` | `$bog_gamengine_cam_flat` | `cam` | ортография, `zoom`, экран→мир |
 | `cam/deep` | `$bog_gamengine_cam_deep` | `cam` | перспектива, `fov`, `near`, `far` |
-| `shader` | `$bog_gamengine_shader` | `$mol_object2` | `face`, `vert`, `frag` строками, программа из контекста |
+| `shader` | `$bog_gamengine_shader` | `$mol_object2` | `face`, `vert`, `frag` строками, программа из `gl/` по контексту |
 | `shader/sprite` | `$bog_gamengine_shader_sprite` | `shader` | квад, слой атласа, uv-сдвиг, цвет |
 | `shader/solid` | `$bog_gamengine_shader_solid` | `shader` | объём с нормалью и ламбертом |
 | `shape` | `$bog_gamengine_shape` | `$mol_3d_shape` | добавляет нормали и индекс; `shape/quad`, `shape/box`, `shape/plane` |
@@ -220,7 +230,8 @@ premultiply, а blend уже premultiplied. Полупрозрачные кра�
 | `batch` | `$bog_gamengine_batch` | `$mol_object2` | горячая зона: шейдер, фигура, `count`, плоские буферы инстансов |
 | `sprite` | `$bog_gamengine_sprite` | `node` | холодный спрайт: `atlas`, `frame`, `layer`, `tint`, пишет себя в батч |
 | `mesh` | `$bog_gamengine_mesh` | `node` | холодный объёмный объект: `shape`, `atlas`, `layer`, пишет себя в батч |
-| `draw` | `$bog_gamengine_draw` | `$mol_3d_pane` | единственный владелец GL: кэш программ, VAO, буферов; `paint()` |
+| `gl` | `$bog_gamengine_gl_*` | функции и классы | префикс по `face`, программа, буфер атрибута, texture array, юниформы; мола внутри нет |
+| `draw` | `$bog_gamengine_draw` | `$mol_view` | единственный владелец GL: холст, контекст, кэш программ, VAO, буферов; `paint()` |
 | `key` | `$bog_gamengine_key` | `$mol_object2` | именованные действия поверх `$mol_keyboard_state`: `jump`, `left` |
 | `pad` | `$bog_gamengine_pad` | `$mol_object2` | геймпад через `navigator.getGamepads()`, опрос по кадру |
 | `point` | `$bog_gamengine_point` | `$mol_object2` | указатель: экран→мир через камеру, луч для 3D |
@@ -292,7 +303,7 @@ S2 показал, что замер внутри `paint()` занижает к�
 
 Плоский режим: depth выключен, батчи рисуются по возрастанию `layer`, внутри батча
 в порядке заполнения. Blend premultiplied, атлас грузится с
-`UNPACK_PREMULTIPLY_ALPHA_WEBGL` (это уже делает `send_multi`).
+`UNPACK_PREMULTIPLY_ALPHA_WEBGL` (это делает `gl/` до заливки слоёв).
 
 Объёмный режим: depth включён, cull задних граней включён, непрозрачные батчи
 любым порядком, прозрачные после них по убыванию расстояния до камеры.
@@ -338,9 +349,9 @@ export class $bog_gamengine_shader_sprite extends $bog_gamengine_shader {
 }
 ```
 
-`$bog_gamengine_shader.program( context )` собирает
+`$bog_gamengine_shader.program( gl )` собирает
 `$mol_3d_glsl_both + vert()` и `$mol_3d_glsl_both + frag()`, зовёт
-`context.program( face, ..., ... )`. Так библиотечные `.glsl` функции доступны,
+`new $bog_gamengine_gl_program( gl, face, ..., ... )`. Так библиотечные `.glsl` функции доступны,
 а точка входа одна на программу, и грабля 3.1 не срабатывает. Строки
 `$mol_3d_glsl_vert` и `$mol_3d_glsl_frag` не подмешиваются никогда, см. 3.1.
 
