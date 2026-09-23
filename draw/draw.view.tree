@@ -9,4 +9,7 @@ $bog_gamengine_draw $mol_view
 	light_dir Float32Array
 	ambient 0.35
 	wireframe? false
+	shadows? true
+	shadow_size? 2048
+	shadow_range? 20
 	stat \

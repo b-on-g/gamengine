@@ -65,6 +65,24 @@ namespace $ {
 			$mol_assert_ok( shader.frag().includes( 'pipe_normal_layer' ) )
 		},
 
+		'shadow uniforms are in face and frag has a pcf function over shadow_map'( $ ) {
+			const shader = new $bog_gamengine_shader_solid
+			const glob = shader.face().glob
+			$mol_assert_equal( glob.shadow_mat, 'mat4' )
+			$mol_assert_equal( glob.shadow_map, 'sampler2DShadow' )
+			$mol_assert_equal( glob.shadow_light, 'int' )
+			const frag = shader.frag()
+			$mol_assert_ok( frag.includes( 'float shade( vec3 pos, vec3 normal, vec3 light )' ) )
+			$mol_assert_ok( frag.includes( 'texture( shadow_map, coord + vec3( vec2( x, y ) * texel, 0.0 ) )' ) )
+			$mol_assert_ok( frag.includes( 'return sum / 9.0;' ) )
+		},
+
+		'shadow multiplies only the light it was built for'( $ ) {
+			const frag = new $bog_gamengine_shader_solid().frag()
+			$mol_assert_ok( frag.includes( 'float atten = i == shadow_light ? lit : 1.0;' ) )
+			$mol_assert_not( frag.includes( 'break' ) )
+		},
+
 		'array uniform is declared with size after name'( $ ) {
 			const source = $bog_gamengine_gl_source( { glob: { light_pos: 'vec4[8]' } }, '', '' )
 			$mol_assert_ok( source.frag.includes( 'uniform vec4 light_pos[8];' ) )

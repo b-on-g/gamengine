@@ -7,6 +7,9 @@ $bog_gamengine_demo_room $mol_page
 		<= Shine $mol_check_box
 			title \Блики
 			checked? <=> shine? false
+		<= Shadows $mol_check_box
+			title \Тени
+			checked? <=> shadows?
 		<= Pause $mol_check_box
 			title \Пауза
 			checked? <=> paused?
@@ -18,6 +21,7 @@ $bog_gamengine_demo_room $mol_page
 			scene <= Scene
 			cam <= Walker
 			wireframe? => wireframe?
+			shadows? => shadows?
 			stat => stat
 		<= Screen $bog_gamengine_input_screen
 			shown? <=> screen_shown? false

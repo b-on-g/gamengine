@@ -24,12 +24,22 @@ namespace $ {
 				precision highp float;
 				precision highp sampler2D;
 				precision highp sampler2DArray;
+				precision highp sampler2DShadow;
 			`
 
 	export function $bog_gamengine_gl_decl( kind: string, type: string, name: string ) {
 		const open = type.indexOf( '[' )
 		if( open < 0 ) return `${ kind } ${ type } ${ name };\n`
 		return `${ kind } ${ type.slice( 0, open ) } ${ name }${ type.slice( open ) };\n`
+	}
+
+	export function $bog_gamengine_gl_slots( type: $bog_gamengine_gl_type ) {
+		switch( type ) {
+			case 'mat4': return 4
+			case 'mat3': return 3
+			case 'mat2': return 2
+			default: return 1
+		}
 	}
 
 	export function $bog_gamengine_gl_source( face: $bog_gamengine_gl_face, vert: string, frag: string ) {
@@ -43,8 +53,11 @@ namespace $ {
 			refrag += decl
 		}
 
+		let location = 0
 		for( const name in face.input ?? {} ) {
-			revert += `in ${ face.input![ name ] } ${ name };\n`
+			const type = face.input![ name ]
+			revert += `layout( location = ${ location } ) in ${ type } ${ name };\n`
+			location += $bog_gamengine_gl_slots( type )
 		}
 
 		for( const name in face.pipe ?? {} ) {
@@ -174,6 +187,46 @@ namespace $ {
 		gl.generateMipmap( gl.TEXTURE_2D_ARRAY )
 
 		return texture
+	}
+
+	export class $bog_gamengine_gl_depth_target extends Object {
+
+		readonly native: WebGLFramebuffer
+		readonly texture: WebGLTexture
+
+		constructor(
+			readonly gl: WebGL2RenderingContext,
+			readonly size: number,
+		) {
+			super()
+			this.texture = gl.createTexture()!
+			gl.bindTexture( gl.TEXTURE_2D, this.texture )
+			gl.texStorage2D( gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, size, size )
+			gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR )
+			gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR )
+			gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE )
+			gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE )
+			gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE )
+			gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL )
+			gl.bindTexture( gl.TEXTURE_2D, null )
+			this.native = gl.createFramebuffer()!
+			gl.bindFramebuffer( gl.FRAMEBUFFER, this.native )
+			gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, this.texture, 0 )
+			gl.drawBuffers([ gl.NONE ])
+			gl.readBuffer( gl.NONE )
+			const status = gl.checkFramebufferStatus( gl.FRAMEBUFFER )
+			gl.bindFramebuffer( gl.FRAMEBUFFER, null )
+			if( status === gl.FRAMEBUFFER_COMPLETE ) return
+			this.dispose()
+			throw new Error( `Depth target is incomplete (${ status })` )
+		}
+
+		dispose() {
+			this.gl.deleteFramebuffer( this.native )
+			this.gl.deleteTexture( this.texture )
+			return this
+		}
+
 	}
 
 	export function $bog_gamengine_gl_uniform_matrix( gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, data: Float32Array ) {

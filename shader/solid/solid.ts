@@ -15,6 +15,9 @@ namespace $ {
 					ambient: 'vec3',
 					cam_pos: 'vec3',
 					wireframe: 'float',
+					shadow_mat: 'mat4',
+					shadow_map: 'sampler2DShadow',
+					shadow_light: 'int',
 				},
 				input: {
 					vertex: 'vec3',
@@ -75,6 +78,21 @@ namespace $ {
 					float scale = inversesqrt( max( dot( tangent, tangent ), dot( bitangent, bitangent ) ) );
 					return normalize( mat3( tangent * scale, bitangent * scale, normal ) * bump );
 				}
+				float shade( vec3 pos, vec3 normal, vec3 light ) {
+					float slope = 1.0 - max( dot( normal, light ), 0.0 );
+					vec4 clip = shadow_mat * vec4( pos + normal * ( 0.03 + 0.09 * slope ), 1.0 );
+					if( any( greaterThan( abs( clip.xyz ), vec3( 1.0 ) ) ) ) return 1.0;
+					vec3 coord = clip.xyz * 0.5 + 0.5;
+					coord.z -= 0.0015;
+					vec2 texel = 1.0 / vec2( textureSize( shadow_map, 0 ) );
+					float sum = 0.0;
+					for( int y = -1; y <= 1; ++ y ) {
+						for( int x = -1; x <= 1; ++ x ) {
+							sum += texture( shadow_map, coord + vec3( vec2( x, y ) * texel, 0.0 ) );
+						}
+					}
+					return sum / 9.0;
+				}
 				void main() {
 					if( wireframe > 0.5 ) {
 						color = vec4( 1.0 );
@@ -93,13 +111,15 @@ namespace $ {
 					vec3 f0 = mix( vec3( 0.04 ), albedo, metallic );
 					vec3 diffuse = albedo * ( 1.0 - metallic );
 					vec3 sum = albedo * ( ambient + pipe_material.z );
+					float lit = 1.0;
+					if( shadow_light >= 0 ) lit = shade( pipe_pos, normal, - normalize( light_dir[ shadow_light ].xyz ) );
 					for( int i = 0; i < 8; ++ i ) {
 						if( i < light_count ) {
 							vec3 way = light_pos[ i ].xyz - pipe_pos;
 							float dist = length( way );
 							vec3 aim = normalize( light_dir[ i ].xyz );
 							vec3 light = - aim;
-							float atten = 1.0;
+							float atten = i == shadow_light ? lit : 1.0;
 							if( light_pos[ i ].w > 0.5 ) {
 								light = way / max( dist, 0.0001 );
 								atten = bog_gamengine_pbr_window( dist, light_color[ i ].w );

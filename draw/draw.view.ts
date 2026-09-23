@@ -5,6 +5,7 @@ namespace $.$$ {
 			proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray',
 			light_count: 'int', light_pos: 'vec4[8]', light_dir: 'vec4[8]', light_color: 'vec4[8]',
 			ambient: 'vec3', cam_pos: 'vec3', wireframe: 'float',
+			shadow_mat: 'mat4', shadow_map: 'sampler2DShadow', shadow_light: 'int',
 		}
 		input: {
 			vertex: 'vec3', uv: 'vec2', normal: 'vec3',
@@ -25,7 +26,11 @@ namespace $.$$ {
 		ambient = null as WebGLUniformLocation | null
 		cam_pos = null as WebGLUniformLocation | null
 		wireframe = null as WebGLUniformLocation | null
+		shadow_mat = null as WebGLUniformLocation | null
+		shadow_map = null as WebGLUniformLocation | null
+		shadow_light = null as WebGLUniformLocation | null
 		depth = false
+		ready = false
 		vao = null! as WebGLVertexArrayObject
 		vertex = null! as $bog_gamengine_gl_buffer
 		live = false
@@ -67,6 +72,50 @@ namespace $.$$ {
 
 	const light_max = 8
 
+	export function $bog_gamengine_draw_shadow_mat( dir: Float32Array, at: number, center: Float32Array, range: number, out: Float32Array ) {
+		let dx = dir[ at ]
+		let dy = dir[ at + 1 ]
+		let dz = dir[ at + 2 ]
+		const len = Math.hypot( dx, dy, dz ) || 1
+		dx /= len
+		dy /= len
+		dz /= len
+		const flat = Math.abs( dy ) > 0.99
+		const ax = 0
+		const ay = flat ? 0 : 1
+		const az = flat ? 1 : 0
+		let rx = ay * dz - az * dy
+		let ry = az * dx - ax * dz
+		let rz = ax * dy - ay * dx
+		const rl = Math.hypot( rx, ry, rz ) || 1
+		rx /= rl
+		ry /= rl
+		rz /= rl
+		const ux = dy * rz - dz * ry
+		const uy = dz * rx - dx * rz
+		const uz = dx * ry - dy * rx
+		const cx = center[ 0 ]
+		const cy = center[ 1 ]
+		const cz = center[ 2 ]
+		out[ 0 ] = rx / range
+		out[ 1 ] = ux / range
+		out[ 2 ] = dx / range
+		out[ 3 ] = 0
+		out[ 4 ] = ry / range
+		out[ 5 ] = uy / range
+		out[ 6 ] = dy / range
+		out[ 7 ] = 0
+		out[ 8 ] = rz / range
+		out[ 9 ] = uz / range
+		out[ 10 ] = dz / range
+		out[ 11 ] = 0
+		out[ 12 ] = - ( rx * cx + ry * cy + rz * cz ) / range
+		out[ 13 ] = - ( ux * cx + uy * cy + uz * cz ) / range
+		out[ 14 ] = - ( dx * cx + dy * cy + dz * cz ) / range
+		out[ 15 ] = 1
+		return out
+	}
+
 	export class $bog_gamengine_draw extends $.$bog_gamengine_draw {
 
 		slots_all = new WeakMap< $bog_gamengine_batch, $bog_gamengine_draw_slot >()
@@ -81,6 +130,10 @@ namespace $.$$ {
 		lights_count = 0
 		wire_off = new Float32Array( 1 )
 		wire_on = new Float32Array([ 1 ])
+		shadow_mat_buf = new Float32Array( 16 )
+		shadow_last = null as $bog_gamengine_gl_depth_target | null
+		sun_at = -1
+		shadow_at = -1
 		gaps = new Float32Array( stat_window )
 		ticks = new Float32Array( stat_window )
 		samples = 0
@@ -163,7 +216,25 @@ namespace $.$$ {
 			return tex.dispose( this.context() )
 		}
 
+		@ $mol_mem
+		shadow_shader() {
+			return new $bog_gamengine_shader_depth
+		}
+
+		@ $mol_mem
+		shadow_target() {
+			const gl = this.context()
+			const size = this.shadow_size()
+			this.shadow_last?.dispose()
+			this.shadow_last = null
+			const target = new $bog_gamengine_gl_depth_target( gl, size )
+			this.shadow_last = target
+			return target
+		}
+
 		destructor() {
+			this.shadow_last?.dispose()
+			this.shadow_last = null
 			const slots = this.slots_last
 			for( let i = 0; i < slots.length; ++ i ) this.slot_drop( slots[ i ] )
 			this.slots_last = []
@@ -203,6 +274,9 @@ namespace $.$$ {
 				ambient: glob( 'ambient' ),
 				cam_pos: glob( 'cam_pos' ),
 				wireframe,
+				shadow_mat: glob( 'shadow_mat' ),
+				shadow_map: glob( 'shadow_map' ),
+				shadow_light: glob( 'shadow_light' ),
 				depth,
 				vao: gl.createVertexArray()!,
 				live: mode === 'lines',
@@ -307,9 +381,11 @@ namespace $.$$ {
 				color[ 2 ] = 1
 				color[ 3 ] = 0
 				this.lights_count = 1
+				this.sun_at = 0
 				return 1
 			}
 			const count = Math.min( lights.length, light_max )
+			this.sun_at = -1
 			for( let i = 0; i < count; ++ i ) {
 				const light = lights[ i ]
 				const kind = light.kind()
@@ -321,6 +397,7 @@ namespace $.$$ {
 				pos[ at + 1 ] = world[ 13 ]
 				pos[ at + 2 ] = world[ 14 ]
 				pos[ at + 3 ] = kind === 'sun' ? 0 : 1
+				if( kind === 'sun' && this.sun_at < 0 ) this.sun_at = i
 				$bog_gamengine_light_dir( world, dir, at )
 				dir[ at + 3 ] = kind === 'spot' ? Math.cos( light.angle() ) : -1
 				color[ at ] = tone[ 0 ] * power
@@ -333,6 +410,7 @@ namespace $.$$ {
 		}
 
 		paint() {
+			this.scene().aspect( this.width() / this.height() || 1 )
 			this.scene().step()
 			const gl = this.context()
 			const slots = this.slots()
@@ -349,51 +427,37 @@ namespace $.$$ {
 			this.cam_pos_vec[ 1 ] = cam_world[ 13 ]
 			this.cam_pos_vec[ 2 ] = cam_world[ 14 ]
 			this.lights_fill()
+			for( let i = 0; i < slots.length; ++ i ) slots[ i ].ready = this.slot_send( gl, slots[ i ] )
+			this.shadow_pass( gl, slots )
+			gl.bindFramebuffer( gl.FRAMEBUFFER, null )
+			gl.viewport( 0, 0, this.width(), this.height() )
+			gl.enable( gl.SCISSOR_TEST )
+			gl.scissor( 0, 0, this.width(), this.height() )
+			gl.cullFace( gl.BACK )
 			gl.enable( gl.BLEND )
 			gl.blendFunc( gl.ONE, gl.ONE_MINUS_SRC_ALPHA )
 			gl.clearColor( 0.08, 0.08, 0.1, 1 )
 			gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT )
-			for( let i = 0; i < slots.length; ++ i ) this.paint_slot( gl, slots[ i ], proj, view, wireframe )
+			for( let i = 0; i < slots.length; ++ i ) {
+				if( slots[ i ].ready ) this.paint_slot( gl, slots[ i ], proj, view, wireframe )
+			}
 			gl.bindVertexArray( null )
 			gl.useProgram( null )
 			this.measure()
 		}
 
-		paint_slot( gl: WebGL2RenderingContext, slot: $bog_gamengine_draw_slot, proj: Float32Array, view: Float32Array, wireframe: boolean ) {
+		slot_send( gl: WebGL2RenderingContext, slot: $bog_gamengine_draw_slot ) {
 			const batch = slot.batch
 			const count = batch.count
-			if( !count ) return
-			if( slot.tex && !slot.tex.native ) return
+			if( !count ) return false
+			if( slot.tex && !slot.tex.native ) return false
 			if( slot.live ) {
 				const geometry = batch.shape().geometry()
 				slot.vertex.send( geometry )
 				slot.size = geometry.length / 3
 			}
-			if( !slot.size ) return
+			if( !slot.size ) return false
 			const grown = batch.cap > slot.cap
-			if( slot.depth ) {
-				gl.enable( gl.DEPTH_TEST )
-				gl.enable( gl.CULL_FACE )
-				gl.cullFace( gl.BACK )
-			} else {
-				gl.disable( gl.DEPTH_TEST )
-				gl.disable( gl.CULL_FACE )
-			}
-			gl.useProgram( slot.program.native )
-			$bog_gamengine_gl_uniform_matrix( gl, slot.proj, proj )
-			$bog_gamengine_gl_uniform_matrix( gl, slot.view, view )
-			$bog_gamengine_gl_uniform_int( gl, slot.light_count, this.lights_count )
-			$bog_gamengine_gl_uniform_vec4s( gl, slot.light_pos, this.lights_pos )
-			$bog_gamengine_gl_uniform_vec4s( gl, slot.light_dir, this.lights_dir )
-			$bog_gamengine_gl_uniform_vec4s( gl, slot.light_color, this.lights_color )
-			$bog_gamengine_gl_uniform_vector( gl, slot.ambient, this.ambient_vec )
-			$bog_gamengine_gl_uniform_vector( gl, slot.cam_pos, this.cam_pos_vec )
-			$bog_gamengine_gl_uniform_vector( gl, slot.wireframe, this.wire_off )
-			if( slot.tex ) {
-				gl.activeTexture( gl.TEXTURE0 )
-				gl.bindTexture( gl.TEXTURE_2D_ARRAY, slot.tex.native )
-				$bog_gamengine_gl_uniform_int( gl, slot.sampler, 0 )
-			}
 			gl.bindVertexArray( slot.vao )
 			gl.bindBuffer( gl.ARRAY_BUFFER, slot.trans.native )
 			if( grown ) gl.bufferData( gl.ARRAY_BUFFER, batch.cap * 64, gl.DYNAMIC_DRAW )
@@ -422,6 +486,72 @@ namespace $.$$ {
 				gl.bufferSubData( gl.ARRAY_BUFFER, 0, batch.normal_layer, 0, count )
 			}
 			if( grown ) slot.cap = batch.cap
+			return true
+		}
+
+		shadow_pass( gl: WebGL2RenderingContext, slots: readonly $bog_gamengine_draw_slot[] ) {
+			this.shadow_at = this.shadows() ? this.sun_at : -1
+			const target = this.shadow_target()
+			if( this.shadow_at < 0 ) return target
+			$bog_gamengine_draw_shadow_mat( this.lights_dir, this.shadow_at * 4, this.cam_pos_vec, this.shadow_range(), this.shadow_mat_buf )
+			const program = this.shadow_shader().program( gl )
+			gl.activeTexture( gl.TEXTURE1 )
+			gl.bindTexture( gl.TEXTURE_2D, null )
+			gl.activeTexture( gl.TEXTURE0 )
+			gl.bindFramebuffer( gl.FRAMEBUFFER, target.native )
+			gl.viewport( 0, 0, target.size, target.size )
+			gl.disable( gl.SCISSOR_TEST )
+			gl.disable( gl.BLEND )
+			gl.enable( gl.DEPTH_TEST )
+			gl.depthMask( true )
+			gl.enable( gl.CULL_FACE )
+			gl.cullFace( gl.FRONT )
+			gl.clear( gl.DEPTH_BUFFER_BIT )
+			gl.useProgram( program.native )
+			$bog_gamengine_gl_uniform_matrix( gl, program.uniform( 'shadow_mat' ), this.shadow_mat_buf )
+			for( let i = 0; i < slots.length; ++ i ) {
+				const slot = slots[ i ]
+				if( !slot.ready || !slot.depth ) continue
+				gl.bindVertexArray( slot.vao )
+				gl.drawArraysInstanced( slot.prim, 0, slot.size, slot.batch.count )
+			}
+			return target
+		}
+
+		paint_slot( gl: WebGL2RenderingContext, slot: $bog_gamengine_draw_slot, proj: Float32Array, view: Float32Array, wireframe: boolean ) {
+			const batch = slot.batch
+			const count = batch.count
+			if( slot.depth ) {
+				gl.enable( gl.DEPTH_TEST )
+				gl.enable( gl.CULL_FACE )
+				gl.cullFace( gl.BACK )
+			} else {
+				gl.disable( gl.DEPTH_TEST )
+				gl.disable( gl.CULL_FACE )
+			}
+			gl.useProgram( slot.program.native )
+			$bog_gamengine_gl_uniform_matrix( gl, slot.proj, proj )
+			$bog_gamengine_gl_uniform_matrix( gl, slot.view, view )
+			$bog_gamengine_gl_uniform_int( gl, slot.light_count, this.lights_count )
+			$bog_gamengine_gl_uniform_vec4s( gl, slot.light_pos, this.lights_pos )
+			$bog_gamengine_gl_uniform_vec4s( gl, slot.light_dir, this.lights_dir )
+			$bog_gamengine_gl_uniform_vec4s( gl, slot.light_color, this.lights_color )
+			$bog_gamengine_gl_uniform_vector( gl, slot.ambient, this.ambient_vec )
+			$bog_gamengine_gl_uniform_vector( gl, slot.cam_pos, this.cam_pos_vec )
+			$bog_gamengine_gl_uniform_vector( gl, slot.wireframe, this.wire_off )
+			$bog_gamengine_gl_uniform_matrix( gl, slot.shadow_mat, this.shadow_mat_buf )
+			$bog_gamengine_gl_uniform_int( gl, slot.shadow_light, this.shadow_at )
+			if( slot.shadow_map ) {
+				gl.activeTexture( gl.TEXTURE1 )
+				gl.bindTexture( gl.TEXTURE_2D, this.shadow_target().texture )
+				$bog_gamengine_gl_uniform_int( gl, slot.shadow_map, 1 )
+			}
+			if( slot.tex ) {
+				gl.activeTexture( gl.TEXTURE0 )
+				gl.bindTexture( gl.TEXTURE_2D_ARRAY, slot.tex.native )
+				$bog_gamengine_gl_uniform_int( gl, slot.sampler, 0 )
+			}
+			gl.bindVertexArray( slot.vao )
 			gl.drawArraysInstanced( slot.prim, 0, slot.size, count )
 			if( !wireframe || slot.wire === null ) return
 			$bog_gamengine_gl_uniform_vector( gl, slot.wireframe, this.wire_on )

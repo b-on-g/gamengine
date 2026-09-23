@@ -73,6 +73,25 @@ namespace $ {
 			$mol_assert_equal( draw.gl.deleted, [ 'buffer gone', 'vao gone' ] )
 		},
 
+		'light matrix puts a point on the sphere border into ±1'( $ ) {
+			const mat = $$.$bog_gamengine_draw_shadow_mat(
+				new Float32Array([ 0, -1, 0 ]), 0,
+				new Float32Array([ 1, 2, 3 ]), 10,
+				new Float32Array( 16 ),
+			)
+			const round = ( value: number )=> Math.round( value * 1e6 ) / 1e6 + 0
+			const at = ( x: number, y: number, z: number )=> [
+				round( mat[ 0 ] * x + mat[ 4 ] * y + mat[ 8 ] * z + mat[ 12 ] ),
+				round( mat[ 1 ] * x + mat[ 5 ] * y + mat[ 9 ] * z + mat[ 13 ] ),
+				round( mat[ 2 ] * x + mat[ 6 ] * y + mat[ 10 ] * z + mat[ 14 ] ),
+			]
+			$mol_assert_equal( at( 1, 2, 3 ), [ 0, 0, 0 ] )
+			$mol_assert_equal( at( 11, 2, 3 ), [ 1, 0, 0 ] )
+			$mol_assert_equal( at( 1, 2, 13 ), [ 0, 1, 0 ] )
+			$mol_assert_equal( at( 1, -8, 3 ), [ 0, 0, 1 ] )
+			$mol_assert_equal( at( 1, 12, 3 ), [ 0, 0, -1 ] )
+		},
+
 		'stat without context is a string'( $ ) {
 			$.$mol_state_time = $bog_gamengine_draw_time_mock
 			const draw = new $bog_gamengine_draw

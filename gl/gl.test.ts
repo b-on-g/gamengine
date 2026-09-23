@@ -19,6 +19,19 @@ namespace $ {
 			$mol_assert_not( source.frag.includes( 'vertex' ) )
 		},
 
+		'sampler2DShadow glob is declared as uniform in frag'( $ ) {
+			const source = $bog_gamengine_gl_source( { glob: { shadow_map: 'sampler2DShadow' } }, '', '' )
+			$mol_assert_ok( source.frag.includes( 'uniform sampler2DShadow shadow_map;\n' ) )
+			$mol_assert_ok( source.frag.includes( 'precision highp sampler2DShadow;' ) )
+		},
+
+		'inputs get layout locations in face order, mat4 takes four'( $ ) {
+			const source = $bog_gamengine_gl_source( { input: { vertex: 'vec3', inst_trans: 'mat4', inst_tint: 'vec4' } }, '', '' )
+			$mol_assert_ok( source.vert.includes( 'layout( location = 0 ) in vec3 vertex;\n' ) )
+			$mol_assert_ok( source.vert.includes( 'layout( location = 1 ) in mat4 inst_trans;\n' ) )
+			$mol_assert_ok( source.vert.includes( 'layout( location = 5 ) in vec4 inst_tint;\n' ) )
+		},
+
 		'pipe is out in vert and in in frag'( $ ) {
 			const source = $bog_gamengine_gl_source( { pipe: { pipe_tint: 'vec4' } }, '', '' )
 			$mol_assert_ok( source.vert.includes( 'out vec4 pipe_tint;\n' ) )

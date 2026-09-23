@@ -67,7 +67,7 @@ namespace $.$$ {
 
 		@ $mol_mem
 		sun_rot() {
-			return new Float32Array([ - Math.PI / 4, 0.3, 0 ])
+			return new Float32Array([ -0.6, 1.1, 0 ])
 		}
 
 		@ $mol_mem
