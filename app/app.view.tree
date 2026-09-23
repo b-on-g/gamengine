@@ -41,6 +41,7 @@ $bog_gamestudio_app $mol_view
 				shader <= Gizmo_shader
 				shape <= Gizmo_box $bog_gamengine_shape_lines
 				nodes <= gizmo_box_nodes /
+		clock <= Clock $bog_gamengine_clock
 		scene => Scene
 	Cam $bog_gamengine_cam_flat
 		height 6

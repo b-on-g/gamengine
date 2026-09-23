@@ -9,6 +9,8 @@ namespace $ {
 		readonly props: Readonly< Record< string, $mol_tree2 > >
 	}
 
+	export type $bog_gamestudio_doc_klass = new()=> $bog_gamengine_scene
+
 	export class $bog_gamestudio_doc extends $mol_object2 {
 
 		@ $mol_mem
@@ -102,104 +104,57 @@ namespace $ {
 			return typeof value === 'number' ? String( Math.round( value * 1e6 ) / 1e6 ) : String( value )
 		}
 
-		strip( tree: $mol_tree2 ): $mol_tree2 {
-			if( /^[A-Z]/.test( tree.type ) && tree.kids[ 0 ]?.type.startsWith( '$' ) ) return tree.clone( [] )
-			return tree.clone( tree.kids.map( kid => this.strip( kid ) ) )
-		}
-
-		@ $mol_mem_key
-		decl_text( name: string ) {
-			const klass = this.decls().get( name )
-			return klass ? this.strip( klass ).toString() : ''
-		}
-
-		@ $mol_mem_key
-		decl( name: string ) {
-			return this.$.$mol_tree2_from_string( this.decl_text( name ), name || 'scene' ).kids[ 0 ] ?? null
-		}
-
-		@ $mol_mem_key
-		part( name: string ) {
-			const klass = this.decl( name )
-			if( !klass ) return $mol_fail( new Error( `${ name || 'Scene' } is not declared` ) )
-			const Klass = ( this.$ as unknown as Record< string, unknown > )[ klass.type ]
-			if( typeof Klass !== 'function' ) return $mol_fail( new Error( `Unknown class ${ klass.type } of ${ name || 'scene' }` ) )
-			const obj = new ( Klass as typeof $mol_object2 )
-			obj.$ = this.$
-			const props = obj instanceof $bog_gamengine_node ? obj.props() : []
-			for( const line of klass.kids ) {
-				const prop = line.type.replace( /\?$/, '' )
-				const value = line.kids[ 0 ]
-				if( !value ) continue
-				const known = value.type === '<=' ? null : props.find( known => known.name === prop )
-				if( known ) {
-					known.set( this.parse( known.kind, line ) )
-					continue
-				}
-				( obj as unknown as Record< string, unknown > )[ prop ] = ()=> this.value( `${ name }.${ prop }` )
-			}
-			return obj
-		}
-
-		parse( kind: $bog_gamengine_prop[ 'kind' ], line: $mol_tree2 ): unknown {
-			switch( kind ) {
-				case 'number': return Number( line.kids[ 0 ].type )
-				case 'flag': return line.kids[ 0 ].type === 'true'
-				case 'text':
-				case 'frame': return line.text()
-			}
-			return new Float32Array( this.nums( line.kids[ 0 ] ) )
-		}
-
-		nums( list: $mol_tree2 ) {
-			const out = [] as number[]
-			let cur = list.kids[ 0 ] as $mol_tree2 | undefined
-			while( cur ) {
-				out.push( Number( cur.type ) )
-				cur = cur.kids[ 0 ]
-			}
-			return out
-		}
-
-		items( list: $mol_tree2 ) {
-			const out = [] as $mol_tree2[]
-			for( const kid of list.kids ) {
+		flat( tree: $mol_tree2 ): $mol_tree2 {
+			if( tree.type !== '/' ) return tree.clone( tree.kids.map( kid => this.flat( kid ) ) )
+			const items = [] as $mol_tree2[]
+			for( const kid of tree.kids ) {
 				if( !kid.type || Number.isNaN( Number( kid.type ) ) ) {
-					out.push( kid )
+					items.push( this.flat( kid ) )
 					continue
 				}
 				let cur = kid as $mol_tree2 | undefined
 				while( cur ) {
-					out.push( cur )
+					items.push( cur.clone( [] ) )
 					cur = cur.kids[ 0 ]
 				}
 			}
-			return out
+			return tree.clone( items )
 		}
 
-		@ $mol_mem_key
-		value( path: string ): unknown {
-			const cut = path.indexOf( '.' )
-			const owner = path.slice( 0, cut )
-			const prop = path.slice( cut + 1 )
-			const line = this.decl( owner )?.kids.find( kid => kid.type.replace( /\?$/, '' ) === prop )
-			if( !line ) return undefined
-			if( line.kids.length && !line.kids[ 0 ].type ) return line.text()
-			return this.eval( line.kids[ 0 ] )
+		unlock( tree: $mol_tree2 ): $mol_tree2 {
+			const klass = tree.kids[ 0 ]
+			if( !/^[A-Z]/.test( tree.type ) || !klass?.type.startsWith( '$' ) ) return tree.clone( tree.kids.map( kid => this.unlock( kid ) ) )
+			return tree.clone([ klass.clone( klass.kids.map( line => {
+				const value = line.kids[ 0 ]
+				if( line.kids.length !== 1 || /^[<=>^@*$]/.test( value.type ) ) return this.unlock( line )
+				const prop = line.type.replace( /\?$/, '' )
+				return line.struct( prop + '?', [ line.struct( '<=>', [ line.struct( `${ tree.type }_${ prop }?`, [ value ] ) ] ) ] )
+			} ) ) ])
 		}
 
-		eval( value: $mol_tree2 ): unknown {
-			if( !value.type ) return value.value
-			if( value.type === '<=' ) return this.ref( value.kids[ 0 ].type.replace( /\?$/, '' ) )
-			if( value.type === '/' ) return this.items( value ).map( item => this.eval( item ) )
-			if( value.type === 'true' ) return true
-			if( value.type === 'false' ) return false
-			if( value.type === 'null' ) return null
-			return Number( value.type )
+		@ $mol_mem
+		js() {
+			return this.$.$mol_tree2_text_to_string( this.$.$mol_view_tree2_to_text( this.unlock( this.flat( this.tree() ) ) ) )
 		}
 
-		ref( name: string ) {
-			return this.decl_text( name ) ? this.part( name ) : this.value( `.${ name }` )
+		@ $mol_mem
+		compile() {
+			const context = Object.create( this.$ ) as $
+			Object.defineProperty( context, '$', { value: context, writable: true, configurable: true } )
+			new Function( '$', this.js() )( context )
+			const known = context as unknown as Record< string, unknown >
+			for( const [ name, klass ] of this.decls() ) {
+				if( typeof known[ klass.type ] === 'function' ) continue
+				$mol_fail( new Error( `Unknown class ${ klass.type } of ${ name || 'scene' }` ) )
+			}
+			const root = this.tree().kids[ 0 ]?.type
+			const klass = root ? known[ root ] as $bog_gamestudio_doc_klass : this.$.$bog_gamengine_scene
+			return { klass, context }
+		}
+
+		@ $mol_mem
+		clock( next?: $bog_gamengine_clock ) {
+			return next ?? new this.$.$bog_gamengine_clock
 		}
 
 		@ $mol_mem
@@ -208,22 +163,14 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		batches() {
-			const own = ( this.value( '.batches' ) as readonly $bog_gamengine_batch[] | undefined ) ?? []
-			return [ ... own, ... this.overlay() ] as readonly $bog_gamengine_batch[]
-		}
-
-		@ $mol_mem
 		scene() {
-			const scene = this.decl_text( '' ) ? this.part( '' ) : this.empty()
-			if( !( scene instanceof $bog_gamengine_scene ) ) return $mol_fail( new Error( `Scene class ${ this.decl( '' )!.type } is not a scene` ) )
-			scene.batches = ()=> this.batches()
-			return scene
-		}
-
-		empty() {
-			const scene = new this.$.$bog_gamengine_scene
-			scene.$ = this.$
+			const { klass, context } = this.compile()
+			const scene = new klass
+			if( !( scene instanceof $bog_gamengine_scene ) ) return $mol_fail( new Error( `Scene class ${ this.tree().kids[ 0 ].type } is not a scene` ) )
+			scene.$ = context
+			const own = klass.prototype.batches as ()=> readonly $bog_gamengine_batch[]
+			scene.batches = ()=> [ ... own.call( scene ), ... this.overlay() ]
+			scene.clock = ()=> this.clock()
 			return scene
 		}
 

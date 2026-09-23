@@ -39,6 +39,46 @@ namespace $ {
 			$mol_assert_equal( doc.scene().nodes()[ 0 ].title(), 'Герой' )
 		},
 
+		'sample compiles into a class named after the root'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample )
+			$mol_assert_equal( doc.compile().klass.name, '$bog_gamestudio_sample' )
+			$mol_assert_equal( doc.scene().nodes().map( node => node.title() ), [ 'Герой', 'Монета', 'Стена' ] )
+		},
+
+		'set gives a new scene with the new value'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample )
+			const before = doc.scene()
+			doc.set( 'Герой', 'pos', [ 3, 0, 0 ] )
+			$mol_assert_not( doc.scene() === before )
+			$mol_assert_equal( doc.scene().nodes()[ 0 ].pos()[ 0 ], 3 )
+		},
+
+		'literal of a node is writable on the node without touching the source'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample )
+			const hero = doc.scene().nodes()[ 0 ] as $bog_gamengine_sprite
+			hero.pos([ 5, 0, 0 ])
+			$mol_assert_equal( hero.pos()[ 0 ], 5 )
+			hero.frame( 'coin' )
+			$mol_assert_equal( hero.frame(), 'coin' )
+			$mol_assert_equal( doc.source(), $bog_gamestudio_sample )
+			doc.set( 'Герой', 'pos', [ 3, 0, 0 ] )
+			$mol_assert_equal( doc.scene().nodes()[ 0 ].pos()[ 0 ], 3 )
+			$mol_assert_equal( ( doc.scene().nodes()[ 0 ] as $bog_gamengine_sprite ).frame(), 'hero' )
+		},
+
+		'clock survives the recompilation'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample )
+			const clock = doc.scene().clock()
+			doc.set( 'Герой', 'pos', [ 3, 0, 0 ] )
+			$mol_assert_ok( doc.scene().clock() === clock )
+		},
+
+		'syntax error fails with the parser message'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample.replace( '\tkids /', '\t\t\tkids /' ) )
+			const error = $mol_assert_fail( ()=> doc.scene(), Error )
+			$mol_assert_ok( error.message.startsWith( 'Too many tabs\nscene.view.tree#2:1/3' ) )
+		},
+
 		'unknown class fails with its name'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample.replace( '$bog_gamengine_sprite', '$' + 'bog_ghost' ) )
 			$mol_assert_fail( ()=> doc.scene().nodes(), 'Unknown class $' + 'bog_ghost of Hero' )
