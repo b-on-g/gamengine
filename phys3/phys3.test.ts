@@ -109,6 +109,30 @@ namespace $ {
 			$mol_assert_equal( [ ...world.aabb.subarray( b * 6, b * 6 + 6 ) ], [ 10, 20, 30, 11, 22, 33 ] )
 		},
 
+		'step of 0.1 equals six steps of 1/60 for a box over the floor'() {
+			const one = new $bog_gamengine_phys3
+			const six = new $bog_gamengine_phys3
+			for( const world of [ one, six ] ) {
+				world.max_steps = 6
+				world.add( $bog_gamengine_phys3.shape_plane, new Float32Array([ 0, 1, 0 ]), 0, new Float32Array( 3 ) )
+				box( world, 1, 0, 0.6, 0 )
+			}
+			one.step( 0.1 )
+			for( let k = 0; k < 6; ++ k ) six.step( 1 / 60 )
+			$mol_assert_equal( one.steps_done, 6 )
+			for( let n = 0; n < 6; ++ n ) $mol_assert_ok( Math.abs( one.pos[ n ] - six.pos[ n ] ) < 1e-6 )
+			for( let n = 0; n < 6; ++ n ) $mol_assert_ok( Math.abs( one.vel[ n ] - six.vel[ n ] ) < 1e-6 )
+		},
+
+		'step of 1 makes at most four substeps and drops the debt'() {
+			const world = new $bog_gamengine_phys3
+			box( world, 1, 0, 0, 0 )
+			world.step( 1 )
+			$mol_assert_equal( world.steps_done, 4 )
+			world.step( 1 / 60 )
+			$mol_assert_equal( world.steps_done, 1 )
+		},
+
 	})
 
 }

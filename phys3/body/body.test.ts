@@ -19,6 +19,7 @@ namespace $ {
 			body.pos( new Float32Array([ 1, 2, 3 ]) )
 			$mol_assert_equal( [ ...world.pos.subarray( 0, 3 ) ], [ 1, 2, 3 ] )
 			world.vel[ 0 ] = 1
+			world.timestep = 0.5
 			world.step( 0.5 )
 			$mol_assert_equal( [ ...body.pos() ], [ 1.5, 2, 3 ] )
 		},

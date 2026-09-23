@@ -137,9 +137,9 @@ namespace $ {
 			scene.phys3( world )
 			$bog_gamengine_scene_time_mock.stamp( 0 )
 			scene.step()
-			$bog_gamengine_scene_time_mock.stamp( 16 )
+			$bog_gamengine_scene_time_mock.stamp( 17 )
 			scene.step()
-			$mol_assert_ok( Math.abs( world.pos[ i * 3 ] - 0.016 ) < 1e-6 )
+			$mol_assert_ok( Math.abs( world.pos[ i * 3 ] - world.timestep ) < 1e-6 )
 		},
 
 		'nodes lists tree depth first with parent before kids'() {

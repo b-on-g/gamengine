@@ -120,6 +120,7 @@ namespace $ {
 		'step refreshes bounds and pairs'() {
 			const world = new $bog_gamengine_phys3
 			world.gravity( new Float32Array( 3 ) )
+			world.timestep = 1
 			box( world, 1, 0, 0, 0 )
 			const i = box( world, 1, 3, 0, 0 )
 			world.vel[ i * 3 ] = -2
