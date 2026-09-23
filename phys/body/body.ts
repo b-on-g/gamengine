@@ -22,6 +22,11 @@ namespace $ {
 			return next ?? false
 		}
 
+		@ $mol_mem
+		ghost( next?: boolean ) {
+			return next ?? false
+		}
+
 		hit( other: $bog_gamengine_phys_body | null ) {}
 
 	}

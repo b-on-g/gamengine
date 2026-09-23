@@ -19,7 +19,7 @@ namespace $ {
 			const tile = this.tile()
 			for( let i = 0; i < bodies.length; ++i ) {
 				if( bodies[ i ].still() ) continue
-				this.move( bodies[ i ], tile, dt )
+				this.move( bodies[ i ], bodies[ i ].ghost() ? null : tile, dt )
 			}
 			for( let i = 0; i < bodies.length; ++i ) {
 				for( let j = i + 1; j < bodies.length; ++j ) this.touch( bodies[ i ], bodies[ j ] )
@@ -174,18 +174,22 @@ namespace $ {
 
 			}
 
-			if( a_still ) {
+			if( !a.ghost() && !b.ghost() ) this.push( a, b, px, py )
+
+			a.hit( b )
+			b.hit( a )
+
+		}
+
+		push( a: $bog_gamengine_phys_body, b: $bog_gamengine_phys_body, px: number, py: number ) {
+			if( a.still() ) {
 				this.shift( b, px, py, true )
-			} else if( b_still ) {
+			} else if( b.still() ) {
 				this.shift( a, - px, - py, true )
 			} else {
 				this.shift( a, - px / 2, - py / 2, false )
 				this.shift( b, px / 2, py / 2, false )
 			}
-
-			a.hit( b )
-			b.hit( a )
-
 		}
 
 		shift( body: $bog_gamengine_phys_body, sx: number, sy: number, stop: boolean ) {

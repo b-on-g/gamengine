@@ -50,6 +50,22 @@ namespace $ {
 			$mol_assert_ok( Math.abs( mover.pos()[ 0 ] - 0.048 ) < 1e-9 )
 		},
 
+		'scene steps phys body by its velocity'( $ ) {
+			$.$mol_state_time = $bog_gamengine_scene_time_mock
+			const body = new $bog_gamengine_phys_body
+			body.vel( new Float32Array([ 1, 0, 0 ]) )
+			const phys = new $bog_gamengine_phys
+			phys.bodies([ body ])
+			const scene = new $bog_gamengine_scene
+			scene.$ = $
+			scene.phys( phys )
+			$bog_gamengine_scene_time_mock.stamp( 0 )
+			scene.step()
+			$bog_gamengine_scene_time_mock.stamp( 16 )
+			scene.step()
+			$mol_assert_ok( Math.abs( body.pos()[ 0 ] - 0.016 ) < 1e-6 )
+		},
+
 		'nodes lists tree depth first with parent before kids'() {
 			const a = new $bog_gamengine_scene_named
 			const b = new $bog_gamengine_scene_named

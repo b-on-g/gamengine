@@ -66,6 +66,36 @@ namespace $ {
 			$mol_assert_equal( b.pos()[ 0 ], 1 )
 		},
 
+		'moving body passes through ghost and both get hit'() {
+			const ghost = new Probe
+			ghost.ghost( true )
+			const mover = new Probe
+			mover.pos( new Float32Array([ 0.5, 0, 0 ]) )
+			mover.vel( new Float32Array([ 1, 0, 0 ]) )
+			const phys = new $bog_gamengine_phys
+			phys.bodies([ ghost, mover ])
+			phys.step( 0.1 )
+			$mol_assert_equal( ghost.pos()[ 0 ], 0 )
+			$mol_assert_ok( Math.abs( mover.pos()[ 0 ] - 0.6 ) < 1e-6 )
+			$mol_assert_equal( ghost.hits, [ mover ] )
+			$mol_assert_equal( mover.hits, [ ghost ] )
+		},
+
+		'ghost inside tile wall is not pushed out'() {
+			const ghost = new Probe
+			ghost.ghost( true )
+			ghost.pos( new Float32Array([ 0.5, -0.5, 0 ]) )
+			const tile = new $bog_gamengine_phys_tile
+			tile.map( map )
+			const phys = new $bog_gamengine_phys
+			phys.tile( tile )
+			phys.bodies([ ghost ])
+			phys.step( 0.1 )
+			$mol_assert_equal( ghost.pos()[ 0 ], 0.5 )
+			$mol_assert_equal( ghost.pos()[ 1 ], -0.5 )
+			$mol_assert_equal( ghost.hits, [] )
+		},
+
 		'tile cell beyond map edge is solid'() {
 			const tile = new $bog_gamengine_phys_tile
 			tile.map( map )

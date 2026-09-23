@@ -27,11 +27,17 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		phys( next?: $bog_gamengine_phys | null ) {
+			return next ?? null
+		}
+
+		@ $mol_mem
 		step() {
 			const frame = this.clock().frame()
 			const dt = this.clock().dt()
 			const nodes = this.nodes()
 			for( let i = 0; i < nodes.length; ++i ) nodes[ i ].step( dt )
+			this.phys()?.step( dt )
 			const batches = this.batches()
 			for( let i = 0; i < batches.length; ++i ) batches[ i ].fill()
 			return frame
