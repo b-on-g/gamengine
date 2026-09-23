@@ -42,10 +42,15 @@ namespace $ {
 		return sprite
 	}
 
+	const sprite_test_shader = new $bog_gamengine_shader_sprite
+	const sprite_test_shape = new $bog_gamengine_shape_quad
+
 	function sprite_test_group( sprites: readonly $bog_gamengine_sprite[] ) {
-		return $bog_gamengine_batch_group( sprites, atlas => {
+		const parts = $bog_gamengine_batch_group( sprites, ()=> sprite_test_shader, ()=> sprite_test_shape )
+		return parts.map( part => {
 			const batch = new $bog_gamengine_batch
-			batch.atlas( atlas )
+			batch.atlas( part.atlas )
+			batch.nodes( part.nodes )
 			return batch
 		} )
 	}

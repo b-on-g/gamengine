@@ -64,17 +64,15 @@ namespace $ {
 		'two meshes of different atlases give two batches'() {
 			const first = mesh_test_atlas([ 'bog/gamengine/demo/atlas/wall.png' ])
 			const second = mesh_test_atlas([ 'bog/gamengine/demo/atlas/floor.png' ])
-			const batches = $bog_gamengine_batch_group(
+			const shader = new $bog_gamengine_shader_solid
+			const parts = $bog_gamengine_batch_group(
 				[ mesh_test_mesh( first, 'wall' ), mesh_test_mesh( second, 'floor' ) ],
-				atlas => {
-					const batch = new $bog_gamengine_batch
-					batch.atlas( atlas )
-					return batch
-				},
+				()=> shader,
+				node => node.shape!(),
 			)
-			$mol_assert_equal( batches.length, 2 )
-			$mol_assert_equal( batches[ 0 ].atlas(), first )
-			$mol_assert_equal( batches[ 1 ].atlas(), second )
+			$mol_assert_equal( parts.length, 2 )
+			$mol_assert_equal( parts[ 0 ].atlas, first )
+			$mol_assert_equal( parts[ 1 ].atlas, second )
 		},
 
 		'filled batch has layer and tint of mesh'() {

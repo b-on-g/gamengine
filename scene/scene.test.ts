@@ -175,6 +175,87 @@ namespace $ {
 			$mol_assert_equal( batch.count, 1 )
 		},
 
+		'auto batches group scene nodes by shader, shape and atlas'() {
+			const atlas = new $bog_gamengine_atlas
+			atlas.uris([ 'bog/gamengine/demo/atlas/hero.png' ])
+			const hero = new $bog_gamengine_sprite
+			hero.atlas( atlas )
+			const coin = new $bog_gamengine_sprite
+			coin.atlas( atlas )
+			const mesh = new $bog_gamengine_mesh
+			mesh.atlas( atlas )
+			const scene = new $bog_gamengine_scene
+			scene.kids([ hero, coin, mesh ])
+			const batches = scene.auto_batches()
+			$mol_assert_equal( batches.length, 2 )
+			$mol_assert_equal( batches[ 0 ].nodes(), [ hero, coin ] )
+			$mol_assert_equal( batches[ 1 ].nodes(), [ mesh ] )
+			$mol_assert_ok( batches[ 0 ].shader() instanceof $bog_gamengine_shader_sprite )
+			$mol_assert_ok( batches[ 0 ].shape() instanceof $bog_gamengine_shape_quad )
+			$mol_assert_ok( batches[ 1 ].shader() instanceof $bog_gamengine_shader_solid )
+			$mol_assert_equal( batches[ 1 ].shape(), mesh.shape() )
+			$mol_assert_equal( batches[ 1 ].atlas(), atlas )
+		},
+
+		'batches fall back to auto batches and explicit batches win'() {
+			const sprite = new $bog_gamengine_sprite
+			const scene = new $bog_gamengine_scene
+			scene.kids([ sprite ])
+			$mol_assert_equal( scene.batches(), scene.auto_batches() )
+			$mol_assert_equal( scene.batches().length, 1 )
+			const own = new $bog_gamengine_batch
+			scene.batches([ own ])
+			$mol_assert_equal( scene.batches(), [ own ] )
+		},
+
+		'mesh without atlas gets the plain solid shader'() {
+			const mesh = new $bog_gamengine_mesh
+			const scene = new $bog_gamengine_scene
+			scene.kids([ mesh ])
+			const batches = scene.auto_batches()
+			$mol_assert_equal( batches.length, 1 )
+			$mol_assert_ok( batches[ 0 ].shader() instanceof $bog_gamengine_shader_solid_plain )
+			$mol_assert_equal( batches[ 0 ].atlas(), null )
+		},
+
+		'node shader set by hand takes its own batch'() {
+			const atlas = new $bog_gamengine_atlas
+			atlas.uris([ 'bog/gamengine/demo/atlas/hero.png' ])
+			const plain = new $bog_gamengine_sprite
+			plain.atlas( atlas )
+			const own = new $bog_gamengine_sprite
+			own.atlas( atlas )
+			own.shader( new $bog_gamengine_shader_flat )
+			const scene = new $bog_gamengine_scene
+			scene.kids([ plain, own ])
+			const batches = scene.auto_batches()
+			$mol_assert_equal( batches.length, 2 )
+			$mol_assert_equal( batches[ 1 ].shader(), own.shader() )
+		},
+
+		'nodes without layer and uv stay out of auto batches'() {
+			const bare = new $bog_gamengine_node
+			const scene = new $bog_gamengine_scene
+			scene.kids([ bare ])
+			$mol_assert_equal( scene.auto_batches().length, 0 )
+		},
+
+		'auto batch of the same group survives a nodes recompute'() {
+			const atlas = new $bog_gamengine_atlas
+			atlas.uris([ 'bog/gamengine/demo/atlas/hero.png' ])
+			const first = new $bog_gamengine_sprite
+			first.atlas( atlas )
+			const second = new $bog_gamengine_sprite
+			second.atlas( atlas )
+			const scene = new $bog_gamengine_scene
+			scene.kids([ first ])
+			const before = scene.auto_batches()[ 0 ]
+			scene.kids([ first, second ])
+			const after = scene.auto_batches()[ 0 ]
+			$mol_assert_equal( before, after )
+			$mol_assert_equal( after.nodes(), [ first, second ] )
+		},
+
 		'nodes lists tree depth first with parent before kids'() {
 			const a = new $bog_gamengine_scene_named
 			const b = new $bog_gamengine_scene_named

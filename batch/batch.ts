@@ -7,6 +7,8 @@ namespace $ {
 		material?(): Float32Array
 		normal_layer?(): number
 		radius?(): number
+		shape?(): $bog_gamengine_shape
+		shader?(): $bog_gamengine_shader | null
 	}
 
 	export type $bog_gamengine_batch_source = {

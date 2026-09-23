@@ -55,6 +55,11 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		shader( next?: $bog_gamengine_shader | null ) {
+			return next ?? null
+		}
+
+		@ $mol_mem
 		parent( next?: $bog_gamengine_node | null ) {
 			return next ?? null
 		}

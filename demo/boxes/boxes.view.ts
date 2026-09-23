@@ -103,7 +103,7 @@ namespace $.$$ {
 
 		@ $mol_mem
 		batches() {
-			const list = [ this.Crates(), this.Floor_batch() ]
+			const list = [ this.Crates(), ... this.Scene().auto_batches() ]
 			if( this.contacts() ) list.push( this.Contact_batch() )
 			return list as readonly $bog_gamengine_batch[]
 		}

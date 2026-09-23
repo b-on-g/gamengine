@@ -38,8 +38,76 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		Shader_sprite( next?: $bog_gamengine_shader ) {
+			return next ?? new this.$.$bog_gamengine_shader_sprite
+		}
+
+		@ $mol_mem
+		Shader_solid( next?: $bog_gamengine_shader ) {
+			return next ?? new this.$.$bog_gamengine_shader_solid
+		}
+
+		@ $mol_mem
+		Shader_plain( next?: $bog_gamengine_shader ) {
+			return next ?? new this.$.$bog_gamengine_shader_solid_plain
+		}
+
+		@ $mol_mem
+		Shape_quad( next?: $bog_gamengine_shape ) {
+			return next ?? new this.$.$bog_gamengine_shape_quad
+		}
+
+		@ $mol_mem_key
+		Batch( key: string ) {
+			return new this.$.$bog_gamengine_batch
+		}
+
+		node_drawn( node: $bog_gamengine_node ) {
+			const probe = node as Partial< $bog_gamengine_batch_group_node >
+			return typeof probe.atlas === 'function'
+				&& typeof probe.layer === 'function'
+				&& typeof probe.uv === 'function'
+		}
+
+		node_shader( node: $bog_gamengine_batch_group_node ) {
+			const own = node.shader?.()
+			if( own ) return own
+			if( typeof node.normal_layer !== 'function' ) return this.Shader_sprite()
+			return node.atlas() ? this.Shader_solid() : this.Shader_plain()
+		}
+
+		node_shape( node: $bog_gamengine_batch_group_node ) {
+			return typeof node.shape === 'function' ? node.shape() : this.Shape_quad()
+		}
+
+		@ $mol_mem
+		auto_batches() {
+			const nodes = this.nodes() as readonly $bog_gamengine_batch_group_node[]
+			const drawn = [] as $bog_gamengine_batch_group_node[]
+			for( let i = 0; i < nodes.length; ++ i ) {
+				if( this.node_drawn( nodes[ i ] ) ) drawn.push( nodes[ i ] )
+			}
+			const parts = $bog_gamengine_batch_group(
+				drawn,
+				node => this.node_shader( node ),
+				node => this.node_shape( node ),
+			)
+			const batches = [] as $bog_gamengine_batch[]
+			for( let i = 0; i < parts.length; ++ i ) {
+				const part = parts[ i ]
+				const batch = this.Batch( part.key )
+				batch.shader( part.shader )
+				batch.shape( part.shape )
+				batch.atlas( part.atlas )
+				batch.nodes( part.nodes )
+				batches.push( batch )
+			}
+			return batches as readonly $bog_gamengine_batch[]
+		}
+
+		@ $mol_mem
 		batches( next?: readonly $bog_gamengine_batch[] ) {
-			return next ?? []
+			return next ?? this.auto_batches()
 		}
 
 		@ $mol_mem
