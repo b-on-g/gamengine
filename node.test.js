@@ -10515,6 +10515,9 @@ var $;
         is_scene() {
             return false;
         }
+        is_brain() {
+            return false;
+        }
         scene() {
             const root = this.root();
             return root.is_scene() ? root : null;
@@ -11602,6 +11605,37 @@ var $;
                 return true;
             return this.solid().includes(row[x]);
         }
+        char(x, y) {
+            const rows = this.rows();
+            if (y < 0 || y >= rows.length)
+                return '';
+            const row = rows[y];
+            if (x < 0 || x >= row.length)
+                return '';
+            return row[x];
+        }
+        spots(char) {
+            const rows = this.rows();
+            const spots = [];
+            for (let y = 0; y < rows.length; ++y) {
+                const row = rows[y];
+                for (let x = 0; x < row.length; ++x) {
+                    if (row[x] === char)
+                        spots.push([x, y]);
+                }
+            }
+            return spots;
+        }
+        chars() {
+            const rows = this.rows();
+            const chars = new Set();
+            for (let y = 0; y < rows.length; ++y) {
+                const row = rows[y];
+                for (let x = 0; x < row.length; ++x)
+                    chars.add(row[x]);
+            }
+            return chars;
+        }
         cell_pos(x, y, out) {
             out[0] = x + 0.5;
             out[1] = -y - 0.5;
@@ -11617,6 +11651,16 @@ var $;
         solid_at(wx, wy) {
             const at = this.cell_at(wx, wy, this.at);
             return this.cell(at[0], at[1]);
+        }
+        ahead(wx, wy, dx, dy, dist) {
+            const at = this.cell_at(wx + dx * dist, wy + dy * dist, this.at);
+            return this.char(at[0], at[1]);
+        }
+        edge(wx, wy, dx, dy) {
+            const at = this.cell_at(wx + dx, wy + dy, this.at);
+            if (this.cell(at[0], at[1]))
+                return false;
+            return !this.cell(at[0], at[1] + 1);
         }
     }
     __decorate([
@@ -11634,6 +11678,12 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_phys_tile.prototype, "height", null);
+    __decorate([
+        $mol_mem_key
+    ], $bog_gamengine_phys_tile.prototype, "spots", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_phys_tile.prototype, "chars", null);
     $.$bog_gamengine_phys_tile = $bog_gamengine_phys_tile;
 })($ || ($ = {}));
 
@@ -14669,22 +14719,40 @@ var $;
         }
         nodes() {
             const list = [];
-            const walk = (node) => {
+            const brains = (node) => {
                 const kids = node.kids();
                 for (let i = 0; i < kids.length; ++i) {
-                    if (!kids[i].parent())
-                        kids[i].parent(node);
-                    list.push(kids[i]);
-                    walk(kids[i]);
+                    const kid = kids[i];
+                    if (!kid.parent())
+                        kid.parent(node);
+                    if (!kid.is_brain())
+                        continue;
+                    list.push(kid);
+                    rest(kid);
                 }
             };
-            walk(this);
+            const rest = (node) => {
+                const kids = node.kids();
+                for (let i = 0; i < kids.length; ++i) {
+                    const kid = kids[i];
+                    if (!kid.parent())
+                        kid.parent(node);
+                    if (kid.is_brain())
+                        continue;
+                    brains(kid);
+                    list.push(kid);
+                    rest(kid);
+                }
+            };
+            brains(this);
+            rest(this);
             const auto = this.auto_nodes();
             for (let i = 0; i < auto.length; ++i) {
                 if (!auto[i].parent())
                     auto[i].parent(this);
+                brains(auto[i]);
                 list.push(auto[i]);
-                walk(auto[i]);
+                rest(auto[i]);
             }
             return list;
         }
@@ -14787,6 +14855,11 @@ var $;
                     nodes[i].step(dt);
                 phys?.step(dt);
                 phys3?.step(dt);
+                if (cam && nodes.indexOf(cam) < 0) {
+                    if (!cam.parent())
+                        cam.parent(this);
+                    cam.step(dt);
+                }
             }
             if (cam) {
                 cam.frustum(aspect, this.frustum);
@@ -14884,6 +14957,9 @@ var $;
     }
     $.$bog_gamengine_cam_frustum_aabb = $bog_gamengine_cam_frustum_aabb;
     class $bog_gamengine_cam extends $bog_gamengine_node {
+        aspect(next) {
+            return next ?? this.scene()?.aspect() ?? 1;
+        }
         view() {
             return this.world().inversed();
         }
@@ -14920,6 +14996,9 @@ var $;
             return out;
         }
     }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_cam.prototype, "aspect", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_cam.prototype, "view", null);
@@ -17078,6 +17157,12 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    function $bog_gamengine_cam_flat_clamp(value, min, max, size) {
+        if (max - min <= size)
+            return (min + max) / 2;
+        return Math.min(Math.max(value, min + size / 2), max - size / 2);
+    }
+    $.$bog_gamengine_cam_flat_clamp = $bog_gamengine_cam_flat_clamp;
     class $bog_gamengine_cam_flat extends $bog_gamengine_cam {
         zoom(next) {
             return next ?? 1;
@@ -17095,6 +17180,41 @@ var $;
                 { name: 'height', kind: 'number', get: () => this.height(), set: next => this.height(next) },
             ];
         }
+        target(next) {
+            return next ?? null;
+        }
+        bounds(next) {
+            return next ?? null;
+        }
+        follow(next) {
+            return next ?? 0;
+        }
+        step(dt) {
+            const target = this.target();
+            if (!target)
+                return;
+            const world = target.world();
+            const height = this.height() / this.zoom();
+            const bounds = this.bounds();
+            let x = world[12];
+            let y = world[13];
+            if (bounds) {
+                x = $bog_gamengine_cam_flat_clamp(x, bounds[0], bounds[2], height * this.aspect());
+                y = $bog_gamengine_cam_flat_clamp(y, bounds[1], bounds[3], height);
+            }
+            const pos = this.pos();
+            const follow = this.follow();
+            const rate = follow > 0 ? 1 - Math.exp(-dt / follow) : 1;
+            x = pos[0] + (x - pos[0]) * rate;
+            y = pos[1] + (y - pos[1]) * rate;
+            if (x === pos[0] && y === pos[1])
+                return;
+            const next = new Float32Array(3);
+            next[0] = x;
+            next[1] = y;
+            next[2] = pos[2];
+            this.pos(next);
+        }
         proj(aspect) {
             const h = this.height() / this.zoom();
             return $mol_3d_mat4.orthographic(-h * aspect / 2, h * aspect / 2, -h / 2, h / 2, -100, 100);
@@ -17109,6 +17229,15 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_cam_flat.prototype, "height", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_cam_flat.prototype, "target", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_cam_flat.prototype, "bounds", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_cam_flat.prototype, "follow", null);
     __decorate([
         $mol_mem_key
     ], $bog_gamengine_cam_flat.prototype, "proj", null);
@@ -27152,7 +27281,54 @@ var $;
         tile.map('###\n#.#\n###');
         return tile;
     }
+    function $bog_gamengine_phys_tile_test_level() {
+        const tile = new $bog_gamengine_phys_tile;
+        tile.map('..o..\n.###.\n.E...\n#####');
+        return tile;
+    }
     $mol_test({
+        'ahead gives the char of the cell in the given direction'() {
+            const tile = $bog_gamengine_phys_tile_test_level();
+            $mol_assert_equal(tile.ahead(0.5, -2.5, 1, 0, 1), 'E');
+            $mol_assert_equal(tile.ahead(2.5, -0.5, 0, -1, 1), '#');
+            $mol_assert_equal(tile.ahead(2.5, -0.5, 1, 0, 1), '.');
+            $mol_assert_equal(tile.ahead(2.5, -0.5, 1, 0, 3), '');
+        },
+        'edge is true past the end of the platform and false above it'() {
+            const tile = $bog_gamengine_phys_tile_test_level();
+            $mol_assert_equal(tile.edge(2.5, -0.5, 1, 0), false);
+            $mol_assert_equal(tile.edge(3.5, -0.5, 1, 0), true);
+            $mol_assert_equal(tile.edge(1.5, -0.5, -1, 0), true);
+        },
+        'edge is false when the cell ahead is solid'() {
+            const tile = $bog_gamengine_phys_tile_test_level();
+            $mol_assert_equal(tile.edge(1.5, -1.5, 1, 0), false);
+        },
+        'spots gives every cell with the char'() {
+            const tile = $bog_gamengine_phys_tile_test_level();
+            $mol_assert_equal(tile.spots('o').length, 1);
+            $mol_assert_equal(tile.spots('o')[0][0], 2);
+            $mol_assert_equal(tile.spots('o')[0][1], 0);
+            $mol_assert_equal(tile.spots('E').length, 1);
+            $mol_assert_equal(tile.spots('#').length, 8);
+            $mol_assert_equal(tile.spots('x').length, 0);
+        },
+        'chars gives the set of chars of the map'() {
+            const tile = $bog_gamengine_phys_tile_test_level();
+            const chars = tile.chars();
+            $mol_assert_equal(chars.size, 4);
+            $mol_assert_equal(chars.has('o'), true);
+            $mol_assert_equal(chars.has('E'), true);
+            $mol_assert_equal(chars.has('#'), true);
+            $mol_assert_equal(chars.has('x'), false);
+        },
+        'spots follow the map'() {
+            const tile = $bog_gamengine_phys_tile_test_level();
+            $mol_assert_equal(tile.spots('o').length, 1);
+            tile.map('.....\n#####');
+            $mol_assert_equal(tile.spots('o').length, 0);
+            $mol_assert_equal(tile.chars().size, 2);
+        },
         'cell pos is the center of the cell square'() {
             const tile = $bog_gamengine_phys_tile_test_make();
             const pos = tile.cell_pos(2, 1, new Float32Array(3));
@@ -29625,6 +29801,50 @@ var $;
             }
             $mol_assert_ok(Math.abs(out[0] - 1) < 1e-6);
             $mol_assert_ok(Math.abs(out[1] - 1) < 1e-6);
+        },
+        'camera without target keeps its own position'() {
+            const cam = new $bog_gamengine_cam_flat;
+            cam.pos(new Float32Array([3, 4, 0]));
+            cam.step(0.016);
+            $mol_assert_equal(cam.pos()[0], 3);
+            $mol_assert_equal(cam.pos()[1], 4);
+        },
+        'camera jumps to the target with no follow'() {
+            const target = new $bog_gamengine_node;
+            target.pos(new Float32Array([5, -3, 0]));
+            const cam = new $bog_gamengine_cam_flat;
+            cam.target(target);
+            cam.step(0.016);
+            $mol_assert_equal(cam.pos()[0], 5);
+            $mol_assert_equal(cam.pos()[1], -3);
+        },
+        'camera stops at the bounds of the level'() {
+            const target = new $bog_gamengine_node;
+            target.pos(new Float32Array([5, 8, 0]));
+            const cam = new $bog_gamengine_cam_flat;
+            cam.height(10);
+            cam.aspect(2);
+            cam.target(target);
+            cam.bounds(new Float32Array([0, 0, 40, 10]));
+            cam.step(0.016);
+            $mol_assert_equal(cam.pos()[0], 10);
+            $mol_assert_equal(cam.pos()[1], 5);
+            target.pos(new Float32Array([35, 8, 0]));
+            cam.step(0.016);
+            $mol_assert_equal(cam.pos()[0], 30);
+        },
+        'follow moves the camera part of the way to the target'() {
+            const target = new $bog_gamengine_node;
+            target.pos(new Float32Array([10, 0, 0]));
+            const cam = new $bog_gamengine_cam_flat;
+            cam.target(target);
+            cam.follow(0.5);
+            cam.step(0.1);
+            const rate = 1 - Math.exp(-0.2);
+            $mol_assert_ok(Math.abs(cam.pos()[0] - 10 * rate) < 1e-5);
+            for (let i = 0; i < 100; ++i)
+                cam.step(0.1);
+            $mol_assert_ok(Math.abs(cam.pos()[0] - 10) < 1e-3);
         },
         'set through props changes zoom'() {
             const cam = new $bog_gamengine_cam_flat;

@@ -3953,6 +3953,7 @@ declare namespace $ {
         kids(next?: readonly $bog_gamengine_node[]): readonly $bog_gamengine_node[];
         root(): $bog_gamengine_node;
         is_scene(): boolean;
+        is_brain(): boolean;
         scene(): $bog_gamengine_scene | null;
         input(): $bog_gamengine_input | null;
         clock(): $bog_gamengine_clock | null;
@@ -4273,10 +4274,15 @@ declare namespace $ {
         width(): number;
         height(): number;
         cell(x: number, y: number): boolean;
+        char(x: number, y: number): string;
+        spots(char: string): readonly (readonly [number, number])[];
+        chars(): ReadonlySet<string>;
         cell_pos(x: number, y: number, out: Float32Array): Float32Array<ArrayBufferLike>;
         cell_at(wx: number, wy: number, out: Int32Array): Int32Array<ArrayBufferLike>;
         at: Int32Array<ArrayBuffer>;
         solid_at(wx: number, wy: number): boolean;
+        ahead(wx: number, wy: number, dx: number, dy: number, dist: number): string;
+        edge(wx: number, wy: number, dx: number, dy: number): boolean;
     }
 }
 
@@ -4711,6 +4717,7 @@ declare namespace $ {
     function $bog_gamengine_cam_frustum_sphere(frustum: Float32Array, x: number, y: number, z: number, radius: number): boolean;
     function $bog_gamengine_cam_frustum_aabb(frustum: Float32Array, aabb: Float32Array, at: number): boolean;
     class $bog_gamengine_cam extends $bog_gamengine_node {
+        aspect(next?: number): number;
         view(): $mol_3d_mat4;
         proj(aspect: number): $mol_3d_mat4;
         clip: Float32Array<ArrayBuffer>;
@@ -5292,11 +5299,16 @@ declare namespace $ {
 }
 
 declare namespace $ {
+    function $bog_gamengine_cam_flat_clamp(value: number, min: number, max: number, size: number): number;
     class $bog_gamengine_cam_flat extends $bog_gamengine_cam {
         zoom(next?: number): number;
         pixels_per_unit(next?: number): number;
         height(next?: number): number;
         props(): readonly $bog_gamengine_prop[];
+        target(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
+        bounds(next?: Float32Array | null): Float32Array<ArrayBufferLike> | null;
+        follow(next?: number): number;
+        step(dt: number): void;
         proj(aspect: number): $mol_3d_mat4;
     }
 }
