@@ -17,6 +17,19 @@ namespace $ {
 			return fsm instanceof $bog_gamengine_brain_fsm ? fsm.owner() : null
 		}
 
+		props(): readonly $bog_gamengine_prop[] {
+			return [
+				... super.props(),
+				{
+					name: 'next',
+					kind: 'list',
+					fields: { to: 'text', when: 'text' },
+					get: ()=> this.next(),
+					set: next => this.next( next as readonly $bog_gamengine_brain_fsm_next[] ),
+				},
+			]
+		}
+
 		enter() {}
 
 		exit() {}
