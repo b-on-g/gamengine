@@ -8,4 +8,5 @@ $bog_gamengine_draw $mol_view
 	cam $bog_gamengine_cam
 	light_dir Float32Array
 	ambient 0.35
+	wireframe? false
 	stat \

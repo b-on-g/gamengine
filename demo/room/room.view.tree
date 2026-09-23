@@ -1,6 +1,9 @@
 $bog_gamengine_demo_room $mol_page
 	title \Комната
 	tools /
+		<= Wireframe $mol_check_box
+			title \Каркас
+			checked? <=> wireframe?
 		<= Pause $mol_check_box
 			title \Пауза
 			checked? <=> paused?
@@ -8,6 +11,7 @@ $bog_gamengine_demo_room $mol_page
 		<= Draw $bog_gamengine_draw
 			scene <= Scene
 			cam <= Walker
+			wireframe? => wireframe?
 			stat => stat
 	foot /
 		<= Stat $mol_view

@@ -1,7 +1,7 @@
 namespace $.$$ {
 
 	type $bog_gamengine_draw_face = {
-		glob: { proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray', light_dir: 'vec3', ambient: 'float' }
+		glob: { proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray', light_dir: 'vec3', ambient: 'float', wireframe: 'float' }
 		input: { vertex: 'vec3', uv: 'vec2', normal: 'vec3', inst_trans: 'mat4', inst_tint: 'vec4', inst_layer: 'float', inst_uv: 'vec4' }
 	}
 
@@ -12,6 +12,7 @@ namespace $.$$ {
 		view: WebGLUniformLocation | null
 		light_dir: WebGLUniformLocation | null
 		ambient: WebGLUniformLocation | null
+		wireframe: WebGLUniformLocation | null
 		depth: boolean
 		vao: WebGLVertexArrayObject
 		trans: $bog_gamengine_gl_buffer
@@ -21,7 +22,8 @@ namespace $.$$ {
 		atlas: $bog_gamengine_atlas | null
 		sampler: WebGLUniformLocation | null
 		tex: $bog_gamengine_draw_tex | null
-		triangles: boolean
+		prim: GLenum
+		wire: GLenum | null
 		size: number
 		cap: number
 	}
@@ -37,6 +39,8 @@ namespace $.$$ {
 		slots_all = new WeakMap< $bog_gamengine_batch, $bog_gamengine_draw_slot >()
 		textures_all = new WeakMap< $bog_gamengine_atlas, $bog_gamengine_draw_tex >()
 		ambient_vec = new Float32Array( 1 )
+		wire_off = new Float32Array( 1 )
+		wire_on = new Float32Array([ 1 ])
 		gaps = new Float32Array( stat_window )
 		ticks = new Float32Array( stat_window )
 		samples = 0
@@ -116,6 +120,9 @@ namespace $.$$ {
 			if( !this.shape_ready( shape ) ) return null
 			const atlas = batch.atlas()
 			const cap = Math.max( batch.cap, 16 )
+			const mode = shape.mode()
+			const depth = shader.depth()
+			const wireframe = 'wireframe' in globs ? program.uniform( 'wireframe' ) : null
 
 			const slot: $bog_gamengine_draw_slot = {
 				batch,
@@ -124,7 +131,8 @@ namespace $.$$ {
 				view: program.uniform( 'view' ),
 				light_dir: 'light_dir' in globs ? program.uniform( 'light_dir' ) : null,
 				ambient: 'ambient' in globs ? program.uniform( 'ambient' ) : null,
-				depth: shader.depth(),
+				wireframe,
+				depth,
 				vao: gl.createVertexArray()!,
 				trans: null!,
 				tint: null!,
@@ -133,7 +141,8 @@ namespace $.$$ {
 				atlas,
 				sampler: atlas ? program.uniform( 'atlas' ) : null,
 				tex: atlas ? this.tex( atlas ) : null,
-				triangles: shape.mode() === 'triangles',
+				prim: mode === 'lines' ? gl.LINES : mode === 'triangles' ? gl.TRIANGLES : gl.TRIANGLE_STRIP,
+				wire: depth && wireframe && mode !== 'lines' ? ( mode === 'triangles' ? gl.LINES : gl.LINE_STRIP ) : null,
 				size: shape.size(),
 				cap,
 			}
@@ -205,18 +214,19 @@ namespace $.$$ {
 			const proj = this.proj()
 			const view = this.cam().view()
 			const light_dir = this.light_dir()
+			const wireframe = this.wireframe()
 			this.ambient_vec[ 0 ] = this.ambient()
 			gl.enable( gl.BLEND )
 			gl.blendFunc( gl.ONE, gl.ONE_MINUS_SRC_ALPHA )
 			gl.clearColor( 0.08, 0.08, 0.1, 1 )
 			gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT )
-			for( let i = 0; i < slots.length; ++ i ) this.paint_slot( gl, slots[ i ], proj, view, light_dir )
+			for( let i = 0; i < slots.length; ++ i ) this.paint_slot( gl, slots[ i ], proj, view, light_dir, wireframe )
 			gl.bindVertexArray( null )
 			gl.useProgram( null )
 			this.measure()
 		}
 
-		paint_slot( gl: WebGL2RenderingContext, slot: $bog_gamengine_draw_slot, proj: Float32Array, view: Float32Array, light_dir: Float32Array ) {
+		paint_slot( gl: WebGL2RenderingContext, slot: $bog_gamengine_draw_slot, proj: Float32Array, view: Float32Array, light_dir: Float32Array, wireframe: boolean ) {
 			const batch = slot.batch
 			const count = batch.count
 			if( !count ) return
@@ -235,6 +245,7 @@ namespace $.$$ {
 			$bog_gamengine_gl_uniform_matrix( gl, slot.view, view )
 			$bog_gamengine_gl_uniform_vector( gl, slot.light_dir, light_dir )
 			$bog_gamengine_gl_uniform_vector( gl, slot.ambient, this.ambient_vec )
+			$bog_gamengine_gl_uniform_vector( gl, slot.wireframe, this.wire_off )
 			if( slot.tex ) {
 				gl.activeTexture( gl.TEXTURE0 )
 				gl.bindTexture( gl.TEXTURE_2D_ARRAY, slot.tex.native )
@@ -258,8 +269,10 @@ namespace $.$$ {
 				gl.bufferSubData( gl.ARRAY_BUFFER, 0, batch.uv, 0, count * 4 )
 			}
 			if( grown ) slot.cap = batch.cap
-			if( slot.triangles ) gl.drawArraysInstanced( gl.TRIANGLES, 0, slot.size, count )
-			else gl.drawArraysInstanced( gl.TRIANGLE_STRIP, 0, slot.size, count )
+			gl.drawArraysInstanced( slot.prim, 0, slot.size, count )
+			if( !wireframe || slot.wire === null ) return
+			$bog_gamengine_gl_uniform_vector( gl, slot.wireframe, this.wire_on )
+			gl.drawArraysInstanced( slot.wire, 0, slot.size, count )
 		}
 
 		measure() {

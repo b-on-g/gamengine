@@ -14,7 +14,7 @@ namespace $ {
 			return this.size()
 		}
 
-		mode(): 'strip' | 'triangles' {
+		mode(): 'strip' | 'triangles' | 'lines' {
 			return 'strip'
 		}
 

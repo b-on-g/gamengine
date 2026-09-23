@@ -12,7 +12,7 @@ namespace $ {
 
 	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя, клик собирает монету, подпись едет за героем, кадры ходьбы сменяются'
 
-	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола'
+	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола, ребро ящика с каркасом белое'
 
 	export const $bog_gamengine_probe_flags = [ '--use-angle=swiftshader' ] as const
 
@@ -143,6 +143,26 @@ namespace $ {
 		const floor_at = at( 6.5, 0, 4.2 )
 		const pillar_pixel = pixel( ... pillar_at )
 		const floor_pixel = pixel( ... floor_at )
+		const edge_at = at( 4.5, 1, 5 )
+		const edge = ()=> {
+			let best = [ 0, 0, 0, 0 ]
+			for( let dy = -2; dy <= 2; ++ dy ) {
+				const got = pixel( edge_at[ 0 ], edge_at[ 1 ] + dy )
+				if( got[ 0 ] + got[ 1 ] + got[ 2 ] > best[ 0 ] + best[ 1 ] + best[ 2 ] ) best = got
+			}
+			return best
+		}
+		const wire = document.querySelector( '[bog_gamengine_demo_room_wireframe]' )
+		if( !wire ) return { webgl: true, loaded: true, start, wire: false }
+		wire.click()
+		await frame()
+		await frame()
+		const wire_checked = wire.getAttribute( 'mol_check_checked' )
+		const edge_on = edge()
+		wire.click()
+		await frame()
+		await frame()
+		const edge_off = edge()
 		document.body.dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 87, bubbles: true } ) )
 		for( let i = 0; i < 60; ++ i ) await frame()
 		const moved = read()
@@ -150,6 +170,7 @@ namespace $ {
 		return {
 			webgl: true, loaded: true, start, moved, center, lit, shade, lit_at, shade_at,
 			pillar, pillar_at, floor_at, pillar_pixel, floor_pixel,
+			wire: true, wire_checked, edge_at, edge_on, edge_off,
 			size: [ canvas.width, canvas.height ],
 		}
 	`
@@ -197,7 +218,16 @@ namespace $ {
 		readonly floor_at?: readonly [ number, number ]
 		readonly pillar_pixel?: $bog_gamengine_probe_pixel
 		readonly floor_pixel?: $bog_gamengine_probe_pixel
+		readonly wire?: boolean
+		readonly wire_checked?: string | null
+		readonly edge_at?: readonly [ number, number ]
+		readonly edge_on?: $bog_gamengine_probe_pixel
+		readonly edge_off?: $bog_gamengine_probe_pixel
 		readonly size?: readonly [ number, number ]
+	}
+
+	export function $bog_gamengine_probe_white( pixel: $bog_gamengine_probe_pixel ) {
+		return pixel[ 0 ] > 200 && pixel[ 1 ] > 200 && pixel[ 2 ] > 200
 	}
 
 	export function $bog_gamengine_probe_sum( pixel: $bog_gamengine_probe_pixel ) {
@@ -323,6 +353,11 @@ namespace $ {
 		if( !( got.pillar! > 0 ) ) return fail( 'подвал не показал вершины столба' )
 		if( $bog_gamengine_probe_dark( got.pillar_pixel! ) ) return fail( 'столб чёрный' )
 		if( $bog_gamengine_probe_near( got.pillar_pixel!, got.floor_pixel! ) ) return fail( 'столб совпал с полом у его основания' )
+		if( !got.wire ) return fail( 'чекбокса каркаса нет в DOM' )
+		if( got.wire_checked !== 'true' ) return fail( 'клик по чекбоксу каркаса его не включил' )
+		if( !$bog_gamengine_probe_white( got.edge_on! ) ) return fail( 'ребро ящика с каркасом не белое' )
+		if( $bog_gamengine_probe_white( got.edge_off! ) ) return fail( 'ребро ящика без каркаса белое' )
+		if( !$bog_gamengine_probe_near( got.edge_off!, got.lit! ) ) return fail( 'ребро ящика без каркаса не цвета грани' )
 
 		return say( $bog_gamengine_probe_room_ok )
 	}

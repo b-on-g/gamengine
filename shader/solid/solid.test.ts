@@ -36,6 +36,13 @@ namespace $ {
 			}
 		},
 
+		'wireframe glob is float and used in both vert and frag'( $ ) {
+			const shader = new $bog_gamengine_shader_solid
+			$mol_assert_equal( shader.face().glob.wireframe, 'float' )
+			$mol_assert_ok( shader.vert().includes( 'wireframe' ) )
+			$mol_assert_ok( shader.frag().includes( 'wireframe' ) )
+		},
+
 		'solid wants depth, flat does not'( $ ) {
 			$mol_assert_equal( new $bog_gamengine_shader_solid().depth(), true )
 			$mol_assert_equal( new $bog_gamengine_shader_flat().depth(), false )
