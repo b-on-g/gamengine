@@ -56,6 +56,10 @@ namespace $ {
 			]
 		}
 
+		radius() {
+			return Math.SQRT1_2
+		}
+
 		frame_now() {
 			const clip = this.clip()
 			if( !clip ) return this.frame()

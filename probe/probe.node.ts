@@ -16,7 +16,7 @@ namespace $ {
 
 	export const $bog_gamengine_probe_boxes_page = 'bog/gamengine/demo/-/index.html#!demo=boxes'
 
-	export const $bog_gamengine_probe_boxes_ok = 'куча ящиков лежит на полу с контактами, клик бросает ящик, цепь висит на пяти шарнирах, дверь на петле, центр не чёрный'
+	export const $bog_gamengine_probe_boxes_ok = 'куча ящиков лежит на полу с контактами, спиной к куче ящики отсечены, клик бросает ящик, цепь висит на пяти шарнирах, дверь на петле, центр не чёрный'
 
 	export const $bog_gamengine_probe_boxes_count = 300
 
@@ -235,6 +235,28 @@ namespace $ {
 		const settled = read()
 		const pixel = new Uint8Array( 4 )
 		gl.readPixels( canvas.width / 2 | 0, canvas.height / 2 | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel )
+		const drawn = ()=> {
+			const found = document.body.innerText.match( /drawn (\\d+) \\/ (\\d+)/ )
+			return found ? [ Number( found[ 1 ] ), Number( found[ 2 ] ) ] : null
+		}
+		const drawn_start = drawn()
+		const turn = async ( keyCode, until )=> {
+			document.body.dispatchEvent( new KeyboardEvent( 'keydown', { keyCode, bubbles: true } ) )
+			const turn_started = performance.now()
+			let last = drawn()
+			while( performance.now() - turn_started < 6000 ) {
+				await frame()
+				last = drawn()
+				if( last && until( last[ 0 ] ) ) break
+			}
+			document.body.dispatchEvent( new KeyboardEvent( 'keyup', { keyCode, bubbles: true } ) )
+			return { last, took: performance.now() - turn_started }
+		}
+		const away = await turn( 81, count => count === 0 )
+		const drawn_away = away.last
+		const back = await turn( 69, count => drawn_start && count >= drawn_start[ 0 ] )
+		const drawn_back = back.last
+		const turn_ms = [ away.took, back.took ]
 		const box = canvas.getBoundingClientRect()
 		canvas.dispatchEvent( new PointerEvent( 'pointerdown', {
 			clientX: box.left + box.width / 2, clientY: box.top + box.height / 2, pointerId: 1, bubbles: true,
@@ -255,6 +277,7 @@ namespace $ {
 		const door = read()
 		return {
 			webgl: true, loaded: true, start, settled, thrown, frames, buttons: true, chain, door,
+			drawn_start, drawn_away, drawn_back, turn_ms,
 			center: Array.from( pixel ), size: [ canvas.width, canvas.height ],
 		}
 	`
@@ -342,6 +365,10 @@ namespace $ {
 		readonly buttons?: boolean
 		readonly chain?: $bog_gamengine_probe_boxes_stat | null
 		readonly door?: $bog_gamengine_probe_boxes_stat | null
+		readonly drawn_start?: readonly [ number, number ] | null
+		readonly drawn_away?: readonly [ number, number ] | null
+		readonly drawn_back?: readonly [ number, number ] | null
+		readonly turn_ms?: readonly [ number, number ]
 		readonly center?: $bog_gamengine_probe_pixel
 		readonly size?: readonly [ number, number ]
 	}
@@ -526,6 +553,10 @@ namespace $ {
 		if( !( Math.abs( got.chain.chain_drop - 4 ) <= 0.5 ) ) return fail( 'нижний ящик цепи не на 4 ниже верхнего' )
 		if( !got.door || got.door.joints !== 6 ) return fail( 'после двери шарниров не 6' )
 		if( $bog_gamengine_probe_dark( got.center! ) ) return fail( 'центр чёрный' )
+		if( !got.drawn_start || !( got.drawn_start[ 0 ] > 0 ) ) return fail( 'подвал не показал нарисованные ящики' )
+		if( got.drawn_start[ 1 ] !== count ) return fail( `в подвале не ${ count } тел для отсечения` )
+		if( !got.drawn_away || !( got.drawn_away[ 0 ] < got.drawn_start[ 0 ] ) ) return fail( 'спиной к куче нарисовано не меньше ящиков' )
+		if( !got.drawn_back || !( got.drawn_back[ 0 ] > got.drawn_away[ 0 ] ) ) return fail( 'после разворота обратно ящики не вернулись' )
 
 		return say( $bog_gamengine_probe_boxes_ok )
 	}

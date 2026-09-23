@@ -10,6 +10,17 @@ namespace $ {
 			return normals
 		}
 
+		@ $mol_memo.method
+		radius() {
+			const geometry = this.geometry()
+			let max = 0
+			for( let i = 0; i < geometry.length; i += 3 ) {
+				const len = geometry[ i ] * geometry[ i ] + geometry[ i + 1 ] * geometry[ i + 1 ] + geometry[ i + 2 ] * geometry[ i + 2 ]
+				if( len > max ) max = len
+			}
+			return Math.sqrt( max )
+		}
+
 		count() {
 			return this.size()
 		}

@@ -2,7 +2,21 @@ namespace $ {
 
 	const uv_plain = new Float32Array([ 0, 0, 1, 1 ])
 
+	export type $bog_gamengine_mesh_lod = {
+		dist: number
+		shape: $bog_gamengine_shape
+	}
+
 	export class $bog_gamengine_mesh extends $bog_gamengine_node {
+
+		@ $mol_mem
+		lods( next?: readonly $bog_gamengine_mesh_lod[] ) {
+			return next ?? []
+		}
+
+		radius() {
+			return this.shape().radius()
+		}
 
 		@ $mol_mem
 		shape( next?: $bog_gamengine_shape ) {

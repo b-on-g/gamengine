@@ -21,6 +21,10 @@ namespace $ {
 			return new Float32Array( this.size() * 2 )
 		}
 
+		radius() {
+			return Infinity
+		}
+
 		mode() {
 			return 'lines' as const
 		}

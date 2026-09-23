@@ -26,6 +26,7 @@ namespace $ {
 			]
 		}
 
+		@ $mol_mem_key
 		proj( aspect: number ) {
 			return $mol_3d_mat4.perspective( this.fov(), aspect, this.near(), this.far() )
 		}

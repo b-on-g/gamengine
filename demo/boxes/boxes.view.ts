@@ -193,6 +193,19 @@ namespace $.$$ {
 		}
 
 		@ $mol_mem
+		aspect() {
+			const aspect = this.Draw().width() / this.Draw().height()
+			return Number.isFinite( aspect ) && aspect > 0 ? aspect : 1
+		}
+
+		@ $mol_mem
+		cull_stat() {
+			this.Scene().step()
+			const crates = this.Crates()
+			return `drawn ${ crates.count } / ${ this.Phys().count - crates.skip() }`
+		}
+
+		@ $mol_mem
 		phys_stat() {
 			this.Scene().step()
 			const phys = this.Phys()

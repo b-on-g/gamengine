@@ -25,6 +25,7 @@ namespace $ {
 			]
 		}
 
+		@ $mol_mem_key
 		proj( aspect: number ) {
 			const h = this.height() / this.zoom()
 			return $mol_3d_mat4.orthographic( - h * aspect / 2, h * aspect / 2, - h / 2, h / 2, -100, 100 )

@@ -6,11 +6,20 @@ namespace $ {
 		uv?(): Float32Array
 		material?(): Float32Array
 		normal_layer?(): number
+		radius?(): number
 	}
 
 	export type $bog_gamengine_batch_source = {
 		trans: Float32Array
 		count: number
+		aabb?: Float32Array
+	}
+
+	export function $bog_gamengine_batch_scale_max( world: Float32Array ) {
+		const x = world[ 0 ] * world[ 0 ] + world[ 1 ] * world[ 1 ] + world[ 2 ] * world[ 2 ]
+		const y = world[ 4 ] * world[ 4 ] + world[ 5 ] * world[ 5 ] + world[ 6 ] * world[ 6 ]
+		const z = world[ 8 ] * world[ 8 ] + world[ 9 ] * world[ 9 ] + world[ 10 ] * world[ 10 ]
+		return Math.sqrt( Math.max( x, y, z ) )
 	}
 
 	export class $bog_gamengine_batch extends $mol_object2 {
@@ -45,6 +54,21 @@ namespace $ {
 			return next
 		}
 
+		@ $mol_mem
+		cull( next = true ) {
+			return next
+		}
+
+		@ $mol_mem
+		near( next = 0 ) {
+			return next
+		}
+
+		@ $mol_mem
+		far( next = Infinity ) {
+			return next
+		}
+
 		cap = 0
 		count = 0
 		version = 0
@@ -68,58 +92,75 @@ namespace $ {
 			this.normal_layer = new Float32Array( cap )
 		}
 
-		fill() {
+		fill( frustum: Float32Array | null = null, eye: Float32Array | null = null ) {
 			const source = this.source()
-			if( source ) return this.fill_source( source )
+			if( source ) return this.fill_source( source, frustum )
 			const nodes = this.nodes()
-			const count = nodes.length
-			this.grow( count )
+			const cull = frustum && this.cull() ? frustum : null
+			const near = this.near()
+			const far = this.far()
+			const ranged = eye && ( near > 0 || far < Infinity ) ? eye : null
+			this.grow( nodes.length )
 			const trans = this.trans
 			const tint = this.tint
 			const layer = this.layer
 			const uv = this.uv
 			const material = this.material
 			const normal_layer = this.normal_layer
-			for( let i = 0; i < count; ++ i ) {
+			let count = 0
+			for( let i = 0; i < nodes.length; ++ i ) {
 				const node = nodes[ i ]
-				trans.set( node.world(), i * 16 )
-				if( typeof node.tint === 'function' ) {
-					tint.set( node.tint(), i * 4 )
-				} else {
-					tint[ i * 4 ] = 1
-					tint[ i * 4 + 1 ] = 1
-					tint[ i * 4 + 2 ] = 1
-					tint[ i * 4 + 3 ] = 1
+				const world = node.world()
+				if( ranged ) {
+					const dx = world[ 12 ] - ranged[ 0 ]
+					const dy = world[ 13 ] - ranged[ 1 ]
+					const dz = world[ 14 ] - ranged[ 2 ]
+					const dist = Math.sqrt( dx * dx + dy * dy + dz * dz )
+					if( dist < near || dist >= far ) continue
 				}
-				layer[ i ] = typeof node.layer === 'function' ? node.layer() : 0
-				if( typeof node.uv === 'function' ) {
-					uv.set( node.uv(), i * 4 )
+				if( cull && typeof node.radius === 'function' ) {
+					const radius = node.radius() * $bog_gamengine_batch_scale_max( world )
+					if( !$bog_gamengine_cam_frustum_sphere( cull, world[ 12 ], world[ 13 ], world[ 14 ], radius ) ) continue
+				}
+				trans.set( world, count * 16 )
+				if( typeof node.tint === 'function' ) {
+					tint.set( node.tint(), count * 4 )
 				} else {
-					uv[ i * 4 ] = 0
-					uv[ i * 4 + 1 ] = 0
-					uv[ i * 4 + 2 ] = 1
-					uv[ i * 4 + 3 ] = 1
+					tint[ count * 4 ] = 1
+					tint[ count * 4 + 1 ] = 1
+					tint[ count * 4 + 2 ] = 1
+					tint[ count * 4 + 3 ] = 1
+				}
+				layer[ count ] = typeof node.layer === 'function' ? node.layer() : 0
+				if( typeof node.uv === 'function' ) {
+					uv.set( node.uv(), count * 4 )
+				} else {
+					uv[ count * 4 ] = 0
+					uv[ count * 4 + 1 ] = 0
+					uv[ count * 4 + 2 ] = 1
+					uv[ count * 4 + 3 ] = 1
 				}
 				if( typeof node.material === 'function' ) {
-					material.set( node.material(), i * 4 )
+					material.set( node.material(), count * 4 )
 				} else {
-					material[ i * 4 ] = 0
-					material[ i * 4 + 1 ] = 0.6
-					material[ i * 4 + 2 ] = 0
-					material[ i * 4 + 3 ] = 0
+					material[ count * 4 ] = 0
+					material[ count * 4 + 1 ] = 0.6
+					material[ count * 4 + 2 ] = 0
+					material[ count * 4 + 3 ] = 0
 				}
-				normal_layer[ i ] = typeof node.normal_layer === 'function' ? node.normal_layer() : -1
+				normal_layer[ count ] = typeof node.normal_layer === 'function' ? node.normal_layer() : -1
+				++ count
 			}
 			this.count = count
 			++ this.version
 			return count
 		}
 
-		fill_source( source: $bog_gamengine_batch_source ) {
+		fill_source( source: $bog_gamengine_batch_source, frustum: Float32Array | null = null ) {
 			const skip = this.skip()
-			const count = Math.max( 0, source.count - skip )
+			const total = Math.max( 0, source.count - skip )
 			const cap = this.cap
-			this.grow( count )
+			this.grow( total )
 			if( this.cap !== cap ) {
 				this.tint.fill( 1 )
 				this.layer.fill( 0 )
@@ -137,7 +178,23 @@ namespace $ {
 					material[ i * 4 + 3 ] = 0
 				}
 			}
-			this.trans.set( source.trans.subarray( skip * 16, ( skip + count ) * 16 ) )
+			const aabb = source.aabb
+			const cull = frustum && aabb && this.cull() ? frustum : null
+			let count = total
+			if( cull && aabb ) {
+				const trans = this.trans
+				const from = source.trans
+				count = 0
+				for( let i = skip; i < source.count; ++ i ) {
+					if( !$bog_gamengine_cam_frustum_aabb( cull, aabb, i * 6 ) ) continue
+					const src = i * 16
+					const dst = count * 16
+					for( let k = 0; k < 16; ++ k ) trans[ dst + k ] = from[ src + k ]
+					++ count
+				}
+			} else {
+				this.trans.set( source.trans.subarray( skip * 16, ( skip + total ) * 16 ) )
+			}
 			this.count = count
 			++ this.version
 			return count

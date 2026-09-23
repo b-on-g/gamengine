@@ -35,6 +35,8 @@ $bog_gamengine_demo_boxes $mol_page
 			sub / <= stat
 		<= Phys_stat $mol_view
 			sub / <= phys_stat \
+		<= Cull_stat $mol_view
+			sub / <= cull_stat \
 	seed? 1
 	Key $bog_gamengine_key
 		bind *
@@ -57,6 +59,8 @@ $bog_gamengine_demo_boxes $mol_page
 		kids <= nodes /
 		phys3 <= Phys
 		batches <= batches /
+		cam <= Walker
+		aspect <= aspect 1
 	Crates $bog_gamengine_batch
 		shader <= Solid $bog_gamengine_shader_solid
 		shape <= Box $bog_gamengine_shape_box

@@ -52,7 +52,19 @@ namespace $ {
 			return next ?? null
 		}
 
+		@ $mol_mem
+		cam( next?: $bog_gamengine_cam | null ) {
+			return next ?? null
+		}
+
+		@ $mol_mem
+		aspect( next = 1 ) {
+			return next
+		}
+
 		frame_done = -1
+		frustum = new Float32Array( 24 )
+		eye = new Float32Array( 3 )
 
 		@ $mol_mem
 		step() {
@@ -62,6 +74,8 @@ namespace $ {
 			const nodes = this.nodes()
 			const phys = this.phys()
 			const phys3 = this.phys3()
+			const cam = this.cam()
+			const aspect = this.aspect()
 			if( frame !== this.frame_done ) {
 				this.frame_done = frame
 				input?.poll()
@@ -69,8 +83,15 @@ namespace $ {
 				phys?.step( dt )
 				phys3?.step( dt )
 			}
+			if( cam ) {
+				cam.frustum( aspect, this.frustum )
+				const world = cam.world()
+				this.eye[ 0 ] = world[ 12 ]
+				this.eye[ 1 ] = world[ 13 ]
+				this.eye[ 2 ] = world[ 14 ]
+			}
 			const batches = this.batches()
-			for( let i = 0; i < batches.length; ++i ) batches[ i ].fill()
+			for( let i = 0; i < batches.length; ++i ) batches[ i ].fill( cam ? this.frustum : null, cam ? this.eye : null )
 			return frame
 		}
 

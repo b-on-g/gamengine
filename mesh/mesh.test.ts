@@ -76,6 +76,18 @@ namespace $ {
 			$mol_assert_equal( [ ... batch.tint.subarray( 0, 4 ) ], [ 1, 0.5, 0.25, 1 ] )
 		},
 
+		'lods are empty by default and can be set'() {
+			const mesh = new $bog_gamengine_mesh
+			$mol_assert_equal( mesh.lods().length, 0 )
+			const low = new $bog_gamengine_shape_quad
+			mesh.lods([ { dist: 6, shape: low } ])
+			$mol_assert_equal( mesh.lods()[ 0 ].shape, low )
+		},
+
+		'radius of box mesh is half diagonal of unit cube'() {
+			$mol_assert_ok( Math.abs( new $bog_gamengine_mesh().radius() - Math.sqrt( 3 ) / 2 ) < 1e-6 )
+		},
+
 		'set through props changes size'() {
 			const mesh = new $bog_gamengine_mesh
 			mesh.props().find( prop => prop.name === 'size' )!.set( new Float32Array([ 2, 3, 4 ]) )

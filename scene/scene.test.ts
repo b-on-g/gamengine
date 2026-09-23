@@ -31,6 +31,12 @@ namespace $ {
 
 	}
 
+	class $bog_gamengine_scene_test_cam extends $bog_gamengine_cam {
+		proj( aspect: number ) {
+			return $mol_3d_mat4.perspective( Math.PI / 3, aspect, 0.1, 100 )
+		}
+	}
+
 	class $bog_gamengine_scene_input_mock extends $bog_gamengine_input {
 
 		polls = 0
@@ -140,6 +146,33 @@ namespace $ {
 			$bog_gamengine_scene_time_mock.stamp( 17 )
 			scene.step()
 			$mol_assert_ok( Math.abs( world.pos[ i * 3 ] - world.timestep ) < 1e-6 )
+		},
+
+		'cam is null by default and can be set'() {
+			const scene = new $bog_gamengine_scene
+			$mol_assert_equal( scene.cam(), null )
+			const cam = new $bog_gamengine_scene_test_cam
+			scene.cam( cam )
+			$mol_assert_equal( scene.cam(), cam )
+		},
+
+		'scene with cam drops mesh behind it from batch count'( $ ) {
+			$.$mol_state_time = $bog_gamengine_scene_time_mock
+			const front = new $bog_gamengine_mesh
+			front.pos( new Float32Array([ 0, 0, -5 ]) )
+			const behind = new $bog_gamengine_mesh
+			behind.pos( new Float32Array([ 0, 0, 5 ]) )
+			const batch = new $bog_gamengine_batch
+			batch.nodes([ front, behind ])
+			const scene = new $bog_gamengine_scene
+			scene.$ = $
+			scene.batches([ batch ])
+			$bog_gamengine_scene_time_mock.stamp( 0 )
+			scene.step()
+			$mol_assert_equal( batch.count, 2 )
+			scene.cam( new $bog_gamengine_scene_test_cam )
+			scene.step()
+			$mol_assert_equal( batch.count, 1 )
 		},
 
 		'nodes lists tree depth first with parent before kids'() {
