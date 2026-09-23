@@ -4270,11 +4270,34 @@ var $;
 var $;
 (function ($) {
     const map = '####\n#..#\n####';
+    const room = '#####\n#...#\n#...#\n#...#\n#####';
     class Probe extends $bog_gamengine_phys_body {
         hits = [];
-        hit(other) {
+        normals = [];
+        hit(other, normal) {
             this.hits.push(other);
+            this.normals.push(normal ? [normal[0], normal[1]] : []);
         }
+        last_normal() {
+            return this.normals[this.normals.length - 1];
+        }
+    }
+    function room_phys(body, gy) {
+        const tile = new $bog_gamengine_phys_tile;
+        tile.map(room);
+        const phys = new $bog_gamengine_phys;
+        phys.tile(tile);
+        phys.gravity(new Float32Array([0, gy]));
+        phys.bodies([body]);
+        return phys;
+    }
+    function falling(steps) {
+        const body = new Probe;
+        body.pos(new Float32Array([2.5, -1.5, 0]));
+        const phys = room_phys(body, -10);
+        for (let i = 0; i < steps; ++i)
+            phys.step(0.1);
+        return body;
     }
     function flying() {
         const body = new Probe;
@@ -4351,6 +4374,69 @@ var $;
             $mol_assert_equal(ghost.pos()[0], 0.5);
             $mol_assert_equal(ghost.pos()[1], -0.5);
             $mol_assert_equal(ghost.hits, []);
+        },
+        'gravity drops the body onto the tile floor'() {
+            $mol_assert_equal(falling(8).pos()[1], -3.5);
+        },
+        'landed body stands on ground'() {
+            const body = falling(8);
+            $mol_assert_equal(body.on_ground(), true);
+            $mol_assert_equal(body.touched & $bog_gamengine_phys_body.side_down, $bog_gamengine_phys_body.side_down);
+        },
+        'landed body gets hit with the normal up'() {
+            $mol_assert_equal(falling(8).last_normal(), [0, 1]);
+        },
+        'jump up stops at the ceiling'() {
+            const body = new Probe;
+            body.pos(new Float32Array([2.5, -3.5, 0]));
+            body.vel(new Float32Array([0, 10, 0]));
+            const phys = room_phys(body, -10);
+            for (let i = 0; i < 3; ++i)
+                phys.step(0.1);
+            $mol_assert_equal(body.pos()[1], -1.5);
+            $mol_assert_equal(body.on_ceil(), true);
+            $mol_assert_equal(body.last_normal(), [0, -1]);
+        },
+        'body running into a wall touches it aside'() {
+            const body = new Probe;
+            body.pos(new Float32Array([2.5, -2.5, 0]));
+            body.vel(new Float32Array([10, 0, 0]));
+            const phys = room_phys(body, 0);
+            phys.step(0.1);
+            $mol_assert_equal(body.on_wall(), true);
+            $mol_assert_equal(body.on_ground(), false);
+            $mol_assert_equal(body.last_normal(), [-1, 0]);
+        },
+        'gravity does not move a ghost'() {
+            const body = new Probe;
+            body.ghost(true);
+            body.pos(new Float32Array([2.5, -1.5, 0]));
+            const phys = room_phys(body, -10);
+            phys.step(0.1);
+            $mol_assert_equal(body.pos()[1], -1.5);
+            $mol_assert_equal(body.vel()[1], 0);
+        },
+        'gravity does not move a still body'() {
+            const body = new Probe;
+            body.still(true);
+            body.pos(new Float32Array([2.5, -1.5, 0]));
+            const phys = room_phys(body, -10);
+            phys.step(0.1);
+            $mol_assert_equal(body.pos()[1], -1.5);
+            $mol_assert_equal(body.vel()[1], 0);
+        },
+        'body with read-only pos fails by name'() {
+            class Stuck extends $bog_gamengine_phys_body {
+                fixed = new Float32Array([2.5, -1.5, 0]);
+                pos() {
+                    return this.fixed;
+                }
+            }
+            const body = new Stuck;
+            body.vel(new Float32Array([1, 0, 0]));
+            const phys = new $bog_gamengine_phys;
+            phys.bodies([body]);
+            $mol_assert_fail(() => phys.step(0.1), 'Stuck: pos is read-only, declare it as `pos? <=>`');
         },
         'tile cell beyond map edge is solid'() {
             const tile = new $bog_gamengine_phys_tile;
@@ -6310,6 +6396,118 @@ var $;
 var $;
 (function ($_1) {
     $mol_test({
+        'face gives source sampler, uv pipe and color output'($) {
+            const shader = new $bog_gamengine_shader_post;
+            const face = shader.face();
+            $mol_assert_equal(face.glob.source, 'sampler2D');
+            $mol_assert_equal(face.pipe.pipe_uv, 'vec2');
+            $mol_assert_equal(face.output.color, 'vec4');
+        },
+        'both entries have main'($) {
+            const shader = new $bog_gamengine_shader_post;
+            $mol_assert_ok(shader.vert().includes('void main()'));
+            $mol_assert_ok(shader.frag().includes('void main()'));
+        },
+        'vert makes the quad out of gl_VertexID without attributes'($) {
+            const shader = new $bog_gamengine_shader_post;
+            $mol_assert_ok(shader.vert().includes('gl_VertexID'));
+            $mol_assert_not('input' in shader.face());
+        },
+        'source declares the sampler and mixes only glsl both'($) {
+            const shader = new $bog_gamengine_shader_post;
+            const source = $bog_gamengine_gl_source(shader.face(), shader.vert(), shader.frag());
+            $mol_assert_ok(source.frag.includes('uniform sampler2D source;'));
+            $mol_assert_ok(source.frag.includes('out vec4 color;'));
+            $mol_assert_equal(shader.sources().vert, $mol_3d_glsl_both + shader.vert());
+        },
+        'one step reads the pass input at full size'($) {
+            const shader = new $bog_gamengine_shader_post;
+            const steps = shader.steps();
+            $mol_assert_equal(steps.length, 1);
+            $mol_assert_equal(steps[0].shader, shader);
+            $mol_assert_equal(steps[0].scale, 1);
+            $mol_assert_equal(steps[0].from, 'in');
+            $mol_assert_equal(steps[0].extra, null);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    $mol_test({
+        'both entries have main'($) {
+            const shader = new $bog_gamengine_shader_post_bloom;
+            $mol_assert_ok(shader.vert().includes('void main()'));
+            $mol_assert_ok(shader.frag().includes('void main()'));
+        },
+        'mix face adds the blurred sampler next to the source'($) {
+            const face = new $bog_gamengine_shader_post_bloom().face();
+            $mol_assert_equal(face.glob.source, 'sampler2D');
+            $mol_assert_equal(face.glob.extra, 'sampler2D');
+        },
+        'chain is bright, two blurs at half size and a mix at full'($) {
+            const shader = new $bog_gamengine_shader_post_bloom;
+            const steps = shader.steps();
+            $mol_assert_equal(steps.map(step => step.scale), [2, 2, 2, 1]);
+            $mol_assert_equal(steps.map(step => step.from), ['in', 'prev', 'prev', 'in']);
+            $mol_assert_equal(steps.map(step => step.extra), [null, null, null, 'prev']);
+            $mol_assert_equal(steps[3].shader, shader);
+        },
+        'blurs walk different axes'($) {
+            const along = new $bog_gamengine_shader_post_bloom_blur;
+            const across = new $bog_gamengine_shader_post_bloom_blur_across;
+            $mol_assert_ok(along.frag().includes('vec2( 1.0, 0.0 ) * texel'));
+            $mol_assert_ok(across.frag().includes('vec2( 0.0, 1.0 ) * texel'));
+        },
+        'bright pass keeps only what is over the threshold'($) {
+            const frag = new $bog_gamengine_shader_post_bloom_bright().frag();
+            $mol_assert_ok(frag.includes('power - 0.4'));
+        },
+        'source of the mix declares both samplers'($) {
+            const shader = new $bog_gamengine_shader_post_bloom;
+            const source = $bog_gamengine_gl_source(shader.face(), shader.vert(), shader.frag());
+            $mol_assert_ok(source.frag.includes('uniform sampler2D source;'));
+            $mol_assert_ok(source.frag.includes('uniform sampler2D extra;'));
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    $mol_test({
+        'both entries have main'($) {
+            const shader = new $bog_gamengine_shader_post_tone;
+            $mol_assert_ok(shader.vert().includes('void main()'));
+            $mol_assert_ok(shader.frag().includes('void main()'));
+        },
+        'face keeps source sampler of the base pass'($) {
+            const shader = new $bog_gamengine_shader_post_tone;
+            $mol_assert_equal(shader.face().glob.source, 'sampler2D');
+        },
+        'frag rolls the tone off and keeps white white'($) {
+            const shader = new $bog_gamengine_shader_post_tone;
+            const frag = shader.frag();
+            $mol_assert_ok(frag.includes('aces'));
+            $mol_assert_ok(frag.includes('vec3 white = aces( vec3( 1.0 ) )'));
+        },
+        'source declares the sampler and the color output'($) {
+            const shader = new $bog_gamengine_shader_post_tone;
+            const source = $bog_gamengine_gl_source(shader.face(), shader.vert(), shader.frag());
+            $mol_assert_ok(source.frag.includes('uniform sampler2D source;'));
+            $mol_assert_ok(source.frag.includes('out vec4 color;'));
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    $mol_test({
         'vert has main and frag is empty main'($) {
             const shader = new $bog_gamengine_shader_depth;
             $mol_assert_ok(shader.vert().includes('void main()'));
@@ -6371,11 +6569,15 @@ var $;
     class $bog_gamengine_draw_mock extends $$.$bog_gamengine_draw {
         gl = new $bog_gamengine_draw_gl_mock;
         scene_mock = new $bog_gamengine_scene;
+        passes_mock = null;
         context() {
             return this.gl;
         }
         scene() {
             return this.scene_mock;
+        }
+        passes() {
+            return this.passes_mock ?? super.passes();
         }
         slot(batch) {
             const found = this.slots_all.get(batch);
@@ -6422,6 +6624,58 @@ var $;
             const draw = new $bog_gamengine_draw;
             draw.$ = $;
             $mol_assert_equal(draw.stat(), 'frame 1 | 0.0 ms | tick 0.0 ms');
+        },
+        'report without context is all zeros'($) {
+            $.$mol_state_time = $bog_gamengine_draw_time_mock;
+            const draw = new $bog_gamengine_draw;
+            draw.$ = $;
+            $mol_assert_equal(draw.report(), {
+                tick: 0, fill: 0, shadow: 0, main: 0, post: 0,
+                batches: 0, instances: 0, draws: 0, triangles: 0, bytes: 0,
+            });
+        },
+        'counters sum instances and triangles of ready slots only'($) {
+            const draw = new $bog_gamengine_draw_mock;
+            draw.$ = $;
+            const slot = (count, ready) => {
+                const made = new $$.$bog_gamengine_draw_slot;
+                made.batch = new $bog_gamengine_batch;
+                made.batch.count = count;
+                made.batch.cap = count;
+                made.ready = ready;
+                made.tris = 2;
+                made.stride = 100;
+                made.bytes = 100 * count;
+                return made;
+            };
+            draw.count_fill([slot(3, true), slot(5, true), slot(7, false)]);
+            $mol_assert_equal(draw.count_batches, 2);
+            $mol_assert_equal(draw.count_instances, 8);
+            $mol_assert_equal(draw.count_triangles, 16);
+            $mol_assert_equal(draw.count_bytes, 800);
+        },
+        'chain of one pass draws straight to the screen'($) {
+            const draw = new $bog_gamengine_draw_mock;
+            draw.$ = $;
+            const plan = draw.post_plan();
+            $mol_assert_equal(plan.length, 1);
+            $mol_assert_equal(plan[0].from, 'scene');
+            $mol_assert_equal(plan[0].out, null);
+        },
+        'bloom before tone ping-pongs half size targets and ends on the screen'($) {
+            const draw = new $bog_gamengine_draw_mock;
+            draw.$ = $;
+            draw.passes_mock = [new $bog_gamengine_shader_post_bloom, new $bog_gamengine_shader_post_tone];
+            const plan = draw.post_plan();
+            $mol_assert_equal(plan.map(step => step.from), ['scene', '2_0', '2_1', 'scene', '1_0']);
+            $mol_assert_equal(plan.map(step => step.out), ['2_0', '2_1', '2_0', '1_0', null]);
+            $mol_assert_equal(plan.map(step => step.extra), [null, null, null, '2_0', null]);
+        },
+        'chain is empty when post is off'($) {
+            const draw = new $bog_gamengine_draw_mock;
+            draw.$ = $;
+            draw.post(false);
+            $mol_assert_equal(draw.post_plan().length, 0);
         },
     });
 })($ || ($ = {}));
@@ -7365,6 +7619,28 @@ var $;
         'glb without position fails with message'($) {
             const shape = $bog_gamengine_shape_gltf.make({ $, json: () => ({ meshes: [{ primitives: [{ attributes: {} }] }] }) });
             $mol_assert_fail(() => shape.geometry(), 'glTF primitive has no POSITION');
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    $mol_test({
+        'both entries have main'($) {
+            const shader = new $bog_gamengine_shader_post_vignette;
+            $mol_assert_ok(shader.vert().includes('void main()'));
+            $mol_assert_ok(shader.frag().includes('void main()'));
+        },
+        'face keeps source sampler of the base pass'($) {
+            const shader = new $bog_gamengine_shader_post_vignette;
+            $mol_assert_equal(shader.face().glob.source, 'sampler2D');
+        },
+        'frag dims by the distance from the middle'($) {
+            const frag = new $bog_gamengine_shader_post_vignette().frag();
+            $mol_assert_ok(frag.includes('vec2( 0.5 )'));
+            $mol_assert_ok(frag.includes('smoothstep'));
         },
     });
 })($ || ($ = {}));

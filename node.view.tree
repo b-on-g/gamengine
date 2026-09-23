@@ -447,7 +447,22 @@ $bog_gamengine_draw $mol_view
 	shadows? true
 	shadow_size? 2048
 	shadow_range? 20
+	post? true
+	Tone $bog_gamengine_shader_post_tone
+	passes /
+		<= Tone
 	stat \
+	report *
+		tick 0
+		fill 0
+		shadow 0
+		main 0
+		post 0
+		batches 0
+		instances 0
+		draws 0
+		triangles 0
+		bytes 0
 
 $mol_labeler $mol_list
 	rows /
@@ -634,6 +649,9 @@ $bog_gamengine_demo_room $mol_page
 		<= Shine $mol_check_box
 			title \Блики
 			checked? <=> shine? false
+		<= Glow $mol_check_box
+			title \Свечение
+			checked? <=> glow? false
 		<= Shadows $mol_check_box
 			title \Тени
 			checked? <=> shadows?
@@ -643,13 +661,18 @@ $bog_gamengine_demo_room $mol_page
 		<= Screen_switch $mol_check_box
 			title \Кнопки
 			checked? <=> screen_shown? false
+		<= Profile $mol_check_box
+			title \Профиль
+			checked? <=> profile? false
 	body /
 		<= Draw $bog_gamengine_draw
 			scene <= Scene
 			cam <= Walker
 			wireframe? => wireframe?
 			shadows? => shadows?
+			passes <= passes /
 			stat => stat
+			report => report
 		<= Screen $bog_gamengine_input_screen
 			shown? <=> screen_shown? false
 			bind *
@@ -663,7 +686,7 @@ $bog_gamengine_demo_room $mol_page
 			titles *
 				turn_left \⟲
 				turn_right \⟳
-	foot /
+	foot <= foot_rows /
 		<= Stat $mol_view
 			sub / <= stat
 		<= Walker_stat $mol_view
@@ -672,6 +695,41 @@ $bog_gamengine_demo_room $mol_page
 			sub / <= pillar_stat \
 		<= Light_stat $mol_view
 			sub / <= light_stat \
+	Tone $bog_gamengine_shader_post_tone
+	Vignette $bog_gamengine_shader_post_vignette
+	Bloom $bog_gamengine_shader_post_bloom
+	Report $mol_view
+		sub /
+			<= Report_tick $mol_labeler
+				title \Тик
+				content / <= report_tick \
+			<= Report_fill $mol_labeler
+				title \Заливка
+				content / <= report_fill \
+			<= Report_shadow $mol_labeler
+				title \Тени
+				content / <= report_shadow \
+			<= Report_main $mol_labeler
+				title \Проход
+				content / <= report_main \
+			<= Report_post $mol_labeler
+				title \Пост
+				content / <= report_post \
+			<= Report_batches $mol_labeler
+				title \Батчи
+				content / <= report_batches \
+			<= Report_instances $mol_labeler
+				title \Инстансы
+				content / <= report_instances \
+			<= Report_draws $mol_labeler
+				title \Вызовы
+				content / <= report_draws \
+			<= Report_triangles $mol_labeler
+				title \Треугольники
+				content / <= report_triangles \
+			<= Report_bytes $mol_labeler
+				title \Память
+				content / <= report_bytes \
 	Input $bog_gamengine_input
 		key <= Key
 		screen <= Screen
