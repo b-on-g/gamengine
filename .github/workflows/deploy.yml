@@ -33,6 +33,8 @@ jobs:
       with:
         package: 'bog/gamengine'
         modules: 'demo probe'
+        meta: |
+          mol https://github.com/Dev-cmyser/mam_mol
 
     - uses: hyoo-ru/gh-deploy@v4.4.1
       if: github.ref == 'refs/heads/main'

@@ -11,7 +11,7 @@
 
 Демо: https://b-on-g.github.io/gamengine/ (страницы [quad](https://b-on-g.github.io/gamengine/#!demo=quad),
 [flat](https://b-on-g.github.io/gamengine/#!demo=flat), [room](https://b-on-g.github.io/gamengine/#!demo=room)).
-Деплой красный до вливания [mol#897](https://github.com/hyoo-ru/mam_mol/pull/897).
+До вливания [mol#897](https://github.com/hyoo-ru/mam_mol/pull/897) сборка на CI берёт мол из форка `Dev-cmyser/mam_mol` через `meta` в workflow; после вливания эти две строки из `deploy.yml` убрать.
 
 Управление: WASD и стрелки, Q/E поворот в комнате, клик по монете, звук после первого клика.
 
