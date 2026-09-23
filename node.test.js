@@ -10206,6 +10206,9 @@ var $;
         nodes(next) {
             return next ?? [];
         }
+        source(next) {
+            return next ?? null;
+        }
         cap = 0;
         count = 0;
         version = 0;
@@ -10226,6 +10229,9 @@ var $;
             this.uv = new Float32Array(cap * 4);
         }
         fill() {
+            const source = this.source();
+            if (source)
+                return this.fill_source(source);
             const nodes = this.nodes();
             const count = nodes.length;
             this.grow(count);
@@ -10260,6 +10266,26 @@ var $;
             ++this.version;
             return count;
         }
+        fill_source(source) {
+            const count = source.count;
+            const cap = this.cap;
+            this.grow(count);
+            if (this.cap !== cap) {
+                this.tint.fill(1);
+                this.layer.fill(0);
+                const uv = this.uv;
+                for (let i = 0; i < this.cap; ++i) {
+                    uv[i * 4] = 0;
+                    uv[i * 4 + 1] = 0;
+                    uv[i * 4 + 2] = 1;
+                    uv[i * 4 + 3] = 1;
+                }
+            }
+            this.trans.set(source.trans.subarray(0, count * 16));
+            this.count = count;
+            ++this.version;
+            return count;
+        }
     }
     __decorate([
         $mol_mem
@@ -10273,6 +10299,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_batch.prototype, "nodes", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_batch.prototype, "source", null);
     $.$bog_gamengine_batch = $bog_gamengine_batch;
 })($ || ($ = {}));
 
@@ -10592,6 +10621,635 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    class $bog_gamengine_phys3_broad extends $mol_object2 {
+        static shape_plane = 3;
+        static flag_sleep = 1;
+        pairs = new Uint32Array(0);
+        pair_count = 0;
+        order = new Uint32Array(0);
+        order_len = 0;
+        find(world) {
+            this.pair_count = 0;
+            this.order_sync(world.count);
+            this.order_sort(world.aabb);
+            this.sweep(world);
+            this.planes(world);
+            return this.pair_count;
+        }
+        order_sync(count) {
+            if (this.order.length < count) {
+                let len = Math.max(this.order.length, 16);
+                while (len < count)
+                    len *= 2;
+                const next = new Uint32Array(len);
+                next.set(this.order.subarray(0, this.order_len));
+                this.order = next;
+            }
+            const order = this.order;
+            let len = this.order_len;
+            if (count < len) {
+                let w = 0;
+                for (let r = 0; r < len; ++r) {
+                    if (order[r] < count)
+                        order[w++] = order[r];
+                }
+                len = w;
+            }
+            while (len < count) {
+                order[len] = len;
+                ++len;
+            }
+            this.order_len = len;
+        }
+        order_sort(aabb) {
+            const order = this.order;
+            const len = this.order_len;
+            for (let a = 1; a < len; ++a) {
+                const i = order[a];
+                const key = aabb[i * 6];
+                let b = a - 1;
+                while (b >= 0 && aabb[order[b] * 6] > key) {
+                    order[b + 1] = order[b];
+                    --b;
+                }
+                order[b + 1] = i;
+            }
+        }
+        sweep(world) {
+            const order = this.order;
+            const len = this.order_len;
+            const aabb = world.aabb, inv_mass = world.inv_mass, flags = world.flags, shape = world.shape;
+            const plane = $bog_gamengine_phys3_broad.shape_plane;
+            const sleep = $bog_gamengine_phys3_broad.flag_sleep;
+            for (let a = 0; a < len; ++a) {
+                const i = order[a];
+                if (shape[i] === plane)
+                    continue;
+                const i6 = i * 6;
+                const max_x = aabb[i6 + 3];
+                const min_y = aabb[i6 + 1], max_y = aabb[i6 + 4];
+                const min_z = aabb[i6 + 2], max_z = aabb[i6 + 5];
+                const active_i = inv_mass[i] > 0 && !(flags[i] & sleep);
+                for (let b = a + 1; b < len; ++b) {
+                    const j = order[b];
+                    const j6 = j * 6;
+                    if (aabb[j6] > max_x)
+                        break;
+                    if (shape[j] === plane)
+                        continue;
+                    if (!active_i && !(inv_mass[j] > 0 && !(flags[j] & sleep)))
+                        continue;
+                    if (aabb[j6 + 1] > max_y || aabb[j6 + 4] < min_y)
+                        continue;
+                    if (aabb[j6 + 2] > max_z || aabb[j6 + 5] < min_z)
+                        continue;
+                    this.push(i, j);
+                }
+            }
+        }
+        planes(world) {
+            const count = world.count;
+            const inv_mass = world.inv_mass, flags = world.flags, shape = world.shape;
+            const plane = $bog_gamengine_phys3_broad.shape_plane;
+            const sleep = $bog_gamengine_phys3_broad.flag_sleep;
+            for (let i = 0; i < count; ++i) {
+                if (shape[i] !== plane || inv_mass[i] > 0)
+                    continue;
+                for (let j = 0; j < count; ++j) {
+                    if (!(inv_mass[j] > 0) || flags[j] & sleep)
+                        continue;
+                    this.push(i, j);
+                }
+            }
+        }
+        push(i, j) {
+            const at = this.pair_count * 2;
+            if (at + 2 > this.pairs.length) {
+                const next = new Uint32Array(Math.max(64, this.pairs.length * 2));
+                next.set(this.pairs);
+                this.pairs = next;
+            }
+            const pairs = this.pairs;
+            if (i < j) {
+                pairs[at] = i;
+                pairs[at + 1] = j;
+            }
+            else {
+                pairs[at] = j;
+                pairs[at + 1] = i;
+            }
+            ++this.pair_count;
+        }
+    }
+    $.$bog_gamengine_phys3_broad = $bog_gamengine_phys3_broad;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function $bog_gamengine_vec_add(out, a, b) {
+        for (let i = 0; i < a.length; ++i)
+            out[i] = a[i] + b[i];
+        return out;
+    }
+    $.$bog_gamengine_vec_add = $bog_gamengine_vec_add;
+    function $bog_gamengine_vec_sub(out, a, b) {
+        for (let i = 0; i < a.length; ++i)
+            out[i] = a[i] - b[i];
+        return out;
+    }
+    $.$bog_gamengine_vec_sub = $bog_gamengine_vec_sub;
+    function $bog_gamengine_vec_scale(out, a, k) {
+        for (let i = 0; i < a.length; ++i)
+            out[i] = a[i] * k;
+        return out;
+    }
+    $.$bog_gamengine_vec_scale = $bog_gamengine_vec_scale;
+    function $bog_gamengine_vec_len(a) {
+        let sum = 0;
+        for (let i = 0; i < a.length; ++i)
+            sum += a[i] * a[i];
+        return Math.sqrt(sum);
+    }
+    $.$bog_gamengine_vec_len = $bog_gamengine_vec_len;
+    function $bog_gamengine_vec_norm(out, a) {
+        const len = $bog_gamengine_vec_len(a);
+        const k = len === 0 ? 0 : 1 / len;
+        for (let i = 0; i < a.length; ++i)
+            out[i] = a[i] * k;
+        return out;
+    }
+    $.$bog_gamengine_vec_norm = $bog_gamengine_vec_norm;
+    function $bog_gamengine_vec_dot(a, b) {
+        let sum = 0;
+        for (let i = 0; i < a.length; ++i)
+            sum += a[i] * b[i];
+        return sum;
+    }
+    $.$bog_gamengine_vec_dot = $bog_gamengine_vec_dot;
+    function $bog_gamengine_vec_cross(out, a, b) {
+        const ax = a[0], ay = a[1], az = a[2];
+        const bx = b[0], by = b[1], bz = b[2];
+        out[0] = ay * bz - az * by;
+        out[1] = az * bx - ax * bz;
+        out[2] = ax * by - ay * bx;
+        return out;
+    }
+    $.$bog_gamengine_vec_cross = $bog_gamengine_vec_cross;
+    function $bog_gamengine_vec_lerp(out, a, b, t) {
+        for (let i = 0; i < a.length; ++i)
+            out[i] = a[i] + (b[i] - a[i]) * t;
+        return out;
+    }
+    $.$bog_gamengine_vec_lerp = $bog_gamengine_vec_lerp;
+    function $bog_gamengine_vec_mat4_apply(out, m, v) {
+        const x = v[0], y = v[1], z = v[2], w = v[3];
+        out[0] = m[0] * x + m[4] * y + m[8] * z + m[12] * w;
+        out[1] = m[1] * x + m[5] * y + m[9] * z + m[13] * w;
+        out[2] = m[2] * x + m[6] * y + m[10] * z + m[14] * w;
+        out[3] = m[3] * x + m[7] * y + m[11] * z + m[15] * w;
+        return out;
+    }
+    $.$bog_gamengine_vec_mat4_apply = $bog_gamengine_vec_mat4_apply;
+    function $bog_gamengine_vec_quat_identity(out) {
+        out[0] = 0;
+        out[1] = 0;
+        out[2] = 0;
+        out[3] = 1;
+        return out;
+    }
+    $.$bog_gamengine_vec_quat_identity = $bog_gamengine_vec_quat_identity;
+    function $bog_gamengine_vec_quat_mul(out, a, b) {
+        const ax = a[0], ay = a[1], az = a[2], aw = a[3];
+        const bx = b[0], by = b[1], bz = b[2], bw = b[3];
+        out[0] = aw * bx + ax * bw + ay * bz - az * by;
+        out[1] = aw * by - ax * bz + ay * bw + az * bx;
+        out[2] = aw * bz + ax * by - ay * bx + az * bw;
+        out[3] = aw * bw - ax * bx - ay * by - az * bz;
+        return out;
+    }
+    $.$bog_gamengine_vec_quat_mul = $bog_gamengine_vec_quat_mul;
+    function $bog_gamengine_vec_quat_from_axis(out, axis, angle) {
+        const len = Math.hypot(axis[0], axis[1], axis[2]);
+        const k = len === 0 ? 0 : Math.sin(angle / 2) / len;
+        out[0] = axis[0] * k;
+        out[1] = axis[1] * k;
+        out[2] = axis[2] * k;
+        out[3] = Math.cos(angle / 2);
+        return out;
+    }
+    $.$bog_gamengine_vec_quat_from_axis = $bog_gamengine_vec_quat_from_axis;
+    function $bog_gamengine_vec_quat_from_euler(out, x, y, z) {
+        const cx = Math.cos(x / 2), sx = Math.sin(x / 2);
+        const cy = Math.cos(y / 2), sy = Math.sin(y / 2);
+        const cz = Math.cos(z / 2), sz = Math.sin(z / 2);
+        out[0] = sx * cy * cz - cx * sy * sz;
+        out[1] = cx * sy * cz + sx * cy * sz;
+        out[2] = cx * cy * sz - sx * sy * cz;
+        out[3] = cx * cy * cz + sx * sy * sz;
+        return out;
+    }
+    $.$bog_gamengine_vec_quat_from_euler = $bog_gamengine_vec_quat_from_euler;
+    function $bog_gamengine_vec_quat_normalize(out, q) {
+        const len = Math.hypot(q[0], q[1], q[2], q[3]);
+        if (len === 0)
+            return $bog_gamengine_vec_quat_identity(out);
+        const k = 1 / len;
+        out[0] = q[0] * k;
+        out[1] = q[1] * k;
+        out[2] = q[2] * k;
+        out[3] = q[3] * k;
+        return out;
+    }
+    $.$bog_gamengine_vec_quat_normalize = $bog_gamengine_vec_quat_normalize;
+    function $bog_gamengine_vec_quat_rotate(out, q, v) {
+        const qx = q[0], qy = q[1], qz = q[2], qw = q[3];
+        const vx = v[0], vy = v[1], vz = v[2];
+        const tx = 2 * (qy * vz - qz * vy);
+        const ty = 2 * (qz * vx - qx * vz);
+        const tz = 2 * (qx * vy - qy * vx);
+        out[0] = vx + qw * tx + qy * tz - qz * ty;
+        out[1] = vy + qw * ty + qz * tx - qx * tz;
+        out[2] = vz + qw * tz + qx * ty - qy * tx;
+        return out;
+    }
+    $.$bog_gamengine_vec_quat_rotate = $bog_gamengine_vec_quat_rotate;
+    function $bog_gamengine_vec_quat_integrate(out, q, ang, dt) {
+        const qx = q[0], qy = q[1], qz = q[2], qw = q[3];
+        const wx = ang[0] * dt / 2, wy = ang[1] * dt / 2, wz = ang[2] * dt / 2;
+        out[0] = qx + wx * qw + wy * qz - wz * qy;
+        out[1] = qy - wx * qz + wy * qw + wz * qx;
+        out[2] = qz + wx * qy - wy * qx + wz * qw;
+        out[3] = qw - wx * qx - wy * qy - wz * qz;
+        return $bog_gamengine_vec_quat_normalize(out, out);
+    }
+    $.$bog_gamengine_vec_quat_integrate = $bog_gamengine_vec_quat_integrate;
+    function $bog_gamengine_vec_quat_to_mat4(out, q, pos, scale) {
+        const x = q[0], y = q[1], z = q[2], w = q[3];
+        const xx = x * x, yy = y * y, zz = z * z;
+        const xy = x * y, xz = x * z, yz = y * z;
+        const wx = w * x, wy = w * y, wz = w * z;
+        const sx = scale[0], sy = scale[1], sz = scale[2];
+        out[0] = (1 - 2 * (yy + zz)) * sx;
+        out[1] = 2 * (xy + wz) * sx;
+        out[2] = 2 * (xz - wy) * sx;
+        out[3] = 0;
+        out[4] = 2 * (xy - wz) * sy;
+        out[5] = (1 - 2 * (xx + zz)) * sy;
+        out[6] = 2 * (yz + wx) * sy;
+        out[7] = 0;
+        out[8] = 2 * (xz + wy) * sz;
+        out[9] = 2 * (yz - wx) * sz;
+        out[10] = (1 - 2 * (xx + yy)) * sz;
+        out[11] = 0;
+        out[12] = pos[0];
+        out[13] = pos[1];
+        out[14] = pos[2];
+        out[15] = 1;
+        return out;
+    }
+    $.$bog_gamengine_vec_quat_to_mat4 = $bog_gamengine_vec_quat_to_mat4;
+    function $bog_gamengine_vec_quat_to_euler(out, q) {
+        const x = q[0], y = q[1], z = q[2], w = q[3];
+        const sy = 2 * (w * y - x * z);
+        out[1] = sy >= 1 ? Math.PI / 2 : sy <= -1 ? -Math.PI / 2 : Math.asin(sy);
+        out[0] = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y));
+        out[2] = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
+        return out;
+    }
+    $.$bog_gamengine_vec_quat_to_euler = $bog_gamengine_vec_quat_to_euler;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_phys3 extends $mol_object2 {
+        static shape_sphere = 0;
+        static shape_box = 1;
+        static shape_capsule = 2;
+        static shape_plane = 3;
+        static shape_hull = 4;
+        static flag_sleep = 1;
+        static flag_ghost = 2;
+        cap = 0;
+        count = 0;
+        pos = new Float32Array(0);
+        rot = new Float32Array(0);
+        vel = new Float32Array(0);
+        ang = new Float32Array(0);
+        mass = new Float32Array(0);
+        inv_mass = new Float32Array(0);
+        inv_inertia = new Float32Array(0);
+        shape = new Uint8Array(0);
+        size = new Float32Array(0);
+        flags = new Uint8Array(0);
+        trans = new Float32Array(0);
+        aabb = new Float32Array(0);
+        hull_off = new Uint32Array(0);
+        hull_count = new Uint32Array(0);
+        hull = new Float32Array(0);
+        hull_len = 0;
+        pos_view = [];
+        rot_view = [];
+        ang_view = [];
+        trans_view = [];
+        tmp_scale = new Float32Array(3);
+        tmp_point = new Float32Array(3);
+        broad = new $bog_gamengine_phys3_broad;
+        gravity(next) {
+            return next ?? new Float32Array([0, -9.81, 0]);
+        }
+        grow(need) {
+            if (need <= this.cap)
+                return;
+            let cap = Math.max(this.cap, 16);
+            while (cap < need)
+                cap *= 2;
+            this.cap = cap;
+            this.pos = this.grow_f32(this.pos, cap * 3);
+            this.rot = this.grow_f32(this.rot, cap * 4);
+            this.vel = this.grow_f32(this.vel, cap * 3);
+            this.ang = this.grow_f32(this.ang, cap * 3);
+            this.mass = this.grow_f32(this.mass, cap);
+            this.inv_mass = this.grow_f32(this.inv_mass, cap);
+            this.inv_inertia = this.grow_f32(this.inv_inertia, cap * 3);
+            this.size = this.grow_f32(this.size, cap * 3);
+            this.trans = this.grow_f32(this.trans, cap * 16);
+            this.aabb = this.grow_f32(this.aabb, cap * 6);
+            const shape = new Uint8Array(cap);
+            shape.set(this.shape);
+            this.shape = shape;
+            const flags = new Uint8Array(cap);
+            flags.set(this.flags);
+            this.flags = flags;
+            const hull_off = new Uint32Array(cap);
+            hull_off.set(this.hull_off);
+            this.hull_off = hull_off;
+            const hull_count = new Uint32Array(cap);
+            hull_count.set(this.hull_count);
+            this.hull_count = hull_count;
+            this.pos_view = this.views(this.pos, 3);
+            this.rot_view = this.views(this.rot, 4);
+            this.ang_view = this.views(this.ang, 3);
+            this.trans_view = this.views(this.trans, 16);
+        }
+        views(buf, stride) {
+            const list = [];
+            for (let i = 0; i < this.cap; ++i)
+                list.push(buf.subarray(i * stride, i * stride + stride));
+            return list;
+        }
+        grow_f32(prev, len) {
+            const next = new Float32Array(len);
+            next.set(prev);
+            return next;
+        }
+        add(shape, size, mass, pos, rot) {
+            const i = this.count;
+            this.grow(i + 1);
+            this.count = i + 1;
+            this.shape[i] = shape;
+            this.size.set(size, i * 3);
+            this.pos.set(pos, i * 3);
+            if (rot)
+                this.rot.set(rot, i * 4);
+            else
+                $bog_gamengine_vec_quat_identity(this.rot_view[i]);
+            this.vel.fill(0, i * 3, i * 3 + 3);
+            this.ang.fill(0, i * 3, i * 3 + 3);
+            this.flags[i] = 0;
+            this.hull_off[i] = 0;
+            this.hull_count[i] = 0;
+            this.mass_set(i, mass);
+            this.trans_write(i);
+            this.bounds_of(i);
+            return i;
+        }
+        mass_set(i, mass) {
+            this.mass[i] = mass;
+            this.inv_mass[i] = mass > 0 ? 1 / mass : 0;
+            const inertia = this.inv_inertia;
+            inertia.fill(0, i * 3, i * 3 + 3);
+            if (mass <= 0)
+                return;
+            const size = this.size;
+            const sx = size[i * 3], sy = size[i * 3 + 1], sz = size[i * 3 + 2];
+            switch (this.shape[i]) {
+                case $bog_gamengine_phys3.shape_sphere: {
+                    const k = 2.5 / (mass * sx * sx);
+                    inertia[i * 3] = k;
+                    inertia[i * 3 + 1] = k;
+                    inertia[i * 3 + 2] = k;
+                    break;
+                }
+                case $bog_gamengine_phys3.shape_box: {
+                    inertia[i * 3] = 3 / (mass * (sy * sy + sz * sz));
+                    inertia[i * 3 + 1] = 3 / (mass * (sx * sx + sz * sz));
+                    inertia[i * 3 + 2] = 3 / (mass * (sx * sx + sy * sy));
+                    break;
+                }
+                case $bog_gamengine_phys3.shape_capsule: {
+                    const r = sx, h = sy;
+                    const vol_cyl = Math.PI * r * r * 2 * h;
+                    const vol_sph = Math.PI * r * r * r * 4 / 3;
+                    const m_cyl = mass * vol_cyl / (vol_cyl + vol_sph);
+                    const m_sph = mass - m_cyl;
+                    const side = m_cyl * (h * h / 3 + r * r / 4) + m_sph * (r * r * 2 / 5 + h * h + h * r * 3 / 4);
+                    const axis = m_cyl * r * r / 2 + m_sph * r * r * 2 / 5;
+                    inertia[i * 3] = 1 / side;
+                    inertia[i * 3 + 1] = 1 / axis;
+                    inertia[i * 3 + 2] = 1 / side;
+                    break;
+                }
+            }
+        }
+        remove(index) {
+            const last = this.count - 1;
+            if (index !== last) {
+                this.pos.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.rot.copyWithin(index * 4, last * 4, last * 4 + 4);
+                this.vel.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.ang.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.mass[index] = this.mass[last];
+                this.inv_mass[index] = this.inv_mass[last];
+                this.inv_inertia.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.shape[index] = this.shape[last];
+                this.size.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.flags[index] = this.flags[last];
+                this.trans.copyWithin(index * 16, last * 16, last * 16 + 16);
+                this.aabb.copyWithin(index * 6, last * 6, last * 6 + 6);
+                this.hull_off[index] = this.hull_off[last];
+                this.hull_count[index] = this.hull_count[last];
+            }
+            this.count = last;
+            return last;
+        }
+        hull_points(index, points) {
+            const off = this.hull_len;
+            const need = off + points.length;
+            if (need > this.hull.length) {
+                let len = Math.max(this.hull.length, 64 * 3);
+                while (len < need)
+                    len *= 2;
+                this.hull = this.grow_f32(this.hull, len);
+            }
+            this.hull.set(points, off);
+            this.hull_len = need;
+            this.hull_off[index] = off;
+            this.hull_count[index] = points.length / 3;
+            this.bounds_of(index);
+        }
+        scale_of(i) {
+            const out = this.tmp_scale;
+            const size = this.size;
+            const sx = size[i * 3], sy = size[i * 3 + 1], sz = size[i * 3 + 2];
+            switch (this.shape[i]) {
+                case $bog_gamengine_phys3.shape_sphere:
+                    out[0] = out[1] = out[2] = sx * 2;
+                    break;
+                case $bog_gamengine_phys3.shape_box:
+                    out[0] = sx * 2;
+                    out[1] = sy * 2;
+                    out[2] = sz * 2;
+                    break;
+                case $bog_gamengine_phys3.shape_capsule:
+                    out[0] = out[2] = sx * 2;
+                    out[1] = (sx + sy) * 2;
+                    break;
+                default:
+                    out[0] = out[1] = out[2] = 1;
+            }
+            return out;
+        }
+        trans_write(i) {
+            $bog_gamengine_vec_quat_to_mat4(this.trans_view[i], this.rot_view[i], this.pos_view[i], this.scale_of(i));
+        }
+        step(dt) {
+            const count = this.count;
+            const gravity = this.gravity();
+            const gx = gravity[0] * dt, gy = gravity[1] * dt, gz = gravity[2] * dt;
+            const pos = this.pos, vel = this.vel;
+            const inv_mass = this.inv_mass, flags = this.flags;
+            const pos_view = this.pos_view, rot_view = this.rot_view, ang_view = this.ang_view, trans_view = this.trans_view;
+            const sleep = $bog_gamengine_phys3.flag_sleep;
+            for (let i = 0; i < count; ++i) {
+                if (flags[i] & sleep)
+                    continue;
+                const p = i * 3;
+                if (inv_mass[i] > 0) {
+                    vel[p] += gx;
+                    vel[p + 1] += gy;
+                    vel[p + 2] += gz;
+                    pos[p] += vel[p] * dt;
+                    pos[p + 1] += vel[p + 1] * dt;
+                    pos[p + 2] += vel[p + 2] * dt;
+                    $bog_gamengine_vec_quat_integrate(rot_view[i], rot_view[i], ang_view[i], dt);
+                }
+                $bog_gamengine_vec_quat_to_mat4(trans_view[i], rot_view[i], pos_view[i], this.scale_of(i));
+            }
+            this.bounds();
+            this.broad.find(this);
+        }
+        bounds() {
+            const count = this.count;
+            const flags = this.flags;
+            const sleep = $bog_gamengine_phys3.flag_sleep;
+            for (let i = 0; i < count; ++i) {
+                if (flags[i] & sleep)
+                    continue;
+                this.bounds_of(i);
+            }
+        }
+        bounds_of(i) {
+            const aabb = this.aabb;
+            const a = i * 6;
+            const pos = this.pos;
+            const px = pos[i * 3], py = pos[i * 3 + 1], pz = pos[i * 3 + 2];
+            const size = this.size;
+            const sx = size[i * 3], sy = size[i * 3 + 1], sz = size[i * 3 + 2];
+            switch (this.shape[i]) {
+                case $bog_gamengine_phys3.shape_sphere:
+                case $bog_gamengine_phys3.shape_capsule: {
+                    const r = this.shape[i] === $bog_gamengine_phys3.shape_sphere ? sx : sx + sy;
+                    aabb[a] = px - r;
+                    aabb[a + 1] = py - r;
+                    aabb[a + 2] = pz - r;
+                    aabb[a + 3] = px + r;
+                    aabb[a + 4] = py + r;
+                    aabb[a + 5] = pz + r;
+                    break;
+                }
+                case $bog_gamengine_phys3.shape_box: {
+                    const q = this.rot;
+                    const x = q[i * 4], y = q[i * 4 + 1], z = q[i * 4 + 2], w = q[i * 4 + 3];
+                    const xx = x * x, yy = y * y, zz = z * z;
+                    const xy = x * y, xz = x * z, yz = y * z;
+                    const wx = w * x, wy = w * y, wz = w * z;
+                    const ex = Math.abs(1 - 2 * (yy + zz)) * sx + Math.abs(2 * (xy - wz)) * sy + Math.abs(2 * (xz + wy)) * sz;
+                    const ey = Math.abs(2 * (xy + wz)) * sx + Math.abs(1 - 2 * (xx + zz)) * sy + Math.abs(2 * (yz - wx)) * sz;
+                    const ez = Math.abs(2 * (xz - wy)) * sx + Math.abs(2 * (yz + wx)) * sy + Math.abs(1 - 2 * (xx + yy)) * sz;
+                    aabb[a] = px - ex;
+                    aabb[a + 1] = py - ey;
+                    aabb[a + 2] = pz - ez;
+                    aabb[a + 3] = px + ex;
+                    aabb[a + 4] = py + ey;
+                    aabb[a + 5] = pz + ez;
+                    break;
+                }
+                case $bog_gamengine_phys3.shape_hull: {
+                    const hull = this.hull;
+                    const off = this.hull_off[i], end = off + this.hull_count[i] * 3;
+                    const rot = this.rot_view[i];
+                    const point = this.tmp_point;
+                    let min_x = Infinity, min_y = Infinity, min_z = Infinity;
+                    let max_x = -Infinity, max_y = -Infinity, max_z = -Infinity;
+                    for (let k = off; k < end; k += 3) {
+                        point[0] = hull[k];
+                        point[1] = hull[k + 1];
+                        point[2] = hull[k + 2];
+                        $bog_gamengine_vec_quat_rotate(point, rot, point);
+                        if (point[0] < min_x)
+                            min_x = point[0];
+                        if (point[1] < min_y)
+                            min_y = point[1];
+                        if (point[2] < min_z)
+                            min_z = point[2];
+                        if (point[0] > max_x)
+                            max_x = point[0];
+                        if (point[1] > max_y)
+                            max_y = point[1];
+                        if (point[2] > max_z)
+                            max_z = point[2];
+                    }
+                    if (end === off)
+                        min_x = min_y = min_z = max_x = max_y = max_z = 0;
+                    aabb[a] = px + min_x;
+                    aabb[a + 1] = py + min_y;
+                    aabb[a + 2] = pz + min_z;
+                    aabb[a + 3] = px + max_x;
+                    aabb[a + 4] = py + max_y;
+                    aabb[a + 5] = pz + max_z;
+                    break;
+                }
+                default: {
+                    aabb[a] = aabb[a + 1] = aabb[a + 2] = -1e9;
+                    aabb[a + 3] = aabb[a + 4] = aabb[a + 5] = 1e9;
+                }
+            }
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_phys3.prototype, "gravity", null);
+    $.$bog_gamengine_phys3 = $bog_gamengine_phys3;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     /** App tree: `plugins / <= Control mol_keyboard_state key <= key_map`, where `key_map()` in app ts returns `this.Key().keys()` */
     class $bog_gamengine_key extends $mol_object2 {
         bind(next = {}) {
@@ -10780,20 +11438,27 @@ var $;
         phys(next) {
             return next ?? null;
         }
+        phys3(next) {
+            return next ?? null;
+        }
         input(next) {
             return next ?? null;
         }
         frame_done = -1;
         step() {
             const frame = this.clock().frame();
+            const dt = this.clock().dt();
+            const input = this.input();
+            const nodes = this.nodes();
+            const phys = this.phys();
+            const phys3 = this.phys3();
             if (frame !== this.frame_done) {
                 this.frame_done = frame;
-                this.input()?.poll();
-                const dt = this.clock().dt();
-                const nodes = this.nodes();
+                input?.poll();
                 for (let i = 0; i < nodes.length; ++i)
                     nodes[i].step(dt);
-                this.phys()?.step(dt);
+                phys?.step(dt);
+                phys3?.step(dt);
             }
             const batches = this.batches();
             for (let i = 0; i < batches.length; ++i)
@@ -10813,6 +11478,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "phys", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_scene.prototype, "phys3", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "input", null);
@@ -10855,6 +11523,10 @@ var $;
 		ambient(){
 			return 0.35;
 		}
+		wireframe(next){
+			if(next !== undefined) return next;
+			return false;
+		}
 		stat(){
 			return "";
 		}
@@ -10862,6 +11534,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_draw.prototype), "scene"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "cam"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "light_dir"));
+	($mol_mem(($.$bog_gamengine_draw.prototype), "wireframe"));
 
 
 ;
@@ -10879,6 +11552,8 @@ var $;
             slots_all = new WeakMap();
             textures_all = new WeakMap();
             ambient_vec = new Float32Array(1);
+            wire_off = new Float32Array(1);
+            wire_on = new Float32Array([1]);
             gaps = new Float32Array(stat_window);
             ticks = new Float32Array(stat_window);
             samples = 0;
@@ -10941,6 +11616,9 @@ var $;
                     return null;
                 const atlas = batch.atlas();
                 const cap = Math.max(batch.cap, 16);
+                const mode = shape.mode();
+                const depth = shader.depth();
+                const wireframe = 'wireframe' in globs ? program.uniform('wireframe') : null;
                 const slot = {
                     batch,
                     program,
@@ -10948,7 +11626,8 @@ var $;
                     view: program.uniform('view'),
                     light_dir: 'light_dir' in globs ? program.uniform('light_dir') : null,
                     ambient: 'ambient' in globs ? program.uniform('ambient') : null,
-                    depth: shader.depth(),
+                    wireframe,
+                    depth,
                     vao: gl.createVertexArray(),
                     trans: null,
                     tint: null,
@@ -10957,7 +11636,8 @@ var $;
                     atlas,
                     sampler: atlas ? program.uniform('atlas') : null,
                     tex: atlas ? this.tex(atlas) : null,
-                    triangles: shape.mode() === 'triangles',
+                    prim: mode === 'lines' ? gl.LINES : mode === 'triangles' ? gl.TRIANGLES : gl.TRIANGLE_STRIP,
+                    wire: depth && wireframe && mode !== 'lines' ? (mode === 'triangles' ? gl.LINES : gl.LINE_STRIP) : null,
                     size: shape.size(),
                     cap,
                 };
@@ -11029,18 +11709,19 @@ var $;
                 const proj = this.proj();
                 const view = this.cam().view();
                 const light_dir = this.light_dir();
+                const wireframe = this.wireframe();
                 this.ambient_vec[0] = this.ambient();
                 gl.enable(gl.BLEND);
                 gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
                 gl.clearColor(0.08, 0.08, 0.1, 1);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
                 for (let i = 0; i < slots.length; ++i)
-                    this.paint_slot(gl, slots[i], proj, view, light_dir);
+                    this.paint_slot(gl, slots[i], proj, view, light_dir, wireframe);
                 gl.bindVertexArray(null);
                 gl.useProgram(null);
                 this.measure();
             }
-            paint_slot(gl, slot, proj, view, light_dir) {
+            paint_slot(gl, slot, proj, view, light_dir, wireframe) {
                 const batch = slot.batch;
                 const count = batch.count;
                 if (!count)
@@ -11062,6 +11743,7 @@ var $;
                 $bog_gamengine_gl_uniform_matrix(gl, slot.view, view);
                 $bog_gamengine_gl_uniform_vector(gl, slot.light_dir, light_dir);
                 $bog_gamengine_gl_uniform_vector(gl, slot.ambient, this.ambient_vec);
+                $bog_gamengine_gl_uniform_vector(gl, slot.wireframe, this.wire_off);
                 if (slot.tex) {
                     gl.activeTexture(gl.TEXTURE0);
                     gl.bindTexture(gl.TEXTURE_2D_ARRAY, slot.tex.native);
@@ -11090,10 +11772,11 @@ var $;
                 }
                 if (grown)
                     slot.cap = batch.cap;
-                if (slot.triangles)
-                    gl.drawArraysInstanced(gl.TRIANGLES, 0, slot.size, count);
-                else
-                    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, slot.size, count);
+                gl.drawArraysInstanced(slot.prim, 0, slot.size, count);
+                if (!wireframe || slot.wire === null)
+                    return;
+                $bog_gamengine_gl_uniform_vector(gl, slot.wireframe, this.wire_on);
+                gl.drawArraysInstanced(slot.wire, 0, slot.size, count);
             }
             measure() {
                 const now = performance.now();
@@ -11241,76 +11924,6 @@ var $;
         }
     }
     $.$bog_gamengine_shader_sprite = $bog_gamengine_shader_sprite;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    function $bog_gamengine_vec_add(out, a, b) {
-        for (let i = 0; i < a.length; ++i)
-            out[i] = a[i] + b[i];
-        return out;
-    }
-    $.$bog_gamengine_vec_add = $bog_gamengine_vec_add;
-    function $bog_gamengine_vec_sub(out, a, b) {
-        for (let i = 0; i < a.length; ++i)
-            out[i] = a[i] - b[i];
-        return out;
-    }
-    $.$bog_gamengine_vec_sub = $bog_gamengine_vec_sub;
-    function $bog_gamengine_vec_scale(out, a, k) {
-        for (let i = 0; i < a.length; ++i)
-            out[i] = a[i] * k;
-        return out;
-    }
-    $.$bog_gamengine_vec_scale = $bog_gamengine_vec_scale;
-    function $bog_gamengine_vec_len(a) {
-        let sum = 0;
-        for (let i = 0; i < a.length; ++i)
-            sum += a[i] * a[i];
-        return Math.sqrt(sum);
-    }
-    $.$bog_gamengine_vec_len = $bog_gamengine_vec_len;
-    function $bog_gamengine_vec_norm(out, a) {
-        const len = $bog_gamengine_vec_len(a);
-        const k = len === 0 ? 0 : 1 / len;
-        for (let i = 0; i < a.length; ++i)
-            out[i] = a[i] * k;
-        return out;
-    }
-    $.$bog_gamengine_vec_norm = $bog_gamengine_vec_norm;
-    function $bog_gamengine_vec_dot(a, b) {
-        let sum = 0;
-        for (let i = 0; i < a.length; ++i)
-            sum += a[i] * b[i];
-        return sum;
-    }
-    $.$bog_gamengine_vec_dot = $bog_gamengine_vec_dot;
-    function $bog_gamengine_vec_cross(out, a, b) {
-        const ax = a[0], ay = a[1], az = a[2];
-        const bx = b[0], by = b[1], bz = b[2];
-        out[0] = ay * bz - az * by;
-        out[1] = az * bx - ax * bz;
-        out[2] = ax * by - ay * bx;
-        return out;
-    }
-    $.$bog_gamengine_vec_cross = $bog_gamengine_vec_cross;
-    function $bog_gamengine_vec_lerp(out, a, b, t) {
-        for (let i = 0; i < a.length; ++i)
-            out[i] = a[i] + (b[i] - a[i]) * t;
-        return out;
-    }
-    $.$bog_gamengine_vec_lerp = $bog_gamengine_vec_lerp;
-    function $bog_gamengine_vec_mat4_apply(out, m, v) {
-        const x = v[0], y = v[1], z = v[2], w = v[3];
-        out[0] = m[0] * x + m[4] * y + m[8] * z + m[12] * w;
-        out[1] = m[1] * x + m[5] * y + m[9] * z + m[13] * w;
-        out[2] = m[2] * x + m[6] * y + m[10] * z + m[14] * w;
-        out[3] = m[3] * x + m[7] * y + m[11] * z + m[15] * w;
-        return out;
-    }
-    $.$bog_gamengine_vec_mat4_apply = $bog_gamengine_vec_mat4_apply;
 })($ || ($ = {}));
 
 ;
@@ -12909,7 +13522,7 @@ var $;
     class $bog_gamengine_shader_solid extends $bog_gamengine_shader {
         face() {
             return {
-                glob: { proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray', light_dir: 'vec3', ambient: 'float' },
+                glob: { proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray', light_dir: 'vec3', ambient: 'float', wireframe: 'float' },
                 input: { vertex: 'vec3', uv: 'vec2', normal: 'vec3', inst_trans: 'mat4', inst_tint: 'vec4', inst_layer: 'float', inst_uv: 'vec4' },
                 pipe: { pipe_uv: 'vec2', pipe_layer: 'float', pipe_tint: 'vec4', pipe_normal: 'vec3' },
                 output: { color: 'vec4' },
@@ -12922,6 +13535,7 @@ var $;
             return `
 				void main() {
 					gl_Position = proj * view * inst_trans * vec4( vertex, 1.0 );
+					if( wireframe > 0.5 ) gl_Position.z -= 0.001;
 					pipe_normal = normalize( mat3( inst_trans ) * normal );
 					pipe_uv = uv * inst_uv.zw + inst_uv.xy;
 					pipe_layer = inst_layer;
@@ -12932,6 +13546,10 @@ var $;
         frag() {
             return `
 				void main() {
+					if( wireframe > 0.5 ) {
+						color = vec4( 1.0 );
+						return;
+					}
 					float light = ambient + ( 1.0 - ambient ) * max( dot( normalize( pipe_normal ), normalize( light_dir ) ), 0.0 );
 					color = texture( atlas, vec3( pipe_uv, pipe_layer ) ) * pipe_tint * vec4( light, light, light, 1.0 );
 				}
@@ -13420,11 +14038,20 @@ var $;
 
 ;
 	($.$bog_gamengine_demo_room) = class $bog_gamengine_demo_room extends ($.$mol_page) {
+		Wireframe(){
+			const obj = new this.$.$mol_check_box();
+			(obj.title) = () => ("Каркас");
+			(obj.checked) = (next) => ((this.wireframe(next)));
+			return obj;
+		}
 		Pause(){
 			const obj = new this.$.$mol_check_box();
 			(obj.title) = () => ("Пауза");
 			(obj.checked) = (next) => ((this.paused(next)));
 			return obj;
+		}
+		wireframe(next){
+			return (this.Draw().wireframe(next));
 		}
 		stat(){
 			return (this.Draw().stat());
@@ -13541,7 +14168,7 @@ var $;
 			return "Комната";
 		}
 		tools(){
-			return [(this.Pause())];
+			return [(this.Wireframe()), (this.Pause())];
 		}
 		body(){
 			return [(this.Draw())];
@@ -13628,6 +14255,7 @@ var $;
 			return obj;
 		}
 	};
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Wireframe"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pause"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Draw"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Stat"));
@@ -18025,6 +18653,19 @@ var $;
             batch.fill();
             $mol_assert_equal(batch.version, before + 2);
         },
+        'source with two matrices gives count 2 and same translations'() {
+            const trans = new Float32Array(32);
+            trans.set([1, 2, 3], 12);
+            trans.set([4, 5, 6], 28);
+            const batch = new $bog_gamengine_batch;
+            batch.source({ trans, count: 2 });
+            $mol_assert_equal(batch.fill(), 2);
+            $mol_assert_equal(batch.count, 2);
+            $mol_assert_equal([...batch.trans.subarray(12, 15)], [1, 2, 3]);
+            $mol_assert_equal([...batch.trans.subarray(28, 31)], [4, 5, 6]);
+            $mol_assert_equal([...batch.tint.subarray(4, 8)], [1, 1, 1, 1]);
+            $mol_assert_equal([...batch.uv.subarray(4, 8)], [0, 0, 1, 1]);
+        },
     });
 })($ || ($ = {}));
 
@@ -18144,6 +18785,216 @@ var $;
             const tile = new $bog_gamengine_phys_tile;
             tile.map(map);
             $mol_assert_equal(tile.solid_at(0.5, -0.5), true);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    $mol_test({
+        'add writes sum into out'() {
+            const out = new Float32Array(2);
+            const res = $bog_gamengine_vec_add(out, new Float32Array([1, 2]), new Float32Array([3, 5]));
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [4, 7]);
+        },
+        'sub writes difference into out shared with a'() {
+            const a = new Float32Array([5, 7, 9]);
+            const res = $bog_gamengine_vec_sub(a, a, new Float32Array([1, 2, 3]));
+            $mol_assert_equal(res, a);
+            $mol_assert_equal([...a], [4, 5, 6]);
+        },
+        'scale multiplies by scalar'() {
+            const out = new Float32Array(3);
+            const res = $bog_gamengine_vec_scale(out, new Float32Array([1, -2, 3]), 2);
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [2, -4, 6]);
+        },
+        'len is euclidean length'() {
+            $mol_assert_equal($bog_gamengine_vec_len(new Float32Array([3, 4])), 5);
+            $mol_assert_equal($bog_gamengine_vec_len(new Float32Array([2, 3, 6])), 7);
+        },
+        'norm gives unit vector'() {
+            const out = new Float32Array(2);
+            const res = $bog_gamengine_vec_norm(out, new Float32Array([0, -5]));
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [0, -1]);
+        },
+        'dot is scalar product'() {
+            $mol_assert_equal($bog_gamengine_vec_dot(new Float32Array([1, 2, 3]), new Float32Array([4, 5, 6])), 32);
+        },
+        'cross of x and y is z'() {
+            const out = new Float32Array(3);
+            const res = $bog_gamengine_vec_cross(out, new Float32Array([1, 0, 0]), new Float32Array([0, 1, 0]));
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [0, 0, 1]);
+        },
+        'lerp interpolates into out shared with b'() {
+            const b = new Float32Array([10, 20]);
+            const res = $bog_gamengine_vec_lerp(b, new Float32Array([0, 0]), b, 0.25);
+            $mol_assert_equal(res, b);
+            $mol_assert_equal([...b], [2.5, 5]);
+        },
+        'mat4_apply multiplies column-major matrix by vec4'() {
+            const out = new Float32Array(4);
+            const m = $mol_3d_mat4.translation([10, 20, 30]);
+            const res = $bog_gamengine_vec_mat4_apply(out, m, new Float32Array([1, 2, 3, 1]));
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [11, 22, 33, 1]);
+        },
+        'quat_rotate by half pi around Y sends x to minus z'() {
+            const q = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 1, 0]), Math.PI / 2);
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), q, new Float32Array([1, 0, 0]));
+            $mol_assert_ok(Math.abs(out[0]) < 1e-6);
+            $mol_assert_ok(Math.abs(out[1]) < 1e-6);
+            $mol_assert_ok(Math.abs(out[2] + 1) < 1e-6);
+        },
+        'quat_mul of two quarter turns around Y is a half turn'() {
+            const q = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 1, 0]), Math.PI / 2);
+            const qq = $bog_gamengine_vec_quat_mul(new Float32Array(4), q, q);
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), qq, new Float32Array([1, 0, 0]));
+            $mol_assert_ok(Math.abs(out[0] + 1) < 1e-6);
+            $mol_assert_ok(Math.abs(out[2]) < 1e-6);
+        },
+        'quat_identity leaves vector as is'() {
+            const q = $bog_gamengine_vec_quat_identity(new Float32Array(4));
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), q, new Float32Array([1, 2, 3]));
+            $mol_assert_equal([...out], [1, 2, 3]);
+        },
+        'quat_normalize gives unit length'() {
+            const out = $bog_gamengine_vec_quat_normalize(new Float32Array(4), new Float32Array([0, 3, 0, 4]));
+            $mol_assert_ok(Math.abs(out[1] - 0.6) < 1e-6);
+            $mol_assert_ok(Math.abs(out[3] - 0.8) < 1e-6);
+        },
+        'quat_from_euler to_mat4 matches mat4 translation rotation ZYX scaling for random angles'() {
+            for (let trial = 0; trial < 20; ++trial) {
+                const x = (Math.random() - 0.5) * 6;
+                const y = (Math.random() - 0.5) * 6;
+                const z = (Math.random() - 0.5) * 6;
+                const pos = new Float32Array([1, 2, 3]);
+                const scale = new Float32Array([1, 2, 0.5]);
+                const q = $bog_gamengine_vec_quat_from_euler(new Float32Array(4), x, y, z);
+                const out = $bog_gamengine_vec_quat_to_mat4(new Float32Array(16), q, pos, scale);
+                const ref = $mol_3d_mat4.multiply($mol_3d_mat4.translation(pos), $mol_3d_mat4.rotation([0, 0, 1], z), $mol_3d_mat4.rotation([0, 1, 0], y), $mol_3d_mat4.rotation([1, 0, 0], x), $mol_3d_mat4.scaling(scale));
+                for (let i = 0; i < 16; ++i)
+                    $mol_assert_ok(Math.abs(out[i] - ref[i]) < 1e-5);
+            }
+        },
+        'quat_to_euler inverts from_euler'() {
+            const q = $bog_gamengine_vec_quat_from_euler(new Float32Array(4), 0.3, -0.5, 1.2);
+            const out = $bog_gamengine_vec_quat_to_euler(new Float32Array(3), q);
+            $mol_assert_ok(Math.abs(out[0] - 0.3) < 1e-6);
+            $mol_assert_ok(Math.abs(out[1] + 0.5) < 1e-6);
+            $mol_assert_ok(Math.abs(out[2] - 1.2) < 1e-6);
+        },
+        'quat_integrate one second at half pi around Y turns x to minus z'() {
+            const q = $bog_gamengine_vec_quat_identity(new Float32Array(4));
+            const ang = new Float32Array([0, Math.PI / 2, 0]);
+            for (let i = 0; i < 60; ++i)
+                $bog_gamengine_vec_quat_integrate(q, q, ang, 1 / 60);
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), q, new Float32Array([1, 0, 0]));
+            $mol_assert_ok(Math.abs(out[0]) < 1e-3);
+            $mol_assert_ok(Math.abs(out[2] + 1) < 1e-3);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function box(world, mass, x, y, z) {
+        return world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), mass, new Float32Array([x, y, z]));
+    }
+    $mol_test({
+        'add two bodies gives indices 0 and 1 and count 2'() {
+            const world = new $bog_gamengine_phys3;
+            $mol_assert_equal(box(world, 1, 0, 0, 0), 0);
+            $mol_assert_equal(box(world, 1, 0, 0, 0), 1);
+            $mol_assert_equal(world.count, 2);
+        },
+        'remove first moves second into its place and returns 1'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 1, 1, 1);
+            box(world, 2, 5, 6, 7);
+            $mol_assert_equal(world.remove(0), 1);
+            $mol_assert_equal(world.count, 1);
+            $mol_assert_equal([...world.pos.subarray(0, 3)], [5, 6, 7]);
+            $mol_assert_equal(world.mass[0], 2);
+            $mol_assert_equal([...world.trans.subarray(12, 15)], [5, 6, 7]);
+        },
+        'body with mass falls about 4.9 in one second'() {
+            const world = new $bog_gamengine_phys3;
+            const i = box(world, 1, 0, 0, 0);
+            for (let k = 0; k < 60; ++k)
+                world.step(1 / 60);
+            $mol_assert_ok(Math.abs(world.pos[i * 3 + 1] + 4.9) < 0.2);
+        },
+        'body without mass stays still under gravity'() {
+            const world = new $bog_gamengine_phys3;
+            const i = box(world, 0, 1, 2, 3);
+            for (let k = 0; k < 60; ++k)
+                world.step(1 / 60);
+            $mol_assert_equal([...world.pos.subarray(i * 3, i * 3 + 3)], [1, 2, 3]);
+            $mol_assert_equal(world.inv_mass[i], 0);
+        },
+        'trans of body at (1,2,3) keeps translation in 12 to 14'() {
+            const world = new $bog_gamengine_phys3;
+            const i = box(world, 1, 1, 2, 3);
+            $mol_assert_equal([...world.trans.subarray(i * 16 + 12, i * 16 + 15)], [1, 2, 3]);
+        },
+        'trans scales unit box to full size'() {
+            const world = new $bog_gamengine_phys3;
+            const i = world.add($bog_gamengine_phys3.shape_box, new Float32Array([1, 2, 3]), 1, new Float32Array(3));
+            $mol_assert_equal(world.trans[i * 16], 2);
+            $mol_assert_equal(world.trans[i * 16 + 5], 4);
+            $mol_assert_equal(world.trans[i * 16 + 10], 6);
+        },
+        'angular velocity turns body a quarter around Y in one second'() {
+            const world = new $bog_gamengine_phys3;
+            const i = box(world, 1, 0, 0, 0);
+            world.gravity(new Float32Array(3));
+            world.ang[i * 3 + 1] = Math.PI / 2;
+            for (let k = 0; k < 60; ++k)
+                world.step(1 / 60);
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), world.rot.subarray(i * 4, i * 4 + 4), new Float32Array([1, 0, 0]));
+            $mol_assert_ok(Math.abs(out[2] + 1) < 1e-3);
+        },
+        'sleeping body is skipped'() {
+            const world = new $bog_gamengine_phys3;
+            const i = box(world, 1, 0, 0, 0);
+            world.flags[i] |= $bog_gamengine_phys3.flag_sleep;
+            world.step(1);
+            $mol_assert_equal(world.pos[i * 3 + 1], 0);
+        },
+        'growing cap keeps data'() {
+            const world = new $bog_gamengine_phys3;
+            for (let k = 0; k < 20; ++k)
+                box(world, k + 1, k, 0, 0);
+            $mol_assert_equal(world.cap, 32);
+            $mol_assert_equal(world.pos[3 * 3], 3);
+            $mol_assert_equal(world.mass[17], 18);
+            $mol_assert_equal(world.rot[17 * 4 + 3], 1);
+            $mol_assert_equal(world.trans[17 * 16 + 12], 17);
+        },
+        'sphere and box inverse inertia follow standard formulas'() {
+            const world = new $bog_gamengine_phys3;
+            const s = world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([2, 0, 0]), 5, new Float32Array(3));
+            $mol_assert_ok(Math.abs(world.inv_inertia[s * 3] - 1 / (0.4 * 5 * 4)) < 1e-6);
+            const b = world.add($bog_gamengine_phys3.shape_box, new Float32Array([1, 2, 3]), 3, new Float32Array(3));
+            $mol_assert_ok(Math.abs(world.inv_inertia[b * 3] - 1 / (3 / 12 * (16 + 36))) < 1e-6);
+        },
+        'hull_points stores points with offset and count per body'() {
+            const world = new $bog_gamengine_phys3;
+            const a = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3));
+            const b = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3));
+            world.hull_points(a, new Float32Array([0, 0, 0, 1, 0, 0]));
+            world.hull_points(b, new Float32Array([0, 1, 0, 0, 0, 1, 1, 1, 1]));
+            $mol_assert_equal(world.hull_off[b], 6);
+            $mol_assert_equal(world.hull_count[b], 3);
+            $mol_assert_equal([...world.hull.subarray(6, 9)], [0, 1, 0]);
         },
     });
 })($ || ($ = {}));
@@ -18350,6 +19201,136 @@ var $;
 ;
 "use strict";
 var $;
+(function ($) {
+    function box(world, mass, x, y, z, rot) {
+        return world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), mass, new Float32Array([x, y, z]), rot);
+    }
+    function sphere(world, r, x) {
+        return world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([r, 0, 0]), 1, new Float32Array([x, 0, 0]));
+    }
+    function pairs_of(broad) {
+        return [...broad.pairs.subarray(0, broad.pair_count * 2)];
+    }
+    $mol_test({
+        'two boxes side by side give one pair'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 0, 0, 0);
+            box(world, 1, 0.9, 0, 0);
+            $mol_assert_equal(world.broad.find(world), 1);
+            $mol_assert_equal(pairs_of(world.broad), [0, 1]);
+        },
+        'two boxes apart give no pairs'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 0, 0, 0);
+            box(world, 1, 3, 0, 0);
+            $mol_assert_equal(world.broad.find(world), 0);
+        },
+        'boxes overlapping in X but apart in Y give no pairs'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 0, 0, 0);
+            box(world, 1, 0.5, 3, 0);
+            $mol_assert_equal(world.broad.find(world), 0);
+        },
+        'hundred spheres of radius 1 with step 3 give no pairs'() {
+            const world = new $bog_gamengine_phys3;
+            for (let k = 0; k < 100; ++k)
+                sphere(world, 1, k * 3);
+            $mol_assert_equal(world.broad.find(world), 0);
+        },
+        'hundred spheres of radius 2 with step 3 give 99 pairs'() {
+            const world = new $bog_gamengine_phys3;
+            for (let k = 0; k < 100; ++k)
+                sphere(world, 2, k * 3);
+            $mol_assert_equal(world.broad.find(world), 99);
+        },
+        'two statics give no pairs'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 0, 0, 0, 0);
+            box(world, 0, 0.5, 0, 0);
+            $mol_assert_equal(world.broad.find(world), 0);
+        },
+        'two sleeping bodies give no pairs'() {
+            const world = new $bog_gamengine_phys3;
+            const a = box(world, 1, 0, 0, 0);
+            const b = box(world, 1, 0.5, 0, 0);
+            world.flags[a] |= $bog_gamengine_phys3.flag_sleep;
+            world.flags[b] |= $bog_gamengine_phys3.flag_sleep;
+            $mol_assert_equal(world.broad.find(world), 0);
+        },
+        'ghost pairs with moving body'() {
+            const world = new $bog_gamengine_phys3;
+            const ghost = box(world, 0, 0, 0, 0);
+            world.flags[ghost] |= $bog_gamengine_phys3.flag_ghost;
+            box(world, 1, 0.5, 0, 0);
+            $mol_assert_equal(world.broad.find(world), 1);
+        },
+        'plane pairs with every moving body and no static'() {
+            const world = new $bog_gamengine_phys3;
+            world.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3));
+            box(world, 1, 10, 0, 0);
+            box(world, 1, 20, 0, 0);
+            box(world, 0, 30, 0, 0);
+            $mol_assert_equal(world.broad.find(world), 2);
+            $mol_assert_equal(pairs_of(world.broad), [0, 1, 0, 2]);
+        },
+        'bounds of unit box turned 45 degrees around Y has half size about 0.707'() {
+            const world = new $bog_gamengine_phys3;
+            const rot = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 1, 0]), Math.PI / 4);
+            const i = box(world, 1, 0, 0, 0, rot);
+            world.bounds();
+            const half = (world.aabb[i * 6 + 3] - world.aabb[i * 6]) / 2;
+            $mol_assert_ok(Math.abs(half - Math.SQRT1_2) < 1e-3);
+            $mol_assert_ok(Math.abs(world.aabb[i * 6 + 4] - 0.5) < 1e-6);
+        },
+        'bounds of capsule is sphere of radius plus half height'() {
+            const world = new $bog_gamengine_phys3;
+            const i = world.add($bog_gamengine_phys3.shape_capsule, new Float32Array([0.5, 1, 0]), 1, new Float32Array([1, 2, 3]));
+            $mol_assert_equal([...world.aabb.subarray(i * 6, i * 6 + 6)], [-0.5, 0.5, 1.5, 2.5, 3.5, 4.5]);
+        },
+        'bounds of hull follows rotated points'() {
+            const world = new $bog_gamengine_phys3;
+            const rot = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 0, 1]), Math.PI / 2);
+            const i = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3), rot);
+            world.hull_points(i, new Float32Array([0, 0, 0, 2, 0, 0, 0, 1, 0]));
+            $mol_assert_ok(Math.abs(world.aabb[i * 6] + 1) < 1e-6);
+            $mol_assert_ok(Math.abs(world.aabb[i * 6 + 4] - 2) < 1e-6);
+        },
+        'second find without motion gives the same list'() {
+            const world = new $bog_gamengine_phys3;
+            for (let k = 0; k < 20; ++k)
+                box(world, 1, (k * 7) % 20 * 0.8, 0, 0);
+            world.broad.find(world);
+            const first = pairs_of(world.broad);
+            $mol_assert_ok(first.length > 0);
+            world.broad.find(world);
+            $mol_assert_equal(pairs_of(world.broad), first);
+        },
+        'step refreshes bounds and pairs'() {
+            const world = new $bog_gamengine_phys3;
+            world.gravity(new Float32Array(3));
+            box(world, 1, 0, 0, 0);
+            const i = box(world, 1, 3, 0, 0);
+            world.vel[i * 3] = -2;
+            world.step(1);
+            $mol_assert_equal(world.aabb[i * 6], 0.5);
+            $mol_assert_equal(world.broad.pair_count, 1);
+        },
+        'remove keeps pairs of the moved body'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 0, 0, 0);
+            box(world, 1, 10, 0, 0);
+            box(world, 1, 0.5, 0, 0);
+            world.broad.find(world);
+            world.remove(1);
+            $mol_assert_equal(world.broad.find(world), 1);
+            $mol_assert_equal(pairs_of(world.broad), [0, 1]);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
 (function ($_1) {
     class $bog_gamengine_scene_time_mock extends $mol_state_time {
         static stamp(next = 0) {
@@ -18383,6 +19364,25 @@ var $;
         }
     }
     $mol_test({
+        'phys set by code survives a recompute within the frame'($) {
+            $.$mol_state_time = $bog_gamengine_scene_time_mock;
+            const body = new $bog_gamengine_phys_body;
+            body.vel(new Float32Array([1, 0, 0]));
+            const phys = new $bog_gamengine_phys;
+            phys.bodies([body]);
+            const scene = new $bog_gamengine_scene;
+            scene.$ = $;
+            scene.phys(phys);
+            $bog_gamengine_scene_time_mock.stamp(0);
+            scene.step();
+            scene.batches([]);
+            scene.step();
+            $bog_gamengine_scene_time_mock.stamp(16);
+            scene.step();
+            $bog_gamengine_scene_time_mock.stamp(32);
+            scene.step();
+            $mol_assert_ok(Math.abs(body.pos()[0] - 0.032) < 1e-6);
+        },
         'scene polls input once per frame'($) {
             $.$mol_state_time = $bog_gamengine_scene_time_mock;
             const input = new $bog_gamengine_scene_input_mock;
@@ -18441,6 +19441,21 @@ var $;
             scene.batches([]);
             scene.step();
             $mol_assert_ok(Math.abs(mover.pos()[0] - 0.016) < 1e-9);
+        },
+        'scene steps phys3 body by its velocity'($) {
+            $.$mol_state_time = $bog_gamengine_scene_time_mock;
+            const world = new $bog_gamengine_phys3;
+            world.gravity(new Float32Array(3));
+            const i = world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 1, new Float32Array(3));
+            world.vel[i * 3] = 1;
+            const scene = new $bog_gamengine_scene;
+            scene.$ = $;
+            scene.phys3(world);
+            $bog_gamengine_scene_time_mock.stamp(0);
+            scene.step();
+            $bog_gamengine_scene_time_mock.stamp(16);
+            scene.step();
+            $mol_assert_ok(Math.abs(world.pos[i * 3] - 0.016) < 1e-6);
         },
         'nodes lists tree depth first with parent before kids'() {
             const a = new $bog_gamengine_scene_named;
@@ -18515,64 +19530,6 @@ var $;
                 $mol_assert_ok(shader.vert().includes(name));
                 $mol_assert_ok(shader.frag().includes(name));
             }
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    $mol_test({
-        'add writes sum into out'() {
-            const out = new Float32Array(2);
-            const res = $bog_gamengine_vec_add(out, new Float32Array([1, 2]), new Float32Array([3, 5]));
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [4, 7]);
-        },
-        'sub writes difference into out shared with a'() {
-            const a = new Float32Array([5, 7, 9]);
-            const res = $bog_gamengine_vec_sub(a, a, new Float32Array([1, 2, 3]));
-            $mol_assert_equal(res, a);
-            $mol_assert_equal([...a], [4, 5, 6]);
-        },
-        'scale multiplies by scalar'() {
-            const out = new Float32Array(3);
-            const res = $bog_gamengine_vec_scale(out, new Float32Array([1, -2, 3]), 2);
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [2, -4, 6]);
-        },
-        'len is euclidean length'() {
-            $mol_assert_equal($bog_gamengine_vec_len(new Float32Array([3, 4])), 5);
-            $mol_assert_equal($bog_gamengine_vec_len(new Float32Array([2, 3, 6])), 7);
-        },
-        'norm gives unit vector'() {
-            const out = new Float32Array(2);
-            const res = $bog_gamengine_vec_norm(out, new Float32Array([0, -5]));
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [0, -1]);
-        },
-        'dot is scalar product'() {
-            $mol_assert_equal($bog_gamengine_vec_dot(new Float32Array([1, 2, 3]), new Float32Array([4, 5, 6])), 32);
-        },
-        'cross of x and y is z'() {
-            const out = new Float32Array(3);
-            const res = $bog_gamengine_vec_cross(out, new Float32Array([1, 0, 0]), new Float32Array([0, 1, 0]));
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [0, 0, 1]);
-        },
-        'lerp interpolates into out shared with b'() {
-            const b = new Float32Array([10, 20]);
-            const res = $bog_gamengine_vec_lerp(b, new Float32Array([0, 0]), b, 0.25);
-            $mol_assert_equal(res, b);
-            $mol_assert_equal([...b], [2.5, 5]);
-        },
-        'mat4_apply multiplies column-major matrix by vec4'() {
-            const out = new Float32Array(4);
-            const m = $mol_3d_mat4.translation([10, 20, 30]);
-            const res = $bog_gamengine_vec_mat4_apply(out, m, new Float32Array([1, 2, 3, 1]));
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [11, 22, 33, 1]);
         },
     });
 })($ || ($ = {}));
@@ -18928,6 +19885,12 @@ var $;
                 $mol_assert_ok(shader.vert().includes(name));
                 $mol_assert_ok(shader.frag().includes(name));
             }
+        },
+        'wireframe glob is float and used in both vert and frag'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            $mol_assert_equal(shader.face().glob.wireframe, 'float');
+            $mol_assert_ok(shader.vert().includes('wireframe'));
+            $mol_assert_ok(shader.frag().includes('wireframe'));
         },
         'solid wants depth, flat does not'($) {
             $mol_assert_equal(new $bog_gamengine_shader_solid().depth(), true);

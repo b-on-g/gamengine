@@ -412,6 +412,7 @@ $bog_gamengine_draw $mol_view
 	cam $bog_gamengine_cam
 	light_dir Float32Array
 	ambient 0.35
+	wireframe? false
 	stat \
 
 $mol_labeler $mol_list
@@ -547,6 +548,9 @@ $bog_gamengine_demo_flat $mol_page
 $bog_gamengine_demo_room $mol_page
 	title \Комната
 	tools /
+		<= Wireframe $mol_check_box
+			title \Каркас
+			checked? <=> wireframe?
 		<= Pause $mol_check_box
 			title \Пауза
 			checked? <=> paused?
@@ -554,6 +558,7 @@ $bog_gamengine_demo_room $mol_page
 		<= Draw $bog_gamengine_draw
 			scene <= Scene
 			cam <= Walker
+			wireframe? => wireframe?
 			stat => stat
 	foot /
 		<= Stat $mol_view

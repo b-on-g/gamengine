@@ -3765,6 +3765,19 @@ var $;
             batch.fill();
             $mol_assert_equal(batch.version, before + 2);
         },
+        'source with two matrices gives count 2 and same translations'() {
+            const trans = new Float32Array(32);
+            trans.set([1, 2, 3], 12);
+            trans.set([4, 5, 6], 28);
+            const batch = new $bog_gamengine_batch;
+            batch.source({ trans, count: 2 });
+            $mol_assert_equal(batch.fill(), 2);
+            $mol_assert_equal(batch.count, 2);
+            $mol_assert_equal([...batch.trans.subarray(12, 15)], [1, 2, 3]);
+            $mol_assert_equal([...batch.trans.subarray(28, 31)], [4, 5, 6]);
+            $mol_assert_equal([...batch.tint.subarray(4, 8)], [1, 1, 1, 1]);
+            $mol_assert_equal([...batch.uv.subarray(4, 8)], [0, 0, 1, 1]);
+        },
     });
 })($ || ($ = {}));
 
@@ -3884,6 +3897,216 @@ var $;
             const tile = new $bog_gamengine_phys_tile;
             tile.map(map);
             $mol_assert_equal(tile.solid_at(0.5, -0.5), true);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    $mol_test({
+        'add writes sum into out'() {
+            const out = new Float32Array(2);
+            const res = $bog_gamengine_vec_add(out, new Float32Array([1, 2]), new Float32Array([3, 5]));
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [4, 7]);
+        },
+        'sub writes difference into out shared with a'() {
+            const a = new Float32Array([5, 7, 9]);
+            const res = $bog_gamengine_vec_sub(a, a, new Float32Array([1, 2, 3]));
+            $mol_assert_equal(res, a);
+            $mol_assert_equal([...a], [4, 5, 6]);
+        },
+        'scale multiplies by scalar'() {
+            const out = new Float32Array(3);
+            const res = $bog_gamengine_vec_scale(out, new Float32Array([1, -2, 3]), 2);
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [2, -4, 6]);
+        },
+        'len is euclidean length'() {
+            $mol_assert_equal($bog_gamengine_vec_len(new Float32Array([3, 4])), 5);
+            $mol_assert_equal($bog_gamengine_vec_len(new Float32Array([2, 3, 6])), 7);
+        },
+        'norm gives unit vector'() {
+            const out = new Float32Array(2);
+            const res = $bog_gamengine_vec_norm(out, new Float32Array([0, -5]));
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [0, -1]);
+        },
+        'dot is scalar product'() {
+            $mol_assert_equal($bog_gamengine_vec_dot(new Float32Array([1, 2, 3]), new Float32Array([4, 5, 6])), 32);
+        },
+        'cross of x and y is z'() {
+            const out = new Float32Array(3);
+            const res = $bog_gamengine_vec_cross(out, new Float32Array([1, 0, 0]), new Float32Array([0, 1, 0]));
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [0, 0, 1]);
+        },
+        'lerp interpolates into out shared with b'() {
+            const b = new Float32Array([10, 20]);
+            const res = $bog_gamengine_vec_lerp(b, new Float32Array([0, 0]), b, 0.25);
+            $mol_assert_equal(res, b);
+            $mol_assert_equal([...b], [2.5, 5]);
+        },
+        'mat4_apply multiplies column-major matrix by vec4'() {
+            const out = new Float32Array(4);
+            const m = $mol_3d_mat4.translation([10, 20, 30]);
+            const res = $bog_gamengine_vec_mat4_apply(out, m, new Float32Array([1, 2, 3, 1]));
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [11, 22, 33, 1]);
+        },
+        'quat_rotate by half pi around Y sends x to minus z'() {
+            const q = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 1, 0]), Math.PI / 2);
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), q, new Float32Array([1, 0, 0]));
+            $mol_assert_ok(Math.abs(out[0]) < 1e-6);
+            $mol_assert_ok(Math.abs(out[1]) < 1e-6);
+            $mol_assert_ok(Math.abs(out[2] + 1) < 1e-6);
+        },
+        'quat_mul of two quarter turns around Y is a half turn'() {
+            const q = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 1, 0]), Math.PI / 2);
+            const qq = $bog_gamengine_vec_quat_mul(new Float32Array(4), q, q);
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), qq, new Float32Array([1, 0, 0]));
+            $mol_assert_ok(Math.abs(out[0] + 1) < 1e-6);
+            $mol_assert_ok(Math.abs(out[2]) < 1e-6);
+        },
+        'quat_identity leaves vector as is'() {
+            const q = $bog_gamengine_vec_quat_identity(new Float32Array(4));
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), q, new Float32Array([1, 2, 3]));
+            $mol_assert_equal([...out], [1, 2, 3]);
+        },
+        'quat_normalize gives unit length'() {
+            const out = $bog_gamengine_vec_quat_normalize(new Float32Array(4), new Float32Array([0, 3, 0, 4]));
+            $mol_assert_ok(Math.abs(out[1] - 0.6) < 1e-6);
+            $mol_assert_ok(Math.abs(out[3] - 0.8) < 1e-6);
+        },
+        'quat_from_euler to_mat4 matches mat4 translation rotation ZYX scaling for random angles'() {
+            for (let trial = 0; trial < 20; ++trial) {
+                const x = (Math.random() - 0.5) * 6;
+                const y = (Math.random() - 0.5) * 6;
+                const z = (Math.random() - 0.5) * 6;
+                const pos = new Float32Array([1, 2, 3]);
+                const scale = new Float32Array([1, 2, 0.5]);
+                const q = $bog_gamengine_vec_quat_from_euler(new Float32Array(4), x, y, z);
+                const out = $bog_gamengine_vec_quat_to_mat4(new Float32Array(16), q, pos, scale);
+                const ref = $mol_3d_mat4.multiply($mol_3d_mat4.translation(pos), $mol_3d_mat4.rotation([0, 0, 1], z), $mol_3d_mat4.rotation([0, 1, 0], y), $mol_3d_mat4.rotation([1, 0, 0], x), $mol_3d_mat4.scaling(scale));
+                for (let i = 0; i < 16; ++i)
+                    $mol_assert_ok(Math.abs(out[i] - ref[i]) < 1e-5);
+            }
+        },
+        'quat_to_euler inverts from_euler'() {
+            const q = $bog_gamengine_vec_quat_from_euler(new Float32Array(4), 0.3, -0.5, 1.2);
+            const out = $bog_gamengine_vec_quat_to_euler(new Float32Array(3), q);
+            $mol_assert_ok(Math.abs(out[0] - 0.3) < 1e-6);
+            $mol_assert_ok(Math.abs(out[1] + 0.5) < 1e-6);
+            $mol_assert_ok(Math.abs(out[2] - 1.2) < 1e-6);
+        },
+        'quat_integrate one second at half pi around Y turns x to minus z'() {
+            const q = $bog_gamengine_vec_quat_identity(new Float32Array(4));
+            const ang = new Float32Array([0, Math.PI / 2, 0]);
+            for (let i = 0; i < 60; ++i)
+                $bog_gamengine_vec_quat_integrate(q, q, ang, 1 / 60);
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), q, new Float32Array([1, 0, 0]));
+            $mol_assert_ok(Math.abs(out[0]) < 1e-3);
+            $mol_assert_ok(Math.abs(out[2] + 1) < 1e-3);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function box(world, mass, x, y, z) {
+        return world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), mass, new Float32Array([x, y, z]));
+    }
+    $mol_test({
+        'add two bodies gives indices 0 and 1 and count 2'() {
+            const world = new $bog_gamengine_phys3;
+            $mol_assert_equal(box(world, 1, 0, 0, 0), 0);
+            $mol_assert_equal(box(world, 1, 0, 0, 0), 1);
+            $mol_assert_equal(world.count, 2);
+        },
+        'remove first moves second into its place and returns 1'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 1, 1, 1);
+            box(world, 2, 5, 6, 7);
+            $mol_assert_equal(world.remove(0), 1);
+            $mol_assert_equal(world.count, 1);
+            $mol_assert_equal([...world.pos.subarray(0, 3)], [5, 6, 7]);
+            $mol_assert_equal(world.mass[0], 2);
+            $mol_assert_equal([...world.trans.subarray(12, 15)], [5, 6, 7]);
+        },
+        'body with mass falls about 4.9 in one second'() {
+            const world = new $bog_gamengine_phys3;
+            const i = box(world, 1, 0, 0, 0);
+            for (let k = 0; k < 60; ++k)
+                world.step(1 / 60);
+            $mol_assert_ok(Math.abs(world.pos[i * 3 + 1] + 4.9) < 0.2);
+        },
+        'body without mass stays still under gravity'() {
+            const world = new $bog_gamengine_phys3;
+            const i = box(world, 0, 1, 2, 3);
+            for (let k = 0; k < 60; ++k)
+                world.step(1 / 60);
+            $mol_assert_equal([...world.pos.subarray(i * 3, i * 3 + 3)], [1, 2, 3]);
+            $mol_assert_equal(world.inv_mass[i], 0);
+        },
+        'trans of body at (1,2,3) keeps translation in 12 to 14'() {
+            const world = new $bog_gamengine_phys3;
+            const i = box(world, 1, 1, 2, 3);
+            $mol_assert_equal([...world.trans.subarray(i * 16 + 12, i * 16 + 15)], [1, 2, 3]);
+        },
+        'trans scales unit box to full size'() {
+            const world = new $bog_gamengine_phys3;
+            const i = world.add($bog_gamengine_phys3.shape_box, new Float32Array([1, 2, 3]), 1, new Float32Array(3));
+            $mol_assert_equal(world.trans[i * 16], 2);
+            $mol_assert_equal(world.trans[i * 16 + 5], 4);
+            $mol_assert_equal(world.trans[i * 16 + 10], 6);
+        },
+        'angular velocity turns body a quarter around Y in one second'() {
+            const world = new $bog_gamengine_phys3;
+            const i = box(world, 1, 0, 0, 0);
+            world.gravity(new Float32Array(3));
+            world.ang[i * 3 + 1] = Math.PI / 2;
+            for (let k = 0; k < 60; ++k)
+                world.step(1 / 60);
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), world.rot.subarray(i * 4, i * 4 + 4), new Float32Array([1, 0, 0]));
+            $mol_assert_ok(Math.abs(out[2] + 1) < 1e-3);
+        },
+        'sleeping body is skipped'() {
+            const world = new $bog_gamengine_phys3;
+            const i = box(world, 1, 0, 0, 0);
+            world.flags[i] |= $bog_gamengine_phys3.flag_sleep;
+            world.step(1);
+            $mol_assert_equal(world.pos[i * 3 + 1], 0);
+        },
+        'growing cap keeps data'() {
+            const world = new $bog_gamengine_phys3;
+            for (let k = 0; k < 20; ++k)
+                box(world, k + 1, k, 0, 0);
+            $mol_assert_equal(world.cap, 32);
+            $mol_assert_equal(world.pos[3 * 3], 3);
+            $mol_assert_equal(world.mass[17], 18);
+            $mol_assert_equal(world.rot[17 * 4 + 3], 1);
+            $mol_assert_equal(world.trans[17 * 16 + 12], 17);
+        },
+        'sphere and box inverse inertia follow standard formulas'() {
+            const world = new $bog_gamengine_phys3;
+            const s = world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([2, 0, 0]), 5, new Float32Array(3));
+            $mol_assert_ok(Math.abs(world.inv_inertia[s * 3] - 1 / (0.4 * 5 * 4)) < 1e-6);
+            const b = world.add($bog_gamengine_phys3.shape_box, new Float32Array([1, 2, 3]), 3, new Float32Array(3));
+            $mol_assert_ok(Math.abs(world.inv_inertia[b * 3] - 1 / (3 / 12 * (16 + 36))) < 1e-6);
+        },
+        'hull_points stores points with offset and count per body'() {
+            const world = new $bog_gamengine_phys3;
+            const a = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3));
+            const b = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3));
+            world.hull_points(a, new Float32Array([0, 0, 0, 1, 0, 0]));
+            world.hull_points(b, new Float32Array([0, 1, 0, 0, 0, 1, 1, 1, 1]));
+            $mol_assert_equal(world.hull_off[b], 6);
+            $mol_assert_equal(world.hull_count[b], 3);
+            $mol_assert_equal([...world.hull.subarray(6, 9)], [0, 1, 0]);
         },
     });
 })($ || ($ = {}));
@@ -4090,6 +4313,136 @@ var $;
 ;
 "use strict";
 var $;
+(function ($) {
+    function box(world, mass, x, y, z, rot) {
+        return world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), mass, new Float32Array([x, y, z]), rot);
+    }
+    function sphere(world, r, x) {
+        return world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([r, 0, 0]), 1, new Float32Array([x, 0, 0]));
+    }
+    function pairs_of(broad) {
+        return [...broad.pairs.subarray(0, broad.pair_count * 2)];
+    }
+    $mol_test({
+        'two boxes side by side give one pair'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 0, 0, 0);
+            box(world, 1, 0.9, 0, 0);
+            $mol_assert_equal(world.broad.find(world), 1);
+            $mol_assert_equal(pairs_of(world.broad), [0, 1]);
+        },
+        'two boxes apart give no pairs'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 0, 0, 0);
+            box(world, 1, 3, 0, 0);
+            $mol_assert_equal(world.broad.find(world), 0);
+        },
+        'boxes overlapping in X but apart in Y give no pairs'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 0, 0, 0);
+            box(world, 1, 0.5, 3, 0);
+            $mol_assert_equal(world.broad.find(world), 0);
+        },
+        'hundred spheres of radius 1 with step 3 give no pairs'() {
+            const world = new $bog_gamengine_phys3;
+            for (let k = 0; k < 100; ++k)
+                sphere(world, 1, k * 3);
+            $mol_assert_equal(world.broad.find(world), 0);
+        },
+        'hundred spheres of radius 2 with step 3 give 99 pairs'() {
+            const world = new $bog_gamengine_phys3;
+            for (let k = 0; k < 100; ++k)
+                sphere(world, 2, k * 3);
+            $mol_assert_equal(world.broad.find(world), 99);
+        },
+        'two statics give no pairs'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 0, 0, 0, 0);
+            box(world, 0, 0.5, 0, 0);
+            $mol_assert_equal(world.broad.find(world), 0);
+        },
+        'two sleeping bodies give no pairs'() {
+            const world = new $bog_gamengine_phys3;
+            const a = box(world, 1, 0, 0, 0);
+            const b = box(world, 1, 0.5, 0, 0);
+            world.flags[a] |= $bog_gamengine_phys3.flag_sleep;
+            world.flags[b] |= $bog_gamengine_phys3.flag_sleep;
+            $mol_assert_equal(world.broad.find(world), 0);
+        },
+        'ghost pairs with moving body'() {
+            const world = new $bog_gamengine_phys3;
+            const ghost = box(world, 0, 0, 0, 0);
+            world.flags[ghost] |= $bog_gamengine_phys3.flag_ghost;
+            box(world, 1, 0.5, 0, 0);
+            $mol_assert_equal(world.broad.find(world), 1);
+        },
+        'plane pairs with every moving body and no static'() {
+            const world = new $bog_gamengine_phys3;
+            world.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3));
+            box(world, 1, 10, 0, 0);
+            box(world, 1, 20, 0, 0);
+            box(world, 0, 30, 0, 0);
+            $mol_assert_equal(world.broad.find(world), 2);
+            $mol_assert_equal(pairs_of(world.broad), [0, 1, 0, 2]);
+        },
+        'bounds of unit box turned 45 degrees around Y has half size about 0.707'() {
+            const world = new $bog_gamengine_phys3;
+            const rot = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 1, 0]), Math.PI / 4);
+            const i = box(world, 1, 0, 0, 0, rot);
+            world.bounds();
+            const half = (world.aabb[i * 6 + 3] - world.aabb[i * 6]) / 2;
+            $mol_assert_ok(Math.abs(half - Math.SQRT1_2) < 1e-3);
+            $mol_assert_ok(Math.abs(world.aabb[i * 6 + 4] - 0.5) < 1e-6);
+        },
+        'bounds of capsule is sphere of radius plus half height'() {
+            const world = new $bog_gamengine_phys3;
+            const i = world.add($bog_gamengine_phys3.shape_capsule, new Float32Array([0.5, 1, 0]), 1, new Float32Array([1, 2, 3]));
+            $mol_assert_equal([...world.aabb.subarray(i * 6, i * 6 + 6)], [-0.5, 0.5, 1.5, 2.5, 3.5, 4.5]);
+        },
+        'bounds of hull follows rotated points'() {
+            const world = new $bog_gamengine_phys3;
+            const rot = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 0, 1]), Math.PI / 2);
+            const i = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3), rot);
+            world.hull_points(i, new Float32Array([0, 0, 0, 2, 0, 0, 0, 1, 0]));
+            $mol_assert_ok(Math.abs(world.aabb[i * 6] + 1) < 1e-6);
+            $mol_assert_ok(Math.abs(world.aabb[i * 6 + 4] - 2) < 1e-6);
+        },
+        'second find without motion gives the same list'() {
+            const world = new $bog_gamengine_phys3;
+            for (let k = 0; k < 20; ++k)
+                box(world, 1, (k * 7) % 20 * 0.8, 0, 0);
+            world.broad.find(world);
+            const first = pairs_of(world.broad);
+            $mol_assert_ok(first.length > 0);
+            world.broad.find(world);
+            $mol_assert_equal(pairs_of(world.broad), first);
+        },
+        'step refreshes bounds and pairs'() {
+            const world = new $bog_gamengine_phys3;
+            world.gravity(new Float32Array(3));
+            box(world, 1, 0, 0, 0);
+            const i = box(world, 1, 3, 0, 0);
+            world.vel[i * 3] = -2;
+            world.step(1);
+            $mol_assert_equal(world.aabb[i * 6], 0.5);
+            $mol_assert_equal(world.broad.pair_count, 1);
+        },
+        'remove keeps pairs of the moved body'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 0, 0, 0);
+            box(world, 1, 10, 0, 0);
+            box(world, 1, 0.5, 0, 0);
+            world.broad.find(world);
+            world.remove(1);
+            $mol_assert_equal(world.broad.find(world), 1);
+            $mol_assert_equal(pairs_of(world.broad), [0, 1]);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
 (function ($_1) {
     class $bog_gamengine_scene_time_mock extends $mol_state_time {
         static stamp(next = 0) {
@@ -4123,6 +4476,25 @@ var $;
         }
     }
     $mol_test({
+        'phys set by code survives a recompute within the frame'($) {
+            $.$mol_state_time = $bog_gamengine_scene_time_mock;
+            const body = new $bog_gamengine_phys_body;
+            body.vel(new Float32Array([1, 0, 0]));
+            const phys = new $bog_gamengine_phys;
+            phys.bodies([body]);
+            const scene = new $bog_gamengine_scene;
+            scene.$ = $;
+            scene.phys(phys);
+            $bog_gamengine_scene_time_mock.stamp(0);
+            scene.step();
+            scene.batches([]);
+            scene.step();
+            $bog_gamengine_scene_time_mock.stamp(16);
+            scene.step();
+            $bog_gamengine_scene_time_mock.stamp(32);
+            scene.step();
+            $mol_assert_ok(Math.abs(body.pos()[0] - 0.032) < 1e-6);
+        },
         'scene polls input once per frame'($) {
             $.$mol_state_time = $bog_gamengine_scene_time_mock;
             const input = new $bog_gamengine_scene_input_mock;
@@ -4181,6 +4553,21 @@ var $;
             scene.batches([]);
             scene.step();
             $mol_assert_ok(Math.abs(mover.pos()[0] - 0.016) < 1e-9);
+        },
+        'scene steps phys3 body by its velocity'($) {
+            $.$mol_state_time = $bog_gamengine_scene_time_mock;
+            const world = new $bog_gamengine_phys3;
+            world.gravity(new Float32Array(3));
+            const i = world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 1, new Float32Array(3));
+            world.vel[i * 3] = 1;
+            const scene = new $bog_gamengine_scene;
+            scene.$ = $;
+            scene.phys3(world);
+            $bog_gamengine_scene_time_mock.stamp(0);
+            scene.step();
+            $bog_gamengine_scene_time_mock.stamp(16);
+            scene.step();
+            $mol_assert_ok(Math.abs(world.pos[i * 3] - 0.016) < 1e-6);
         },
         'nodes lists tree depth first with parent before kids'() {
             const a = new $bog_gamengine_scene_named;
@@ -4255,64 +4642,6 @@ var $;
                 $mol_assert_ok(shader.vert().includes(name));
                 $mol_assert_ok(shader.frag().includes(name));
             }
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    $mol_test({
-        'add writes sum into out'() {
-            const out = new Float32Array(2);
-            const res = $bog_gamengine_vec_add(out, new Float32Array([1, 2]), new Float32Array([3, 5]));
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [4, 7]);
-        },
-        'sub writes difference into out shared with a'() {
-            const a = new Float32Array([5, 7, 9]);
-            const res = $bog_gamengine_vec_sub(a, a, new Float32Array([1, 2, 3]));
-            $mol_assert_equal(res, a);
-            $mol_assert_equal([...a], [4, 5, 6]);
-        },
-        'scale multiplies by scalar'() {
-            const out = new Float32Array(3);
-            const res = $bog_gamengine_vec_scale(out, new Float32Array([1, -2, 3]), 2);
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [2, -4, 6]);
-        },
-        'len is euclidean length'() {
-            $mol_assert_equal($bog_gamengine_vec_len(new Float32Array([3, 4])), 5);
-            $mol_assert_equal($bog_gamengine_vec_len(new Float32Array([2, 3, 6])), 7);
-        },
-        'norm gives unit vector'() {
-            const out = new Float32Array(2);
-            const res = $bog_gamengine_vec_norm(out, new Float32Array([0, -5]));
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [0, -1]);
-        },
-        'dot is scalar product'() {
-            $mol_assert_equal($bog_gamengine_vec_dot(new Float32Array([1, 2, 3]), new Float32Array([4, 5, 6])), 32);
-        },
-        'cross of x and y is z'() {
-            const out = new Float32Array(3);
-            const res = $bog_gamengine_vec_cross(out, new Float32Array([1, 0, 0]), new Float32Array([0, 1, 0]));
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [0, 0, 1]);
-        },
-        'lerp interpolates into out shared with b'() {
-            const b = new Float32Array([10, 20]);
-            const res = $bog_gamengine_vec_lerp(b, new Float32Array([0, 0]), b, 0.25);
-            $mol_assert_equal(res, b);
-            $mol_assert_equal([...b], [2.5, 5]);
-        },
-        'mat4_apply multiplies column-major matrix by vec4'() {
-            const out = new Float32Array(4);
-            const m = $mol_3d_mat4.translation([10, 20, 30]);
-            const res = $bog_gamengine_vec_mat4_apply(out, m, new Float32Array([1, 2, 3, 1]));
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [11, 22, 33, 1]);
         },
     });
 })($ || ($ = {}));
@@ -4654,6 +4983,12 @@ var $;
                 $mol_assert_ok(shader.vert().includes(name));
                 $mol_assert_ok(shader.frag().includes(name));
             }
+        },
+        'wireframe glob is float and used in both vert and frag'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            $mol_assert_equal(shader.face().glob.wireframe, 'float');
+            $mol_assert_ok(shader.vert().includes('wireframe'));
+            $mol_assert_ok(shader.frag().includes('wireframe'));
         },
         'solid wants depth, flat does not'($) {
             $mol_assert_equal(new $bog_gamengine_shader_solid().depth(), true);
