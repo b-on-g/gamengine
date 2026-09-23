@@ -637,6 +637,141 @@ $bog_gamengine_demo_room $mol_page
 		pos? <=> walker_pos? Float32Array
 		rot? <=> walker_rot? Float32Array
 
+$mol_icon_menu $mol_icon path \M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z
+
+$mol_icon_menu_down $mol_icon path \M7,10L12,15L17,10H7Z
+
+$mol_icon_menu_down_outline $mol_icon path \M18,9V10.5L12,16.5L6,10.5V9H18M12,13.67L14.67,11H9.33L12,13.67Z
+
+$mol_icon_menu_up $mol_icon path \M7,15L12,10L17,15H7Z
+
+$mol_icon_menu_up_outline $mol_icon path \M18,16V14.5L12,8.5L6,14.5V16H18M12,11.33L14.67,14H9.33L12,11.33Z
+
+$mol_number $mol_view
+	precision_view <= precision 0
+	precision_change <= precision 0
+	boost 10
+	value_min -Infinity
+	value_max +Infinity
+	value? +NaN
+	enabled true
+	plugins /
+		<= Hotkey $mol_hotkey
+			key *
+				down? <=> event_dec? null
+				up? <=> event_inc? null
+				pageDown? <=> event_dec_boost? null
+				pageUp? <=> event_inc_boost? null
+	sub /
+		<= String $mol_string
+			- \ we don't want native number controls in mobile devices
+			- \ https://stackoverflow.com/questions/3790935/can-i-hide-the-html5-number-input-s-spin-box
+			type <= type \text
+			keyboard \decimal
+			value? <=> value_string? \
+			hint <= hint \ 
+			enabled <= string_enabled <= enabled
+			submit? <=> submit? null
+			selection? <=> selection? /number
+		<= Dec $mol_button_minor
+			event_click? <=> event_dec? null
+			enabled <= dec_enabled <= enabled
+			sub / <= dec_icon $mol_icon_menu_down_outline
+		<= Inc $mol_button_minor
+			event_click? <=> event_inc? null
+			enabled <= inc_enabled <= enabled
+			sub / <= inc_icon $mol_icon_menu_up_outline
+
+$bog_gamengine_demo_boxes $mol_page
+	title \Ящики
+	tools /
+		<= Count $mol_number
+			value? <=> count? 300
+			value_min 1
+		<= Reset $mol_button_minor
+			title \Сброс
+			click? <=> reset? null
+		<= Chain $mol_button_minor
+			title \Цепь
+			click? <=> chain? null
+		<= Door $mol_button_minor
+			title \Дверь
+			click? <=> door? null
+		<= Wireframe $mol_check_box
+			title \Каркас
+			checked? <=> wireframe?
+		<= Contacts $mol_check_box
+			title \Контакты
+			checked? <=> contacts? false
+		<= Pause $mol_check_box
+			title \Пауза
+			checked? <=> paused?
+	body /
+		<= Draw $bog_gamengine_draw
+			scene <= Scene
+			cam <= Walker
+			wireframe? => wireframe?
+			stat => stat
+			event *
+				pointerdown? <=> shoot? null
+	foot /
+		<= Stat $mol_view
+			sub / <= stat
+		<= Phys_stat $mol_view
+			sub / <= phys_stat \
+	seed? 1
+	Key $bog_gamengine_key
+		bind *
+			forward / \W
+			back / \S
+			left / \A
+			right / \D
+			turn_left / \Q
+			turn_right / \E
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/atlas/wall.png
+			\bog/gamengine/demo/atlas/floor.png
+		size 64
+	Clock $bog_gamengine_clock
+		paused? => paused?
+	Phys $bog_gamengine_demo_boxes_phys
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		kids <= nodes /
+		phys3 <= Phys
+		batches <= batches /
+	Crates $bog_gamengine_batch
+		shader <= Solid $bog_gamengine_shader_solid
+		shape <= Box $bog_gamengine_shape_box
+		atlas <= Atlas
+		source <= Phys
+		skip 1
+	Floor_batch $bog_gamengine_batch
+		shader <= Solid
+		shape <= Plane $bog_gamengine_shape_plane
+			tile 60
+		atlas <= Atlas
+		nodes / <= Floor
+	Contact_batch $bog_gamengine_batch
+		shader <= Flat $bog_gamengine_shader_flat
+		shape <= Lines $bog_gamengine_shape_lines
+			points <= contact_points Float32Array
+		nodes / <= Debug
+	Debug $bog_gamengine_phys3_debug
+		phys3 <= Phys
+	Floor $bog_gamengine_mesh
+		shape <= Plane
+		atlas <= Atlas
+		frame \floor
+		size <= floor_size Float32Array
+	Thrown* $bog_gamengine_phys3_body
+		name \Брошенный
+	Walker $bog_gamengine_demo_room_walker
+		key <= Key
+		pos? <=> walker_pos? Float32Array
+		rot? <=> walker_rot? Float32Array
+
 $bog_gamengine_demo $mol_book2_catalog
 	param \demo
 	plugins /
@@ -664,6 +799,7 @@ $bog_gamengine_demo $mol_book2_catalog
 					sub / <= stat
 		flat <= Flat $bog_gamengine_demo_flat
 		room <= Room $bog_gamengine_demo_room
+		boxes <= Boxes $bog_gamengine_demo_boxes
 	Clock $bog_gamengine_clock
 		paused? => paused?
 	Scene $bog_gamengine_scene

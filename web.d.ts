@@ -3868,6 +3868,7 @@ declare namespace $ {
         atlas(next?: $bog_gamengine_atlas | null): $bog_gamengine_atlas | null;
         nodes(next?: readonly $bog_gamengine_batch_node[]): readonly $bog_gamengine_batch_node[];
         source(next?: $bog_gamengine_batch_source | null): $bog_gamengine_batch_source | null;
+        skip(next?: number): number;
         cap: number;
         count: number;
         version: number;
@@ -4061,6 +4062,9 @@ declare namespace $ {
         contact_normal: Float32Array;
         contact_depth: Float32Array;
     };
+    type $bog_gamengine_phys3_solve_joint = {
+        iterate(): void;
+    };
     class $bog_gamengine_phys3_solve extends $mol_object2 {
         static beta: number;
         static slop: number;
@@ -4107,7 +4111,7 @@ declare namespace $ {
         grow(need: number): void;
         grow_f32(prev: Float32Array, len: number): Float32Array<ArrayBuffer>;
         grow_u32(prev: Uint32Array, len: number): Uint32Array<ArrayBuffer>;
-        solve(world: $bog_gamengine_phys3_solve_world, narrow: $bog_gamengine_phys3_solve_narrow, dt: number): number;
+        solve(world: $bog_gamengine_phys3_solve_world, narrow: $bog_gamengine_phys3_solve_narrow, dt: number, joint?: $bog_gamengine_phys3_solve_joint): number;
         hash_of(a: number, b: number): number;
         hash_build(): void;
         prev_find(a: number, b: number, px: number, py: number, pz: number): number;
@@ -4141,6 +4145,95 @@ declare namespace $ {
     function $bog_gamengine_vec_quat_integrate(out: Float32Array, q: Float32Array, ang: Float32Array, dt: number): Float32Array<ArrayBufferLike>;
     function $bog_gamengine_vec_quat_to_mat4(out: Float32Array, q: Float32Array, pos: Float32Array, scale: Float32Array): Float32Array<ArrayBufferLike>;
     function $bog_gamengine_vec_quat_to_euler(out: Float32Array, q: Float32Array): Float32Array<ArrayBufferLike>;
+}
+
+declare namespace $ {
+    type $bog_gamengine_phys3_joint_world = {
+        pos: Float32Array;
+        rot: Float32Array;
+        vel: Float32Array;
+        ang: Float32Array;
+        inv_mass: Float32Array;
+        inv_inertia: Float32Array;
+        flags: Uint8Array;
+        sleep_timer: Float32Array;
+    };
+    class $bog_gamengine_phys3_joint extends $mol_object2 {
+        static type_point: number;
+        static type_hinge: number;
+        static type_slider: number;
+        static type_spring: number;
+        static beta: number;
+        static flag_sleep: number;
+        static sleep_speed: number;
+        world: $bog_gamengine_phys3_joint_world;
+        cap: number;
+        count: number;
+        type: Uint8Array<ArrayBuffer>;
+        a: Uint32Array<ArrayBuffer>;
+        b: Uint32Array<ArrayBuffer>;
+        anchor_a: Float32Array<ArrayBuffer>;
+        anchor_b: Float32Array<ArrayBuffer>;
+        axis_a: Float32Array<ArrayBuffer>;
+        axis_b: Float32Array<ArrayBuffer>;
+        ref_a: Float32Array<ArrayBuffer>;
+        ref_b: Float32Array<ArrayBuffer>;
+        rel: Float32Array<ArrayBuffer>;
+        param: Float32Array<ArrayBuffer>;
+        imp_lin: Float32Array<ArrayBuffer>;
+        imp_ang: Float32Array<ArrayBuffer>;
+        lim: Int8Array<ArrayBuffer>;
+        live: Uint8Array<ArrayBuffer>;
+        ima: Float32Array<ArrayBuffer>;
+        imb: Float32Array<ArrayBuffer>;
+        ra: Float32Array<ArrayBuffer>;
+        rb: Float32Array<ArrayBuffer>;
+        iwa: Float32Array<ArrayBuffer>;
+        iwb: Float32Array<ArrayBuffer>;
+        axis: Float32Array<ArrayBuffer>;
+        u: Float32Array<ArrayBuffer>;
+        v: Float32Array<ArrayBuffer>;
+        kin: Float32Array<ArrayBuffer>;
+        mass_u: Float32Array<ArrayBuffer>;
+        mass_v: Float32Array<ArrayBuffer>;
+        mass_lim: Float32Array<ArrayBuffer>;
+        bias_lin: Float32Array<ArrayBuffer>;
+        bias_ang: Float32Array<ArrayBuffer>;
+        lim_target: Float32Array<ArrayBuffer>;
+        tmp: Float32Array<ArrayBuffer>;
+        tmp2: Float32Array<ArrayBuffer>;
+        tmp3: Float32Array<ArrayBuffer>;
+        mat: Float32Array<ArrayBuffer>;
+        q1: Float32Array<ArrayBuffer>;
+        q2: Float32Array<ArrayBuffer>;
+        q3: Float32Array<ArrayBuffer>;
+        grow(need: number): void;
+        grow_f32(prev: Float32Array, len: number): Float32Array<ArrayBuffer>;
+        grow_u32(prev: Uint32Array, len: number): Uint32Array<ArrayBuffer>;
+        grow_u8(prev: Uint8Array, len: number): Uint8Array<ArrayBuffer>;
+        add(type: number, a: number, b: number, anchor_a: ArrayLike<number>, anchor_b: ArrayLike<number>, axis?: ArrayLike<number>, param?: ArrayLike<number>): number;
+        remove(index: number): number;
+        body_remove(index: number, last: number): void;
+        rotate_inv(out: Float32Array, q: Float32Array, v: Float32Array): Float32Array<ArrayBufferLike>;
+        perp(nx: number, ny: number, nz: number, out: Float32Array): Float32Array<ArrayBufferLike>;
+        inertia_world(i: number, out: Float32Array, off: number): void;
+        invert3(src: Float32Array, soff: number, dst: Float32Array, doff: number): void;
+        quad(m: Float32Array, off: number, x: number, y: number, z: number): number;
+        mass_lin(k: number, nx: number, ny: number, nz: number): number;
+        mass_ang(k: number, nx: number, ny: number, nz: number): number;
+        kin_lin(k: number): void;
+        kin_skew(r: Float32Array, r3: number, iw: Float32Array, i9: number, m: Float32Array): void;
+        kin_ang(k: number): void;
+        rel_vel(k: number): Float32Array<ArrayBuffer>;
+        rel_ang(k: number): Float32Array<ArrayBuffer>;
+        apply_lin(k: number, lx: number, ly: number, lz: number): void;
+        apply_ang(k: number, tx: number, ty: number, tz: number): void;
+        active(i: number): boolean;
+        moving(i: number): boolean;
+        wake(i: number): void;
+        prepare(world: $bog_gamengine_phys3_joint_world, dt: number): void;
+        iterate(): void;
+    }
 }
 
 declare namespace $ {
@@ -4182,6 +4275,8 @@ declare namespace $ {
         broad: $bog_gamengine_phys3_broad;
         narrow: $bog_gamengine_phys3_narrow;
         solve: $bog_gamengine_phys3_solve;
+        joint: $bog_gamengine_phys3_joint;
+        constructor();
         gravity(next?: Float32Array): Float32Array<ArrayBufferLike>;
         friction(next?: number): number;
         restitution(next?: number): number;
@@ -4308,6 +4403,8 @@ declare namespace $.$$ {
         wireframe: WebGLUniformLocation | null;
         depth: boolean;
         vao: WebGLVertexArrayObject;
+        vertex: $bog_gamengine_gl_buffer;
+        live: boolean;
         trans: $bog_gamengine_gl_buffer;
         tint: $bog_gamengine_gl_buffer;
         layer: $bog_gamengine_gl_buffer | null;
@@ -5465,6 +5562,582 @@ declare namespace $.$$ {
 }
 
 declare namespace $ {
+
+	export class $mol_icon_menu extends $mol_icon {
+		path( ): string
+	}
+	
+}
+
+//# sourceMappingURL=menu.view.tree.d.ts.map
+declare namespace $ {
+
+	export class $mol_icon_menu_down extends $mol_icon {
+		path( ): string
+	}
+	
+}
+
+//# sourceMappingURL=down.view.tree.d.ts.map
+declare namespace $ {
+
+	export class $mol_icon_menu_down_outline extends $mol_icon {
+		path( ): string
+	}
+	
+}
+
+//# sourceMappingURL=outline.view.tree.d.ts.map
+declare namespace $ {
+
+	export class $mol_icon_menu_up extends $mol_icon {
+		path( ): string
+	}
+	
+}
+
+//# sourceMappingURL=up.view.tree.d.ts.map
+declare namespace $ {
+
+	export class $mol_icon_menu_up_outline extends $mol_icon {
+		path( ): string
+	}
+	
+}
+
+//# sourceMappingURL=outline.view.tree.d.ts.map
+declare namespace $ {
+}
+
+declare namespace $ {
+
+	type $mol_hotkey__key_mol_number_1 = $mol_type_enforce<
+		({ 
+			down( next?: ReturnType< $mol_number['event_dec'] > ): ReturnType< $mol_number['event_dec'] >,
+			up( next?: ReturnType< $mol_number['event_inc'] > ): ReturnType< $mol_number['event_inc'] >,
+			pageDown( next?: ReturnType< $mol_number['event_dec_boost'] > ): ReturnType< $mol_number['event_dec_boost'] >,
+			pageUp( next?: ReturnType< $mol_number['event_inc_boost'] > ): ReturnType< $mol_number['event_inc_boost'] >,
+		}) 
+		,
+		ReturnType< $mol_hotkey['key'] >
+	>
+	type $mol_string__type_mol_number_2 = $mol_type_enforce<
+		ReturnType< $mol_number['type'] >
+		,
+		ReturnType< $mol_string['type'] >
+	>
+	type $mol_string__keyboard_mol_number_3 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_string['keyboard'] >
+	>
+	type $mol_string__value_mol_number_4 = $mol_type_enforce<
+		ReturnType< $mol_number['value_string'] >
+		,
+		ReturnType< $mol_string['value'] >
+	>
+	type $mol_string__hint_mol_number_5 = $mol_type_enforce<
+		ReturnType< $mol_number['hint'] >
+		,
+		ReturnType< $mol_string['hint'] >
+	>
+	type $mol_string__enabled_mol_number_6 = $mol_type_enforce<
+		ReturnType< $mol_number['string_enabled'] >
+		,
+		ReturnType< $mol_string['enabled'] >
+	>
+	type $mol_string__submit_mol_number_7 = $mol_type_enforce<
+		ReturnType< $mol_number['submit'] >
+		,
+		ReturnType< $mol_string['submit'] >
+	>
+	type $mol_string__selection_mol_number_8 = $mol_type_enforce<
+		ReturnType< $mol_number['selection'] >
+		,
+		ReturnType< $mol_string['selection'] >
+	>
+	type $mol_button_minor__event_click_mol_number_9 = $mol_type_enforce<
+		ReturnType< $mol_number['event_dec'] >
+		,
+		ReturnType< $mol_button_minor['event_click'] >
+	>
+	type $mol_button_minor__enabled_mol_number_10 = $mol_type_enforce<
+		ReturnType< $mol_number['dec_enabled'] >
+		,
+		ReturnType< $mol_button_minor['enabled'] >
+	>
+	type $mol_button_minor__sub_mol_number_11 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_button_minor['sub'] >
+	>
+	type $mol_button_minor__event_click_mol_number_12 = $mol_type_enforce<
+		ReturnType< $mol_number['event_inc'] >
+		,
+		ReturnType< $mol_button_minor['event_click'] >
+	>
+	type $mol_button_minor__enabled_mol_number_13 = $mol_type_enforce<
+		ReturnType< $mol_number['inc_enabled'] >
+		,
+		ReturnType< $mol_button_minor['enabled'] >
+	>
+	type $mol_button_minor__sub_mol_number_14 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_button_minor['sub'] >
+	>
+	export class $mol_number extends $mol_view {
+		precision( ): number
+		event_dec( next?: any ): any
+		event_inc( next?: any ): any
+		event_dec_boost( next?: any ): any
+		event_inc_boost( next?: any ): any
+		Hotkey( ): $mol_hotkey
+		type( ): string
+		value_string( next?: string ): string
+		hint( ): string
+		string_enabled( ): ReturnType< $mol_number['enabled'] >
+		submit( next?: any ): any
+		selection( next?: readonly(number)[] ): readonly(number)[]
+		String( ): $mol_string
+		dec_enabled( ): ReturnType< $mol_number['enabled'] >
+		dec_icon( ): $mol_icon_menu_down_outline
+		Dec( ): $mol_button_minor
+		inc_enabled( ): ReturnType< $mol_number['enabled'] >
+		inc_icon( ): $mol_icon_menu_up_outline
+		Inc( ): $mol_button_minor
+		precision_view( ): ReturnType< $mol_number['precision'] >
+		precision_change( ): ReturnType< $mol_number['precision'] >
+		boost( ): number
+		value_min( ): number
+		value_max( ): number
+		value( next?: number ): number
+		enabled( ): boolean
+		plugins( ): readonly(any)[]
+		sub( ): readonly(any)[]
+	}
+	
+}
+
+//# sourceMappingURL=number.view.tree.d.ts.map
+declare namespace $.$$ {
+    /**
+     * Component for entering, incrementing and decrementing numeric values.
+     * @see https://mol.hyoo.ru/#!section=demos/demo=mol_number_demo
+     */
+    class $mol_number extends $.$mol_number {
+        sub(): ($.$mol_string | $mol_button_minor)[];
+        value_limited(val?: number): number;
+        event_dec(next?: Event): void;
+        precision_change(): number;
+        event_inc(next?: Event): void;
+        event_dec_boost(next?: Event): void;
+        event_inc_boost(next?: Event): void;
+        round(val: number): string;
+        value_string(next?: string): string;
+        dec_enabled(): boolean;
+        inc_enabled(): boolean;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_shape_lines extends $bog_gamengine_shape {
+        points(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
+        geometry(): Float32Array<ArrayBuffer>;
+        normals(): Float32Array<ArrayBuffer>;
+        skin(): Float32Array<ArrayBuffer>;
+        mode(): "lines";
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_demo_boxes_phys extends $bog_gamengine_phys3 {
+        times: Float32Array<ArrayBuffer>;
+        samples: number;
+        step(dt: number): void;
+        step_ms(): number;
+        low(): number;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_phys3_debug extends $bog_gamengine_node {
+        static normal_len: number;
+        phys3(next?: $bog_gamengine_phys3 | null): $bog_gamengine_phys3 | null;
+        buf: Float32Array<ArrayBuffer>;
+        points(): Float32Array<ArrayBuffer>;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_phys3_body extends $bog_gamengine_node {
+        phys3(next?: $bog_gamengine_phys3): $bog_gamengine_phys3;
+        shape(next?: number): number;
+        size(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        mass(next?: number): number;
+        index_last: number;
+        pos_out: Float32Array<ArrayBuffer>;
+        rot_out: Float32Array<ArrayBuffer>;
+        rot_tmp: Float32Array<ArrayBuffer>;
+        index(): number;
+        pos(next?: ArrayLike<number>): Float32Array<ArrayBuffer>;
+        rot(next?: ArrayLike<number>): Float32Array<ArrayBuffer>;
+        props(): readonly $bog_gamengine_prop[];
+        destructor(): void;
+    }
+}
+
+declare namespace $ {
+
+	type $mol_number__value_bog_gamengine_demo_boxes_1 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['count'] >
+		,
+		ReturnType< $mol_number['value'] >
+	>
+	type $mol_number__value_min_bog_gamengine_demo_boxes_2 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $mol_number['value_min'] >
+	>
+	type $mol_button_minor__title_bog_gamengine_demo_boxes_3 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_button_minor['title'] >
+	>
+	type $mol_button_minor__click_bog_gamengine_demo_boxes_4 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['reset'] >
+		,
+		ReturnType< $mol_button_minor['click'] >
+	>
+	type $mol_button_minor__title_bog_gamengine_demo_boxes_5 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_button_minor['title'] >
+	>
+	type $mol_button_minor__click_bog_gamengine_demo_boxes_6 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['chain'] >
+		,
+		ReturnType< $mol_button_minor['click'] >
+	>
+	type $mol_button_minor__title_bog_gamengine_demo_boxes_7 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_button_minor['title'] >
+	>
+	type $mol_button_minor__click_bog_gamengine_demo_boxes_8 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['door'] >
+		,
+		ReturnType< $mol_button_minor['click'] >
+	>
+	type $mol_check_box__title_bog_gamengine_demo_boxes_9 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_check_box['title'] >
+	>
+	type $mol_check_box__checked_bog_gamengine_demo_boxes_10 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['wireframe'] >
+		,
+		ReturnType< $mol_check_box['checked'] >
+	>
+	type $mol_check_box__title_bog_gamengine_demo_boxes_11 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_check_box['title'] >
+	>
+	type $mol_check_box__checked_bog_gamengine_demo_boxes_12 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['contacts'] >
+		,
+		ReturnType< $mol_check_box['checked'] >
+	>
+	type $mol_check_box__title_bog_gamengine_demo_boxes_13 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_check_box['title'] >
+	>
+	type $mol_check_box__checked_bog_gamengine_demo_boxes_14 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['paused'] >
+		,
+		ReturnType< $mol_check_box['checked'] >
+	>
+	type __bog_gamengine_demo_boxes_15 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_boxes['wireframe'] >[0]
+		,
+		Parameters< ReturnType< $bog_gamengine_demo_boxes['Draw'] >['wireframe'] >[0]
+	>
+	type $bog_gamengine_draw__scene_bog_gamengine_demo_boxes_16 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Scene'] >
+		,
+		ReturnType< $bog_gamengine_draw['scene'] >
+	>
+	type $bog_gamengine_draw__cam_bog_gamengine_demo_boxes_17 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Walker'] >
+		,
+		ReturnType< $bog_gamengine_draw['cam'] >
+	>
+	type $bog_gamengine_draw__event_bog_gamengine_demo_boxes_18 = $mol_type_enforce<
+		({ 
+			pointerdown( next?: ReturnType< $bog_gamengine_demo_boxes['shoot'] > ): ReturnType< $bog_gamengine_demo_boxes['shoot'] >,
+		}) 
+		,
+		ReturnType< $bog_gamengine_draw['event'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_boxes_19 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_boxes_20 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type __bog_gamengine_demo_boxes_21 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_boxes['paused'] >[0]
+		,
+		Parameters< ReturnType< $bog_gamengine_demo_boxes['Clock'] >['paused'] >[0]
+	>
+	type $bog_gamengine_shape_plane__tile_bog_gamengine_demo_boxes_22 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_shape_plane['tile'] >
+	>
+	type $bog_gamengine_shape_lines__points_bog_gamengine_demo_boxes_23 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['contact_points'] >
+		,
+		ReturnType< $bog_gamengine_shape_lines['points'] >
+	>
+	type $bog_gamengine_key__bind_bog_gamengine_demo_boxes_24 = $mol_type_enforce<
+		({ 
+			'forward': readonly(any)[],
+			'back': readonly(any)[],
+			'left': readonly(any)[],
+			'right': readonly(any)[],
+			'turn_left': readonly(any)[],
+			'turn_right': readonly(any)[],
+		}) 
+		,
+		ReturnType< $bog_gamengine_key['bind'] >
+	>
+	type $bog_gamengine_atlas__uris_bog_gamengine_demo_boxes_25 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $bog_gamengine_atlas['uris'] >
+	>
+	type $bog_gamengine_atlas__size_bog_gamengine_demo_boxes_26 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_atlas['size'] >
+	>
+	type $bog_gamengine_scene__clock_bog_gamengine_demo_boxes_27 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Clock'] >
+		,
+		ReturnType< $bog_gamengine_scene['clock'] >
+	>
+	type $bog_gamengine_scene__kids_bog_gamengine_demo_boxes_28 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['nodes'] >
+		,
+		ReturnType< $bog_gamengine_scene['kids'] >
+	>
+	type $bog_gamengine_scene__phys3_bog_gamengine_demo_boxes_29 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Phys'] >
+		,
+		ReturnType< $bog_gamengine_scene['phys3'] >
+	>
+	type $bog_gamengine_scene__batches_bog_gamengine_demo_boxes_30 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['batches'] >
+		,
+		ReturnType< $bog_gamengine_scene['batches'] >
+	>
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_boxes_31 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Solid'] >
+		,
+		ReturnType< $bog_gamengine_batch['shader'] >
+	>
+	type $bog_gamengine_batch__shape_bog_gamengine_demo_boxes_32 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Box'] >
+		,
+		ReturnType< $bog_gamengine_batch['shape'] >
+	>
+	type $bog_gamengine_batch__atlas_bog_gamengine_demo_boxes_33 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_batch['atlas'] >
+	>
+	type $bog_gamengine_batch__source_bog_gamengine_demo_boxes_34 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Phys'] >
+		,
+		ReturnType< $bog_gamengine_batch['source'] >
+	>
+	type $bog_gamengine_batch__skip_bog_gamengine_demo_boxes_35 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_batch['skip'] >
+	>
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_boxes_36 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Solid'] >
+		,
+		ReturnType< $bog_gamengine_batch['shader'] >
+	>
+	type $bog_gamengine_batch__shape_bog_gamengine_demo_boxes_37 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Plane'] >
+		,
+		ReturnType< $bog_gamengine_batch['shape'] >
+	>
+	type $bog_gamengine_batch__atlas_bog_gamengine_demo_boxes_38 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_batch['atlas'] >
+	>
+	type $bog_gamengine_batch__nodes_bog_gamengine_demo_boxes_39 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $bog_gamengine_batch['nodes'] >
+	>
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_boxes_40 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Flat'] >
+		,
+		ReturnType< $bog_gamengine_batch['shader'] >
+	>
+	type $bog_gamengine_batch__shape_bog_gamengine_demo_boxes_41 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Lines'] >
+		,
+		ReturnType< $bog_gamengine_batch['shape'] >
+	>
+	type $bog_gamengine_batch__nodes_bog_gamengine_demo_boxes_42 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $bog_gamengine_batch['nodes'] >
+	>
+	type $bog_gamengine_phys3_debug__phys3_bog_gamengine_demo_boxes_43 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Phys'] >
+		,
+		ReturnType< $bog_gamengine_phys3_debug['phys3'] >
+	>
+	type $bog_gamengine_mesh__shape_bog_gamengine_demo_boxes_44 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Plane'] >
+		,
+		ReturnType< $bog_gamengine_mesh['shape'] >
+	>
+	type $bog_gamengine_mesh__atlas_bog_gamengine_demo_boxes_45 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_mesh['atlas'] >
+	>
+	type $bog_gamengine_mesh__frame_bog_gamengine_demo_boxes_46 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_mesh['frame'] >
+	>
+	type $bog_gamengine_mesh__size_bog_gamengine_demo_boxes_47 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['floor_size'] >
+		,
+		ReturnType< $bog_gamengine_mesh['size'] >
+	>
+	type $bog_gamengine_phys3_body__name_bog_gamengine_demo_boxes_48 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_phys3_body['name'] >
+	>
+	type $bog_gamengine_demo_room_walker__key_bog_gamengine_demo_boxes_49 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['Key'] >
+		,
+		ReturnType< $bog_gamengine_demo_room_walker['key'] >
+	>
+	type $bog_gamengine_demo_room_walker__pos_bog_gamengine_demo_boxes_50 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['walker_pos'] >
+		,
+		ReturnType< $bog_gamengine_demo_room_walker['pos'] >
+	>
+	type $bog_gamengine_demo_room_walker__rot_bog_gamengine_demo_boxes_51 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['walker_rot'] >
+		,
+		ReturnType< $bog_gamengine_demo_room_walker['rot'] >
+	>
+	export class $bog_gamengine_demo_boxes extends $mol_page {
+		count( next?: number ): number
+		Count( ): $mol_number
+		reset( next?: any ): any
+		Reset( ): $mol_button_minor
+		chain( next?: any ): any
+		Chain( ): $mol_button_minor
+		door( next?: any ): any
+		Door( ): $mol_button_minor
+		Wireframe( ): $mol_check_box
+		contacts( next?: boolean ): boolean
+		Contacts( ): $mol_check_box
+		Pause( ): $mol_check_box
+		wireframe( next?: ReturnType< ReturnType< $bog_gamengine_demo_boxes['Draw'] >['wireframe'] > ): ReturnType< ReturnType< $bog_gamengine_demo_boxes['Draw'] >['wireframe'] >
+		stat( ): ReturnType< ReturnType< $bog_gamengine_demo_boxes['Draw'] >['stat'] >
+		shoot( next?: any ): any
+		Draw( ): $bog_gamengine_draw
+		Stat( ): $mol_view
+		phys_stat( ): string
+		Phys_stat( ): $mol_view
+		paused( next?: ReturnType< ReturnType< $bog_gamengine_demo_boxes['Clock'] >['paused'] > ): ReturnType< ReturnType< $bog_gamengine_demo_boxes['Clock'] >['paused'] >
+		nodes( ): readonly(any)[]
+		batches( ): readonly(any)[]
+		Solid( ): $bog_gamengine_shader_solid
+		Box( ): $bog_gamengine_shape_box
+		Plane( ): $bog_gamengine_shape_plane
+		Flat( ): $bog_gamengine_shader_flat
+		contact_points( ): Float32Array
+		Lines( ): $bog_gamengine_shape_lines
+		floor_size( ): Float32Array
+		walker_pos( next?: Float32Array ): Float32Array
+		walker_rot( next?: Float32Array ): Float32Array
+		title( ): string
+		tools( ): readonly(any)[]
+		body( ): readonly(any)[]
+		foot( ): readonly(any)[]
+		seed( next?: number ): number
+		Key( ): $bog_gamengine_key
+		Atlas( ): $bog_gamengine_atlas
+		Clock( ): $bog_gamengine_clock
+		Phys( ): $bog_gamengine_demo_boxes_phys
+		Scene( ): $bog_gamengine_scene
+		Crates( ): $bog_gamengine_batch
+		Floor_batch( ): $bog_gamengine_batch
+		Contact_batch( ): $bog_gamengine_batch
+		Debug( ): $bog_gamengine_phys3_debug
+		Floor( ): $bog_gamengine_mesh
+		Thrown( id: any): $bog_gamengine_phys3_body
+		Walker( ): $bog_gamengine_demo_room_walker
+	}
+	
+}
+
+//# sourceMappingURL=boxes.view.tree.d.ts.map
+declare namespace $.$$ {
+    function $bog_gamengine_demo_boxes_rand(seed: number): () => number;
+    class $bog_gamengine_demo_boxes extends $.$bog_gamengine_demo_boxes {
+        count(next?: number): number;
+        reset(next?: Event | null): Event | null;
+        pile_side(): number;
+        Phys(): $bog_gamengine_demo_boxes_phys;
+        floor_size(): Float32Array<ArrayBuffer>;
+        walker_pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        walker_rot(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        thrown_count(next?: number): number;
+        thrown(): readonly $bog_gamengine_phys3_body[];
+        nodes(): ($bog_gamengine_mesh | $bog_gamengine_demo_room_walker | $bog_gamengine_phys3_body)[];
+        batches(): readonly $bog_gamengine_batch[];
+        contact_points(): Float32Array<ArrayBuffer>;
+        throw_dir: Float32Array<ArrayBuffer>;
+        throw_out: Float32Array<ArrayBuffer>;
+        shoot(next?: PointerEvent | null): PointerEvent | null;
+        side_z(): number;
+        chain_first: number;
+        chain(next?: Event | null): Event | null;
+        chain_drop(): number;
+        door(next?: Event | null): Event | null;
+        phys_stat(): string;
+    }
+}
+
+declare namespace $.$$ {
+}
+
+declare namespace $ {
     class $bog_gamengine_demo_spin extends $bog_gamengine_node {
         tint(): Float32Array<ArrayBuffer>;
         step(dt: number): void;
@@ -5579,6 +6252,7 @@ declare namespace $ {
 		Quad( ): $mol_page
 		Flat( ): $bog_gamengine_demo_flat
 		Room( ): $bog_gamengine_demo_room
+		Boxes( ): $bog_gamengine_demo_boxes
 		paused( next?: ReturnType< ReturnType< $bog_gamengine_demo['Clock'] >['paused'] > ): ReturnType< ReturnType< $bog_gamengine_demo['Clock'] >['paused'] >
 		Batch( ): $bog_gamengine_batch
 		cam_deep_pos( ): Float32Array
@@ -5588,6 +6262,7 @@ declare namespace $ {
 			'quad': ReturnType< $bog_gamengine_demo['Quad'] >,
 			'flat': ReturnType< $bog_gamengine_demo['Flat'] >,
 			'room': ReturnType< $bog_gamengine_demo['Room'] >,
+			'boxes': ReturnType< $bog_gamengine_demo['Boxes'] >,
 		}) 
 		Clock( ): $bog_gamengine_clock
 		Scene( ): $bog_gamengine_scene

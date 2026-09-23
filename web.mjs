@@ -9866,6 +9866,9 @@ var $;
         source(next) {
             return next ?? null;
         }
+        skip(next = 0) {
+            return next;
+        }
         cap = 0;
         count = 0;
         version = 0;
@@ -9924,7 +9927,8 @@ var $;
             return count;
         }
         fill_source(source) {
-            const count = source.count;
+            const skip = this.skip();
+            const count = Math.max(0, source.count - skip);
             const cap = this.cap;
             this.grow(count);
             if (this.cap !== cap) {
@@ -9938,7 +9942,7 @@ var $;
                     uv[i * 4 + 3] = 1;
                 }
             }
-            this.trans.set(source.trans.subarray(0, count * 16));
+            this.trans.set(source.trans.subarray(skip * 16, (skip + count) * 16));
             this.count = count;
             ++this.version;
             return count;
@@ -9959,6 +9963,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_batch.prototype, "source", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_batch.prototype, "skip", null);
     $.$bog_gamengine_batch = $bog_gamengine_batch;
 })($ || ($ = {}));
 
@@ -11555,7 +11562,7 @@ var $;
             next.set(prev);
             return next;
         }
-        solve(world, narrow, dt) {
+        solve(world, narrow, dt, joint) {
             this.world = world;
             const count = narrow.contact_count;
             this.grow(count);
@@ -11565,8 +11572,10 @@ var $;
             this.prepare(narrow, dt);
             const iterations = world.iterations();
             const friction = world.friction();
-            for (let it = 0; it < iterations; ++it)
+            for (let it = 0; it < iterations; ++it) {
                 this.iterate(friction);
+                joint?.iterate();
+            }
             this.remember();
             return count;
         }
@@ -12012,6 +12021,618 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    class $bog_gamengine_phys3_joint extends $mol_object2 {
+        static type_point = 0;
+        static type_hinge = 1;
+        static type_slider = 2;
+        static type_spring = 3;
+        static beta = 0.2;
+        static flag_sleep = 1;
+        static sleep_speed = 0.05;
+        world = {};
+        cap = 0;
+        count = 0;
+        type = new Uint8Array(0);
+        a = new Uint32Array(0);
+        b = new Uint32Array(0);
+        anchor_a = new Float32Array(0);
+        anchor_b = new Float32Array(0);
+        axis_a = new Float32Array(0);
+        axis_b = new Float32Array(0);
+        ref_a = new Float32Array(0);
+        ref_b = new Float32Array(0);
+        rel = new Float32Array(0);
+        param = new Float32Array(0);
+        imp_lin = new Float32Array(0);
+        imp_ang = new Float32Array(0);
+        lim = new Int8Array(0);
+        live = new Uint8Array(0);
+        ima = new Float32Array(0);
+        imb = new Float32Array(0);
+        ra = new Float32Array(0);
+        rb = new Float32Array(0);
+        iwa = new Float32Array(0);
+        iwb = new Float32Array(0);
+        axis = new Float32Array(0);
+        u = new Float32Array(0);
+        v = new Float32Array(0);
+        kin = new Float32Array(0);
+        mass_u = new Float32Array(0);
+        mass_v = new Float32Array(0);
+        mass_lim = new Float32Array(0);
+        bias_lin = new Float32Array(0);
+        bias_ang = new Float32Array(0);
+        lim_target = new Float32Array(0);
+        tmp = new Float32Array(3);
+        tmp2 = new Float32Array(3);
+        tmp3 = new Float32Array(3);
+        mat = new Float32Array(9);
+        q1 = new Float32Array(4);
+        q2 = new Float32Array(4);
+        q3 = new Float32Array(4);
+        grow(need) {
+            if (need <= this.cap)
+                return;
+            let cap = Math.max(this.cap, 16);
+            while (cap < need)
+                cap *= 2;
+            this.cap = cap;
+            this.type = this.grow_u8(this.type, cap);
+            this.a = this.grow_u32(this.a, cap);
+            this.b = this.grow_u32(this.b, cap);
+            this.anchor_a = this.grow_f32(this.anchor_a, cap * 3);
+            this.anchor_b = this.grow_f32(this.anchor_b, cap * 3);
+            this.axis_a = this.grow_f32(this.axis_a, cap * 3);
+            this.axis_b = this.grow_f32(this.axis_b, cap * 3);
+            this.ref_a = this.grow_f32(this.ref_a, cap * 3);
+            this.ref_b = this.grow_f32(this.ref_b, cap * 3);
+            this.rel = this.grow_f32(this.rel, cap * 4);
+            this.param = this.grow_f32(this.param, cap * 4);
+            this.imp_lin = this.grow_f32(this.imp_lin, cap * 3);
+            this.imp_ang = this.grow_f32(this.imp_ang, cap * 3);
+            const lim = new Int8Array(cap);
+            lim.set(this.lim);
+            this.lim = lim;
+            this.live = this.grow_u8(this.live, cap);
+            this.ima = this.grow_f32(this.ima, cap);
+            this.imb = this.grow_f32(this.imb, cap);
+            this.ra = this.grow_f32(this.ra, cap * 3);
+            this.rb = this.grow_f32(this.rb, cap * 3);
+            this.iwa = this.grow_f32(this.iwa, cap * 9);
+            this.iwb = this.grow_f32(this.iwb, cap * 9);
+            this.axis = this.grow_f32(this.axis, cap * 3);
+            this.u = this.grow_f32(this.u, cap * 3);
+            this.v = this.grow_f32(this.v, cap * 3);
+            this.kin = this.grow_f32(this.kin, cap * 9);
+            this.mass_u = this.grow_f32(this.mass_u, cap);
+            this.mass_v = this.grow_f32(this.mass_v, cap);
+            this.mass_lim = this.grow_f32(this.mass_lim, cap);
+            this.bias_lin = this.grow_f32(this.bias_lin, cap * 3);
+            this.bias_ang = this.grow_f32(this.bias_ang, cap * 3);
+            this.lim_target = this.grow_f32(this.lim_target, cap);
+        }
+        grow_f32(prev, len) {
+            const next = new Float32Array(len);
+            next.set(prev);
+            return next;
+        }
+        grow_u32(prev, len) {
+            const next = new Uint32Array(len);
+            next.set(prev);
+            return next;
+        }
+        grow_u8(prev, len) {
+            const next = new Uint8Array(len);
+            next.set(prev);
+            return next;
+        }
+        add(type, a, b, anchor_a, anchor_b, axis, param) {
+            const world = this.world;
+            const k = this.count;
+            this.grow(k + 1);
+            this.count = k + 1;
+            const k3 = k * 3, k4 = k * 4;
+            this.type[k] = type;
+            this.a[k] = a;
+            this.b[k] = b;
+            this.anchor_a.set(anchor_a, k3);
+            this.anchor_b.set(anchor_b, k3);
+            this.param.fill(0, k4, k4 + 4);
+            if (param)
+                this.param.set(param, k4);
+            this.imp_lin.fill(0, k3, k3 + 3);
+            this.imp_ang.fill(0, k3, k3 + 3);
+            this.lim[k] = 0;
+            const tmp = this.tmp, tmp2 = this.tmp2;
+            tmp[0] = axis ? axis[0] : 0;
+            tmp[1] = axis ? axis[1] : 1;
+            tmp[2] = axis ? axis[2] : 0;
+            $bog_gamengine_vec_norm(tmp, tmp);
+            this.axis_a.set(tmp, k3);
+            const qa = world.rot.subarray(a * 4, a * 4 + 4), qb = world.rot.subarray(b * 4, b * 4 + 4);
+            $bog_gamengine_vec_quat_rotate(tmp2, qa, tmp);
+            this.rotate_inv(tmp, qb, tmp2);
+            this.axis_b.set(tmp, k3);
+            this.perp(tmp2[0], tmp2[1], tmp2[2], tmp);
+            this.rotate_inv(tmp2, qa, tmp);
+            this.ref_a.set(tmp2, k3);
+            this.rotate_inv(tmp2, qb, tmp);
+            this.ref_b.set(tmp2, k3);
+            const q1 = this.q1, q2 = this.q2;
+            q1[0] = -qa[0];
+            q1[1] = -qa[1];
+            q1[2] = -qa[2];
+            q1[3] = qa[3];
+            $bog_gamengine_vec_quat_mul(q2, q1, qb);
+            this.rel.set(q2, k4);
+            return k;
+        }
+        remove(index) {
+            const last = this.count - 1;
+            if (index !== last) {
+                this.type[index] = this.type[last];
+                this.a[index] = this.a[last];
+                this.b[index] = this.b[last];
+                this.anchor_a.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.anchor_b.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.axis_a.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.axis_b.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.ref_a.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.ref_b.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.rel.copyWithin(index * 4, last * 4, last * 4 + 4);
+                this.param.copyWithin(index * 4, last * 4, last * 4 + 4);
+                this.imp_lin.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.imp_ang.copyWithin(index * 3, last * 3, last * 3 + 3);
+                this.lim[index] = this.lim[last];
+            }
+            this.count = last;
+            return last;
+        }
+        body_remove(index, last) {
+            for (let k = this.count - 1; k >= 0; --k) {
+                if (this.a[k] === index || this.b[k] === index)
+                    this.remove(k);
+            }
+            if (index === last)
+                return;
+            for (let k = 0; k < this.count; ++k) {
+                if (this.a[k] === last)
+                    this.a[k] = index;
+                if (this.b[k] === last)
+                    this.b[k] = index;
+            }
+        }
+        rotate_inv(out, q, v) {
+            const q3 = this.q3;
+            q3[0] = -q[0];
+            q3[1] = -q[1];
+            q3[2] = -q[2];
+            q3[3] = q[3];
+            return $bog_gamengine_vec_quat_rotate(out, q3, v);
+        }
+        perp(nx, ny, nz, out) {
+            let ux = 0, uy = 0, uz = 0;
+            if (Math.abs(nx) >= 0.57735) {
+                ux = ny;
+                uy = -nx;
+            }
+            else {
+                uy = nz;
+                uz = -ny;
+            }
+            const ul = 1 / Math.sqrt(ux * ux + uy * uy + uz * uz);
+            out[0] = ux * ul;
+            out[1] = uy * ul;
+            out[2] = uz * ul;
+            return out;
+        }
+        inertia_world(i, out, off) {
+            const rot = this.world.rot, inv = this.world.inv_inertia;
+            const x = rot[i * 4], y = rot[i * 4 + 1], z = rot[i * 4 + 2], w = rot[i * 4 + 3];
+            const d0 = inv[i * 3], d1 = inv[i * 3 + 1], d2 = inv[i * 3 + 2];
+            const xx = x * x, yy = y * y, zz = z * z;
+            const xy = x * y, xz = x * z, yz = y * z;
+            const wx = w * x, wy = w * y, wz = w * z;
+            const r00 = 1 - 2 * (yy + zz), r01 = 2 * (xy - wz), r02 = 2 * (xz + wy);
+            const r10 = 2 * (xy + wz), r11 = 1 - 2 * (xx + zz), r12 = 2 * (yz - wx);
+            const r20 = 2 * (xz - wy), r21 = 2 * (yz + wx), r22 = 1 - 2 * (xx + yy);
+            out[off] = r00 * r00 * d0 + r01 * r01 * d1 + r02 * r02 * d2;
+            out[off + 1] = r00 * r10 * d0 + r01 * r11 * d1 + r02 * r12 * d2;
+            out[off + 2] = r00 * r20 * d0 + r01 * r21 * d1 + r02 * r22 * d2;
+            out[off + 3] = out[off + 1];
+            out[off + 4] = r10 * r10 * d0 + r11 * r11 * d1 + r12 * r12 * d2;
+            out[off + 5] = r10 * r20 * d0 + r11 * r21 * d1 + r12 * r22 * d2;
+            out[off + 6] = out[off + 2];
+            out[off + 7] = out[off + 5];
+            out[off + 8] = r20 * r20 * d0 + r21 * r21 * d1 + r22 * r22 * d2;
+        }
+        invert3(src, soff, dst, doff) {
+            const m00 = src[soff], m01 = src[soff + 1], m02 = src[soff + 2];
+            const m10 = src[soff + 3], m11 = src[soff + 4], m12 = src[soff + 5];
+            const m20 = src[soff + 6], m21 = src[soff + 7], m22 = src[soff + 8];
+            const c00 = m11 * m22 - m12 * m21;
+            const c01 = m12 * m20 - m10 * m22;
+            const c02 = m10 * m21 - m11 * m20;
+            const det = m00 * c00 + m01 * c01 + m02 * c02;
+            if (!(det > 1e-12)) {
+                dst.fill(0, doff, doff + 9);
+                return;
+            }
+            const inv = 1 / det;
+            dst[doff] = c00 * inv;
+            dst[doff + 1] = (m02 * m21 - m01 * m22) * inv;
+            dst[doff + 2] = (m01 * m12 - m02 * m11) * inv;
+            dst[doff + 3] = c01 * inv;
+            dst[doff + 4] = (m00 * m22 - m02 * m20) * inv;
+            dst[doff + 5] = (m02 * m10 - m00 * m12) * inv;
+            dst[doff + 6] = c02 * inv;
+            dst[doff + 7] = (m01 * m20 - m00 * m21) * inv;
+            dst[doff + 8] = (m00 * m11 - m01 * m10) * inv;
+        }
+        quad(m, off, x, y, z) {
+            return x * (m[off] * x + m[off + 1] * y + m[off + 2] * z)
+                + y * (m[off + 3] * x + m[off + 4] * y + m[off + 5] * z)
+                + z * (m[off + 6] * x + m[off + 7] * y + m[off + 8] * z);
+        }
+        mass_lin(k, nx, ny, nz) {
+            const k3 = k * 3, k9 = k * 9;
+            const ra = this.ra, rb = this.rb;
+            const cax = ra[k3 + 1] * nz - ra[k3 + 2] * ny, cay = ra[k3 + 2] * nx - ra[k3] * nz, caz = ra[k3] * ny - ra[k3 + 1] * nx;
+            const cbx = rb[k3 + 1] * nz - rb[k3 + 2] * ny, cby = rb[k3 + 2] * nx - rb[k3] * nz, cbz = rb[k3] * ny - rb[k3 + 1] * nx;
+            const sum = this.ima[k] + this.imb[k] + this.quad(this.iwa, k9, cax, cay, caz) + this.quad(this.iwb, k9, cbx, cby, cbz);
+            return sum > 0 ? 1 / sum : 0;
+        }
+        mass_ang(k, nx, ny, nz) {
+            const k9 = k * 9;
+            const sum = this.quad(this.iwa, k9, nx, ny, nz) + this.quad(this.iwb, k9, nx, ny, nz);
+            return sum > 0 ? 1 / sum : 0;
+        }
+        kin_lin(k) {
+            const k3 = k * 3, k9 = k * 9;
+            const m = this.mat;
+            const im = this.ima[k] + this.imb[k];
+            m.fill(0);
+            m[0] = m[4] = m[8] = im;
+            this.kin_skew(this.ra, k3, this.iwa, k9, m);
+            this.kin_skew(this.rb, k3, this.iwb, k9, m);
+            this.invert3(m, 0, this.kin, k9);
+        }
+        kin_skew(r, r3, iw, i9, m) {
+            const rx = r[r3], ry = r[r3 + 1], rz = r[r3 + 2];
+            const s00 = 0, s01 = -rz, s02 = ry;
+            const s10 = rz, s11 = 0, s12 = -rx;
+            const s20 = -ry, s21 = rx, s22 = 0;
+            const i00 = iw[i9], i01 = iw[i9 + 1], i02 = iw[i9 + 2];
+            const i10 = iw[i9 + 3], i11 = iw[i9 + 4], i12 = iw[i9 + 5];
+            const i20 = iw[i9 + 6], i21 = iw[i9 + 7], i22 = iw[i9 + 8];
+            const t00 = s00 * i00 + s01 * i10 + s02 * i20, t01 = s00 * i01 + s01 * i11 + s02 * i21, t02 = s00 * i02 + s01 * i12 + s02 * i22;
+            const t10 = s10 * i00 + s11 * i10 + s12 * i20, t11 = s10 * i01 + s11 * i11 + s12 * i21, t12 = s10 * i02 + s11 * i12 + s12 * i22;
+            const t20 = s20 * i00 + s21 * i10 + s22 * i20, t21 = s20 * i01 + s21 * i11 + s22 * i21, t22 = s20 * i02 + s21 * i12 + s22 * i22;
+            m[0] += t00 * s00 + t01 * s01 + t02 * s02;
+            m[1] += t00 * s10 + t01 * s11 + t02 * s12;
+            m[2] += t00 * s20 + t01 * s21 + t02 * s22;
+            m[3] += t10 * s00 + t11 * s01 + t12 * s02;
+            m[4] += t10 * s10 + t11 * s11 + t12 * s12;
+            m[5] += t10 * s20 + t11 * s21 + t12 * s22;
+            m[6] += t20 * s00 + t21 * s01 + t22 * s02;
+            m[7] += t20 * s10 + t21 * s11 + t22 * s12;
+            m[8] += t20 * s20 + t21 * s21 + t22 * s22;
+        }
+        kin_ang(k) {
+            const k9 = k * 9;
+            const m = this.mat, iwa = this.iwa, iwb = this.iwb;
+            for (let i = 0; i < 9; ++i)
+                m[i] = iwa[k9 + i] + iwb[k9 + i];
+            this.invert3(m, 0, this.kin, k9);
+        }
+        rel_vel(k) {
+            const world = this.world, vel = world.vel, ang = world.ang, ra = this.ra, rb = this.rb, out = this.tmp;
+            const a3 = this.a[k] * 3, b3 = this.b[k] * 3, k3 = k * 3;
+            const wax = ang[a3], way = ang[a3 + 1], waz = ang[a3 + 2];
+            const wbx = ang[b3], wby = ang[b3 + 1], wbz = ang[b3 + 2];
+            const rax = ra[k3], ray = ra[k3 + 1], raz = ra[k3 + 2];
+            const rbx = rb[k3], rby = rb[k3 + 1], rbz = rb[k3 + 2];
+            out[0] = vel[b3] + (wby * rbz - wbz * rby) - vel[a3] - (way * raz - waz * ray);
+            out[1] = vel[b3 + 1] + (wbz * rbx - wbx * rbz) - vel[a3 + 1] - (waz * rax - wax * raz);
+            out[2] = vel[b3 + 2] + (wbx * rby - wby * rbx) - vel[a3 + 2] - (wax * ray - way * rax);
+            return out;
+        }
+        rel_ang(k) {
+            const ang = this.world.ang, out = this.tmp2;
+            const a3 = this.a[k] * 3, b3 = this.b[k] * 3;
+            out[0] = ang[b3] - ang[a3];
+            out[1] = ang[b3 + 1] - ang[a3 + 1];
+            out[2] = ang[b3 + 2] - ang[a3 + 2];
+            return out;
+        }
+        apply_lin(k, lx, ly, lz) {
+            const world = this.world, vel = world.vel, ang = world.ang;
+            const a = this.a[k], b = this.b[k], a3 = a * 3, b3 = b * 3, k3 = k * 3, k9 = k * 9;
+            const ima = this.ima[k], imb = this.imb[k], ra = this.ra, rb = this.rb, iwa = this.iwa, iwb = this.iwb;
+            if (ima > 0) {
+                vel[a3] -= lx * ima;
+                vel[a3 + 1] -= ly * ima;
+                vel[a3 + 2] -= lz * ima;
+                const tx = ra[k3 + 1] * lz - ra[k3 + 2] * ly, ty = ra[k3 + 2] * lx - ra[k3] * lz, tz = ra[k3] * ly - ra[k3 + 1] * lx;
+                ang[a3] -= iwa[k9] * tx + iwa[k9 + 1] * ty + iwa[k9 + 2] * tz;
+                ang[a3 + 1] -= iwa[k9 + 3] * tx + iwa[k9 + 4] * ty + iwa[k9 + 5] * tz;
+                ang[a3 + 2] -= iwa[k9 + 6] * tx + iwa[k9 + 7] * ty + iwa[k9 + 8] * tz;
+            }
+            if (imb > 0) {
+                vel[b3] += lx * imb;
+                vel[b3 + 1] += ly * imb;
+                vel[b3 + 2] += lz * imb;
+                const tx = rb[k3 + 1] * lz - rb[k3 + 2] * ly, ty = rb[k3 + 2] * lx - rb[k3] * lz, tz = rb[k3] * ly - rb[k3 + 1] * lx;
+                ang[b3] += iwb[k9] * tx + iwb[k9 + 1] * ty + iwb[k9 + 2] * tz;
+                ang[b3 + 1] += iwb[k9 + 3] * tx + iwb[k9 + 4] * ty + iwb[k9 + 5] * tz;
+                ang[b3 + 2] += iwb[k9 + 6] * tx + iwb[k9 + 7] * ty + iwb[k9 + 8] * tz;
+            }
+        }
+        apply_ang(k, tx, ty, tz) {
+            const ang = this.world.ang;
+            const a3 = this.a[k] * 3, b3 = this.b[k] * 3, k9 = k * 9;
+            const iwa = this.iwa, iwb = this.iwb;
+            if (this.ima[k] > 0) {
+                ang[a3] -= iwa[k9] * tx + iwa[k9 + 1] * ty + iwa[k9 + 2] * tz;
+                ang[a3 + 1] -= iwa[k9 + 3] * tx + iwa[k9 + 4] * ty + iwa[k9 + 5] * tz;
+                ang[a3 + 2] -= iwa[k9 + 6] * tx + iwa[k9 + 7] * ty + iwa[k9 + 8] * tz;
+            }
+            if (this.imb[k] > 0) {
+                ang[b3] += iwb[k9] * tx + iwb[k9 + 1] * ty + iwb[k9 + 2] * tz;
+                ang[b3 + 1] += iwb[k9 + 3] * tx + iwb[k9 + 4] * ty + iwb[k9 + 5] * tz;
+                ang[b3 + 2] += iwb[k9 + 6] * tx + iwb[k9 + 7] * ty + iwb[k9 + 8] * tz;
+            }
+        }
+        active(i) {
+            const world = this.world;
+            if (!(world.inv_mass[i] > 0))
+                return false;
+            if (world.flags[i] & $bog_gamengine_phys3_joint.flag_sleep)
+                return false;
+            return true;
+        }
+        moving(i) {
+            const vel = this.world.vel, ang = this.world.ang, i3 = i * 3;
+            const v2 = vel[i3] * vel[i3] + vel[i3 + 1] * vel[i3 + 1] + vel[i3 + 2] * vel[i3 + 2];
+            const w2 = ang[i3] * ang[i3] + ang[i3 + 1] * ang[i3 + 1] + ang[i3 + 2] * ang[i3 + 2];
+            const speed2 = $bog_gamengine_phys3_joint.sleep_speed * $bog_gamengine_phys3_joint.sleep_speed;
+            return v2 >= speed2 || w2 >= speed2;
+        }
+        wake(i) {
+            this.world.flags[i] &= ~$bog_gamengine_phys3_joint.flag_sleep;
+            this.world.sleep_timer[i] = 0;
+        }
+        prepare(world, dt) {
+            this.world = world;
+            const count = this.count;
+            const pos = world.pos, rot = world.rot, inv_mass = world.inv_mass, flags = world.flags;
+            const type = this.type, live = this.live, ima = this.ima, imb = this.imb;
+            const ra = this.ra, rb = this.rb, iwa = this.iwa, iwb = this.iwb;
+            const axis = this.axis, u = this.u, v = this.v, tmp = this.tmp, tmp2 = this.tmp2, tmp3 = this.tmp3;
+            const bias_lin = this.bias_lin, bias_ang = this.bias_ang, imp_lin = this.imp_lin, imp_ang = this.imp_ang;
+            const beta_dt = $bog_gamengine_phys3_joint.beta / dt;
+            const sleep = $bog_gamengine_phys3_joint.flag_sleep;
+            for (let k = 0; k < count; ++k) {
+                const k3 = k * 3, k9 = k * 9;
+                const a = this.a[k], b = this.b[k];
+                let act_a = this.active(a), act_b = this.active(b);
+                live[k] = 0;
+                if (!act_a && !act_b)
+                    continue;
+                if (!act_a && inv_mass[a] > 0 && flags[a] & sleep && this.moving(b)) {
+                    this.wake(a);
+                    act_a = true;
+                }
+                if (!act_b && inv_mass[b] > 0 && flags[b] & sleep && this.moving(a)) {
+                    this.wake(b);
+                    act_b = true;
+                }
+                ima[k] = act_a ? inv_mass[a] : 0;
+                imb[k] = act_b ? inv_mass[b] : 0;
+                if (act_a)
+                    this.inertia_world(a, iwa, k9);
+                else
+                    iwa.fill(0, k9, k9 + 9);
+                if (act_b)
+                    this.inertia_world(b, iwb, k9);
+                else
+                    iwb.fill(0, k9, k9 + 9);
+                const qa = rot.subarray(a * 4, a * 4 + 4), qb = rot.subarray(b * 4, b * 4 + 4);
+                $bog_gamengine_vec_quat_rotate(tmp, qa, this.anchor_a.subarray(k3, k3 + 3));
+                ra.set(tmp, k3);
+                $bog_gamengine_vec_quat_rotate(tmp, qb, this.anchor_b.subarray(k3, k3 + 3));
+                rb.set(tmp, k3);
+                const dx = pos[b * 3] + rb[k3] - pos[a * 3] - ra[k3];
+                const dy = pos[b * 3 + 1] + rb[k3 + 1] - pos[a * 3 + 1] - ra[k3 + 1];
+                const dz = pos[b * 3 + 2] + rb[k3 + 2] - pos[a * 3 + 2] - ra[k3 + 2];
+                const kind = type[k];
+                if (kind === $bog_gamengine_phys3_joint.type_spring) {
+                    const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    if (len < 1e-6)
+                        continue;
+                    const nx = dx / len, ny = dy / len, nz = dz / len;
+                    const mass_n = this.mass_lin(k, nx, ny, nz);
+                    const rel = this.rel_vel(k);
+                    const vn = rel[0] * nx + rel[1] * ny + rel[2] * nz;
+                    const rest = this.param[k * 4], stiff = this.param[k * 4 + 1], damp = this.param[k * 4 + 2];
+                    const cd = damp * dt;
+                    const lambda = -stiff * (len - rest) * dt - vn * (cd < mass_n ? cd : mass_n);
+                    this.apply_lin(k, lambda * nx, lambda * ny, lambda * nz);
+                    continue;
+                }
+                live[k] = 1;
+                if (kind === $bog_gamengine_phys3_joint.type_point) {
+                    bias_lin[k3] = beta_dt * dx;
+                    bias_lin[k3 + 1] = beta_dt * dy;
+                    bias_lin[k3 + 2] = beta_dt * dz;
+                    this.kin_lin(k);
+                    this.apply_lin(k, imp_lin[k3], imp_lin[k3 + 1], imp_lin[k3 + 2]);
+                    continue;
+                }
+                $bog_gamengine_vec_quat_rotate(tmp, qa, this.axis_a.subarray(k3, k3 + 3));
+                axis.set(tmp, k3);
+                const ax = tmp[0], ay = tmp[1], az = tmp[2];
+                this.perp(ax, ay, az, tmp2);
+                u.set(tmp2, k3);
+                const ux = tmp2[0], uy = tmp2[1], uz = tmp2[2];
+                const vx = ay * uz - az * uy, vy = az * ux - ax * uz, vz = ax * uy - ay * ux;
+                v[k3] = vx;
+                v[k3 + 1] = vy;
+                v[k3 + 2] = vz;
+                const min = this.param[k * 4], max = this.param[k * 4 + 1];
+                if (kind === $bog_gamengine_phys3_joint.type_hinge) {
+                    bias_lin[k3] = beta_dt * dx;
+                    bias_lin[k3 + 1] = beta_dt * dy;
+                    bias_lin[k3 + 2] = beta_dt * dz;
+                    this.kin_lin(k);
+                    $bog_gamengine_vec_quat_rotate(tmp3, qb, this.axis_b.subarray(k3, k3 + 3));
+                    const ex = tmp3[1] * az - tmp3[2] * ay, ey = tmp3[2] * ax - tmp3[0] * az, ez = tmp3[0] * ay - tmp3[1] * ax;
+                    bias_ang[k3] = -beta_dt * (ex * ux + ey * uy + ez * uz);
+                    bias_ang[k3 + 1] = -beta_dt * (ex * vx + ey * vy + ez * vz);
+                    this.mass_u[k] = this.mass_ang(k, ux, uy, uz);
+                    this.mass_v[k] = this.mass_ang(k, vx, vy, vz);
+                    let state = 0;
+                    if (min < max) {
+                        $bog_gamengine_vec_quat_rotate(tmp2, qa, this.ref_a.subarray(k3, k3 + 3));
+                        $bog_gamengine_vec_quat_rotate(tmp3, qb, this.ref_b.subarray(k3, k3 + 3));
+                        const cx = tmp2[1] * tmp3[2] - tmp2[2] * tmp3[1], cy = tmp2[2] * tmp3[0] - tmp2[0] * tmp3[2], cz = tmp2[0] * tmp3[1] - tmp2[1] * tmp3[0];
+                        const angle = Math.atan2(cx * ax + cy * ay + cz * az, tmp2[0] * tmp3[0] + tmp2[1] * tmp3[1] + tmp2[2] * tmp3[2]);
+                        state = angle - min < max - angle ? 1 : -1;
+                        const c = state > 0 ? angle - min : max - angle;
+                        this.lim_target[k] = -(c > 0 ? c : c * $bog_gamengine_phys3_joint.beta) / dt;
+                        this.mass_lim[k] = this.mass_ang(k, ax, ay, az);
+                    }
+                    if (state !== this.lim[k])
+                        imp_ang[k3 + 2] = 0;
+                    this.lim[k] = state;
+                    this.apply_lin(k, imp_lin[k3], imp_lin[k3 + 1], imp_lin[k3 + 2]);
+                    const t1 = imp_ang[k3], t2 = imp_ang[k3 + 1], t3 = imp_ang[k3 + 2] * state;
+                    this.apply_ang(k, t1 * ux + t2 * vx + t3 * ax, t1 * uy + t2 * vy + t3 * ay, t1 * uz + t2 * vz + t3 * az);
+                    continue;
+                }
+                ra[k3] += dx;
+                ra[k3 + 1] += dy;
+                ra[k3 + 2] += dz;
+                bias_lin[k3] = beta_dt * (dx * ux + dy * uy + dz * uz);
+                bias_lin[k3 + 1] = beta_dt * (dx * vx + dy * vy + dz * vz);
+                this.mass_u[k] = this.mass_lin(k, ux, uy, uz);
+                this.mass_v[k] = this.mass_lin(k, vx, vy, vz);
+                const q1 = this.q1, q2 = this.q2;
+                $bog_gamengine_vec_quat_mul(q1, qa, this.rel.subarray(k * 4, k * 4 + 4));
+                q2[0] = -qb[0];
+                q2[1] = -qb[1];
+                q2[2] = -qb[2];
+                q2[3] = qb[3];
+                $bog_gamengine_vec_quat_mul(q1, q1, q2);
+                const sign = q1[3] < 0 ? -2 : 2;
+                bias_ang[k3] = -beta_dt * sign * q1[0];
+                bias_ang[k3 + 1] = -beta_dt * sign * q1[1];
+                bias_ang[k3 + 2] = -beta_dt * sign * q1[2];
+                this.kin_ang(k);
+                let state = 0;
+                if (min < max) {
+                    const s = dx * ax + dy * ay + dz * az;
+                    state = s - min < max - s ? 1 : -1;
+                    const c = state > 0 ? s - min : max - s;
+                    this.lim_target[k] = -(c > 0 ? c : c * $bog_gamengine_phys3_joint.beta) / dt;
+                    this.mass_lim[k] = this.mass_lin(k, ax, ay, az);
+                }
+                if (state !== this.lim[k])
+                    imp_lin[k3 + 2] = 0;
+                this.lim[k] = state;
+                const l1 = imp_lin[k3], l2 = imp_lin[k3 + 1], l3 = imp_lin[k3 + 2] * state;
+                this.apply_lin(k, l1 * ux + l2 * vx + l3 * ax, l1 * uy + l2 * vy + l3 * ay, l1 * uz + l2 * vz + l3 * az);
+                this.apply_ang(k, imp_ang[k3], imp_ang[k3 + 1], imp_ang[k3 + 2]);
+            }
+        }
+        iterate() {
+            const count = this.count;
+            const type = this.type, live = this.live, kin = this.kin;
+            const axis = this.axis, u = this.u, v = this.v;
+            const bias_lin = this.bias_lin, bias_ang = this.bias_ang, imp_lin = this.imp_lin, imp_ang = this.imp_ang;
+            const mass_u = this.mass_u, mass_v = this.mass_v, mass_lim = this.mass_lim, lim = this.lim, lim_target = this.lim_target;
+            for (let k = 0; k < count; ++k) {
+                if (!live[k])
+                    continue;
+                const k3 = k * 3, k9 = k * 9;
+                const kind = type[k];
+                if (kind !== $bog_gamengine_phys3_joint.type_slider) {
+                    const rel = this.rel_vel(k);
+                    const rx = -rel[0] - bias_lin[k3], ry = -rel[1] - bias_lin[k3 + 1], rz = -rel[2] - bias_lin[k3 + 2];
+                    const lx = kin[k9] * rx + kin[k9 + 1] * ry + kin[k9 + 2] * rz;
+                    const ly = kin[k9 + 3] * rx + kin[k9 + 4] * ry + kin[k9 + 5] * rz;
+                    const lz = kin[k9 + 6] * rx + kin[k9 + 7] * ry + kin[k9 + 8] * rz;
+                    imp_lin[k3] += lx;
+                    imp_lin[k3 + 1] += ly;
+                    imp_lin[k3 + 2] += lz;
+                    this.apply_lin(k, lx, ly, lz);
+                    if (kind === $bog_gamengine_phys3_joint.type_point)
+                        continue;
+                }
+                const ax = axis[k3], ay = axis[k3 + 1], az = axis[k3 + 2];
+                const ux = u[k3], uy = u[k3 + 1], uz = u[k3 + 2];
+                const vx = v[k3], vy = v[k3 + 1], vz = v[k3 + 2];
+                const state = lim[k];
+                if (kind === $bog_gamengine_phys3_joint.type_hinge) {
+                    let w = this.rel_ang(k);
+                    const lu = -mass_u[k] * (w[0] * ux + w[1] * uy + w[2] * uz + bias_ang[k3]);
+                    imp_ang[k3] += lu;
+                    this.apply_ang(k, lu * ux, lu * uy, lu * uz);
+                    w = this.rel_ang(k);
+                    const lv = -mass_v[k] * (w[0] * vx + w[1] * vy + w[2] * vz + bias_ang[k3 + 1]);
+                    imp_ang[k3 + 1] += lv;
+                    this.apply_ang(k, lv * vx, lv * vy, lv * vz);
+                    if (state === 0)
+                        continue;
+                    w = this.rel_ang(k);
+                    const jv = state * (w[0] * ax + w[1] * ay + w[2] * az);
+                    const old = imp_ang[k3 + 2];
+                    let next = old + mass_lim[k] * (lim_target[k] - jv);
+                    if (next < 0)
+                        next = 0;
+                    imp_ang[k3 + 2] = next;
+                    const dl = (next - old) * state;
+                    this.apply_ang(k, dl * ax, dl * ay, dl * az);
+                    continue;
+                }
+                let rel = this.rel_vel(k);
+                const lu = -mass_u[k] * (rel[0] * ux + rel[1] * uy + rel[2] * uz + bias_lin[k3]);
+                imp_lin[k3] += lu;
+                this.apply_lin(k, lu * ux, lu * uy, lu * uz);
+                rel = this.rel_vel(k);
+                const lv = -mass_v[k] * (rel[0] * vx + rel[1] * vy + rel[2] * vz + bias_lin[k3 + 1]);
+                imp_lin[k3 + 1] += lv;
+                this.apply_lin(k, lv * vx, lv * vy, lv * vz);
+                if (state !== 0) {
+                    rel = this.rel_vel(k);
+                    const jv = state * (rel[0] * ax + rel[1] * ay + rel[2] * az);
+                    const old = imp_lin[k3 + 2];
+                    let next = old + mass_lim[k] * (lim_target[k] - jv);
+                    if (next < 0)
+                        next = 0;
+                    imp_lin[k3 + 2] = next;
+                    const dl = (next - old) * state;
+                    this.apply_lin(k, dl * ax, dl * ay, dl * az);
+                }
+                const w = this.rel_ang(k);
+                const rx = -w[0] - bias_ang[k3], ry = -w[1] - bias_ang[k3 + 1], rz = -w[2] - bias_ang[k3 + 2];
+                const tx = kin[k9] * rx + kin[k9 + 1] * ry + kin[k9 + 2] * rz;
+                const ty = kin[k9 + 3] * rx + kin[k9 + 4] * ry + kin[k9 + 5] * rz;
+                const tz = kin[k9 + 6] * rx + kin[k9 + 7] * ry + kin[k9 + 8] * rz;
+                imp_ang[k3] += tx;
+                imp_ang[k3 + 1] += ty;
+                imp_ang[k3 + 2] += tz;
+                this.apply_ang(k, tx, ty, tz);
+            }
+        }
+    }
+    $.$bog_gamengine_phys3_joint = $bog_gamengine_phys3_joint;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     class $bog_gamengine_phys3 extends $mol_object2 {
         static shape_sphere = 0;
         static shape_box = 1;
@@ -12050,6 +12671,11 @@ var $;
         broad = new $bog_gamengine_phys3_broad;
         narrow = new $bog_gamengine_phys3_narrow;
         solve = new $bog_gamengine_phys3_solve;
+        joint = new $bog_gamengine_phys3_joint;
+        constructor() {
+            super();
+            this.joint.world = this;
+        }
         gravity(next) {
             return next ?? new Float32Array([0, -9.81, 0]);
         }
@@ -12188,6 +12814,7 @@ var $;
                 this.hull_count[index] = this.hull_count[last];
             }
             this.count = last;
+            this.joint.body_remove(index, last);
             return last;
         }
         hull_points(index, points) {
@@ -12249,7 +12876,8 @@ var $;
             this.bounds();
             this.broad.find(this);
             this.narrow.collide(this, this.broad.pairs, this.broad.pair_count);
-            this.solve.solve(this, this.narrow, dt);
+            this.joint.prepare(this, dt);
+            this.solve.solve(this, this.narrow, dt, this.joint);
             const speed2 = $bog_gamengine_phys3.sleep_speed * $bog_gamengine_phys3.sleep_speed;
             const sleep_time = $bog_gamengine_phys3.sleep_time;
             for (let i = 0; i < count; ++i) {
@@ -12764,6 +13392,8 @@ var $;
                     wireframe,
                     depth,
                     vao: gl.createVertexArray(),
+                    vertex: null,
+                    live: mode === 'lines',
                     trans: null,
                     tint: null,
                     layer: null,
@@ -12777,7 +13407,8 @@ var $;
                     cap,
                 };
                 gl.bindVertexArray(slot.vao);
-                new $bog_gamengine_gl_buffer(gl, program.attribute('vertex'), 3, 0).send(shape.geometry());
+                slot.vertex = new $bog_gamengine_gl_buffer(gl, program.attribute('vertex'), 3, 0);
+                slot.vertex.send(shape.geometry());
                 const uv = program.attribute('uv');
                 if (uv !== null)
                     new $bog_gamengine_gl_buffer(gl, uv, 2, 0).send(shape.skin());
@@ -12862,6 +13493,13 @@ var $;
                 if (!count)
                     return;
                 if (slot.tex && !slot.tex.native)
+                    return;
+                if (slot.live) {
+                    const geometry = batch.shape().geometry();
+                    slot.vertex.send(geometry);
+                    slot.size = geometry.length / 3;
+                }
+                if (!slot.size)
                     return;
                 const grown = batch.cap > slot.cap;
                 if (slot.depth) {
@@ -15271,6 +15909,1064 @@ var $;
 })($ || ($ = {}));
 
 ;
+	($.$mol_icon_menu) = class $mol_icon_menu extends ($.$mol_icon) {
+		path(){
+			return "M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z";
+		}
+	};
+
+
+;
+"use strict";
+
+
+;
+	($.$mol_icon_menu_down) = class $mol_icon_menu_down extends ($.$mol_icon) {
+		path(){
+			return "M7,10L12,15L17,10H7Z";
+		}
+	};
+
+
+;
+"use strict";
+
+
+;
+	($.$mol_icon_menu_down_outline) = class $mol_icon_menu_down_outline extends ($.$mol_icon) {
+		path(){
+			return "M18,9V10.5L12,16.5L6,10.5V9H18M12,13.67L14.67,11H9.33L12,13.67Z";
+		}
+	};
+
+
+;
+"use strict";
+
+
+;
+	($.$mol_icon_menu_up) = class $mol_icon_menu_up extends ($.$mol_icon) {
+		path(){
+			return "M7,15L12,10L17,15H7Z";
+		}
+	};
+
+
+;
+"use strict";
+
+
+;
+	($.$mol_icon_menu_up_outline) = class $mol_icon_menu_up_outline extends ($.$mol_icon) {
+		path(){
+			return "M18,16V14.5L12,8.5L6,14.5V16H18M12,11.33L14.67,14H9.33L12,11.33Z";
+		}
+	};
+
+
+;
+"use strict";
+
+
+;
+	($.$mol_number) = class $mol_number extends ($.$mol_view) {
+		precision(){
+			return 0;
+		}
+		event_dec(next){
+			if(next !== undefined) return next;
+			return null;
+		}
+		event_inc(next){
+			if(next !== undefined) return next;
+			return null;
+		}
+		event_dec_boost(next){
+			if(next !== undefined) return next;
+			return null;
+		}
+		event_inc_boost(next){
+			if(next !== undefined) return next;
+			return null;
+		}
+		Hotkey(){
+			const obj = new this.$.$mol_hotkey();
+			(obj.key) = () => ({
+				"down": (next) => (this.event_dec(next)), 
+				"up": (next) => (this.event_inc(next)), 
+				"pageDown": (next) => (this.event_dec_boost(next)), 
+				"pageUp": (next) => (this.event_inc_boost(next))
+			});
+			return obj;
+		}
+		type(){
+			return "text";
+		}
+		value_string(next){
+			if(next !== undefined) return next;
+			return "";
+		}
+		hint(){
+			return " ";
+		}
+		string_enabled(){
+			return (this.enabled());
+		}
+		submit(next){
+			if(next !== undefined) return next;
+			return null;
+		}
+		selection(next){
+			if(next !== undefined) return next;
+			return [];
+		}
+		String(){
+			const obj = new this.$.$mol_string();
+			(obj.type) = () => ((this.type()));
+			(obj.keyboard) = () => ("decimal");
+			(obj.value) = (next) => ((this.value_string(next)));
+			(obj.hint) = () => ((this.hint()));
+			(obj.enabled) = () => ((this.string_enabled()));
+			(obj.submit) = (next) => ((this.submit(next)));
+			(obj.selection) = (next) => ((this.selection(next)));
+			return obj;
+		}
+		dec_enabled(){
+			return (this.enabled());
+		}
+		dec_icon(){
+			const obj = new this.$.$mol_icon_menu_down_outline();
+			return obj;
+		}
+		Dec(){
+			const obj = new this.$.$mol_button_minor();
+			(obj.event_click) = (next) => ((this.event_dec(next)));
+			(obj.enabled) = () => ((this.dec_enabled()));
+			(obj.sub) = () => ([(this.dec_icon())]);
+			return obj;
+		}
+		inc_enabled(){
+			return (this.enabled());
+		}
+		inc_icon(){
+			const obj = new this.$.$mol_icon_menu_up_outline();
+			return obj;
+		}
+		Inc(){
+			const obj = new this.$.$mol_button_minor();
+			(obj.event_click) = (next) => ((this.event_inc(next)));
+			(obj.enabled) = () => ((this.inc_enabled()));
+			(obj.sub) = () => ([(this.inc_icon())]);
+			return obj;
+		}
+		precision_view(){
+			return (this.precision());
+		}
+		precision_change(){
+			return (this.precision());
+		}
+		boost(){
+			return 10;
+		}
+		value_min(){
+			return -Infinity;
+		}
+		value_max(){
+			return +Infinity;
+		}
+		value(next){
+			if(next !== undefined) return next;
+			return +NaN;
+		}
+		enabled(){
+			return true;
+		}
+		plugins(){
+			return [(this.Hotkey())];
+		}
+		sub(){
+			return [
+				(this.String()), 
+				(this.Dec()), 
+				(this.Inc())
+			];
+		}
+	};
+	($mol_mem(($.$mol_number.prototype), "event_dec"));
+	($mol_mem(($.$mol_number.prototype), "event_inc"));
+	($mol_mem(($.$mol_number.prototype), "event_dec_boost"));
+	($mol_mem(($.$mol_number.prototype), "event_inc_boost"));
+	($mol_mem(($.$mol_number.prototype), "Hotkey"));
+	($mol_mem(($.$mol_number.prototype), "value_string"));
+	($mol_mem(($.$mol_number.prototype), "submit"));
+	($mol_mem(($.$mol_number.prototype), "selection"));
+	($mol_mem(($.$mol_number.prototype), "String"));
+	($mol_mem(($.$mol_number.prototype), "dec_icon"));
+	($mol_mem(($.$mol_number.prototype), "Dec"));
+	($mol_mem(($.$mol_number.prototype), "inc_icon"));
+	($mol_mem(($.$mol_number.prototype), "Inc"));
+	($mol_mem(($.$mol_number.prototype), "value"));
+
+
+;
+"use strict";
+var $;
+(function ($) {
+    $mol_style_attach("mol/number/number.css", "[mol_number] {\n\tdisplay: flex;\n\tflex: 0 1 auto;\n\tposition: relative;\n\talign-items: stretch;\n\tmax-width: 100%;\n}\n\n[mol_number_string] {\n\tappearance: textfield;\n\tflex: 1 1 7rem;\n\twidth: 7rem;\n}\n\n[mol_number_string]::-webkit-inner-spin-button {\n\tdisplay: none;\n}\n");
+})($ || ($ = {}));
+
+;
+"use strict";
+
+
+;
+"use strict";
+var $;
+(function ($) {
+    var $$;
+    (function ($$) {
+        /**
+         * Component for entering, incrementing and decrementing numeric values.
+         * @see https://mol.hyoo.ru/#!section=demos/demo=mol_number_demo
+         */
+        class $mol_number extends $.$mol_number {
+            sub() {
+                return [
+                    this.String(),
+                    ...this.dec_enabled() ? [this.Dec()] : [],
+                    ...this.inc_enabled() ? [this.Inc()] : [],
+                ];
+            }
+            value_limited(val) {
+                if (Number.isNaN(val))
+                    return this.value(val);
+                if (val === undefined)
+                    return this.value();
+                const min = this.value_min();
+                const max = this.value_max();
+                if (val < min)
+                    return this.value(min);
+                if (val > max)
+                    return this.value(max);
+                return this.value(val);
+            }
+            event_dec(next) {
+                this.value_limited((this.value_limited() || 0) - this.precision_change());
+                next?.preventDefault();
+            }
+            precision_change() {
+                return this.precision() || 1;
+            }
+            event_inc(next) {
+                this.value_limited((this.value_limited() || 0) + this.precision_change());
+                next?.preventDefault();
+            }
+            event_dec_boost(next) {
+                this.value_limited((this.value_limited() || 0) - this.precision_change() * this.boost());
+                next?.preventDefault();
+            }
+            event_inc_boost(next) {
+                this.value_limited((this.value_limited() || 0) + this.precision_change() * this.boost());
+                next?.preventDefault();
+            }
+            round(val) {
+                if (Number.isNaN(val))
+                    return '';
+                if (val === 0)
+                    return '0';
+                if (!val)
+                    return '';
+                const precision_view = this.precision_view();
+                if (precision_view === 0)
+                    return String(val);
+                if (precision_view >= 1) {
+                    return (val / precision_view).toFixed();
+                }
+                else {
+                    const fixed_number = Math.log10(1 / precision_view);
+                    return val.toFixed(Math.ceil(fixed_number));
+                }
+            }
+            value_string(next) {
+                // Вытягиваем value
+                // Если кто-то поменяет из вне value, value_string надо обновить
+                const current = this.round(this.value_limited());
+                if (next === undefined)
+                    return current;
+                const precision = this.precision_view();
+                // Точку в конце поставить нельзя, если precision_view целое число > 0
+                if (precision > 0 && precision - Math.floor(precision) === 0)
+                    next = next.replace(/[.,]/g, '');
+                // Запятые меняем на точки, удаляем не-цифры и не-точки и лишние ноли в начале целой части.
+                // Минус получится ввести только в начале.
+                next = (this.value_min() < 0 && next.startsWith('-') ? '-' : '')
+                    + next.replace(/,/g, '.').replace(/[^\d\.]/g, '').replace(/^0{2,}/, '0');
+                let dot_pos = next.indexOf('.');
+                if (dot_pos !== -1) {
+                    const prev = $mol_wire_probe(() => this.value_string()) ?? '';
+                    const dot_pos_prev = prev.indexOf('.');
+                    // Определяем где относительно предыдущей точки юзер поставил новую
+                    if (dot_pos_prev === dot_pos)
+                        dot_pos = next.lastIndexOf('.');
+                    // Из частей до и после новой точки старую точку удаляем
+                    const frac = next.slice(dot_pos + 1).replace(/\./g, '');
+                    // Если точка идет первой, перед ней пишем 0, что бы форматирование выглядело нормально в mask
+                    next = (next.slice(0, dot_pos) || '0').replace(/\./g, '') + '.' + frac;
+                }
+                // Оставляем старое значение в value есть сочетание, приводящие к NaN, например -.
+                if (Number.isNaN(Number(next)))
+                    return next;
+                if (next.endsWith('.'))
+                    return next;
+                if (next.endsWith('-'))
+                    return next;
+                // Если пустая строка - сетим NaN
+                // Применяем округления.
+                this.value_limited(Number(next || Number.NaN));
+                // Возвращаем все-равно не нормализованное значение
+                // Иначе нельзя ввести будет 10, если min/max 5..10
+                return next;
+            }
+            dec_enabled() {
+                return this.enabled() && (!((this.value() || 0) <= this.value_min()));
+            }
+            inc_enabled() {
+                return this.enabled() && (!((this.value() || 0) >= this.value_max()));
+            }
+        }
+        __decorate([
+            $mol_mem
+        ], $mol_number.prototype, "sub", null);
+        __decorate([
+            $mol_mem
+        ], $mol_number.prototype, "value_string", null);
+        __decorate([
+            $mol_mem
+        ], $mol_number.prototype, "dec_enabled", null);
+        __decorate([
+            $mol_mem
+        ], $mol_number.prototype, "inc_enabled", null);
+        $$.$mol_number = $mol_number;
+    })($$ = $.$$ || ($.$$ = {}));
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_shape_lines extends $bog_gamengine_shape {
+        points(next) {
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array(0);
+        }
+        geometry() {
+            return this.points();
+        }
+        normals() {
+            return new Float32Array(this.size() * 3);
+        }
+        skin() {
+            return new Float32Array(this.size() * 2);
+        }
+        mode() {
+            return 'lines';
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_shape_lines.prototype, "points", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_shape_lines.prototype, "normals", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_shape_lines.prototype, "skin", null);
+    $.$bog_gamengine_shape_lines = $bog_gamengine_shape_lines;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    const stat_window = 30;
+    class $bog_gamengine_demo_boxes_phys extends $bog_gamengine_phys3 {
+        times = new Float32Array(stat_window);
+        samples = 0;
+        step(dt) {
+            const start = performance.now();
+            super.step(dt);
+            this.times[this.samples % stat_window] = performance.now() - start;
+            ++this.samples;
+        }
+        step_ms() {
+            const size = Math.min(this.samples, stat_window);
+            let sum = 0;
+            for (let i = 0; i < size; ++i)
+                sum += this.times[i];
+            return size ? sum / size : 0;
+        }
+        low() {
+            let low = Infinity;
+            const pos = this.pos, inv_mass = this.inv_mass;
+            for (let i = 0; i < this.count; ++i) {
+                if (!(inv_mass[i] > 0))
+                    continue;
+                if (pos[i * 3 + 1] < low)
+                    low = pos[i * 3 + 1];
+            }
+            return low;
+        }
+    }
+    $.$bog_gamengine_demo_boxes_phys = $bog_gamengine_demo_boxes_phys;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_phys3_debug extends $bog_gamengine_node {
+        static normal_len = 0.2;
+        phys3(next) {
+            return next ?? null;
+        }
+        buf = new Float32Array(0);
+        points() {
+            const phys = this.phys3();
+            const count = phys ? phys.narrow.contact_count : 0;
+            const need = count * 6;
+            if (need > this.buf.length)
+                this.buf = new Float32Array(need);
+            const buf = this.buf;
+            if (!phys)
+                return buf;
+            const point = phys.narrow.contact_point;
+            const normal = phys.narrow.contact_normal;
+            const len = $bog_gamengine_phys3_debug.normal_len;
+            for (let i = 0; i < count; ++i) {
+                const p = i * 3, o = i * 6;
+                buf[o] = point[p];
+                buf[o + 1] = point[p + 1];
+                buf[o + 2] = point[p + 2];
+                buf[o + 3] = point[p] + normal[p] * len;
+                buf[o + 4] = point[p + 1] + normal[p + 1] * len;
+                buf[o + 5] = point[p + 2] + normal[p + 2] * len;
+            }
+            buf.fill(0, need);
+            return buf;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_phys3_debug.prototype, "phys3", null);
+    $.$bog_gamengine_phys3_debug = $bog_gamengine_phys3_debug;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_phys3_body extends $bog_gamengine_node {
+        phys3(next) {
+            return next ?? new $bog_gamengine_phys3;
+        }
+        shape(next) {
+            return next ?? $bog_gamengine_phys3.shape_box;
+        }
+        size(next) {
+            return next ?? new Float32Array([0.5, 0.5, 0.5]);
+        }
+        mass(next) {
+            if (next !== undefined && this.index_last >= 0)
+                this.phys3().mass_set(this.index_last, next);
+            return next ?? 1;
+        }
+        index_last = -1;
+        pos_out = new Float32Array(3);
+        rot_out = new Float32Array(3);
+        rot_tmp = new Float32Array(4);
+        index() {
+            if (this.index_last >= 0)
+                return this.index_last;
+            this.index_last = this.phys3().add(this.shape(), this.size(), this.mass(), this.pos_out);
+            return this.index_last;
+        }
+        pos(next) {
+            const i = this.index();
+            const world = this.phys3();
+            if (next)
+                world.pos.set(next, i * 3);
+            this.pos_out.set(world.pos.subarray(i * 3, i * 3 + 3));
+            return this.pos_out;
+        }
+        rot(next) {
+            const i = this.index();
+            const world = this.phys3();
+            if (next) {
+                $bog_gamengine_vec_quat_from_euler(this.rot_tmp, next[0], next[1], next[2]);
+                world.rot.set(this.rot_tmp, i * 4);
+            }
+            $bog_gamengine_vec_quat_to_euler(this.rot_out, world.rot.subarray(i * 4, i * 4 + 4));
+            return this.rot_out;
+        }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'mass', kind: 'number', get: () => this.mass(), set: next => this.mass(next) },
+            ];
+        }
+        destructor() {
+            if (this.index_last >= 0)
+                this.phys3().remove(this.index_last);
+            this.index_last = -1;
+            super.destructor();
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_phys3_body.prototype, "phys3", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_phys3_body.prototype, "shape", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_phys3_body.prototype, "size", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_phys3_body.prototype, "mass", null);
+    $.$bog_gamengine_phys3_body = $bog_gamengine_phys3_body;
+})($ || ($ = {}));
+
+;
+	($.$bog_gamengine_demo_boxes) = class $bog_gamengine_demo_boxes extends ($.$mol_page) {
+		count(next){
+			if(next !== undefined) return next;
+			return 300;
+		}
+		Count(){
+			const obj = new this.$.$mol_number();
+			(obj.value) = (next) => ((this.count(next)));
+			(obj.value_min) = () => (1);
+			return obj;
+		}
+		reset(next){
+			if(next !== undefined) return next;
+			return null;
+		}
+		Reset(){
+			const obj = new this.$.$mol_button_minor();
+			(obj.title) = () => ("Сброс");
+			(obj.click) = (next) => ((this.reset(next)));
+			return obj;
+		}
+		chain(next){
+			if(next !== undefined) return next;
+			return null;
+		}
+		Chain(){
+			const obj = new this.$.$mol_button_minor();
+			(obj.title) = () => ("Цепь");
+			(obj.click) = (next) => ((this.chain(next)));
+			return obj;
+		}
+		door(next){
+			if(next !== undefined) return next;
+			return null;
+		}
+		Door(){
+			const obj = new this.$.$mol_button_minor();
+			(obj.title) = () => ("Дверь");
+			(obj.click) = (next) => ((this.door(next)));
+			return obj;
+		}
+		Wireframe(){
+			const obj = new this.$.$mol_check_box();
+			(obj.title) = () => ("Каркас");
+			(obj.checked) = (next) => ((this.wireframe(next)));
+			return obj;
+		}
+		contacts(next){
+			if(next !== undefined) return next;
+			return false;
+		}
+		Contacts(){
+			const obj = new this.$.$mol_check_box();
+			(obj.title) = () => ("Контакты");
+			(obj.checked) = (next) => ((this.contacts(next)));
+			return obj;
+		}
+		Pause(){
+			const obj = new this.$.$mol_check_box();
+			(obj.title) = () => ("Пауза");
+			(obj.checked) = (next) => ((this.paused(next)));
+			return obj;
+		}
+		wireframe(next){
+			return (this.Draw().wireframe(next));
+		}
+		stat(){
+			return (this.Draw().stat());
+		}
+		shoot(next){
+			if(next !== undefined) return next;
+			return null;
+		}
+		Draw(){
+			const obj = new this.$.$bog_gamengine_draw();
+			(obj.scene) = () => ((this.Scene()));
+			(obj.cam) = () => ((this.Walker()));
+			(obj.event) = () => ({"pointerdown": (next) => (this.shoot(next))});
+			return obj;
+		}
+		Stat(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ([(this.stat())]);
+			return obj;
+		}
+		phys_stat(){
+			return "";
+		}
+		Phys_stat(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ([(this.phys_stat())]);
+			return obj;
+		}
+		paused(next){
+			return (this.Clock().paused(next));
+		}
+		nodes(){
+			return [];
+		}
+		batches(){
+			return [];
+		}
+		Solid(){
+			const obj = new this.$.$bog_gamengine_shader_solid();
+			return obj;
+		}
+		Box(){
+			const obj = new this.$.$bog_gamengine_shape_box();
+			return obj;
+		}
+		Plane(){
+			const obj = new this.$.$bog_gamengine_shape_plane();
+			(obj.tile) = () => (60);
+			return obj;
+		}
+		Flat(){
+			const obj = new this.$.$bog_gamengine_shader_flat();
+			return obj;
+		}
+		contact_points(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		Lines(){
+			const obj = new this.$.$bog_gamengine_shape_lines();
+			(obj.points) = () => ((this.contact_points()));
+			return obj;
+		}
+		floor_size(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		walker_pos(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		walker_rot(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		title(){
+			return "Ящики";
+		}
+		tools(){
+			return [
+				(this.Count()), 
+				(this.Reset()), 
+				(this.Chain()), 
+				(this.Door()), 
+				(this.Wireframe()), 
+				(this.Contacts()), 
+				(this.Pause())
+			];
+		}
+		body(){
+			return [(this.Draw())];
+		}
+		foot(){
+			return [(this.Stat()), (this.Phys_stat())];
+		}
+		seed(next){
+			if(next !== undefined) return next;
+			return 1;
+		}
+		Key(){
+			const obj = new this.$.$bog_gamengine_key();
+			(obj.bind) = () => ({
+				"forward": ["W"], 
+				"back": ["S"], 
+				"left": ["A"], 
+				"right": ["D"], 
+				"turn_left": ["Q"], 
+				"turn_right": ["E"]
+			});
+			return obj;
+		}
+		Atlas(){
+			const obj = new this.$.$bog_gamengine_atlas();
+			(obj.uris) = () => (["bog/gamengine/demo/atlas/wall.png", "bog/gamengine/demo/atlas/floor.png"]);
+			(obj.size) = () => (64);
+			return obj;
+		}
+		Clock(){
+			const obj = new this.$.$bog_gamengine_clock();
+			return obj;
+		}
+		Phys(){
+			const obj = new this.$.$bog_gamengine_demo_boxes_phys();
+			return obj;
+		}
+		Scene(){
+			const obj = new this.$.$bog_gamengine_scene();
+			(obj.clock) = () => ((this.Clock()));
+			(obj.kids) = () => ((this.nodes()));
+			(obj.phys3) = () => ((this.Phys()));
+			(obj.batches) = () => ((this.batches()));
+			return obj;
+		}
+		Crates(){
+			const obj = new this.$.$bog_gamengine_batch();
+			(obj.shader) = () => ((this.Solid()));
+			(obj.shape) = () => ((this.Box()));
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.source) = () => ((this.Phys()));
+			(obj.skip) = () => (1);
+			return obj;
+		}
+		Floor_batch(){
+			const obj = new this.$.$bog_gamengine_batch();
+			(obj.shader) = () => ((this.Solid()));
+			(obj.shape) = () => ((this.Plane()));
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.nodes) = () => ([(this.Floor())]);
+			return obj;
+		}
+		Contact_batch(){
+			const obj = new this.$.$bog_gamengine_batch();
+			(obj.shader) = () => ((this.Flat()));
+			(obj.shape) = () => ((this.Lines()));
+			(obj.nodes) = () => ([(this.Debug())]);
+			return obj;
+		}
+		Debug(){
+			const obj = new this.$.$bog_gamengine_phys3_debug();
+			(obj.phys3) = () => ((this.Phys()));
+			return obj;
+		}
+		Floor(){
+			const obj = new this.$.$bog_gamengine_mesh();
+			(obj.shape) = () => ((this.Plane()));
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.frame) = () => ("floor");
+			(obj.size) = () => ((this.floor_size()));
+			return obj;
+		}
+		Thrown(id){
+			const obj = new this.$.$bog_gamengine_phys3_body();
+			(obj.name) = () => ("Брошенный");
+			return obj;
+		}
+		Walker(){
+			const obj = new this.$.$bog_gamengine_demo_room_walker();
+			(obj.key) = () => ((this.Key()));
+			(obj.pos) = (next) => ((this.walker_pos(next)));
+			(obj.rot) = (next) => ((this.walker_rot(next)));
+			return obj;
+		}
+	};
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "count"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Count"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "reset"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Reset"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "chain"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Chain"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "door"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Door"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Wireframe"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "contacts"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Contacts"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Pause"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "shoot"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Draw"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Stat"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Phys_stat"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Solid"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Box"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Plane"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Flat"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "contact_points"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Lines"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "floor_size"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "walker_pos"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "walker_rot"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "seed"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Key"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Atlas"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Clock"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Phys"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Scene"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Crates"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Floor_batch"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Contact_batch"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Debug"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Floor"));
+	($mol_mem_key(($.$bog_gamengine_demo_boxes.prototype), "Thrown"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Walker"));
+
+
+;
+"use strict";
+
+
+;
+"use strict";
+var $;
+(function ($) {
+    var $$;
+    (function ($$) {
+        const box_half = 0.5;
+        const pile_gap = 0.1;
+        const pile_step = box_half * 2 * Math.sqrt(3) + pile_gap;
+        const pile_layers = 3;
+        const throw_speed = 8;
+        const throw_ahead = 1.5;
+        const chain_links = 5;
+        const chain_half = 0.3;
+        const chain_link = 1;
+        const chain_top = 6;
+        const chain_x = -4;
+        const chain_push = 2;
+        const door_x = 4;
+        const door_lift = 0.05;
+        const side_ahead = 3;
+        function $bog_gamengine_demo_boxes_rand(seed) {
+            let state = seed | 0;
+            return () => {
+                state = (state + 0x6D2B79F5) | 0;
+                let t = Math.imul(state ^ (state >>> 15), 1 | state);
+                t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+        $$.$bog_gamengine_demo_boxes_rand = $bog_gamengine_demo_boxes_rand;
+        class $bog_gamengine_demo_boxes extends $.$bog_gamengine_demo_boxes {
+            count(next) {
+                if (next !== undefined)
+                    return next;
+                return Number(this.$.$mol_state_arg.value('count')) || super.count();
+            }
+            reset(next) {
+                if (!next)
+                    return null;
+                this.seed(this.seed() + 1);
+                this.thrown_count(0);
+                return next;
+            }
+            pile_side() {
+                return Math.ceil(Math.sqrt(this.count() / pile_layers));
+            }
+            Phys() {
+                const count = this.count();
+                const rand = $bog_gamengine_demo_boxes_rand(this.seed());
+                const phys = new this.$.$bog_gamengine_demo_boxes_phys;
+                this.chain_first = -1;
+                phys.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3));
+                const side = this.pile_side();
+                const size = new Float32Array([box_half, box_half, box_half]);
+                const pos = new Float32Array(3);
+                const rot = new Float32Array(4);
+                for (let i = 0; i < count; ++i) {
+                    const cell = i % (side * side);
+                    const layer = Math.floor(i / (side * side));
+                    pos[0] = (cell % side - (side - 1) / 2) * pile_step;
+                    pos[1] = box_half * 2 + layer * pile_step;
+                    pos[2] = (Math.floor(cell / side) - (side - 1) / 2) * pile_step;
+                    $bog_gamengine_vec_quat_from_euler(rot, rand() * Math.PI * 2, rand() * Math.PI * 2, rand() * Math.PI * 2);
+                    phys.add($bog_gamengine_phys3.shape_box, size, 1, pos, rot);
+                }
+                return phys;
+            }
+            floor_size() {
+                return new Float32Array([60, 1, 60]);
+            }
+            walker_pos(next) {
+                return next ?? new Float32Array([0, 1.5, (this.pile_side() - 1) / 2 * pile_step + 8]);
+            }
+            walker_rot(next) {
+                return next ?? new Float32Array([-0.2, 0, 0]);
+            }
+            thrown_count(next = 0) {
+                return next;
+            }
+            thrown() {
+                const seed = this.seed();
+                const list = [];
+                for (let i = 0; i < this.thrown_count(); ++i)
+                    list.push(this.Thrown(`${seed}_${i}`));
+                return list;
+            }
+            nodes() {
+                return [this.Floor(), this.Walker(), ...this.thrown()];
+            }
+            batches() {
+                const list = [this.Crates(), this.Floor_batch()];
+                if (this.contacts())
+                    list.push(this.Contact_batch());
+                return list;
+            }
+            contact_points() {
+                this.Scene().step();
+                return this.Debug().points();
+            }
+            throw_dir = new Float32Array([0, 0, -1, 0]);
+            throw_out = new Float32Array(4);
+            shoot(next) {
+                if (!next)
+                    return null;
+                const phys = this.Phys();
+                const dir = $bog_gamengine_vec_mat4_apply(this.throw_out, this.Walker().world(), this.throw_dir);
+                const from = this.Walker().pos();
+                const id = this.thrown_count();
+                const body = this.Thrown(`${this.seed()}_${id}`);
+                body.phys3(phys);
+                body.pos(new Float32Array([
+                    from[0] + dir[0] * throw_ahead,
+                    from[1] + dir[1] * throw_ahead,
+                    from[2] + dir[2] * throw_ahead,
+                ]));
+                const i = body.index();
+                phys.vel[i * 3] = dir[0] * throw_speed;
+                phys.vel[i * 3 + 1] = dir[1] * throw_speed;
+                phys.vel[i * 3 + 2] = dir[2] * throw_speed;
+                this.thrown_count(id + 1);
+                return next;
+            }
+            side_z() {
+                return (this.pile_side() - 1) / 2 * pile_step + side_ahead;
+            }
+            chain_first = -1;
+            chain(next) {
+                if (!next)
+                    return null;
+                const phys = this.Phys();
+                const size = new Float32Array([chain_half, chain_half, chain_half]);
+                const pos = new Float32Array([chain_x, 0, this.side_z()]);
+                const top = new Float32Array([0, chain_link / 2, 0]);
+                const bottom = new Float32Array([0, -chain_link / 2, 0]);
+                const axis = new Float32Array([0, 0, 1]);
+                const hook = new Float32Array([chain_x, chain_top, this.side_z()]);
+                let prev = -1;
+                for (let n = 0; n < chain_links; ++n) {
+                    pos[1] = chain_top - chain_link / 2 - n * chain_link;
+                    const i = phys.add($bog_gamengine_phys3.shape_box, size, 1, pos);
+                    if (n === 0) {
+                        this.chain_first = i;
+                        phys.joint.add($bog_gamengine_phys3_joint.type_point, i, 0, top, hook);
+                    }
+                    else {
+                        phys.joint.add($bog_gamengine_phys3_joint.type_hinge, i, prev, top, bottom, axis);
+                    }
+                    prev = i;
+                }
+                phys.vel[prev * 3] = chain_push;
+                return next;
+            }
+            chain_drop() {
+                const phys = this.Phys();
+                const first = this.chain_first;
+                const last = first + chain_links - 1;
+                if (first < 0 || last >= phys.count)
+                    return 0;
+                return phys.pos[first * 3 + 1] - phys.pos[last * 3 + 1];
+            }
+            door(next) {
+                if (!next)
+                    return null;
+                const phys = this.Phys();
+                const z = this.side_z();
+                const post_size = new Float32Array([0.15, 1.5, 0.15]);
+                const post = phys.add($bog_gamengine_phys3.shape_box, post_size, 0, new Float32Array([door_x, 1.5, z]));
+                const leaf_size = new Float32Array([0.5, 1, 0.1]);
+                const leaf = phys.add($bog_gamengine_phys3.shape_box, leaf_size, 1, new Float32Array([door_x + 0.8, 1 + door_lift, z]));
+                phys.joint.add($bog_gamengine_phys3_joint.type_hinge, post, leaf, new Float32Array([0.3, door_lift - 0.5, 0]), new Float32Array([-0.5, 0, 0]), new Float32Array([0, 1, 0]), new Float32Array([-Math.PI / 2, Math.PI / 2]));
+                return next;
+            }
+            phys_stat() {
+                this.Scene().step();
+                const phys = this.Phys();
+                return `bodies ${phys.count} | contacts ${phys.narrow.contact_count} | joints ${phys.joint.count} | chain_drop ${this.chain_drop().toFixed(2)} | phys ${phys.step_ms().toFixed(2)} ms | low ${phys.low().toFixed(2)}`;
+            }
+        }
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "count", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "Phys", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "floor_size", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "walker_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "walker_rot", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "thrown_count", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "thrown", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "nodes", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "batches", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "phys_stat", null);
+        $$.$bog_gamengine_demo_boxes = $bog_gamengine_demo_boxes;
+    })($$ = $.$$ || ($.$$ = {}));
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    var $$;
+    (function ($$) {
+        $mol_style_define($bog_gamengine_demo_boxes, {
+            flex: {
+                grow: 1,
+            },
+            '>': {
+                $mol_scroll: {
+                    '>': {
+                        $mol_view: {
+                            alignSelf: 'stretch',
+                        },
+                    },
+                },
+            },
+        });
+    })($$ = $.$$ || ($.$$ = {}));
+})($ || ($ = {}));
+
+;
 "use strict";
 var $;
 (function ($) {
@@ -15349,6 +17045,10 @@ var $;
 			const obj = new this.$.$bog_gamengine_demo_room();
 			return obj;
 		}
+		Boxes(){
+			const obj = new this.$.$bog_gamengine_demo_boxes();
+			return obj;
+		}
 		paused(next){
 			return (this.Clock().paused(next));
 		}
@@ -15371,7 +17071,8 @@ var $;
 			return {
 				"quad": (this.Quad()), 
 				"flat": (this.Flat()), 
-				"room": (this.Room())
+				"room": (this.Room()), 
+				"boxes": (this.Boxes())
 			};
 		}
 		Clock(){
@@ -15409,6 +17110,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo.prototype), "Quad"));
 	($mol_mem(($.$bog_gamengine_demo.prototype), "Flat"));
 	($mol_mem(($.$bog_gamengine_demo.prototype), "Room"));
+	($mol_mem(($.$bog_gamengine_demo.prototype), "Boxes"));
 	($mol_mem(($.$bog_gamengine_demo.prototype), "Batch"));
 	($mol_mem(($.$bog_gamengine_demo.prototype), "cam_deep_pos"));
 	($mol_mem(($.$bog_gamengine_demo.prototype), "Clock"));
@@ -15430,7 +17132,7 @@ var $;
     (function ($$) {
         class $bog_gamengine_demo extends $.$bog_gamengine_demo {
             key_map() {
-                const maps = [this.Flat().Key().keys(), this.Room().Key().keys()];
+                const maps = [this.Flat().Key().keys(), this.Room().Key().keys(), this.Boxes().Key().keys()];
                 const keys = {};
                 for (const map of maps) {
                     for (const name of Object.keys(map)) {
