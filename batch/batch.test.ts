@@ -94,6 +94,30 @@ namespace $ {
 			$mol_assert_equal( [ ...batch.uv.subarray( 0, 8 ) ], [ 0, 0, 1, 1, 1, 0, -1, 1 ] )
 		},
 
+		'material buffer is filled from mesh material, plain node gets default'() {
+			const mesh = new $bog_gamengine_mesh
+			mesh.material( new Float32Array([ 0.75, 0.25, 0.5, 0 ]) )
+			const batch = new $bog_gamengine_batch
+			batch.nodes([ $bog_gamengine_batch_test_node( 0, 0, 0 ), mesh ])
+			batch.fill()
+			$mol_assert_equal( batch.material.subarray( 0, 8 ), new Float32Array([ 0, 0.6, 0, 0, 0.75, 0.25, 0.5, 0 ]) )
+		},
+
+		'normal layer is -1 without normal frame'() {
+			const batch = new $bog_gamengine_batch
+			batch.nodes([ $bog_gamengine_batch_test_node( 0, 0, 0 ), new $bog_gamengine_mesh ])
+			batch.fill()
+			$mol_assert_equal( [ ...batch.normal_layer.subarray( 0, 2 ) ], [ -1, -1 ] )
+		},
+
+		'source fill gives default material'() {
+			const batch = new $bog_gamengine_batch
+			batch.source({ trans: new Float32Array( 16 ), count: 1 })
+			batch.fill()
+			$mol_assert_equal( batch.material.subarray( 0, 4 ), new Float32Array([ 0, 0.6, 0, 0 ]) )
+			$mol_assert_equal( batch.normal_layer[ 0 ], -1 )
+		},
+
 		'version grows on every fill'() {
 			const batch = new $bog_gamengine_batch
 			const before = batch.version

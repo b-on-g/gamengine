@@ -4,6 +4,9 @@ $bog_gamengine_demo_room $mol_page
 		<= Wireframe $mol_check_box
 			title \Каркас
 			checked? <=> wireframe?
+		<= Shine $mol_check_box
+			title \Блики
+			checked? <=> shine?
 		<= Pause $mol_check_box
 			title \Пауза
 			checked? <=> paused?
@@ -20,6 +23,8 @@ $bog_gamengine_demo_room $mol_page
 			sub / <= walker_stat \
 		<= Pillar_stat $mol_view
 			sub / <= pillar_stat \
+		<= Light_stat $mol_view
+			sub / <= light_stat \
 	Key $bog_gamengine_key
 		bind *
 			forward / \W
@@ -73,6 +78,7 @@ $bog_gamengine_demo_room $mol_page
 		atlas <= Atlas
 		frame \wall
 		pos <= wall_pos* Float32Array
+		material <= wall_material Float32Array
 	Floor $bog_gamengine_mesh
 		shape <= Plane
 		atlas <= Atlas
@@ -89,3 +95,26 @@ $bog_gamengine_demo_room $mol_page
 		tile <= Tile
 		pos? <=> walker_pos? Float32Array
 		rot? <=> walker_rot? Float32Array
+	Sun $bog_gamengine_light
+		kind \sun
+		rot <= sun_rot Float32Array
+		power 1
+	Light_warm $bog_gamengine_light
+		kind \point
+		pos <= light_warm_pos Float32Array
+		color <= light_warm_color Float32Array
+		power 1.2
+		range 4
+	Light_cold $bog_gamengine_light
+		kind \point
+		pos <= light_cold_pos Float32Array
+		color <= light_cold_color Float32Array
+		power 1.2
+		range 4
+	Light_torch $bog_gamengine_light
+		kind \spot
+		parent <= Walker
+		rot <= torch_rot Float32Array
+		power 2
+		range 10
+		angle 0.6

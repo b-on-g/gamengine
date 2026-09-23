@@ -43,6 +43,33 @@ namespace $ {
 			$mol_assert_ok( shader.frag().includes( 'wireframe' ) )
 		},
 
+		'light uniforms are arrays of eight in face and used in frag'( $ ) {
+			const shader = new $bog_gamengine_shader_solid
+			const glob = shader.face().glob
+			$mol_assert_equal( glob.light_count, 'int' )
+			$mol_assert_equal( glob.light_pos, 'vec4[8]' )
+			$mol_assert_equal( glob.light_dir, 'vec4[8]' )
+			$mol_assert_equal( glob.light_color, 'vec4[8]' )
+			$mol_assert_equal( glob.ambient, 'vec3' )
+			$mol_assert_equal( glob.cam_pos, 'vec3' )
+			const frag = shader.frag()
+			for( const name of [ 'light_count', 'light_pos', 'light_dir', 'light_color', 'ambient', 'cam_pos' ] ) $mol_assert_ok( frag.includes( name ) )
+		},
+
+		'material and normal layer come per instance and reach frag'( $ ) {
+			const shader = new $bog_gamengine_shader_solid
+			$mol_assert_equal( shader.face().input.inst_material, 'vec4' )
+			$mol_assert_equal( shader.face().input.inst_normal_layer, 'float' )
+			$mol_assert_ok( shader.vert().includes( 'inst_material' ) )
+			$mol_assert_ok( shader.frag().includes( 'pipe_material' ) )
+			$mol_assert_ok( shader.frag().includes( 'pipe_normal_layer' ) )
+		},
+
+		'array uniform is declared with size after name'( $ ) {
+			const source = $bog_gamengine_gl_source( { glob: { light_pos: 'vec4[8]' } }, '', '' )
+			$mol_assert_ok( source.frag.includes( 'uniform vec4 light_pos[8];' ) )
+		},
+
 		'solid wants depth, flat does not'( $ ) {
 			$mol_assert_equal( new $bog_gamengine_shader_solid().depth(), true )
 			$mol_assert_equal( new $bog_gamengine_shader_flat().depth(), false )

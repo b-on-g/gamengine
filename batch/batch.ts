@@ -4,6 +4,8 @@ namespace $ {
 		tint?(): Float32Array
 		layer?(): number
 		uv?(): Float32Array
+		material?(): Float32Array
+		normal_layer?(): number
 	}
 
 	export type $bog_gamengine_batch_source = {
@@ -50,6 +52,8 @@ namespace $ {
 		tint = new Float32Array( 0 )
 		layer = new Float32Array( 0 )
 		uv = new Float32Array( 0 )
+		material = new Float32Array( 0 )
+		normal_layer = new Float32Array( 0 )
 
 		grow( need: number ) {
 			if( need <= this.cap ) return
@@ -60,6 +64,8 @@ namespace $ {
 			this.tint = new Float32Array( cap * 4 )
 			this.layer = new Float32Array( cap )
 			this.uv = new Float32Array( cap * 4 )
+			this.material = new Float32Array( cap * 4 )
+			this.normal_layer = new Float32Array( cap )
 		}
 
 		fill() {
@@ -72,6 +78,8 @@ namespace $ {
 			const tint = this.tint
 			const layer = this.layer
 			const uv = this.uv
+			const material = this.material
+			const normal_layer = this.normal_layer
 			for( let i = 0; i < count; ++ i ) {
 				const node = nodes[ i ]
 				trans.set( node.world(), i * 16 )
@@ -92,6 +100,15 @@ namespace $ {
 					uv[ i * 4 + 2 ] = 1
 					uv[ i * 4 + 3 ] = 1
 				}
+				if( typeof node.material === 'function' ) {
+					material.set( node.material(), i * 4 )
+				} else {
+					material[ i * 4 ] = 0
+					material[ i * 4 + 1 ] = 0.6
+					material[ i * 4 + 2 ] = 0
+					material[ i * 4 + 3 ] = 0
+				}
+				normal_layer[ i ] = typeof node.normal_layer === 'function' ? node.normal_layer() : -1
 			}
 			this.count = count
 			++ this.version
@@ -106,12 +123,18 @@ namespace $ {
 			if( this.cap !== cap ) {
 				this.tint.fill( 1 )
 				this.layer.fill( 0 )
+				this.normal_layer.fill( -1 )
 				const uv = this.uv
+				const material = this.material
 				for( let i = 0; i < this.cap; ++ i ) {
 					uv[ i * 4 ] = 0
 					uv[ i * 4 + 1 ] = 0
 					uv[ i * 4 + 2 ] = 1
 					uv[ i * 4 + 3 ] = 1
+					material[ i * 4 ] = 0
+					material[ i * 4 + 1 ] = 0.6
+					material[ i * 4 + 2 ] = 0
+					material[ i * 4 + 3 ] = 0
 				}
 			}
 			this.trans.set( source.trans.subarray( skip * 16, ( skip + count ) * 16 ) )

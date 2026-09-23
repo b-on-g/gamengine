@@ -22,6 +22,17 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		lights() {
+			const nodes = this.nodes()
+			const lights = [] as $bog_gamengine_light[]
+			for( let i = 0; i < nodes.length && lights.length < 8; ++i ) {
+				const node = nodes[ i ]
+				if( node instanceof $bog_gamengine_light ) lights.push( node )
+			}
+			return lights as readonly $bog_gamengine_light[]
+		}
+
+		@ $mol_mem
 		batches( next?: readonly $bog_gamengine_batch[] ) {
 			return next ?? []
 		}

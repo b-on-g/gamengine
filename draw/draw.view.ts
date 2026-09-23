@@ -1,8 +1,16 @@
 namespace $.$$ {
 
 	type $bog_gamengine_draw_face = {
-		glob: { proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray', light_dir: 'vec3', ambient: 'float', wireframe: 'float' }
-		input: { vertex: 'vec3', uv: 'vec2', normal: 'vec3', inst_trans: 'mat4', inst_tint: 'vec4', inst_layer: 'float', inst_uv: 'vec4' }
+		glob: {
+			proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray',
+			light_count: 'int', light_pos: 'vec4[8]', light_dir: 'vec4[8]', light_color: 'vec4[8]',
+			ambient: 'vec3', cam_pos: 'vec3', wireframe: 'float',
+		}
+		input: {
+			vertex: 'vec3', uv: 'vec2', normal: 'vec3',
+			inst_trans: 'mat4', inst_tint: 'vec4', inst_layer: 'float', inst_uv: 'vec4',
+			inst_material: 'vec4', inst_normal_layer: 'float',
+		}
 	}
 
 	type $bog_gamengine_draw_slot = {
@@ -10,8 +18,12 @@ namespace $.$$ {
 		program: $bog_gamengine_gl_program< $bog_gamengine_draw_face >
 		proj: WebGLUniformLocation | null
 		view: WebGLUniformLocation | null
+		light_count: WebGLUniformLocation | null
+		light_pos: WebGLUniformLocation | null
 		light_dir: WebGLUniformLocation | null
+		light_color: WebGLUniformLocation | null
 		ambient: WebGLUniformLocation | null
+		cam_pos: WebGLUniformLocation | null
 		wireframe: WebGLUniformLocation | null
 		depth: boolean
 		vao: WebGLVertexArrayObject
@@ -21,6 +33,8 @@ namespace $.$$ {
 		tint: $bog_gamengine_gl_buffer
 		layer: $bog_gamengine_gl_buffer | null
 		uv: $bog_gamengine_gl_buffer | null
+		material: $bog_gamengine_gl_buffer | null
+		normal_layer: $bog_gamengine_gl_buffer | null
 		atlas: $bog_gamengine_atlas | null
 		sampler: WebGLUniformLocation | null
 		tex: $bog_gamengine_draw_tex | null
@@ -36,11 +50,18 @@ namespace $.$$ {
 
 	const stat_window = 30
 
+	const light_max = 8
+
 	export class $bog_gamengine_draw extends $.$bog_gamengine_draw {
 
 		slots_all = new WeakMap< $bog_gamengine_batch, $bog_gamengine_draw_slot >()
 		textures_all = new WeakMap< $bog_gamengine_atlas, $bog_gamengine_draw_tex >()
-		ambient_vec = new Float32Array( 1 )
+		ambient_vec = new Float32Array( 3 )
+		cam_pos_vec = new Float32Array( 3 )
+		lights_pos = new Float32Array( light_max * 4 )
+		lights_dir = new Float32Array( light_max * 4 )
+		lights_color = new Float32Array( light_max * 4 )
+		lights_count = 0
 		wire_off = new Float32Array( 1 )
 		wire_on = new Float32Array([ 1 ])
 		gaps = new Float32Array( stat_window )
@@ -125,14 +146,19 @@ namespace $.$$ {
 			const mode = shape.mode()
 			const depth = shader.depth()
 			const wireframe = 'wireframe' in globs ? program.uniform( 'wireframe' ) : null
+			const glob = ( name: keyof $bog_gamengine_draw_face[ 'glob' ] )=> name in globs ? program.uniform( name ) : null
 
 			const slot: $bog_gamengine_draw_slot = {
 				batch,
 				program,
 				proj: program.uniform( 'proj' ),
 				view: program.uniform( 'view' ),
-				light_dir: 'light_dir' in globs ? program.uniform( 'light_dir' ) : null,
-				ambient: 'ambient' in globs ? program.uniform( 'ambient' ) : null,
+				light_count: glob( 'light_count' ),
+				light_pos: glob( 'light_pos' ),
+				light_dir: glob( 'light_dir' ),
+				light_color: glob( 'light_color' ),
+				ambient: glob( 'ambient' ),
+				cam_pos: glob( 'cam_pos' ),
 				wireframe,
 				depth,
 				vao: gl.createVertexArray()!,
@@ -142,6 +168,8 @@ namespace $.$$ {
 				tint: null!,
 				layer: null,
 				uv: null,
+				material: null,
+				normal_layer: null,
 				atlas,
 				sampler: atlas ? program.uniform( 'atlas' ) : null,
 				tex: atlas ? this.tex( atlas ) : null,
@@ -171,6 +199,16 @@ namespace $.$$ {
 			if( inst_uv !== null ) {
 				slot.uv = new $bog_gamengine_gl_buffer( gl, inst_uv, 4, 1 )
 				slot.uv.reserve( cap * 16 )
+			}
+			const material = program.attribute( 'inst_material' )
+			if( material !== null ) {
+				slot.material = new $bog_gamengine_gl_buffer( gl, material, 4, 1 )
+				slot.material.reserve( cap * 16 )
+			}
+			const normal_layer = program.attribute( 'inst_normal_layer' )
+			if( normal_layer !== null ) {
+				slot.normal_layer = new $bog_gamengine_gl_buffer( gl, normal_layer, 1, 1 )
+				slot.normal_layer.reserve( cap * 4 )
 			}
 			gl.bindVertexArray( null )
 
@@ -211,6 +249,52 @@ namespace $.$$ {
 			return sent
 		}
 
+		lights_fill() {
+			const lights = this.scene().lights()
+			const pos = this.lights_pos
+			const dir = this.lights_dir
+			const color = this.lights_color
+			if( !lights.length ) {
+				const sun = this.light_dir()
+				const len = Math.hypot( sun[ 0 ], sun[ 1 ], sun[ 2 ] ) || 1
+				pos[ 0 ] = 0
+				pos[ 1 ] = 0
+				pos[ 2 ] = 0
+				pos[ 3 ] = 0
+				dir[ 0 ] = - sun[ 0 ] / len
+				dir[ 1 ] = - sun[ 1 ] / len
+				dir[ 2 ] = - sun[ 2 ] / len
+				dir[ 3 ] = -1
+				color[ 0 ] = 1
+				color[ 1 ] = 1
+				color[ 2 ] = 1
+				color[ 3 ] = 0
+				this.lights_count = 1
+				return 1
+			}
+			const count = Math.min( lights.length, light_max )
+			for( let i = 0; i < count; ++ i ) {
+				const light = lights[ i ]
+				const kind = light.kind()
+				const world = light.world()
+				const tone = light.color()
+				const power = light.power()
+				const at = i * 4
+				pos[ at ] = world[ 12 ]
+				pos[ at + 1 ] = world[ 13 ]
+				pos[ at + 2 ] = world[ 14 ]
+				pos[ at + 3 ] = kind === 'sun' ? 0 : 1
+				$bog_gamengine_light_dir( world, dir, at )
+				dir[ at + 3 ] = kind === 'spot' ? Math.cos( light.angle() ) : -1
+				color[ at ] = tone[ 0 ] * power
+				color[ at + 1 ] = tone[ 1 ] * power
+				color[ at + 2 ] = tone[ 2 ] * power
+				color[ at + 3 ] = light.range()
+			}
+			this.lights_count = count
+			return count
+		}
+
 		paint() {
 			this.scene().step()
 			const gl = this.context()
@@ -218,20 +302,27 @@ namespace $.$$ {
 			this.textures()
 			const proj = this.proj()
 			const view = this.cam().view()
-			const light_dir = this.light_dir()
 			const wireframe = this.wireframe()
-			this.ambient_vec[ 0 ] = this.ambient()
+			const ambient = this.ambient()
+			this.ambient_vec[ 0 ] = ambient
+			this.ambient_vec[ 1 ] = ambient
+			this.ambient_vec[ 2 ] = ambient
+			const cam_world = this.cam().world()
+			this.cam_pos_vec[ 0 ] = cam_world[ 12 ]
+			this.cam_pos_vec[ 1 ] = cam_world[ 13 ]
+			this.cam_pos_vec[ 2 ] = cam_world[ 14 ]
+			this.lights_fill()
 			gl.enable( gl.BLEND )
 			gl.blendFunc( gl.ONE, gl.ONE_MINUS_SRC_ALPHA )
 			gl.clearColor( 0.08, 0.08, 0.1, 1 )
 			gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT )
-			for( let i = 0; i < slots.length; ++ i ) this.paint_slot( gl, slots[ i ], proj, view, light_dir, wireframe )
+			for( let i = 0; i < slots.length; ++ i ) this.paint_slot( gl, slots[ i ], proj, view, wireframe )
 			gl.bindVertexArray( null )
 			gl.useProgram( null )
 			this.measure()
 		}
 
-		paint_slot( gl: WebGL2RenderingContext, slot: $bog_gamengine_draw_slot, proj: Float32Array, view: Float32Array, light_dir: Float32Array, wireframe: boolean ) {
+		paint_slot( gl: WebGL2RenderingContext, slot: $bog_gamengine_draw_slot, proj: Float32Array, view: Float32Array, wireframe: boolean ) {
 			const batch = slot.batch
 			const count = batch.count
 			if( !count ) return
@@ -254,8 +345,12 @@ namespace $.$$ {
 			gl.useProgram( slot.program.native )
 			$bog_gamengine_gl_uniform_matrix( gl, slot.proj, proj )
 			$bog_gamengine_gl_uniform_matrix( gl, slot.view, view )
-			$bog_gamengine_gl_uniform_vector( gl, slot.light_dir, light_dir )
+			$bog_gamengine_gl_uniform_int( gl, slot.light_count, this.lights_count )
+			$bog_gamengine_gl_uniform_vec4s( gl, slot.light_pos, this.lights_pos )
+			$bog_gamengine_gl_uniform_vec4s( gl, slot.light_dir, this.lights_dir )
+			$bog_gamengine_gl_uniform_vec4s( gl, slot.light_color, this.lights_color )
 			$bog_gamengine_gl_uniform_vector( gl, slot.ambient, this.ambient_vec )
+			$bog_gamengine_gl_uniform_vector( gl, slot.cam_pos, this.cam_pos_vec )
 			$bog_gamengine_gl_uniform_vector( gl, slot.wireframe, this.wire_off )
 			if( slot.tex ) {
 				gl.activeTexture( gl.TEXTURE0 )
@@ -278,6 +373,16 @@ namespace $.$$ {
 				gl.bindBuffer( gl.ARRAY_BUFFER, slot.uv.native )
 				if( grown ) gl.bufferData( gl.ARRAY_BUFFER, batch.cap * 16, gl.DYNAMIC_DRAW )
 				gl.bufferSubData( gl.ARRAY_BUFFER, 0, batch.uv, 0, count * 4 )
+			}
+			if( slot.material ) {
+				gl.bindBuffer( gl.ARRAY_BUFFER, slot.material.native )
+				if( grown ) gl.bufferData( gl.ARRAY_BUFFER, batch.cap * 16, gl.DYNAMIC_DRAW )
+				gl.bufferSubData( gl.ARRAY_BUFFER, 0, batch.material, 0, count * 4 )
+			}
+			if( slot.normal_layer ) {
+				gl.bindBuffer( gl.ARRAY_BUFFER, slot.normal_layer.native )
+				if( grown ) gl.bufferData( gl.ARRAY_BUFFER, batch.cap * 4, gl.DYNAMIC_DRAW )
+				gl.bufferSubData( gl.ARRAY_BUFFER, 0, batch.normal_layer, 0, count )
 			}
 			if( grown ) slot.cap = batch.cap
 			gl.drawArraysInstanced( slot.prim, 0, slot.size, count )

@@ -12,7 +12,7 @@ namespace $ {
 
 	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя, клик собирает монету, подпись едет за героем, кадры ходьбы сменяются'
 
-	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола, ребро ящика с каркасом белое'
+	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола, ребро ящика с каркасом белое, пол под тёплым светом краснее, блики ярче'
 
 	export const $bog_gamengine_probe_boxes_page = 'bog/gamengine/demo/-/index.html#!demo=boxes'
 
@@ -171,6 +171,36 @@ namespace $ {
 		await frame()
 		await frame()
 		const edge_off = edge()
+		const lights = ()=> {
+			const found = document.body.innerText.match( /lights (\\d+)/ )
+			return found ? Number( found[ 1 ] ) : -1
+		}
+		const light_count = lights()
+		const warm_at = at( 4.5, 0, 5.3 )
+		const cold_at = at( 6.5, 0, 4.6 )
+		const warm = pixel( ... warm_at )
+		const cold = pixel( ... cold_at )
+		const row_max = ()=> {
+			let best = 0
+			const y = canvas.height / 2 | 0
+			const line = new Uint8Array( canvas.width * 4 )
+			gl.readPixels( 0, y, canvas.width, 1, gl.RGBA, gl.UNSIGNED_BYTE, line )
+			for( let x = 0; x < canvas.width; ++ x ) {
+				const sum = line[ x * 4 ] + line[ x * 4 + 1 ] + line[ x * 4 + 2 ]
+				if( sum > best ) best = sum
+			}
+			return best
+		}
+		const shine = document.querySelector( '[bog_gamengine_demo_room_shine]' )
+		const row_plain = row_max()
+		if( shine ) shine.click()
+		await frame()
+		await frame()
+		const shine_checked = shine ? shine.getAttribute( 'mol_check_checked' ) : null
+		const row_shine = row_max()
+		if( shine ) shine.click()
+		await frame()
+		await frame()
 		document.body.dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 87, bubbles: true } ) )
 		for( let i = 0; i < 60; ++ i ) await frame()
 		const moved = read()
@@ -179,6 +209,7 @@ namespace $ {
 			webgl: true, loaded: true, start, moved, center, lit, shade, lit_at, shade_at,
 			pillar, pillar_at, floor_at, pillar_pixel, floor_pixel,
 			wire: true, wire_checked, edge_at, edge_on, edge_off,
+			light_count, warm_at, cold_at, warm, cold, shine: !!shine, shine_checked, row_plain, row_shine,
 			size: [ canvas.width, canvas.height ],
 		}
 	`
@@ -276,7 +307,20 @@ namespace $ {
 		readonly edge_at?: readonly [ number, number ]
 		readonly edge_on?: $bog_gamengine_probe_pixel
 		readonly edge_off?: $bog_gamengine_probe_pixel
+		readonly light_count?: number
+		readonly warm_at?: readonly [ number, number ]
+		readonly cold_at?: readonly [ number, number ]
+		readonly warm?: $bog_gamengine_probe_pixel
+		readonly cold?: $bog_gamengine_probe_pixel
+		readonly shine?: boolean
+		readonly shine_checked?: string | null
+		readonly row_plain?: number
+		readonly row_shine?: number
 		readonly size?: readonly [ number, number ]
+	}
+
+	export function $bog_gamengine_probe_warmth( pixel: $bog_gamengine_probe_pixel ) {
+		return pixel[ 0 ] / Math.max( pixel[ 2 ], 1 )
 	}
 
 	export type $bog_gamengine_probe_boxes_stat = {
@@ -433,6 +477,12 @@ namespace $ {
 		if( got.wire_checked !== 'true' ) return fail( 'клик по чекбоксу каркаса его не включил' )
 		if( !$bog_gamengine_probe_white( got.edge_on! ) ) return fail( 'ребро ящика с каркасом не белое' )
 		if( $bog_gamengine_probe_white( got.edge_off! ) ) return fail( 'ребро ящика без каркаса белое' )
+		if( got.light_count !== 4 ) return fail( 'подвал не показал 4 источника света' )
+		if( $bog_gamengine_probe_dark( got.warm! ) ) return fail( 'пол под тёплым светом чёрный' )
+		if( !( $bog_gamengine_probe_warmth( got.warm! ) > $bog_gamengine_probe_warmth( got.cold! ) * 1.1 ) ) return fail( 'пол под тёплым светом не краснее пола под холодным' )
+		if( !got.shine ) return fail( 'чекбокса бликов нет в DOM' )
+		if( got.shine_checked !== 'true' ) return fail( 'клик по чекбоксу бликов его не включил' )
+		if( !( got.row_shine! > got.row_plain! ) ) return fail( 'самая светлая точка строки с бликами не ярче, чем без' )
 
 		return say( $bog_gamengine_probe_room_ok )
 	}

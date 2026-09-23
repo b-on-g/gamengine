@@ -11,8 +11,10 @@ namespace $ {
 		| 'samplerCube' | 'samplerCubeShadow'
 		| 'sampler3D'
 
+	export type $bog_gamengine_gl_type_array = `${ $bog_gamengine_gl_type }[${ number }]`
+
 	export type $bog_gamengine_gl_face = {
-		glob?: Record< string, $bog_gamengine_gl_type >,
+		glob?: Record< string, $bog_gamengine_gl_type | $bog_gamengine_gl_type_array >,
 		input?: Record< string, $bog_gamengine_gl_type >,
 		pipe?: Record< string, $bog_gamengine_gl_type >,
 		output?: Record< string, $bog_gamengine_gl_type >,
@@ -24,14 +26,21 @@ namespace $ {
 				precision highp sampler2DArray;
 			`
 
+	export function $bog_gamengine_gl_decl( kind: string, type: string, name: string ) {
+		const open = type.indexOf( '[' )
+		if( open < 0 ) return `${ kind } ${ type } ${ name };\n`
+		return `${ kind } ${ type.slice( 0, open ) } ${ name }${ type.slice( open ) };\n`
+	}
+
 	export function $bog_gamengine_gl_source( face: $bog_gamengine_gl_face, vert: string, frag: string ) {
 
 		let revert = prefix
 		let refrag = prefix
 
 		for( const name in face.glob ?? {} ) {
-			revert += `uniform ${ face.glob![ name ] } ${ name };\n`
-			refrag += `uniform ${ face.glob![ name ] } ${ name };\n`
+			const decl = $bog_gamengine_gl_decl( 'uniform', face.glob![ name ], name )
+			revert += decl
+			refrag += decl
 		}
 
 		for( const name in face.input ?? {} ) {
@@ -187,6 +196,11 @@ namespace $ {
 			case 1: gl.uniform1fv( location, data ); break
 			default: throw new Error( `Wrong vector data length (${ data.length })` )
 		}
+		return data
+	}
+
+	export function $bog_gamengine_gl_uniform_vec4s( gl: WebGL2RenderingContext, location: WebGLUniformLocation | null, data: Float32Array ) {
+		if( location ) gl.uniform4fv( location, data )
 		return data
 	}
 
