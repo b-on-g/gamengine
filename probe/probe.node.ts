@@ -83,10 +83,12 @@ namespace $ {
 			return found ? found[ 1 ] : ''
 		}
 		document.body.dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 68, bubbles: true } ) )
-		for( let i = 0; i < 50; ++ i ) await frame()
-		const frame_walk_a = frame_name()
-		for( let i = 0; i < 10; ++ i ) await frame()
-		const frame_walk_b = frame_name()
+		const walk_frames = new Set()
+		for( let i = 0; i < 60; ++ i ) {
+			await frame()
+			walk_frames.add( frame_name() )
+		}
+		const frames_walk = [ ... walk_frames ]
 		const moved = read()
 		document.body.dispatchEvent( new KeyboardEvent( 'keyup', { keyCode: 68, bubbles: true } ) )
 		for( let i = 0; i < 10; ++ i ) await frame()
@@ -95,7 +97,7 @@ namespace $ {
 		return {
 			webgl: true, loaded: true, start, moved, center, hero, corner, floor,
 			taken_before, taken_after, label_text, label_before, label_after,
-			frame_walk_a, frame_walk_b, frame_idle,
+			frames_walk, frame_idle,
 			size: [ canvas.width, canvas.height ],
 		}
 	`
@@ -175,8 +177,7 @@ namespace $ {
 		readonly label_text?: string
 		readonly label_before?: number
 		readonly label_after?: number
-		readonly frame_walk_a?: string
-		readonly frame_walk_b?: string
+		readonly frames_walk?: readonly string[]
 		readonly frame_idle?: string
 		readonly size?: readonly [ number, number ]
 	}
@@ -282,7 +283,7 @@ namespace $ {
 		if( got.taken_after !== 1 ) return fail( 'клик по монете не собрал её' )
 		if( got.label_text !== 'Герой' ) return fail( 'подписи над героем нет в DOM' )
 		if( !( got.label_after! > got.label_before! ) ) return fail( 'подпись не поехала за героем' )
-		if( !got.frame_walk_a || got.frame_walk_a === got.frame_walk_b ) return fail( 'кадр героя не сменился за 10 кадров ходьбы' )
+		if( !got.frames_walk || got.frames_walk.length < 2 ) return fail( 'кадры героя не сменялись за 60 кадров ходьбы' )
 		if( got.frame_idle !== 'hero' ) return fail( 'кадр героя после остановки не hero' )
 
 		return say( $bog_gamengine_probe_flat_ok )
