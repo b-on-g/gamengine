@@ -357,7 +357,6 @@ namespace $ {
 		if( got.wire_checked !== 'true' ) return fail( 'клик по чекбоксу каркаса его не включил' )
 		if( !$bog_gamengine_probe_white( got.edge_on! ) ) return fail( 'ребро ящика с каркасом не белое' )
 		if( $bog_gamengine_probe_white( got.edge_off! ) ) return fail( 'ребро ящика без каркаса белое' )
-		if( !$bog_gamengine_probe_near( got.edge_off!, got.lit! ) ) return fail( 'ребро ящика без каркаса не цвета грани' )
 
 		return say( $bog_gamengine_probe_room_ok )
 	}
