@@ -1,5 +1,6 @@
 $bog_gamestudio_app $mol_view
 	selected? null
+	source? \
 	sub /
 		<= Tree $mol_page
 			title \Сцена
@@ -18,8 +19,16 @@ $bog_gamestudio_app $mol_view
 				<= Form $mol_form
 					form_fields <= fields /
 					foot /
-	Scene $bog_gamestudio_sample
-		Cam => Cam
+		<= Source $mol_page
+			title \Исходник
+			body /
+				<= Editor $mol_textarea
+					value? <=> source?
+	Doc $bog_gamestudio_doc
+		source? <=> source?
+		scene => Scene
+	Cam $bog_gamengine_cam_flat
+		height 6
 	Row* $mol_check
 		title <= row_title* \
 		checked? <=> row_selected*? false

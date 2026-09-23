@@ -37,6 +37,11 @@ namespace $.$$ {
 			background: { color: $mol_theme.card },
 		},
 
+		Source: {
+			flex: { grow: 0, shrink: 0, basis: '24rem' },
+			background: { color: $mol_theme.card },
+		},
+
 		Vec_num: {
 			flex: { grow: 1, shrink: 1, basis: 0 },
 			minWidth: 0,

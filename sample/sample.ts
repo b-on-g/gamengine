@@ -1,0 +1,34 @@
+namespace $ {
+
+	export const $bog_gamestudio_sample = [
+		'$bog_gamestudio_sample $bog_gamengine_scene',
+		'\tkids /',
+		'\t\t<= Hero $bog_gamengine_sprite',
+		'\t\t\tname \\Герой',
+		'\t\t\tatlas <= Atlas',
+		'\t\t\tframe \\hero',
+		'\t\t\tpos / -2 0 0',
+		'\t\t<= Coin $bog_gamengine_sprite',
+		'\t\t\tname \\Монета',
+		'\t\t\tatlas <= Atlas',
+		'\t\t\tframe \\coin',
+		'\t\t\tpos / 2 0 0',
+		'\t\t<= Wall $bog_gamengine_sprite',
+		'\t\t\tname \\Стена',
+		'\t\t\tatlas <= Atlas',
+		'\t\t\tframe \\wall',
+		'\t\t\tpos / 0 0 0',
+		'\tbatches /',
+		'\t\t<= Batch $bog_gamengine_batch',
+		'\t\t\tshader <= Shader $bog_gamengine_shader_sprite',
+		'\t\t\tatlas <= Atlas',
+		'\t\t\tnodes <= kids',
+		'\tAtlas $bog_gamengine_atlas',
+		'\t\turis /',
+		'\t\t\t\\bog/gamengine/demo/atlas/hero.png',
+		'\t\t\t\\bog/gamengine/demo/atlas/coin.png',
+		'\t\t\t\\bog/gamengine/demo/atlas/wall.png',
+		'\t\tsize 64',
+	].join( '\n' ) + '\n'
+
+}

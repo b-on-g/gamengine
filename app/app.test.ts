@@ -19,6 +19,19 @@ namespace $ {
 			$mol_assert_equal( app.Scene().nodes()[ 1 ].pos()[ 0 ], 5 )
 		},
 
+		'pos typed into the inspector rewrites the source'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 0 )
+			app.Vec_num( 'pos_0' ).value( 5 )
+			$mol_assert_ok( app.source().includes( '\t\t\tpos / 5 0 0\n' ) )
+		},
+
+		'source typed into the editor moves the node'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.source( app.source().replace( 'pos / -2 0 0', 'pos / 7 0 0' ) )
+			$mol_assert_equal( app.Scene().nodes()[ 0 ].pos()[ 0 ], 7 )
+		},
+
 		'rotation is edited in degrees'( $ ) {
 			const app = $$.$bog_gamestudio_app.make({ $ })
 			app.selected( 0 )

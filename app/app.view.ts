@@ -5,6 +5,11 @@ namespace $.$$ {
 	export class $bog_gamestudio_app extends $.$bog_gamestudio_app {
 
 		@ $mol_mem
+		source( next = $bog_gamestudio_sample ) {
+			return next
+		}
+
+		@ $mol_mem
 		selected( next?: number | null ) {
 			return next ?? null
 		}
@@ -62,6 +67,12 @@ namespace $.$$ {
 			return []
 		}
 
+		write( prop: string, value: $bog_gamestudio_doc_value ) {
+			const index = this.selected()
+			if( index === null ) return
+			this.Doc().set( this.Doc().nodes()[ index ].title, prop, value )
+		}
+
 		vec( name: string ) {
 			return ( this.prop( name )?.get() as Float32Array | undefined ) ?? vec_empty
 		}
@@ -79,31 +90,34 @@ namespace $.$$ {
 			const scale = prop.kind === 'euler' ? 180 / Math.PI : 1
 			const vec = prop.get() as Float32Array
 			if( next === undefined ) return vec[ at ] * scale
-			const fresh = new Float32Array( vec )
+			const fresh = Array.from( vec )
 			fresh[ at ] = next / scale
-			prop.set( fresh )
+			this.write( name, fresh )
 			return next
 		}
 
 		num_value( name: string, next?: number ) {
 			const prop = this.prop( name )
 			if( !prop ) return NaN
-			if( next !== undefined ) prop.set( next )
-			return prop.get() as number
+			if( next === undefined ) return prop.get() as number
+			this.write( name, next )
+			return next
 		}
 
 		flag_value( name: string, next?: boolean ) {
 			const prop = this.prop( name )
 			if( !prop ) return false
-			if( next !== undefined ) prop.set( next )
-			return prop.get() as boolean
+			if( next === undefined ) return prop.get() as boolean
+			this.write( name, next )
+			return next
 		}
 
 		text_value( name: string, next?: string ) {
 			const prop = this.prop( name )
 			if( !prop ) return ''
-			if( next !== undefined ) prop.set( next )
-			return prop.get() as string
+			if( next === undefined ) return prop.get() as string
+			this.write( name, next )
+			return next
 		}
 
 		@ $mol_mem
