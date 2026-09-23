@@ -10762,6 +10762,1436 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    const vert_cap = 128;
+    const face_cap = 256;
+    class $bog_gamengine_phys3_narrow extends $mol_object2 {
+        contact_cap = 0;
+        contact_count = 0;
+        contact_a = new Uint32Array(0);
+        contact_b = new Uint32Array(0);
+        contact_point = new Float32Array(0);
+        contact_normal = new Float32Array(0);
+        contact_depth = new Float32Array(0);
+        world = {};
+        pair_a = 0;
+        pair_b = 0;
+        flip = false;
+        pa = new Float32Array(3);
+        pb = new Float32Array(3);
+        qa = new Float32Array(4);
+        qb = new Float32Array(4);
+        ua = new Float32Array(9);
+        ub = new Float32Array(9);
+        pn = new Float32Array(3);
+        axis = new Float32Array(3);
+        dir = new Float32Array(3);
+        tmp = new Float32Array(3);
+        sup = new Float32Array(3);
+        sup_local = new Float32Array(3);
+        cand_count = 0;
+        cand_depth = new Float32Array(4);
+        cand_point = new Float32Array(12);
+        poly_count = 0;
+        poly = new Float32Array(48);
+        poly_next = new Float32Array(48);
+        si = new Int32Array(4);
+        sn = 0;
+        ev_count = 0;
+        ev = new Float32Array(vert_cap * 3);
+        eva = new Float32Array(vert_cap * 3);
+        evb = new Float32Array(vert_cap * 3);
+        ef_count = 0;
+        ef = new Int32Array(face_cap * 3);
+        efn = new Float32Array(face_cap * 3);
+        efd = new Float32Array(face_cap);
+        eh_count = 0;
+        eh = new Int32Array(face_cap * 6);
+        ec = new Float32Array(3);
+        grow(need) {
+            if (need <= this.contact_cap)
+                return;
+            let cap = Math.max(this.contact_cap, 64);
+            while (cap < need)
+                cap *= 2;
+            this.contact_cap = cap;
+            const a = new Uint32Array(cap);
+            a.set(this.contact_a);
+            this.contact_a = a;
+            const b = new Uint32Array(cap);
+            b.set(this.contact_b);
+            this.contact_b = b;
+            const point = new Float32Array(cap * 3);
+            point.set(this.contact_point);
+            this.contact_point = point;
+            const normal = new Float32Array(cap * 3);
+            normal.set(this.contact_normal);
+            this.contact_normal = normal;
+            const depth = new Float32Array(cap);
+            depth.set(this.contact_depth);
+            this.contact_depth = depth;
+        }
+        collide(world, pairs, pair_count) {
+            this.world = world;
+            this.contact_count = 0;
+            const shape = world.shape;
+            const sphere = $bog_gamengine_phys3.shape_sphere;
+            const box = $bog_gamengine_phys3.shape_box;
+            const capsule = $bog_gamengine_phys3.shape_capsule;
+            const plane = $bog_gamengine_phys3.shape_plane;
+            const hull = $bog_gamengine_phys3.shape_hull;
+            for (let p = 0; p < pair_count; ++p) {
+                let a = pairs[p * 2], b = pairs[p * 2 + 1];
+                let sa = shape[a], sb = shape[b];
+                this.flip = sa > sb;
+                if (this.flip) {
+                    const t = a;
+                    a = b;
+                    b = t;
+                    const s = sa;
+                    sa = sb;
+                    sb = s;
+                }
+                this.pair_a = a;
+                this.pair_b = b;
+                this.load(a, this.pa, this.qa);
+                this.load(b, this.pb, this.qb);
+                if (sa === sphere) {
+                    if (sb === sphere)
+                        this.sphere_sphere();
+                    else if (sb === box)
+                        this.sphere_box();
+                    else if (sb === capsule)
+                        this.sphere_capsule();
+                    else if (sb === plane)
+                        this.sphere_plane();
+                    else
+                        this.gjk_epa();
+                }
+                else if (sa === box) {
+                    if (sb === box)
+                        this.box_box();
+                    else if (sb === plane)
+                        this.box_plane();
+                    else
+                        this.gjk_epa();
+                }
+                else if (sa === capsule) {
+                    if (sb === capsule)
+                        this.capsule_capsule();
+                    else if (sb === plane)
+                        this.capsule_plane();
+                    else
+                        this.gjk_epa();
+                }
+                else if (sa === plane) {
+                    if (sb === hull)
+                        this.plane_hull();
+                }
+                else
+                    this.gjk_epa();
+            }
+            return this.contact_count;
+        }
+        load(i, c, q) {
+            const world = this.world;
+            c[0] = world.pos[i * 3];
+            c[1] = world.pos[i * 3 + 1];
+            c[2] = world.pos[i * 3 + 2];
+            q[0] = world.rot[i * 4];
+            q[1] = world.rot[i * 4 + 1];
+            q[2] = world.rot[i * 4 + 2];
+            q[3] = world.rot[i * 4 + 3];
+        }
+        emit(px, py, pz, nx, ny, nz, depth) {
+            const k = this.contact_count;
+            this.grow(k + 1);
+            this.contact_count = k + 1;
+            if (this.flip) {
+                this.contact_a[k] = this.pair_b;
+                this.contact_b[k] = this.pair_a;
+                nx = -nx;
+                ny = -ny;
+                nz = -nz;
+            }
+            else {
+                this.contact_a[k] = this.pair_a;
+                this.contact_b[k] = this.pair_b;
+            }
+            this.contact_point[k * 3] = px;
+            this.contact_point[k * 3 + 1] = py;
+            this.contact_point[k * 3 + 2] = pz;
+            this.contact_normal[k * 3] = nx;
+            this.contact_normal[k * 3 + 1] = ny;
+            this.contact_normal[k * 3 + 2] = nz;
+            this.contact_depth[k] = depth;
+        }
+        cand_push(px, py, pz, depth) {
+            let k = this.cand_count;
+            const cand_depth = this.cand_depth;
+            if (k < 4) {
+                this.cand_count = k + 1;
+            }
+            else {
+                k = 0;
+                for (let m = 1; m < 4; ++m)
+                    if (cand_depth[m] < cand_depth[k])
+                        k = m;
+                if (depth <= cand_depth[k])
+                    return;
+            }
+            cand_depth[k] = depth;
+            this.cand_point[k * 3] = px;
+            this.cand_point[k * 3 + 1] = py;
+            this.cand_point[k * 3 + 2] = pz;
+        }
+        cand_flush(nx, ny, nz) {
+            const point = this.cand_point, depth = this.cand_depth;
+            for (let k = 0; k < this.cand_count; ++k) {
+                this.emit(point[k * 3], point[k * 3 + 1], point[k * 3 + 2], nx, ny, nz, depth[k]);
+            }
+            this.cand_count = 0;
+        }
+        rot_apply(out, q, vx, vy, vz) {
+            const qx = q[0], qy = q[1], qz = q[2], qw = q[3];
+            const tx = 2 * (qy * vz - qz * vy);
+            const ty = 2 * (qz * vx - qx * vz);
+            const tz = 2 * (qx * vy - qy * vx);
+            out[0] = vx + qw * tx + qy * tz - qz * ty;
+            out[1] = vy + qw * ty + qz * tx - qx * tz;
+            out[2] = vz + qw * tz + qx * ty - qy * tx;
+            return out;
+        }
+        rot_unapply(out, q, vx, vy, vz) {
+            const qx = -q[0], qy = -q[1], qz = -q[2], qw = q[3];
+            const tx = 2 * (qy * vz - qz * vy);
+            const ty = 2 * (qz * vx - qx * vz);
+            const tz = 2 * (qx * vy - qy * vx);
+            out[0] = vx + qw * tx + qy * tz - qz * ty;
+            out[1] = vy + qw * ty + qz * tx - qx * tz;
+            out[2] = vz + qw * tz + qx * ty - qy * tx;
+            return out;
+        }
+        axes(out, q) {
+            const x = q[0], y = q[1], z = q[2], w = q[3];
+            const xx = x * x, yy = y * y, zz = z * z;
+            const xy = x * y, xz = x * z, yz = y * z;
+            const wx = w * x, wy = w * y, wz = w * z;
+            out[0] = 1 - 2 * (yy + zz);
+            out[1] = 2 * (xy + wz);
+            out[2] = 2 * (xz - wy);
+            out[3] = 2 * (xy - wz);
+            out[4] = 1 - 2 * (xx + zz);
+            out[5] = 2 * (yz + wx);
+            out[6] = 2 * (xz + wy);
+            out[7] = 2 * (yz - wx);
+            out[8] = 1 - 2 * (xx + yy);
+            return out;
+        }
+        plane_normal(i, q, out) {
+            const size = this.world.size;
+            this.rot_apply(out, q, size[i * 3], size[i * 3 + 1], size[i * 3 + 2]);
+            const len = Math.sqrt(out[0] * out[0] + out[1] * out[1] + out[2] * out[2]);
+            const k = len > 0 ? 1 / len : 0;
+            out[0] *= k;
+            out[1] *= k;
+            out[2] *= k;
+            return out;
+        }
+        sphere_sphere() {
+            const size = this.world.size;
+            const pa = this.pa, pb = this.pb;
+            const ra = size[this.pair_a * 3], rb = size[this.pair_b * 3];
+            this.sphere_pair(pa[0], pa[1], pa[2], ra, pb[0], pb[1], pb[2], rb);
+        }
+        sphere_pair(ax, ay, az, ra, bx, by, bz, rb) {
+            const dx = bx - ax, dy = by - ay, dz = bz - az;
+            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            const depth = ra + rb - dist;
+            if (depth < 0)
+                return;
+            let nx = 0, ny = 1, nz = 0;
+            if (dist > 0) {
+                nx = dx / dist;
+                ny = dy / dist;
+                nz = dz / dist;
+            }
+            const k = ra - depth / 2;
+            this.emit(ax + nx * k, ay + ny * k, az + nz * k, nx, ny, nz, depth);
+        }
+        sphere_plane() {
+            const size = this.world.size;
+            const pa = this.pa, pb = this.pb;
+            const n = this.plane_normal(this.pair_b, this.qb, this.pn);
+            const r = size[this.pair_a * 3];
+            this.sphere_plane_point(pa[0], pa[1], pa[2], r, pb, n);
+        }
+        sphere_plane_point(cx, cy, cz, r, p, n) {
+            const d = (cx - p[0]) * n[0] + (cy - p[1]) * n[1] + (cz - p[2]) * n[2];
+            const depth = r - d;
+            if (depth < 0)
+                return;
+            const k = (d + r) / 2;
+            this.emit(cx - n[0] * k, cy - n[1] * k, cz - n[2] * k, -n[0], -n[1], -n[2], depth);
+        }
+        box_plane() {
+            const size = this.world.size;
+            const a = this.pair_a;
+            const pa = this.pa, pb = this.pb, u = this.axes(this.ua, this.qa);
+            const n = this.plane_normal(this.pair_b, this.qb, this.pn);
+            const h0 = size[a * 3], h1 = size[a * 3 + 1], h2 = size[a * 3 + 2];
+            for (let s = 0; s < 8; ++s) {
+                const s0 = s & 1 ? h0 : -h0;
+                const s1 = s & 2 ? h1 : -h1;
+                const s2 = s & 4 ? h2 : -h2;
+                const vx = pa[0] + s0 * u[0] + s1 * u[3] + s2 * u[6];
+                const vy = pa[1] + s0 * u[1] + s1 * u[4] + s2 * u[7];
+                const vz = pa[2] + s0 * u[2] + s1 * u[5] + s2 * u[8];
+                const d = (vx - pb[0]) * n[0] + (vy - pb[1]) * n[1] + (vz - pb[2]) * n[2];
+                if (d > 0)
+                    continue;
+                this.cand_push(vx - n[0] * d / 2, vy - n[1] * d / 2, vz - n[2] * d / 2, -d);
+            }
+            this.cand_flush(-n[0], -n[1], -n[2]);
+        }
+        capsule_plane() {
+            const size = this.world.size;
+            const a = this.pair_a;
+            const pa = this.pa, pb = this.pb;
+            const n = this.plane_normal(this.pair_b, this.qb, this.pn);
+            const r = size[a * 3], h = size[a * 3 + 1];
+            const axis = this.rot_apply(this.axis, this.qa, 0, h, 0);
+            this.sphere_plane_point(pa[0] + axis[0], pa[1] + axis[1], pa[2] + axis[2], r, pb, n);
+            this.sphere_plane_point(pa[0] - axis[0], pa[1] - axis[1], pa[2] - axis[2], r, pb, n);
+        }
+        plane_hull() {
+            const world = this.world;
+            const b = this.pair_b;
+            const pa = this.pa, pb = this.pb, qb = this.qb, v = this.tmp;
+            const n = this.plane_normal(this.pair_a, this.qa, this.pn);
+            const hull = world.hull, off = world.hull_off[b], count = world.hull_count[b];
+            for (let k = 0; k < count; ++k) {
+                this.rot_apply(v, qb, hull[off + k * 3], hull[off + k * 3 + 1], hull[off + k * 3 + 2]);
+                const vx = pb[0] + v[0], vy = pb[1] + v[1], vz = pb[2] + v[2];
+                const d = (vx - pa[0]) * n[0] + (vy - pa[1]) * n[1] + (vz - pa[2]) * n[2];
+                if (d > 0)
+                    continue;
+                this.cand_push(vx - n[0] * d / 2, vy - n[1] * d / 2, vz - n[2] * d / 2, -d);
+            }
+            this.cand_flush(n[0], n[1], n[2]);
+        }
+        sphere_box() {
+            const size = this.world.size;
+            const a = this.pair_a, b = this.pair_b;
+            const pa = this.pa, pb = this.pb, qb = this.qb;
+            const l = this.rot_unapply(this.tmp, qb, pa[0] - pb[0], pa[1] - pb[1], pa[2] - pb[2]);
+            const hx = size[b * 3], hy = size[b * 3 + 1], hz = size[b * 3 + 2];
+            const r = size[a * 3];
+            let cx = l[0] < -hx ? -hx : l[0] > hx ? hx : l[0];
+            let cy = l[1] < -hy ? -hy : l[1] > hy ? hy : l[1];
+            let cz = l[2] < -hz ? -hz : l[2] > hz ? hz : l[2];
+            let dx = l[0] - cx, dy = l[1] - cy, dz = l[2] - cz;
+            const dist2 = dx * dx + dy * dy + dz * dz;
+            if (dist2 > r * r)
+                return;
+            let depth = 0;
+            if (dist2 > 1e-12) {
+                const dist = Math.sqrt(dist2);
+                dx /= dist;
+                dy /= dist;
+                dz /= dist;
+                depth = r - dist;
+            }
+            else {
+                const gx = hx - Math.abs(l[0]), gy = hy - Math.abs(l[1]), gz = hz - Math.abs(l[2]);
+                dx = 0;
+                dy = 0;
+                dz = 0;
+                if (gx <= gy && gx <= gz) {
+                    dx = l[0] < 0 ? -1 : 1;
+                    cx = dx * hx;
+                    depth = r + gx;
+                }
+                else if (gy <= gz) {
+                    dy = l[1] < 0 ? -1 : 1;
+                    cy = dy * hy;
+                    depth = r + gy;
+                }
+                else {
+                    dz = l[2] < 0 ? -1 : 1;
+                    cz = dz * hz;
+                    depth = r + gz;
+                }
+            }
+            const n = this.rot_apply(this.pn, qb, dx, dy, dz);
+            const s = this.rot_apply(this.sup, qb, cx, cy, cz);
+            this.emit(pb[0] + s[0] - n[0] * depth / 2, pb[1] + s[1] - n[1] * depth / 2, pb[2] + s[2] - n[2] * depth / 2, -n[0], -n[1], -n[2], depth);
+        }
+        sphere_capsule() {
+            const size = this.world.size;
+            const a = this.pair_a, b = this.pair_b;
+            const pa = this.pa, pb = this.pb;
+            const ra = size[a * 3], rb = size[b * 3], h = size[b * 3 + 1];
+            const axis = this.rot_apply(this.axis, this.qb, 0, 1, 0);
+            let t = (pa[0] - pb[0]) * axis[0] + (pa[1] - pb[1]) * axis[1] + (pa[2] - pb[2]) * axis[2];
+            t = t < -h ? -h : t > h ? h : t;
+            this.sphere_pair(pa[0], pa[1], pa[2], ra, pb[0] + axis[0] * t, pb[1] + axis[1] * t, pb[2] + axis[2] * t, rb);
+        }
+        capsule_capsule() {
+            const size = this.world.size;
+            const a = this.pair_a, b = this.pair_b;
+            const pa = this.pa, pb = this.pb;
+            const ra = size[a * 3], ha = size[a * 3 + 1];
+            const rb = size[b * 3], hb = size[b * 3 + 1];
+            const d1 = this.rot_apply(this.axis, this.qa, 0, 2 * ha, 0);
+            const d2 = this.rot_apply(this.tmp, this.qb, 0, 2 * hb, 0);
+            const p1x = pa[0] - d1[0] / 2, p1y = pa[1] - d1[1] / 2, p1z = pa[2] - d1[2] / 2;
+            const p2x = pb[0] - d2[0] / 2, p2y = pb[1] - d2[1] / 2, p2z = pb[2] - d2[2] / 2;
+            const rx = p1x - p2x, ry = p1y - p2y, rz = p1z - p2z;
+            const aa = d1[0] * d1[0] + d1[1] * d1[1] + d1[2] * d1[2];
+            const ee = d2[0] * d2[0] + d2[1] * d2[1] + d2[2] * d2[2];
+            const f = d2[0] * rx + d2[1] * ry + d2[2] * rz;
+            let s = 0, t = 0;
+            const eps = 1e-12;
+            if (aa <= eps && ee <= eps) {
+            }
+            else if (aa <= eps) {
+                t = f / ee;
+                t = t < 0 ? 0 : t > 1 ? 1 : t;
+            }
+            else {
+                const c = d1[0] * rx + d1[1] * ry + d1[2] * rz;
+                if (ee <= eps) {
+                    s = -c / aa;
+                    s = s < 0 ? 0 : s > 1 ? 1 : s;
+                }
+                else {
+                    const bb = d1[0] * d2[0] + d1[1] * d2[1] + d1[2] * d2[2];
+                    const denom = aa * ee - bb * bb;
+                    if (denom !== 0) {
+                        s = (bb * f - c * ee) / denom;
+                        s = s < 0 ? 0 : s > 1 ? 1 : s;
+                    }
+                    t = (bb * s + f) / ee;
+                    if (t < 0) {
+                        t = 0;
+                        s = -c / aa;
+                        s = s < 0 ? 0 : s > 1 ? 1 : s;
+                    }
+                    else if (t > 1) {
+                        t = 1;
+                        s = (bb - c) / aa;
+                        s = s < 0 ? 0 : s > 1 ? 1 : s;
+                    }
+                }
+            }
+            this.sphere_pair(p1x + d1[0] * s, p1y + d1[1] * s, p1z + d1[2] * s, ra, p2x + d2[0] * t, p2y + d2[1] * t, p2z + d2[2] * t, rb);
+        }
+        box_box() {
+            const size = this.world.size;
+            const a = this.pair_a, b = this.pair_b;
+            const pa = this.pa, pb = this.pb;
+            const ua = this.axes(this.ua, this.qa), ub = this.axes(this.ub, this.qb);
+            const ha0 = size[a * 3], ha1 = size[a * 3 + 1], ha2 = size[a * 3 + 2];
+            const hb0 = size[b * 3], hb1 = size[b * 3 + 1], hb2 = size[b * 3 + 2];
+            const dx = pb[0] - pa[0], dy = pb[1] - pa[1], dz = pb[2] - pa[2];
+            const dir = this.dir;
+            let best = Infinity, best_over = 0, best_axis = -1;
+            for (let k = 0; k < 15; ++k) {
+                let lx = 0, ly = 0, lz = 0;
+                if (k < 3) {
+                    lx = ua[k * 3];
+                    ly = ua[k * 3 + 1];
+                    lz = ua[k * 3 + 2];
+                }
+                else if (k < 6) {
+                    lx = ub[(k - 3) * 3];
+                    ly = ub[(k - 3) * 3 + 1];
+                    lz = ub[(k - 3) * 3 + 2];
+                }
+                else {
+                    const i = ((k - 6) / 3 | 0) * 3, j = ((k - 6) % 3) * 3;
+                    const ax = ua[i], ay = ua[i + 1], az = ua[i + 2];
+                    const bx = ub[j], by = ub[j + 1], bz = ub[j + 2];
+                    lx = ay * bz - az * by;
+                    ly = az * bx - ax * bz;
+                    lz = ax * by - ay * bx;
+                    const len2 = lx * lx + ly * ly + lz * lz;
+                    if (len2 < 1e-8)
+                        continue;
+                    const inv = 1 / Math.sqrt(len2);
+                    lx *= inv;
+                    ly *= inv;
+                    lz *= inv;
+                }
+                const ra = ha0 * Math.abs(ua[0] * lx + ua[1] * ly + ua[2] * lz)
+                    + ha1 * Math.abs(ua[3] * lx + ua[4] * ly + ua[5] * lz)
+                    + ha2 * Math.abs(ua[6] * lx + ua[7] * ly + ua[8] * lz);
+                const rb = hb0 * Math.abs(ub[0] * lx + ub[1] * ly + ub[2] * lz)
+                    + hb1 * Math.abs(ub[3] * lx + ub[4] * ly + ub[5] * lz)
+                    + hb2 * Math.abs(ub[6] * lx + ub[7] * ly + ub[8] * lz);
+                const dist = dx * lx + dy * ly + dz * lz;
+                const over = ra + rb - Math.abs(dist);
+                if (over < 0)
+                    return;
+                const score = k < 6 ? over : over * 1.05 + 1e-5;
+                if (score < best) {
+                    best = score;
+                    best_over = over;
+                    best_axis = k;
+                    if (dist < 0) {
+                        dir[0] = -lx;
+                        dir[1] = -ly;
+                        dir[2] = -lz;
+                    }
+                    else {
+                        dir[0] = lx;
+                        dir[1] = ly;
+                        dir[2] = lz;
+                    }
+                }
+            }
+            if (best_axis < 0)
+                return;
+            if (best_axis < 6)
+                this.box_box_face(best_axis);
+            else
+                this.box_box_edge(best_axis, best_over);
+        }
+        box_box_face(axis) {
+            const size = this.world.size;
+            const ref_a = axis < 3;
+            const ref = ref_a ? this.pair_a : this.pair_b, inc = ref_a ? this.pair_b : this.pair_a;
+            const cr = ref_a ? this.pa : this.pb, ci = ref_a ? this.pb : this.pa;
+            const ur = ref_a ? this.ua : this.ub, ui = ref_a ? this.ub : this.ua;
+            const dir = this.dir;
+            const nx = ref_a ? dir[0] : -dir[0];
+            const ny = ref_a ? dir[1] : -dir[1];
+            const nz = ref_a ? dir[2] : -dir[2];
+            const ri = axis % 3;
+            let j = 0, jd = -1;
+            for (let k = 0; k < 3; ++k) {
+                const d = Math.abs(ui[k * 3] * nx + ui[k * 3 + 1] * ny + ui[k * 3 + 2] * nz);
+                if (d > jd) {
+                    jd = d;
+                    j = k;
+                }
+            }
+            const js = ui[j * 3] * nx + ui[j * 3 + 1] * ny + ui[j * 3 + 2] * nz > 0 ? -1 : 1;
+            const k1 = (j + 1) % 3, k2 = (j + 2) % 3;
+            const hj = size[inc * 3 + j] * js, h1 = size[inc * 3 + k1], h2 = size[inc * 3 + k2];
+            const fx = ci[0] + ui[j * 3] * hj, fy = ci[1] + ui[j * 3 + 1] * hj, fz = ci[2] + ui[j * 3 + 2] * hj;
+            const e1x = ui[k1 * 3] * h1, e1y = ui[k1 * 3 + 1] * h1, e1z = ui[k1 * 3 + 2] * h1;
+            const e2x = ui[k2 * 3] * h2, e2y = ui[k2 * 3 + 1] * h2, e2z = ui[k2 * 3 + 2] * h2;
+            const poly = this.poly;
+            poly[0] = fx + e1x + e2x;
+            poly[1] = fy + e1y + e2y;
+            poly[2] = fz + e1z + e2z;
+            poly[3] = fx - e1x + e2x;
+            poly[4] = fy - e1y + e2y;
+            poly[5] = fz - e1z + e2z;
+            poly[6] = fx - e1x - e2x;
+            poly[7] = fy - e1y - e2y;
+            poly[8] = fz - e1z - e2z;
+            poly[9] = fx + e1x - e2x;
+            poly[10] = fy + e1y - e2y;
+            poly[11] = fz + e1z - e2z;
+            this.poly_count = 4;
+            for (let m = 0; m < 3; ++m) {
+                if (m === ri)
+                    continue;
+                const mx = ur[m * 3], my = ur[m * 3 + 1], mz = ur[m * 3 + 2];
+                const cd = mx * cr[0] + my * cr[1] + mz * cr[2];
+                const h = size[ref * 3 + m];
+                this.clip(mx, my, mz, cd + h);
+                this.clip(-mx, -my, -mz, -cd + h);
+            }
+            const hr = size[ref * 3 + ri];
+            const cn = nx * cr[0] + ny * cr[1] + nz * cr[2] + hr;
+            const out = this.poly;
+            for (let k = 0; k < this.poly_count; ++k) {
+                const vx = out[k * 3], vy = out[k * 3 + 1], vz = out[k * 3 + 2];
+                const sep = nx * vx + ny * vy + nz * vz - cn;
+                if (sep > 0)
+                    continue;
+                this.cand_push(vx - nx * sep / 2, vy - ny * sep / 2, vz - nz * sep / 2, -sep);
+            }
+            this.cand_flush(dir[0], dir[1], dir[2]);
+        }
+        clip(nx, ny, nz, off) {
+            const src = this.poly, dst = this.poly_next, n = this.poly_count;
+            let m = 0;
+            for (let i = 0; i < n; ++i) {
+                const j = (i + 1) % n;
+                const ix = src[i * 3], iy = src[i * 3 + 1], iz = src[i * 3 + 2];
+                const jx = src[j * 3], jy = src[j * 3 + 1], jz = src[j * 3 + 2];
+                const fi = off - (nx * ix + ny * iy + nz * iz);
+                const fj = off - (nx * jx + ny * jy + nz * jz);
+                if (fi >= 0) {
+                    dst[m * 3] = ix;
+                    dst[m * 3 + 1] = iy;
+                    dst[m * 3 + 2] = iz;
+                    ++m;
+                }
+                if ((fi >= 0) !== (fj >= 0)) {
+                    const t = fi / (fi - fj);
+                    dst[m * 3] = ix + (jx - ix) * t;
+                    dst[m * 3 + 1] = iy + (jy - iy) * t;
+                    dst[m * 3 + 2] = iz + (jz - iz) * t;
+                    ++m;
+                }
+            }
+            this.poly_count = m;
+            this.poly = dst;
+            this.poly_next = src;
+        }
+        box_box_edge(axis, over) {
+            const size = this.world.size;
+            const a = this.pair_a, b = this.pair_b;
+            const pa = this.pa, pb = this.pb, ua = this.ua, ub = this.ub, dir = this.dir;
+            const i = (axis - 6) / 3 | 0, j = (axis - 6) % 3;
+            let p1x = pa[0], p1y = pa[1], p1z = pa[2];
+            let p2x = pb[0], p2y = pb[1], p2z = pb[2];
+            for (let k = 0; k < 3; ++k) {
+                if (k !== i) {
+                    const d = ua[k * 3] * dir[0] + ua[k * 3 + 1] * dir[1] + ua[k * 3 + 2] * dir[2];
+                    const h = d > 0 ? size[a * 3 + k] : -size[a * 3 + k];
+                    p1x += ua[k * 3] * h;
+                    p1y += ua[k * 3 + 1] * h;
+                    p1z += ua[k * 3 + 2] * h;
+                }
+                if (k !== j) {
+                    const d = ub[k * 3] * dir[0] + ub[k * 3 + 1] * dir[1] + ub[k * 3 + 2] * dir[2];
+                    const h = d > 0 ? -size[b * 3 + k] : size[b * 3 + k];
+                    p2x += ub[k * 3] * h;
+                    p2y += ub[k * 3 + 1] * h;
+                    p2z += ub[k * 3 + 2] * h;
+                }
+            }
+            const e1x = ua[i * 3], e1y = ua[i * 3 + 1], e1z = ua[i * 3 + 2];
+            const e2x = ub[j * 3], e2y = ub[j * 3 + 1], e2z = ub[j * 3 + 2];
+            const rx = p1x - p2x, ry = p1y - p2y, rz = p1z - p2z;
+            const bb = e1x * e2x + e1y * e2y + e1z * e2z;
+            const c = e1x * rx + e1y * ry + e1z * rz;
+            const f = e2x * rx + e2y * ry + e2z * rz;
+            const den = 1 - bb * bb;
+            let s = (bb * f - c) / den;
+            let t = (f - bb * c) / den;
+            const ha = size[a * 3 + i], hb = size[b * 3 + j];
+            s = s < -ha ? -ha : s > ha ? ha : s;
+            t = t < -hb ? -hb : t > hb ? hb : t;
+            this.emit((p1x + e1x * s + p2x + e2x * t) / 2, (p1y + e1y * s + p2y + e2y * t) / 2, (p1z + e1z * s + p2z + e2z * t) / 2, dir[0], dir[1], dir[2], over);
+        }
+        support(i, c, q, dx, dy, dz, out) {
+            const world = this.world, size = world.size, s = i * 3;
+            const shape = world.shape[i];
+            if (shape === $bog_gamengine_phys3.shape_sphere) {
+                const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                const k = len > 0 ? size[s] / len : 0;
+                out[0] = c[0] + dx * k;
+                out[1] = c[1] + dy * k;
+                out[2] = c[2] + dz * k;
+                return out;
+            }
+            const l = this.rot_unapply(this.sup_local, q, dx, dy, dz);
+            if (shape === $bog_gamengine_phys3.shape_box) {
+                this.rot_apply(out, q, l[0] >= 0 ? size[s] : -size[s], l[1] >= 0 ? size[s + 1] : -size[s + 1], l[2] >= 0 ? size[s + 2] : -size[s + 2]);
+            }
+            else if (shape === $bog_gamengine_phys3.shape_capsule) {
+                this.rot_apply(out, q, 0, l[1] >= 0 ? size[s + 1] : -size[s + 1], 0);
+                const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                const k = len > 0 ? size[s] / len : 0;
+                out[0] += dx * k;
+                out[1] += dy * k;
+                out[2] += dz * k;
+            }
+            else if (shape === $bog_gamengine_phys3.shape_hull) {
+                const hull = world.hull, off = world.hull_off[i], count = world.hull_count[i];
+                let best = -Infinity, bx = 0, by = 0, bz = 0;
+                for (let k = 0; k < count; ++k) {
+                    const vx = hull[off + k * 3], vy = hull[off + k * 3 + 1], vz = hull[off + k * 3 + 2];
+                    const d = vx * l[0] + vy * l[1] + vz * l[2];
+                    if (d > best) {
+                        best = d;
+                        bx = vx;
+                        by = vy;
+                        bz = vz;
+                    }
+                }
+                this.rot_apply(out, q, bx, by, bz);
+            }
+            else {
+                out[0] = 0;
+                out[1] = 0;
+                out[2] = 0;
+            }
+            out[0] += c[0];
+            out[1] += c[1];
+            out[2] += c[2];
+            return out;
+        }
+        mink(dx, dy, dz) {
+            const k = this.ev_count;
+            if (k >= vert_cap)
+                return -1;
+            const s = this.sup, eva = this.eva, evb = this.evb, ev = this.ev;
+            this.support(this.pair_a, this.pa, this.qa, dx, dy, dz, s);
+            eva[k * 3] = s[0];
+            eva[k * 3 + 1] = s[1];
+            eva[k * 3 + 2] = s[2];
+            this.support(this.pair_b, this.pb, this.qb, -dx, -dy, -dz, s);
+            evb[k * 3] = s[0];
+            evb[k * 3 + 1] = s[1];
+            evb[k * 3 + 2] = s[2];
+            ev[k * 3] = eva[k * 3] - s[0];
+            ev[k * 3 + 1] = eva[k * 3 + 1] - s[1];
+            ev[k * 3 + 2] = eva[k * 3 + 2] - s[2];
+            this.ev_count = k + 1;
+            return k;
+        }
+        gjk_epa() {
+            if (!this.gjk())
+                return;
+            this.epa();
+        }
+        gjk() {
+            this.ev_count = 0;
+            const dir = this.dir, si = this.si, ev = this.ev;
+            const pa = this.pa, pb = this.pb;
+            dir[0] = pb[0] - pa[0];
+            dir[1] = pb[1] - pa[1];
+            dir[2] = pb[2] - pa[2];
+            if (dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2] < 1e-12)
+                dir[0] = 1;
+            let k = this.mink(dir[0], dir[1], dir[2]);
+            si[0] = k;
+            this.sn = 1;
+            dir[0] = -ev[k * 3];
+            dir[1] = -ev[k * 3 + 1];
+            dir[2] = -ev[k * 3 + 2];
+            for (let iter = 0; iter < 32; ++iter) {
+                if (dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2] < 1e-12)
+                    return true;
+                k = this.mink(dir[0], dir[1], dir[2]);
+                if (k < 0)
+                    return false;
+                if (ev[k * 3] * dir[0] + ev[k * 3 + 1] * dir[1] + ev[k * 3 + 2] * dir[2] <= 0)
+                    return false;
+                si[this.sn++] = k;
+                if (this.simplex())
+                    return true;
+            }
+            return false;
+        }
+        simplex() {
+            if (this.sn === 2)
+                return this.simplex_line();
+            if (this.sn === 3)
+                return this.simplex_triangle();
+            return this.simplex_tetra();
+        }
+        simplex_line() {
+            const ev = this.ev, si = this.si, dir = this.dir;
+            const a = si[1] * 3, b = si[0] * 3;
+            const ax = ev[a], ay = ev[a + 1], az = ev[a + 2];
+            const abx = ev[b] - ax, aby = ev[b + 1] - ay, abz = ev[b + 2] - az;
+            const aox = -ax, aoy = -ay, aoz = -az;
+            if (abx * aox + aby * aoy + abz * aoz > 0) {
+                const tx = aby * aoz - abz * aoy, ty = abz * aox - abx * aoz, tz = abx * aoy - aby * aox;
+                dir[0] = ty * abz - tz * aby;
+                dir[1] = tz * abx - tx * abz;
+                dir[2] = tx * aby - ty * abx;
+            }
+            else {
+                si[0] = si[1];
+                this.sn = 1;
+                dir[0] = aox;
+                dir[1] = aoy;
+                dir[2] = aoz;
+            }
+            return false;
+        }
+        simplex_triangle() {
+            const ev = this.ev, si = this.si, dir = this.dir;
+            const a = si[2] * 3, b = si[1] * 3, c = si[0] * 3;
+            const ax = ev[a], ay = ev[a + 1], az = ev[a + 2];
+            const abx = ev[b] - ax, aby = ev[b + 1] - ay, abz = ev[b + 2] - az;
+            const acx = ev[c] - ax, acy = ev[c + 1] - ay, acz = ev[c + 2] - az;
+            const aox = -ax, aoy = -ay, aoz = -az;
+            const nx = aby * acz - abz * acy, ny = abz * acx - abx * acz, nz = abx * acy - aby * acx;
+            const tx = ny * acz - nz * acy, ty = nz * acx - nx * acz, tz = nx * acy - ny * acx;
+            if (tx * aox + ty * aoy + tz * aoz > 0) {
+                if (acx * aox + acy * aoy + acz * aoz > 0) {
+                    si[1] = si[2];
+                    this.sn = 2;
+                    const px = acy * aoz - acz * aoy, py = acz * aox - acx * aoz, pz = acx * aoy - acy * aox;
+                    dir[0] = py * acz - pz * acy;
+                    dir[1] = pz * acx - px * acz;
+                    dir[2] = px * acy - py * acx;
+                    return false;
+                }
+                si[0] = si[1];
+                si[1] = si[2];
+                this.sn = 2;
+                return this.simplex_line();
+            }
+            const sx = aby * nz - abz * ny, sy = abz * nx - abx * nz, sz = abx * ny - aby * nx;
+            if (sx * aox + sy * aoy + sz * aoz > 0) {
+                si[0] = si[1];
+                si[1] = si[2];
+                this.sn = 2;
+                return this.simplex_line();
+            }
+            if (nx * aox + ny * aoy + nz * aoz > 0) {
+                dir[0] = nx;
+                dir[1] = ny;
+                dir[2] = nz;
+            }
+            else {
+                const t = si[0];
+                si[0] = si[1];
+                si[1] = t;
+                dir[0] = -nx;
+                dir[1] = -ny;
+                dir[2] = -nz;
+            }
+            return false;
+        }
+        simplex_tetra() {
+            const ev = this.ev, si = this.si;
+            const a = si[3] * 3, b = si[2] * 3, c = si[1] * 3, d = si[0] * 3;
+            const ax = ev[a], ay = ev[a + 1], az = ev[a + 2];
+            const abx = ev[b] - ax, aby = ev[b + 1] - ay, abz = ev[b + 2] - az;
+            const acx = ev[c] - ax, acy = ev[c + 1] - ay, acz = ev[c + 2] - az;
+            const adx = ev[d] - ax, ady = ev[d + 1] - ay, adz = ev[d + 2] - az;
+            const aox = -ax, aoy = -ay, aoz = -az;
+            let nx = aby * acz - abz * acy, ny = abz * acx - abx * acz, nz = abx * acy - aby * acx;
+            if (nx * adx + ny * ady + nz * adz > 0) {
+                nx = -nx;
+                ny = -ny;
+                nz = -nz;
+            }
+            if (nx * aox + ny * aoy + nz * aoz > 0) {
+                si[0] = si[1];
+                si[1] = si[2];
+                si[2] = si[3];
+                this.sn = 3;
+                return this.simplex_triangle();
+            }
+            nx = acy * adz - acz * ady;
+            ny = acz * adx - acx * adz;
+            nz = acx * ady - acy * adx;
+            if (nx * abx + ny * aby + nz * abz > 0) {
+                nx = -nx;
+                ny = -ny;
+                nz = -nz;
+            }
+            if (nx * aox + ny * aoy + nz * aoz > 0) {
+                si[2] = si[3];
+                this.sn = 3;
+                return this.simplex_triangle();
+            }
+            nx = ady * abz - adz * aby;
+            ny = adz * abx - adx * abz;
+            nz = adx * aby - ady * abx;
+            if (nx * acx + ny * acy + nz * acz > 0) {
+                nx = -nx;
+                ny = -ny;
+                nz = -nz;
+            }
+            if (nx * aox + ny * aoy + nz * aoz > 0) {
+                const t = si[0];
+                si[0] = si[2];
+                si[1] = t;
+                si[2] = si[3];
+                this.sn = 3;
+                return this.simplex_triangle();
+            }
+            return true;
+        }
+        simplex_fill() {
+            const ev = this.ev, si = this.si;
+            if (this.sn === 1) {
+                const a = si[0] * 3;
+                for (let s = 0; s < 6 && this.sn < 2; ++s) {
+                    const sign = s & 1 ? -1 : 1;
+                    const k = this.mink(s < 2 ? sign : 0, s >= 2 && s < 4 ? sign : 0, s >= 4 ? sign : 0);
+                    if (k < 0)
+                        return false;
+                    const dx = ev[k * 3] - ev[a], dy = ev[k * 3 + 1] - ev[a + 1], dz = ev[k * 3 + 2] - ev[a + 2];
+                    if (dx * dx + dy * dy + dz * dz > 1e-10) {
+                        si[1] = k;
+                        this.sn = 2;
+                    }
+                }
+                if (this.sn < 2)
+                    return false;
+            }
+            if (this.sn === 2) {
+                const a = si[0] * 3, b = si[1] * 3;
+                const abx = ev[b] - ev[a], aby = ev[b + 1] - ev[a + 1], abz = ev[b + 2] - ev[a + 2];
+                const mx = Math.abs(abx), my = Math.abs(aby), mz = Math.abs(abz);
+                const ex = mx <= my && mx <= mz ? 1 : 0, ey = ex === 0 && my <= mz ? 1 : 0, ez = ex === 0 && ey === 0 ? 1 : 0;
+                const px = aby * ez - abz * ey, py = abz * ex - abx * ez, pz = abx * ey - aby * ex;
+                for (let s = 0; s < 2 && this.sn < 3; ++s) {
+                    const sign = s ? -1 : 1;
+                    const k = this.mink(px * sign, py * sign, pz * sign);
+                    if (k < 0)
+                        return false;
+                    const vx = ev[k * 3] - ev[a], vy = ev[k * 3 + 1] - ev[a + 1], vz = ev[k * 3 + 2] - ev[a + 2];
+                    const cx = aby * vz - abz * vy, cy = abz * vx - abx * vz, cz = abx * vy - aby * vx;
+                    if (cx * cx + cy * cy + cz * cz > 1e-10 * (abx * abx + aby * aby + abz * abz)) {
+                        si[2] = k;
+                        this.sn = 3;
+                    }
+                }
+                if (this.sn < 3)
+                    return false;
+            }
+            if (this.sn === 3) {
+                const a = si[0] * 3, b = si[1] * 3, c = si[2] * 3;
+                const abx = ev[b] - ev[a], aby = ev[b + 1] - ev[a + 1], abz = ev[b + 2] - ev[a + 2];
+                const acx = ev[c] - ev[a], acy = ev[c + 1] - ev[a + 1], acz = ev[c + 2] - ev[a + 2];
+                const nx = aby * acz - abz * acy, ny = abz * acx - abx * acz, nz = abx * acy - aby * acx;
+                const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+                if (len < 1e-12)
+                    return false;
+                for (let s = 0; s < 2 && this.sn < 4; ++s) {
+                    const sign = s ? -1 : 1;
+                    const k = this.mink(nx * sign, ny * sign, nz * sign);
+                    if (k < 0)
+                        return false;
+                    const d = ((ev[k * 3] - ev[a]) * nx + (ev[k * 3 + 1] - ev[a + 1]) * ny + (ev[k * 3 + 2] - ev[a + 2]) * nz) / len;
+                    if (Math.abs(d) > 1e-6) {
+                        si[3] = k;
+                        this.sn = 4;
+                    }
+                }
+                if (this.sn < 4)
+                    return false;
+            }
+            return true;
+        }
+        face_add(i0, i1, i2) {
+            const k = this.ef_count;
+            if (k >= face_cap)
+                return;
+            const ev = this.ev, ec = this.ec;
+            const ax = ev[i0 * 3], ay = ev[i0 * 3 + 1], az = ev[i0 * 3 + 2];
+            const e1x = ev[i1 * 3] - ax, e1y = ev[i1 * 3 + 1] - ay, e1z = ev[i1 * 3 + 2] - az;
+            const e2x = ev[i2 * 3] - ax, e2y = ev[i2 * 3 + 1] - ay, e2z = ev[i2 * 3 + 2] - az;
+            let nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+            const len2 = nx * nx + ny * ny + nz * nz;
+            if (len2 < 1e-14)
+                return;
+            const inv = 1 / Math.sqrt(len2);
+            nx *= inv;
+            ny *= inv;
+            nz *= inv;
+            if (nx * (ax - ec[0]) + ny * (ay - ec[1]) + nz * (az - ec[2]) < 0) {
+                nx = -nx;
+                ny = -ny;
+                nz = -nz;
+                const t = i1;
+                i1 = i2;
+                i2 = t;
+            }
+            this.ef[k * 3] = i0;
+            this.ef[k * 3 + 1] = i1;
+            this.ef[k * 3 + 2] = i2;
+            this.efn[k * 3] = nx;
+            this.efn[k * 3 + 1] = ny;
+            this.efn[k * 3 + 2] = nz;
+            this.efd[k] = nx * ax + ny * ay + nz * az;
+            this.ef_count = k + 1;
+        }
+        face_remove(i) {
+            const last = --this.ef_count;
+            const ef = this.ef, efn = this.efn;
+            ef[i * 3] = ef[last * 3];
+            ef[i * 3 + 1] = ef[last * 3 + 1];
+            ef[i * 3 + 2] = ef[last * 3 + 2];
+            efn[i * 3] = efn[last * 3];
+            efn[i * 3 + 1] = efn[last * 3 + 1];
+            efn[i * 3 + 2] = efn[last * 3 + 2];
+            this.efd[i] = this.efd[last];
+        }
+        horizon_edge(a, b) {
+            const eh = this.eh;
+            for (let i = 0; i < this.eh_count; ++i) {
+                if (eh[i * 2] !== b || eh[i * 2 + 1] !== a)
+                    continue;
+                const last = --this.eh_count;
+                eh[i * 2] = eh[last * 2];
+                eh[i * 2 + 1] = eh[last * 2 + 1];
+                return;
+            }
+            const k = this.eh_count;
+            if (k * 2 + 1 >= eh.length)
+                return;
+            eh[k * 2] = a;
+            eh[k * 2 + 1] = b;
+            this.eh_count = k + 1;
+        }
+        epa() {
+            if (this.sn < 4 && !this.simplex_fill())
+                return;
+            const si = this.si, ev = this.ev, ec = this.ec, efn = this.efn, efd = this.efd, ef = this.ef, eh = this.eh;
+            ec[0] = (ev[si[0] * 3] + ev[si[1] * 3] + ev[si[2] * 3] + ev[si[3] * 3]) / 4;
+            ec[1] = (ev[si[0] * 3 + 1] + ev[si[1] * 3 + 1] + ev[si[2] * 3 + 1] + ev[si[3] * 3 + 1]) / 4;
+            ec[2] = (ev[si[0] * 3 + 2] + ev[si[1] * 3 + 2] + ev[si[2] * 3 + 2] + ev[si[3] * 3 + 2]) / 4;
+            this.ef_count = 0;
+            this.face_add(si[0], si[1], si[2]);
+            this.face_add(si[0], si[2], si[3]);
+            this.face_add(si[0], si[3], si[1]);
+            this.face_add(si[1], si[3], si[2]);
+            if (this.ef_count < 4)
+                return;
+            for (let iter = 0; iter < 64; ++iter) {
+                let f = 0;
+                for (let i = 1; i < this.ef_count; ++i)
+                    if (efd[i] < efd[f])
+                        f = i;
+                if (this.ev_count >= vert_cap || this.ef_count >= face_cap - 16)
+                    break;
+                const nx = efn[f * 3], ny = efn[f * 3 + 1], nz = efn[f * 3 + 2];
+                const p = this.mink(nx, ny, nz);
+                const px = ev[p * 3], py = ev[p * 3 + 1], pz = ev[p * 3 + 2];
+                if (px * nx + py * ny + pz * nz - efd[f] < 1e-4)
+                    break;
+                this.eh_count = 0;
+                for (let i = 0; i < this.ef_count;) {
+                    if (efn[i * 3] * px + efn[i * 3 + 1] * py + efn[i * 3 + 2] * pz - efd[i] > 1e-7) {
+                        this.horizon_edge(ef[i * 3], ef[i * 3 + 1]);
+                        this.horizon_edge(ef[i * 3 + 1], ef[i * 3 + 2]);
+                        this.horizon_edge(ef[i * 3 + 2], ef[i * 3]);
+                        this.face_remove(i);
+                    }
+                    else
+                        ++i;
+                }
+                for (let i = 0; i < this.eh_count; ++i)
+                    this.face_add(eh[i * 2], eh[i * 2 + 1], p);
+                if (this.ef_count < 4)
+                    return;
+            }
+            let f = 0;
+            for (let i = 1; i < this.ef_count; ++i)
+                if (efd[i] < efd[f])
+                    f = i;
+            this.epa_emit(f);
+        }
+        epa_emit(f) {
+            const ev = this.ev, eva = this.eva, evb = this.evb, ef = this.ef, efn = this.efn;
+            const i0 = ef[f * 3], i1 = ef[f * 3 + 1], i2 = ef[f * 3 + 2];
+            const nx = efn[f * 3], ny = efn[f * 3 + 1], nz = efn[f * 3 + 2];
+            const dist = this.efd[f];
+            const ax = ev[i0 * 3], ay = ev[i0 * 3 + 1], az = ev[i0 * 3 + 2];
+            const e0x = ev[i1 * 3] - ax, e0y = ev[i1 * 3 + 1] - ay, e0z = ev[i1 * 3 + 2] - az;
+            const e1x = ev[i2 * 3] - ax, e1y = ev[i2 * 3 + 1] - ay, e1z = ev[i2 * 3 + 2] - az;
+            const e2x = nx * dist - ax, e2y = ny * dist - ay, e2z = nz * dist - az;
+            const d00 = e0x * e0x + e0y * e0y + e0z * e0z;
+            const d01 = e0x * e1x + e0y * e1y + e0z * e1z;
+            const d11 = e1x * e1x + e1y * e1y + e1z * e1z;
+            const d20 = e2x * e0x + e2y * e0y + e2z * e0z;
+            const d21 = e2x * e1x + e2y * e1y + e2z * e1z;
+            const den = d00 * d11 - d01 * d01;
+            let u = 1, v = 0, w = 0;
+            if (Math.abs(den) > 1e-20) {
+                v = (d11 * d20 - d01 * d21) / den;
+                w = (d00 * d21 - d01 * d20) / den;
+                v = v < 0 ? 0 : v > 1 ? 1 : v;
+                w = w < 0 ? 0 : w > 1 - v ? 1 - v : w;
+                u = 1 - v - w;
+            }
+            const wax = u * eva[i0 * 3] + v * eva[i1 * 3] + w * eva[i2 * 3];
+            const way = u * eva[i0 * 3 + 1] + v * eva[i1 * 3 + 1] + w * eva[i2 * 3 + 1];
+            const waz = u * eva[i0 * 3 + 2] + v * eva[i1 * 3 + 2] + w * eva[i2 * 3 + 2];
+            const wbx = u * evb[i0 * 3] + v * evb[i1 * 3] + w * evb[i2 * 3];
+            const wby = u * evb[i0 * 3 + 1] + v * evb[i1 * 3 + 1] + w * evb[i2 * 3 + 1];
+            const wbz = u * evb[i0 * 3 + 2] + v * evb[i1 * 3 + 2] + w * evb[i2 * 3 + 2];
+            this.emit((wax + wbx) / 2, (way + wby) / 2, (waz + wbz) / 2, nx, ny, nz, dist < 0 ? 0 : dist);
+        }
+    }
+    $.$bog_gamengine_phys3_narrow = $bog_gamengine_phys3_narrow;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_phys3_solve extends $mol_object2 {
+        static beta = 0.2;
+        static slop = 0.005;
+        static bounce_speed = 1;
+        static warm_dist = 0.05;
+        static flag_sleep = 1;
+        static flag_ghost = 2;
+        world = {};
+        cap = 0;
+        count = 0;
+        body_a = new Uint32Array(0);
+        body_b = new Uint32Array(0);
+        point = new Float32Array(0);
+        normal = new Float32Array(0);
+        ra = new Float32Array(0);
+        rb = new Float32Array(0);
+        t1 = new Float32Array(0);
+        t2 = new Float32Array(0);
+        an_a = new Float32Array(0);
+        an_b = new Float32Array(0);
+        at1_a = new Float32Array(0);
+        at1_b = new Float32Array(0);
+        at2_a = new Float32Array(0);
+        at2_b = new Float32Array(0);
+        mass_n = new Float32Array(0);
+        mass_t1 = new Float32Array(0);
+        mass_t2 = new Float32Array(0);
+        bias = new Float32Array(0);
+        pn = new Float32Array(0);
+        pt1 = new Float32Array(0);
+        pt2 = new Float32Array(0);
+        pt = new Float32Array(0);
+        live = new Uint8Array(0);
+        prev_count = 0;
+        prev_a = new Uint32Array(0);
+        prev_b = new Uint32Array(0);
+        prev_point = new Float32Array(0);
+        prev_pn = new Float32Array(0);
+        prev_pt = new Float32Array(0);
+        hash_cap = 0;
+        hash_head = new Int32Array(0);
+        hash_next = new Int32Array(0);
+        tmp = new Float32Array(3);
+        grow(need) {
+            if (need <= this.cap)
+                return;
+            let cap = Math.max(this.cap, 64);
+            while (cap < need)
+                cap *= 2;
+            this.cap = cap;
+            this.body_a = this.grow_u32(this.body_a, cap);
+            this.body_b = this.grow_u32(this.body_b, cap);
+            this.point = this.grow_f32(this.point, cap * 3);
+            this.ra = this.grow_f32(this.ra, cap * 3);
+            this.rb = this.grow_f32(this.rb, cap * 3);
+            this.t1 = this.grow_f32(this.t1, cap * 3);
+            this.t2 = this.grow_f32(this.t2, cap * 3);
+            this.an_a = this.grow_f32(this.an_a, cap * 3);
+            this.an_b = this.grow_f32(this.an_b, cap * 3);
+            this.at1_a = this.grow_f32(this.at1_a, cap * 3);
+            this.at1_b = this.grow_f32(this.at1_b, cap * 3);
+            this.at2_a = this.grow_f32(this.at2_a, cap * 3);
+            this.at2_b = this.grow_f32(this.at2_b, cap * 3);
+            this.mass_n = this.grow_f32(this.mass_n, cap);
+            this.mass_t1 = this.grow_f32(this.mass_t1, cap);
+            this.mass_t2 = this.grow_f32(this.mass_t2, cap);
+            this.bias = this.grow_f32(this.bias, cap);
+            this.pn = this.grow_f32(this.pn, cap);
+            this.pt1 = this.grow_f32(this.pt1, cap);
+            this.pt2 = this.grow_f32(this.pt2, cap);
+            this.pt = this.grow_f32(this.pt, cap * 3);
+            const live = new Uint8Array(cap);
+            live.set(this.live);
+            this.live = live;
+            this.prev_a = this.grow_u32(this.prev_a, cap);
+            this.prev_b = this.grow_u32(this.prev_b, cap);
+            this.prev_point = this.grow_f32(this.prev_point, cap * 3);
+            this.prev_pn = this.grow_f32(this.prev_pn, cap);
+            this.prev_pt = this.grow_f32(this.prev_pt, cap * 3);
+            const next = new Int32Array(cap);
+            next.set(this.hash_next);
+            this.hash_next = next;
+        }
+        grow_f32(prev, len) {
+            const next = new Float32Array(len);
+            next.set(prev);
+            return next;
+        }
+        grow_u32(prev, len) {
+            const next = new Uint32Array(len);
+            next.set(prev);
+            return next;
+        }
+        solve(world, narrow, dt) {
+            this.world = world;
+            const count = narrow.contact_count;
+            this.grow(count);
+            this.count = count;
+            this.normal = narrow.contact_normal;
+            this.hash_build();
+            this.prepare(narrow, dt);
+            const iterations = world.iterations();
+            const friction = world.friction();
+            for (let it = 0; it < iterations; ++it)
+                this.iterate(friction);
+            this.remember();
+            return count;
+        }
+        hash_of(a, b) {
+            return (Math.imul(a, 73856093) ^ Math.imul(b, 19349663)) & (this.hash_cap - 1);
+        }
+        hash_build() {
+            const need = this.prev_count * 2;
+            if (this.hash_cap < need) {
+                let cap = Math.max(this.hash_cap, 64);
+                while (cap < need)
+                    cap *= 2;
+                this.hash_cap = cap;
+                this.hash_head = new Int32Array(cap);
+            }
+            const head = this.hash_head, next = this.hash_next;
+            head.fill(-1, 0, this.hash_cap);
+            if (this.hash_cap === 0)
+                return;
+            const prev_a = this.prev_a, prev_b = this.prev_b;
+            for (let j = 0; j < this.prev_count; ++j) {
+                const h = this.hash_of(prev_a[j], prev_b[j]);
+                next[j] = head[h];
+                head[h] = j;
+            }
+        }
+        prev_find(a, b, px, py, pz) {
+            if (this.hash_cap === 0)
+                return -1;
+            const prev_a = this.prev_a, prev_b = this.prev_b, prev_point = this.prev_point, next = this.hash_next;
+            let best = -1;
+            let best_dist = $bog_gamengine_phys3_solve.warm_dist * $bog_gamengine_phys3_solve.warm_dist;
+            for (let j = this.hash_head[this.hash_of(a, b)]; j >= 0; j = next[j]) {
+                if (prev_a[j] !== a || prev_b[j] !== b)
+                    continue;
+                const dx = prev_point[j * 3] - px, dy = prev_point[j * 3 + 1] - py, dz = prev_point[j * 3 + 2] - pz;
+                const dist = dx * dx + dy * dy + dz * dz;
+                if (dist >= best_dist)
+                    continue;
+                best_dist = dist;
+                best = j;
+            }
+            return best;
+        }
+        inertia_apply(i, vx, vy, vz, out, off) {
+            const rot = this.world.rot, inv = this.world.inv_inertia;
+            const qx = rot[i * 4], qy = rot[i * 4 + 1], qz = rot[i * 4 + 2], qw = rot[i * 4 + 3];
+            let tx = 2 * (qz * vy - qy * vz);
+            let ty = 2 * (qx * vz - qz * vx);
+            let tz = 2 * (qy * vx - qx * vy);
+            const lx = (vx + qw * tx + qz * ty - qy * tz) * inv[i * 3];
+            const ly = (vy + qw * ty + qx * tz - qz * tx) * inv[i * 3 + 1];
+            const lz = (vz + qw * tz + qy * tx - qx * ty) * inv[i * 3 + 2];
+            tx = 2 * (qy * lz - qz * ly);
+            ty = 2 * (qz * lx - qx * lz);
+            tz = 2 * (qx * ly - qy * lx);
+            out[off] = lx + qw * tx + qy * tz - qz * ty;
+            out[off + 1] = ly + qw * ty + qz * tx - qx * tz;
+            out[off + 2] = lz + qw * tz + qx * ty - qy * tx;
+        }
+        axis_mass(k, a, b, ax, ay, az, out_a, out_b) {
+            const ra = this.ra, rb = this.rb, world = this.world;
+            const k3 = k * 3;
+            const rax = ra[k3], ray = ra[k3 + 1], raz = ra[k3 + 2];
+            const rbx = rb[k3], rby = rb[k3 + 1], rbz = rb[k3 + 2];
+            const cax = ray * az - raz * ay, cay = raz * ax - rax * az, caz = rax * ay - ray * ax;
+            const cbx = rby * az - rbz * ay, cby = rbz * ax - rbx * az, cbz = rbx * ay - rby * ax;
+            this.inertia_apply(a, cax, cay, caz, out_a, k3);
+            this.inertia_apply(b, cbx, cby, cbz, out_b, k3);
+            const sum = world.inv_mass[a] + world.inv_mass[b]
+                + cax * out_a[k3] + cay * out_a[k3 + 1] + caz * out_a[k3 + 2]
+                + cbx * out_b[k3] + cby * out_b[k3 + 1] + cbz * out_b[k3 + 2];
+            return sum > 0 ? 1 / sum : 0;
+        }
+        wake(i) {
+            this.world.flags[i] &= ~$bog_gamengine_phys3_solve.flag_sleep;
+            this.world.sleep_timer[i] = 0;
+        }
+        prepare(narrow, dt) {
+            const world = this.world;
+            const pos = world.pos, inv_mass = world.inv_mass, flags = world.flags;
+            const ca = narrow.contact_a, cb = narrow.contact_b, cp = narrow.contact_point, cn = narrow.contact_normal, cd = narrow.contact_depth;
+            const body_a = this.body_a, body_b = this.body_b, point = this.point, live = this.live;
+            const ra = this.ra, rb = this.rb, t1 = this.t1, t2 = this.t2, tmp = this.tmp;
+            const pn = this.pn, pt1 = this.pt1, pt2 = this.pt2, bias = this.bias;
+            const prev_pn = this.prev_pn, prev_pt = this.prev_pt;
+            const sleep = $bog_gamengine_phys3_solve.flag_sleep, ghost = $bog_gamengine_phys3_solve.flag_ghost;
+            const restitution = world.restitution();
+            const bounce_speed = $bog_gamengine_phys3_solve.bounce_speed;
+            const beta_dt = $bog_gamengine_phys3_solve.beta / dt;
+            const slop = $bog_gamengine_phys3_solve.slop;
+            for (let k = 0; k < this.count; ++k) {
+                const k3 = k * 3;
+                const a = ca[k], b = cb[k];
+                body_a[k] = a;
+                body_b[k] = b;
+                const px = cp[k3], py = cp[k3 + 1], pz = cp[k3 + 2];
+                point[k3] = px;
+                point[k3 + 1] = py;
+                point[k3 + 2] = pz;
+                live[k] = 0;
+                pn[k] = 0;
+                pt1[k] = 0;
+                pt2[k] = 0;
+                const fa = flags[a], fb = flags[b];
+                if ((fa | fb) & ghost)
+                    continue;
+                const ima = inv_mass[a], imb = inv_mass[b];
+                if (ima === 0 && imb === 0)
+                    continue;
+                const sa = fa & sleep, sb = fb & sleep;
+                if (sa && sb)
+                    continue;
+                if (sa)
+                    this.wake(a);
+                if (sb)
+                    this.wake(b);
+                live[k] = 1;
+                ra[k3] = px - pos[a * 3];
+                ra[k3 + 1] = py - pos[a * 3 + 1];
+                ra[k3 + 2] = pz - pos[a * 3 + 2];
+                rb[k3] = px - pos[b * 3];
+                rb[k3 + 1] = py - pos[b * 3 + 1];
+                rb[k3 + 2] = pz - pos[b * 3 + 2];
+                const nx = cn[k3], ny = cn[k3 + 1], nz = cn[k3 + 2];
+                this.mass_n[k] = this.axis_mass(k, a, b, nx, ny, nz, this.an_a, this.an_b);
+                let ux = 0, uy = 0, uz = 0;
+                if (Math.abs(nx) >= 0.57735) {
+                    ux = ny;
+                    uy = -nx;
+                }
+                else {
+                    uy = nz;
+                    uz = -ny;
+                }
+                const ul = 1 / Math.sqrt(ux * ux + uy * uy + uz * uz);
+                ux *= ul;
+                uy *= ul;
+                uz *= ul;
+                t1[k3] = ux;
+                t1[k3 + 1] = uy;
+                t1[k3 + 2] = uz;
+                const vx = ny * uz - nz * uy, vy = nz * ux - nx * uz, vz = nx * uy - ny * ux;
+                t2[k3] = vx;
+                t2[k3 + 1] = vy;
+                t2[k3 + 2] = vz;
+                this.mass_t1[k] = this.axis_mass(k, a, b, ux, uy, uz, this.at1_a, this.at1_b);
+                this.mass_t2[k] = this.axis_mass(k, a, b, vx, vy, vz, this.at2_a, this.at2_b);
+                this.rel_vel(k, a, b);
+                const vn = tmp[0] * nx + tmp[1] * ny + tmp[2] * nz;
+                const bounce = vn < -bounce_speed ? -restitution * vn : 0;
+                let baum = beta_dt * (cd[k] - slop);
+                if (baum < 0)
+                    baum = 0;
+                bias[k] = bounce > baum ? bounce : baum;
+                const j = this.prev_find(a, b, px, py, pz);
+                if (j < 0)
+                    continue;
+                const ln = prev_pn[j];
+                const ptx = prev_pt[j * 3], pty = prev_pt[j * 3 + 1], ptz = prev_pt[j * 3 + 2];
+                const l1 = ptx * ux + pty * uy + ptz * uz;
+                const l2 = ptx * vx + pty * vy + ptz * vz;
+                pn[k] = ln;
+                pt1[k] = l1;
+                pt2[k] = l2;
+                this.apply(k, a, b, cn, this.an_a, this.an_b, ln);
+                this.apply(k, a, b, t1, this.at1_a, this.at1_b, l1);
+                this.apply(k, a, b, t2, this.at2_a, this.at2_b, l2);
+            }
+        }
+        rel_vel(k, a, b) {
+            const vel = this.world.vel, ang = this.world.ang, ra = this.ra, rb = this.rb, out = this.tmp;
+            const a3 = a * 3, b3 = b * 3, k3 = k * 3;
+            const wax = ang[a3], way = ang[a3 + 1], waz = ang[a3 + 2];
+            const wbx = ang[b3], wby = ang[b3 + 1], wbz = ang[b3 + 2];
+            const rax = ra[k3], ray = ra[k3 + 1], raz = ra[k3 + 2];
+            const rbx = rb[k3], rby = rb[k3 + 1], rbz = rb[k3 + 2];
+            out[0] = vel[b3] + (wby * rbz - wbz * rby) - vel[a3] - (way * raz - waz * ray);
+            out[1] = vel[b3 + 1] + (wbz * rbx - wbx * rbz) - vel[a3 + 1] - (waz * rax - wax * raz);
+            out[2] = vel[b3 + 2] + (wbx * rby - wby * rbx) - vel[a3 + 2] - (wax * ray - way * rax);
+            return out;
+        }
+        apply(k, a, b, axis, ang_a, ang_b, lambda) {
+            if (lambda === 0)
+                return;
+            const vel = this.world.vel, ang = this.world.ang, inv_mass = this.world.inv_mass;
+            const a3 = a * 3, b3 = b * 3, k3 = k * 3;
+            const ima = inv_mass[a] * lambda, imb = inv_mass[b] * lambda;
+            vel[a3] -= axis[k3] * ima;
+            vel[a3 + 1] -= axis[k3 + 1] * ima;
+            vel[a3 + 2] -= axis[k3 + 2] * ima;
+            ang[a3] -= ang_a[k3] * lambda;
+            ang[a3 + 1] -= ang_a[k3 + 1] * lambda;
+            ang[a3 + 2] -= ang_a[k3 + 2] * lambda;
+            vel[b3] += axis[k3] * imb;
+            vel[b3 + 1] += axis[k3 + 1] * imb;
+            vel[b3 + 2] += axis[k3 + 2] * imb;
+            ang[b3] += ang_b[k3] * lambda;
+            ang[b3 + 1] += ang_b[k3 + 1] * lambda;
+            ang[b3 + 2] += ang_b[k3 + 2] * lambda;
+        }
+        iterate(friction) {
+            const body_a = this.body_a, body_b = this.body_b, live = this.live, tmp = this.tmp;
+            const normal = this.normal, t1 = this.t1, t2 = this.t2;
+            const mass_n = this.mass_n, mass_t1 = this.mass_t1, mass_t2 = this.mass_t2, bias = this.bias;
+            const pn = this.pn, pt1 = this.pt1, pt2 = this.pt2;
+            for (let k = 0; k < this.count; ++k) {
+                if (!live[k])
+                    continue;
+                const k3 = k * 3;
+                const a = body_a[k], b = body_b[k];
+                const max = friction * pn[k];
+                this.rel_vel(k, a, b);
+                const vt1 = tmp[0] * t1[k3] + tmp[1] * t1[k3 + 1] + tmp[2] * t1[k3 + 2];
+                const old1 = pt1[k];
+                let new1 = old1 - mass_t1[k] * vt1;
+                new1 = new1 < -max ? -max : new1 > max ? max : new1;
+                pt1[k] = new1;
+                this.apply(k, a, b, t1, this.at1_a, this.at1_b, new1 - old1);
+                this.rel_vel(k, a, b);
+                const vt2 = tmp[0] * t2[k3] + tmp[1] * t2[k3 + 1] + tmp[2] * t2[k3 + 2];
+                const old2 = pt2[k];
+                let new2 = old2 - mass_t2[k] * vt2;
+                new2 = new2 < -max ? -max : new2 > max ? max : new2;
+                pt2[k] = new2;
+                this.apply(k, a, b, t2, this.at2_a, this.at2_b, new2 - old2);
+                this.rel_vel(k, a, b);
+                const vn = tmp[0] * normal[k3] + tmp[1] * normal[k3 + 1] + tmp[2] * normal[k3 + 2];
+                const old = pn[k];
+                let next = old + mass_n[k] * (bias[k] - vn);
+                if (next < 0)
+                    next = 0;
+                pn[k] = next;
+                this.apply(k, a, b, normal, this.an_a, this.an_b, next - old);
+            }
+        }
+        remember() {
+            const pt = this.pt, pt1 = this.pt1, pt2 = this.pt2, t1 = this.t1, t2 = this.t2;
+            for (let k = 0; k < this.count; ++k) {
+                const k3 = k * 3;
+                pt[k3] = t1[k3] * pt1[k] + t2[k3] * pt2[k];
+                pt[k3 + 1] = t1[k3 + 1] * pt1[k] + t2[k3 + 1] * pt2[k];
+                pt[k3 + 2] = t1[k3 + 2] * pt1[k] + t2[k3 + 2] * pt2[k];
+            }
+            const a = this.body_a;
+            this.body_a = this.prev_a;
+            this.prev_a = a;
+            const b = this.body_b;
+            this.body_b = this.prev_b;
+            this.prev_b = b;
+            const point = this.point;
+            this.point = this.prev_point;
+            this.prev_point = point;
+            const pn = this.pn;
+            this.pn = this.prev_pn;
+            this.prev_pn = pn;
+            this.pt = this.prev_pt;
+            this.prev_pt = pt;
+            this.prev_count = this.count;
+        }
+    }
+    $.$bog_gamengine_phys3_solve = $bog_gamengine_phys3_solve;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     function $bog_gamengine_vec_add(out, a, b) {
         for (let i = 0; i < a.length; ++i)
             out[i] = a[i] + b[i];
@@ -10947,6 +12377,8 @@ var $;
         static shape_hull = 4;
         static flag_sleep = 1;
         static flag_ghost = 2;
+        static sleep_speed = 0.05;
+        static sleep_time = 0.5;
         cap = 0;
         count = 0;
         pos = new Float32Array(0);
@@ -10961,6 +12393,7 @@ var $;
         flags = new Uint8Array(0);
         trans = new Float32Array(0);
         aabb = new Float32Array(0);
+        sleep_timer = new Float32Array(0);
         hull_off = new Uint32Array(0);
         hull_count = new Uint32Array(0);
         hull = new Float32Array(0);
@@ -10972,8 +12405,19 @@ var $;
         tmp_scale = new Float32Array(3);
         tmp_point = new Float32Array(3);
         broad = new $bog_gamengine_phys3_broad;
+        narrow = new $bog_gamengine_phys3_narrow;
+        solve = new $bog_gamengine_phys3_solve;
         gravity(next) {
             return next ?? new Float32Array([0, -9.81, 0]);
+        }
+        friction(next) {
+            return next ?? 0.5;
+        }
+        restitution(next) {
+            return next ?? 0;
+        }
+        iterations(next) {
+            return next ?? 8;
         }
         grow(need) {
             if (need <= this.cap)
@@ -10992,6 +12436,7 @@ var $;
             this.size = this.grow_f32(this.size, cap * 3);
             this.trans = this.grow_f32(this.trans, cap * 16);
             this.aabb = this.grow_f32(this.aabb, cap * 6);
+            this.sleep_timer = this.grow_f32(this.sleep_timer, cap);
             const shape = new Uint8Array(cap);
             shape.set(this.shape);
             this.shape = shape;
@@ -11034,6 +12479,7 @@ var $;
             this.vel.fill(0, i * 3, i * 3 + 3);
             this.ang.fill(0, i * 3, i * 3 + 3);
             this.flags[i] = 0;
+            this.sleep_timer[i] = 0;
             this.hull_off[i] = 0;
             this.hull_count[i] = 0;
             this.mass_set(i, mass);
@@ -11094,6 +12540,7 @@ var $;
                 this.flags[index] = this.flags[last];
                 this.trans.copyWithin(index * 16, last * 16, last * 16 + 16);
                 this.aabb.copyWithin(index * 6, last * 6, last * 6 + 6);
+                this.sleep_timer[index] = this.sleep_timer[last];
                 this.hull_off[index] = this.hull_off[last];
                 this.hull_count[index] = this.hull_count[last];
             }
@@ -11144,18 +12591,42 @@ var $;
             const count = this.count;
             const gravity = this.gravity();
             const gx = gravity[0] * dt, gy = gravity[1] * dt, gz = gravity[2] * dt;
-            const pos = this.pos, vel = this.vel;
-            const inv_mass = this.inv_mass, flags = this.flags;
+            const pos = this.pos, vel = this.vel, ang = this.ang;
+            const inv_mass = this.inv_mass, flags = this.flags, timer = this.sleep_timer;
             const pos_view = this.pos_view, rot_view = this.rot_view, ang_view = this.ang_view, trans_view = this.trans_view;
             const sleep = $bog_gamengine_phys3.flag_sleep;
+            for (let i = 0; i < count; ++i) {
+                if (flags[i] & sleep || !(inv_mass[i] > 0))
+                    continue;
+                const p = i * 3;
+                vel[p] += gx;
+                vel[p + 1] += gy;
+                vel[p + 2] += gz;
+            }
+            this.bounds();
+            this.broad.find(this);
+            this.narrow.collide(this, this.broad.pairs, this.broad.pair_count);
+            this.solve.solve(this, this.narrow, dt);
+            const speed2 = $bog_gamengine_phys3.sleep_speed * $bog_gamengine_phys3.sleep_speed;
+            const sleep_time = $bog_gamengine_phys3.sleep_time;
             for (let i = 0; i < count; ++i) {
                 if (flags[i] & sleep)
                     continue;
                 const p = i * 3;
                 if (inv_mass[i] > 0) {
-                    vel[p] += gx;
-                    vel[p + 1] += gy;
-                    vel[p + 2] += gz;
+                    const v2 = vel[p] * vel[p] + vel[p + 1] * vel[p + 1] + vel[p + 2] * vel[p + 2];
+                    const w2 = ang[p] * ang[p] + ang[p + 1] * ang[p + 1] + ang[p + 2] * ang[p + 2];
+                    if (v2 < speed2 && w2 < speed2) {
+                        timer[i] += dt;
+                        if (timer[i] >= sleep_time) {
+                            flags[i] |= sleep;
+                            vel.fill(0, p, p + 3);
+                            ang.fill(0, p, p + 3);
+                            continue;
+                        }
+                    }
+                    else
+                        timer[i] = 0;
                     pos[p] += vel[p] * dt;
                     pos[p + 1] += vel[p + 1] * dt;
                     pos[p + 2] += vel[p + 2] * dt;
@@ -11163,8 +12634,6 @@ var $;
                 }
                 $bog_gamengine_vec_quat_to_mat4(trans_view[i], rot_view[i], pos_view[i], this.scale_of(i));
             }
-            this.bounds();
-            this.broad.find(this);
         }
         bounds() {
             const count = this.count;
@@ -11257,6 +12726,15 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_phys3.prototype, "gravity", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_phys3.prototype, "friction", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_phys3.prototype, "restitution", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_phys3.prototype, "iterations", null);
     $.$bog_gamengine_phys3 = $bog_gamengine_phys3;
 })($ || ($ = {}));
 
@@ -19021,6 +20499,14 @@ var $;
             $mol_assert_equal(world.hull_count[b], 3);
             $mol_assert_equal([...world.hull.subarray(6, 9)], [0, 1, 0]);
         },
+        'hull of four tetrahedron points gives aabb by these points'() {
+            const world = new $bog_gamengine_phys3;
+            const a = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3));
+            const b = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array([10, 20, 30]));
+            world.hull_points(a, new Float32Array([5, 5, 5, 6, 6, 6]));
+            world.hull_points(b, new Float32Array([0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3]));
+            $mol_assert_equal([...world.aabb.subarray(b * 6, b * 6 + 6)], [10, 20, 30, 11, 22, 33]);
+        },
     });
 })($ || ($ = {}));
 
@@ -19337,6 +20823,7 @@ var $;
             const i = box(world, 1, 3, 0, 0);
             world.vel[i * 3] = -2;
             world.step(1);
+            world.step(1);
             $mol_assert_equal(world.aabb[i * 6], 0.5);
             $mol_assert_equal(world.broad.pair_count, 1);
         },
@@ -19349,6 +20836,343 @@ var $;
             world.remove(1);
             $mol_assert_equal(world.broad.find(world), 1);
             $mol_assert_equal(pairs_of(world.broad), [0, 1]);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function near(actual, expected) {
+        if (Math.abs(actual - expected) < 1e-4)
+            return;
+        $mol_fail(new Error(`${actual} ≠ ${expected}`));
+    }
+    function sphere(world, r, x, y, z) {
+        return world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([r, 0, 0]), 1, new Float32Array([x, y, z]));
+    }
+    function box(world, h, x, y, z, rot) {
+        return world.add($bog_gamengine_phys3.shape_box, new Float32Array([h, h, h]), 1, new Float32Array([x, y, z]), rot);
+    }
+    function capsule(world, r, h, x, y, z, rot) {
+        return world.add($bog_gamengine_phys3.shape_capsule, new Float32Array([r, h, 0]), 1, new Float32Array([x, y, z]), rot);
+    }
+    function floor(world) {
+        return world.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3));
+    }
+    function tetra(world, x, y, z) {
+        const i = world.add($bog_gamengine_phys3.shape_hull, new Float32Array([1, 1, 1]), 1, new Float32Array([x, y, z]));
+        world.hull_points(i, new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]));
+        return i;
+    }
+    function around_z(angle) {
+        return $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 0, 1]), angle);
+    }
+    function collide(world) {
+        const narrow = new $bog_gamengine_phys3_narrow;
+        narrow.collide(world, new Uint32Array([0, 1]), 1);
+        return narrow;
+    }
+    function normal_is(narrow, k, x, y, z) {
+        near(narrow.contact_normal[k * 3], x);
+        near(narrow.contact_normal[k * 3 + 1], y);
+        near(narrow.contact_normal[k * 3 + 2], z);
+    }
+    $mol_test({
+        'two spheres of radius 1 at distance 1.5 give depth 0.5 along the center line'() {
+            const world = new $bog_gamengine_phys3;
+            sphere(world, 1, 0, 0, 0);
+            sphere(world, 1, 1.5, 0, 0);
+            const narrow = collide(world);
+            $mol_assert_equal(narrow.contact_count, 1);
+            $mol_assert_equal(narrow.contact_a[0], 0);
+            $mol_assert_equal(narrow.contact_b[0], 1);
+            near(narrow.contact_depth[0], 0.5);
+            normal_is(narrow, 0, 1, 0, 0);
+            near(narrow.contact_point[0], 0.75);
+        },
+        'sphere above plane gives no contact'() {
+            const world = new $bog_gamengine_phys3;
+            sphere(world, 1, 0, 1.5, 0);
+            floor(world);
+            $mol_assert_equal(collide(world).contact_count, 0);
+        },
+        'sphere sunk 0.2 into plane gives depth 0.2 and plane normal'() {
+            const world = new $bog_gamengine_phys3;
+            sphere(world, 1, 0, 0.8, 0);
+            floor(world);
+            const narrow = collide(world);
+            $mol_assert_equal(narrow.contact_count, 1);
+            near(narrow.contact_depth[0], 0.2);
+            normal_is(narrow, 0, 0, -1, 0);
+        },
+        'plane first in pair gives normal from plane to sphere'() {
+            const world = new $bog_gamengine_phys3;
+            floor(world);
+            sphere(world, 1, 0, 0.8, 0);
+            const narrow = collide(world);
+            $mol_assert_equal(narrow.contact_count, 1);
+            $mol_assert_equal(narrow.contact_a[0], 0);
+            $mol_assert_equal(narrow.contact_b[0], 1);
+            normal_is(narrow, 0, 0, 1, 0);
+        },
+        'unit box centered 0.4 above plane gives four points of depth 0.1'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 0.5, 0, 0.4, 0);
+            floor(world);
+            const narrow = collide(world);
+            $mol_assert_equal(narrow.contact_count, 4);
+            for (let k = 0; k < 4; ++k) {
+                near(narrow.contact_depth[k], 0.1);
+                normal_is(narrow, k, 0, -1, 0);
+                near(narrow.contact_point[k * 3 + 1], -0.05);
+            }
+        },
+        'boxes overlapping 0.2 along X give four points with normal X and depth 0.2'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 0.5, 0, 0, 0);
+            box(world, 0.5, 0.8, 0, 0);
+            const narrow = collide(world);
+            $mol_assert_equal(narrow.contact_count, 4);
+            for (let k = 0; k < 4; ++k) {
+                near(narrow.contact_depth[k], 0.2);
+                normal_is(narrow, k, 1, 0, 0);
+                near(narrow.contact_point[k * 3], 0.4);
+            }
+        },
+        'box rotated 45 degrees standing on an edge gives two points'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 0.5, 0, 0.6, 0, around_z(Math.PI / 4));
+            floor(world);
+            const narrow = collide(world);
+            $mol_assert_equal(narrow.contact_count, 2);
+            near(narrow.contact_depth[0], Math.SQRT1_2 - 0.6);
+            near(narrow.contact_depth[1], Math.SQRT1_2 - 0.6);
+            normal_is(narrow, 0, 0, -1, 0);
+        },
+        'rotated boxes meeting edge to edge give one point'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 0.5, 0, 0, 0, around_z(Math.PI / 4));
+            box(world, 0.5, 0, 1.3, 0, $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([1, 0, 0]), Math.PI / 4));
+            const narrow = collide(world);
+            $mol_assert_equal(narrow.contact_count, 1);
+            near(narrow.contact_depth[0], Math.SQRT2 - 1.3);
+            normal_is(narrow, 0, 0, 1, 0);
+            near(narrow.contact_point[0], 0);
+            near(narrow.contact_point[2], 0);
+        },
+        'sphere against box face'() {
+            const world = new $bog_gamengine_phys3;
+            sphere(world, 0.5, 0.9, 0, 0);
+            box(world, 0.5, 0, 0, 0);
+            const narrow = collide(world);
+            $mol_assert_equal(narrow.contact_count, 1);
+            near(narrow.contact_depth[0], 0.1);
+            normal_is(narrow, 0, -1, 0, 0);
+            near(narrow.contact_point[0], 0.45);
+        },
+        'sphere against box corner'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 0.5, 0, 0, 0);
+            sphere(world, 0.5, 0.7, 0.7, 0.7);
+            const narrow = collide(world);
+            $mol_assert_equal(narrow.contact_count, 1);
+            near(narrow.contact_depth[0], 0.5 - 0.2 * Math.sqrt(3));
+            const k = 1 / Math.sqrt(3);
+            normal_is(narrow, 0, k, k, k);
+        },
+        'capsule lying on plane gives two points'() {
+            const world = new $bog_gamengine_phys3;
+            capsule(world, 0.3, 0.5, 0, 0.2, 0, around_z(Math.PI / 2));
+            floor(world);
+            const narrow = collide(world);
+            $mol_assert_equal(narrow.contact_count, 2);
+            near(narrow.contact_depth[0], 0.1);
+            near(narrow.contact_depth[1], 0.1);
+            normal_is(narrow, 0, 0, -1, 0);
+            near(Math.abs(narrow.contact_point[0]), 0.5);
+        },
+        'crossed capsules give one point at the crossing'() {
+            const world = new $bog_gamengine_phys3;
+            capsule(world, 0.3, 1, 0, 0, 0);
+            capsule(world, 0.3, 1, 0.5, 0, 0, $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([1, 0, 0]), Math.PI / 2));
+            const narrow = collide(world);
+            $mol_assert_equal(narrow.contact_count, 1);
+            near(narrow.contact_depth[0], 0.1);
+            normal_is(narrow, 0, 1, 0, 0);
+            near(narrow.contact_point[0], 0.25);
+        },
+        'separated tetrahedra give no contact'() {
+            const world = new $bog_gamengine_phys3;
+            tetra(world, 0, 0, 0);
+            tetra(world, 3, 3, 3);
+            $mol_assert_equal(collide(world).contact_count, 0);
+        },
+        'overlapping tetrahedra give depth and normal from a to b'() {
+            const world = new $bog_gamengine_phys3;
+            tetra(world, 0, 0, 0);
+            tetra(world, 0.5, 0, 0);
+            const narrow = collide(world);
+            $mol_assert_equal(narrow.contact_count, 1);
+            const k = 1 / Math.sqrt(3);
+            near(narrow.contact_depth[0], 0.5 * k);
+            normal_is(narrow, 0, k, k, k);
+        },
+        'ghost body still gets a contact'() {
+            const world = new $bog_gamengine_phys3;
+            sphere(world, 1, 0, 0, 0);
+            const g = sphere(world, 1, 1.5, 0, 0);
+            world.flags[g] = $bog_gamengine_phys3.flag_ghost;
+            $mol_assert_equal(collide(world).contact_count, 1);
+        },
+        'contacts of a second collide overwrite the first'() {
+            const world = new $bog_gamengine_phys3;
+            sphere(world, 1, 0, 0, 0);
+            sphere(world, 1, 1.5, 0, 0);
+            const narrow = collide(world);
+            narrow.collide(world, new Uint32Array([0, 1]), 1);
+            $mol_assert_equal(narrow.contact_count, 1);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    const dt = 1 / 60;
+    function floor(world, nx = 0, ny = 1, nz = 0) {
+        return world.add($bog_gamengine_phys3.shape_plane, new Float32Array([nx, ny, nz]), 0, new Float32Array(3));
+    }
+    function box(world, x, y, z, rot) {
+        return world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 1, new Float32Array([x, y, z]), rot);
+    }
+    function sphere(world, x, y, z) {
+        return world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([0.5, 0, 0]), 1, new Float32Array([x, y, z]));
+    }
+    function run(world, seconds) {
+        const steps = Math.round(seconds / dt);
+        for (let k = 0; k < steps; ++k)
+            world.step(dt);
+    }
+    function speed(world, i) {
+        return $bog_gamengine_vec_len(world.vel.subarray(i * 3, i * 3 + 3));
+    }
+    function slope(angle) {
+        const world = new $bog_gamengine_phys3;
+        const rot = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 0, 1]), angle);
+        const nx = -Math.sin(angle), ny = Math.cos(angle);
+        floor(world, nx, ny, 0);
+        const i = box(world, nx * 0.5, ny * 0.5, 0, rot);
+        return { world, i };
+    }
+    $mol_test({
+        'box dropped from 2 rests on the plane after 3 s and sleeps'() {
+            const world = new $bog_gamengine_phys3;
+            floor(world);
+            const i = box(world, 0, 2, 0);
+            run(world, 3);
+            $mol_assert_ok(Math.abs(world.pos[i * 3 + 1] - 0.5) < 0.01);
+            $mol_assert_ok(speed(world, i) < 0.01);
+            $mol_assert_ok(world.flags[i] & $bog_gamengine_phys3.flag_sleep);
+        },
+        'box on a 20 degree slope with friction 0.5 stays'() {
+            const { world, i } = slope(20 * Math.PI / 180);
+            const x0 = world.pos[i * 3], y0 = world.pos[i * 3 + 1];
+            run(world, 2);
+            $mol_assert_ok(Math.abs(world.pos[i * 3] - x0) < 0.02);
+            $mol_assert_ok(Math.abs(world.pos[i * 3 + 1] - y0) < 0.02);
+        },
+        'box on a 40 degree slope slides faster and faster'() {
+            const { world, i } = slope(40 * Math.PI / 180);
+            run(world, 0.5);
+            const first = speed(world, i);
+            run(world, 0.5);
+            const second = speed(world, i);
+            $mol_assert_ok(first > 0.5);
+            $mol_assert_ok(second > first + 0.5);
+        },
+        'bouncy sphere dropped from 1 rises above 0.5'() {
+            const world = new $bog_gamengine_phys3;
+            world.restitution(0.8);
+            floor(world);
+            const i = sphere(world, 0, 1.5, 0);
+            let top = 0, bounced = false;
+            for (let k = 0; k < 120; ++k) {
+                world.step(dt);
+                if (world.vel[i * 3 + 1] > 0)
+                    bounced = true;
+                if (bounced && world.pos[i * 3 + 1] > top)
+                    top = world.pos[i * 3 + 1];
+            }
+            $mol_assert_ok(top - 0.5 > 0.5);
+        },
+        'stack of three boxes stands 3 s without drifting'() {
+            const world = new $bog_gamengine_phys3;
+            floor(world);
+            const ids = [box(world, 0, 0.5, 0), box(world, 0, 1.51, 0), box(world, 0, 2.52, 0)];
+            run(world, 3);
+            for (const i of ids) {
+                $mol_assert_ok(Math.abs(world.pos[i * 3]) < 0.02);
+                $mol_assert_ok(Math.abs(world.pos[i * 3 + 2]) < 0.02);
+            }
+            $mol_assert_ok(world.pos[ids[2] * 3 + 1] > 2.4);
+        },
+        'ghost neither pushes nor is pushed but has a contact'() {
+            const world = new $bog_gamengine_phys3;
+            world.gravity(new Float32Array(3));
+            const a = sphere(world, 0, 0, 0);
+            const g = sphere(world, 0.8, 0, 0);
+            world.flags[g] |= $bog_gamengine_phys3.flag_ghost;
+            world.vel[a * 3] = 1;
+            world.step(dt);
+            $mol_assert_equal(world.narrow.contact_count, 1);
+            $mol_assert_equal(world.vel[a * 3], 1);
+            $mol_assert_equal(world.vel[g * 3], 0);
+        },
+        'two boxes collide head-on and keep total momentum'() {
+            const world = new $bog_gamengine_phys3;
+            world.gravity(new Float32Array(3));
+            world.restitution(1);
+            const a = box(world, -1.5, 0, 0);
+            const b = box(world, 1.5, 0, 0);
+            world.vel[a * 3] = 6;
+            world.vel[b * 3] = -2;
+            run(world, 1);
+            $mol_assert_ok(world.vel[a * 3] < 0);
+            $mol_assert_ok(world.vel[b * 3] > 0);
+            $mol_assert_ok(Math.abs(world.vel[a * 3] + world.vel[b * 3] - 4) < 0.2);
+        },
+        'warm start keeps the normal impulse of a resting box between frames'() {
+            const world = new $bog_gamengine_phys3;
+            floor(world);
+            box(world, 0, 0.497, 0);
+            world.step(dt);
+            world.step(dt);
+            let sum = 0;
+            for (let k = 0; k < world.solve.prev_count; ++k)
+                sum += world.solve.prev_pn[k];
+            $mol_assert_ok(Math.abs(sum - 9.81 * dt) < 1e-3);
+        },
+        'thousand boxes in a 10x10x10 pile settle above the plane within 20 ms per step'() {
+            const world = new $bog_gamengine_phys3;
+            floor(world);
+            for (let x = 0; x < 10; ++x)
+                for (let y = 0; y < 10; ++y)
+                    for (let z = 0; z < 10; ++z) {
+                        box(world, x * 1.1 - 5, y * 1.1 + 0.6, z * 1.1 - 5);
+                    }
+            const steps = Math.round(3 / dt);
+            let total = 0;
+            for (let k = 0; k < steps; ++k) {
+                const start = performance.now();
+                world.step(dt);
+                total += performance.now() - start;
+            }
+            for (let i = 1; i < world.count; ++i)
+                $mol_assert_ok(world.pos[i * 3 + 1] > 0.4);
+            $mol_assert_ok(total / steps < 20);
         },
     });
 })($ || ($ = {}));

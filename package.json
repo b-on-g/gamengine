@@ -218,6 +218,8 @@
     "$bog_gamengine_phys_tile",
     "$bog_gamengine_phys3",
     "$bog_gamengine_phys3_broad",
+    "$bog_gamengine_phys3_narrow",
+    "$bog_gamengine_phys3_solve",
     "$bog_gamengine_vec",
     "$bog_gamengine_input",
     "$bog_gamengine_key",
