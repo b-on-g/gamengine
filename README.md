@@ -9,5 +9,11 @@
 - [PLAN.md](./PLAN.md): этапы, задачи под одного молера, приёмка.
 - [STYLE.md](./STYLE.md): как писать код именно в этом паке.
 
+Демо: https://b-on-g.github.io/gamengine/ (страницы [quad](https://b-on-g.github.io/gamengine/#!demo=quad),
+[flat](https://b-on-g.github.io/gamengine/#!demo=flat), [room](https://b-on-g.github.io/gamengine/#!demo=room)).
+Деплой красный до вливания [mol#897](https://github.com/hyoo-ru/mam_mol/pull/897).
+
+Управление: WASD и стрелки, Q/E поворот в комнате, клик по монете, звук после первого клика.
+
 Единственная страница пака: `demo/index.html`. Донор кода: пак `bog/game`
 (форк `hyoo-ru/game.hyoo.ru`), его `eye` это прототип модуля `draw`.

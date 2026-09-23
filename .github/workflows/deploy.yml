@@ -1,0 +1,49 @@
+name: $bog_gamengine
+
+permissions: write-all
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - uses: browser-actions/setup-chrome@v1
+      id: chrome
+      with:
+        chrome-version: stable
+
+    - name: Point the probe at Chrome
+      run: |
+        set -euo pipefail
+        test -x "${{ steps.chrome.outputs.chrome-path }}"
+        echo "CHROME_PATH=${{ steps.chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
+
+    - uses: hyoo-ru/mam_build@master2
+      with:
+        package: 'bog/gamengine'
+        modules: 'demo probe'
+
+    - uses: hyoo-ru/gh-deploy@v4.4.1
+      if: github.ref == 'refs/heads/main'
+      with:
+        folder: 'bog/gamengine/demo/-'
+
+    - name: URLs
+      if: github.ref == 'refs/heads/main'
+      run: |
+        {
+          echo "- https://b-on-g.github.io/gamengine/#!demo=quad"
+          echo "- https://b-on-g.github.io/gamengine/#!demo=flat"
+          echo "- https://b-on-g.github.io/gamengine/#!demo=room"
+        } >> "$GITHUB_STEP_SUMMARY"
