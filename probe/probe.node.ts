@@ -2,7 +2,9 @@ namespace $ {
 
 	export const $bog_gamestudio_probe_page = 'bog/gamestudio/app/-/index.html'
 
-	export const $bog_gamestudio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник, клик по холсту выбрал монету, стрелка гизмо перенесла её в исходнике, клик мимо снял выбор, игра с зажатой D сдвинула героя вправо, стоп вернул его на место и не тронул исходник'
+	export const $bog_gamestudio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник, клик по холсту выбрал монету, стрелка гизмо перенесла её в исходнике, клик мимо снял выбор, игра с зажатой D сдвинула героя вправо, стоп вернул его на место и не тронул исходник, пять правок pos героя не мигают и не копят текстуры и буферы'
+
+	export const $bog_gamestudio_probe_moves = [ -2, -1, -2.5, -1.5, -2 ] as const
 
 	export const $bog_gamestudio_probe_flags = [ '--use-angle=swiftshader' ] as const
 
@@ -40,6 +42,10 @@ namespace $ {
 		readonly x_play: string
 		readonly x_stop: string
 		readonly hero_line_after: string
+		readonly textures: { readonly created: number, readonly deleted: number }
+		readonly buffers: { readonly created: number, readonly deleted: number, readonly scene: number }
+		readonly images: number
+		readonly moves: readonly { readonly x: number, readonly first: $bog_gamestudio_probe_pixel, readonly pixel: $bog_gamestudio_probe_pixel }[]
 	}
 
 	export function $bog_gamestudio_probe_script( selectors: readonly string[] ) {
@@ -65,6 +71,20 @@ namespace $ {
 				input.value = text
 				input.dispatchEvent( new Event( 'input', { bubbles: true } ) )
 			}
+			const proto = WebGL2RenderingContext.prototype
+			const count = name => {
+				const native = proto[ name ]
+				const counter = { count: 0 }
+				proto[ name ] = function() { ++ counter.count; return native.apply( this, arguments ) }
+				return counter
+			}
+			const tex_created = count( 'createTexture' )
+			const tex_deleted = count( 'deleteTexture' )
+			const buf_created = count( 'createBuffer' )
+			const buf_deleted = count( 'deleteBuffer' )
+			const image_native = window.Image
+			const images = { count: 0 }
+			window.Image = function() { ++ images.count; return new image_native() }
 			const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
 			type( editor, editor.value.replace( 'frame \\\\hero', 'frame \\\\coin' ) )
 			let hero_after = hero_before
@@ -143,7 +163,20 @@ namespace $ {
 			await frame()
 			const x_stop = x_value()
 			const hero_line_after = hero_line()
-			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after, ppu, fields_coin, row_coin, arrow, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after }
+			const moves = []
+			let scene_buffers = 0
+			for( const x of ${ JSON.stringify( $bog_gamestudio_probe_moves ) } ) {
+				const created = buf_created.count
+				type( editor, editor.value.replace( /(Герой[^]*?pos \\/ )[^\\n]*/, '$1' + x + ' 0 0' ) )
+				await frame()
+				const first = pixel( canvas.width / 2 + x * ppu, canvas.height / 2 )
+				await frame()
+				if( !scene_buffers ) scene_buffers = buf_created.count - created
+				moves.push({ x, first, pixel: pixel( canvas.width / 2 + x * ppu, canvas.height / 2 ) })
+			}
+			const textures = { created: tex_created.count, deleted: tex_deleted.count }
+			const buffers = { created: buf_created.count, deleted: buf_deleted.count, scene: scene_buffers }
+			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after, ppu, fields_coin, row_coin, arrow, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after, textures, buffers, images: images.count, moves }
 		`
 	}
 
@@ -201,6 +234,13 @@ namespace $ {
 		if( !( Number( got.x_play ) > Number( got.x_before ) ) ) return fail( 'игра с зажатой D не сдвинула героя вправо' )
 		if( got.x_stop !== got.x_before ) return fail( 'стоп не вернул x героя к исходному' )
 		if( got.hero_line_after !== got.hero_line_before ) return fail( 'игра изменила pos героя в исходнике' )
+		if( got.moves.length !== $bog_gamestudio_probe_moves.length ) return fail( 'правок pos героя не пять' )
+		for( const move of got.moves ) {
+			if( move.pixel[ 0 ] < 40 && move.pixel[ 1 ] < 40 && move.pixel[ 2 ] < 40 ) return fail( `после правки pos героя на ${ move.x } его пиксель чёрный через два кадра` )
+		}
+		if( got.textures.created - got.textures.deleted > 1 ) return fail( 'правки исходника копят текстуры' )
+		if( got.buffers.created - got.buffers.deleted > got.buffers.scene ) return fail( 'правки исходника копят буферы' )
+		if( got.images !== 0 ) return fail( 'правки исходника грузят картинки заново' )
 
 		return say( $bog_gamestudio_probe_ok )
 	}
