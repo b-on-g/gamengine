@@ -12,23 +12,6 @@ namespace $ {
 		return Math.abs( aside )
 	}
 
-	export class $bog_gamestudio_app_lines extends $bog_gamengine_shape {
-
-		@ $mol_mem
-		points( next?: Float32Array ) {
-			return next ?? new Float32Array( 0 )
-		}
-
-		geometry() {
-			return this.points() as Float32Array< ArrayBuffer >
-		}
-
-		mode() {
-			return 'lines' as const
-		}
-
-	}
-
 	export function $bog_gamestudio_app_gizmo_hit( x: number, y: number, size: number ): $bog_gamestudio_app_axis | null {
 		const box = size * $bog_gamestudio_app_gizmo_box
 		if( Math.abs( x ) <= box && Math.abs( y ) <= box ) return 'xy'

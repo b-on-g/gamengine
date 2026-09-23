@@ -35,12 +35,12 @@ $bog_gamestudio_app $mol_view
 		overlay /
 			<= Gizmo_arrows $bog_gamengine_batch
 				shader <= Gizmo_shader $bog_gamengine_shader_flat
-				shape <= Gizmo_arrow $bog_gamestudio_app_lines
+				shape <= Gizmo_arrow $bog_gamengine_shape_lines
 					points <= gizmo_arrow_points Float32Array
 				nodes <= gizmo_arrow_nodes /
 			<= Gizmo_boxes $bog_gamengine_batch
 				shader <= Gizmo_shader
-				shape <= Gizmo_box $bog_gamestudio_app_lines
+				shape <= Gizmo_box $bog_gamengine_shape_lines
 					points <= gizmo_box_points Float32Array
 				nodes <= gizmo_box_nodes /
 		scene => Scene
