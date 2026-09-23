@@ -10,12 +10,28 @@ $bog_gamengine_demo_room $mol_page
 		<= Pause $mol_check_box
 			title \Пауза
 			checked? <=> paused?
+		<= Screen_switch $mol_check_box
+			title \Кнопки
+			checked? <=> screen_shown? false
 	body /
 		<= Draw $bog_gamengine_draw
 			scene <= Scene
 			cam <= Walker
 			wireframe? => wireframe?
 			stat => stat
+		<= Screen $bog_gamengine_input_screen
+			shown? <=> screen_shown? false
+			bind *
+				left / \x-
+				right / \x+
+				forward / \y+
+				back / \y-
+			actions /
+				\turn_left
+				\turn_right
+			titles *
+				turn_left \⟲
+				turn_right \⟳
 	foot /
 		<= Stat $mol_view
 			sub / <= stat
@@ -25,6 +41,9 @@ $bog_gamengine_demo_room $mol_page
 			sub / <= pillar_stat \
 		<= Light_stat $mol_view
 			sub / <= light_stat \
+	Input $bog_gamengine_input
+		key <= Key
+		screen <= Screen
 	Key $bog_gamengine_key
 		bind *
 			forward / \W
@@ -54,6 +73,7 @@ $bog_gamengine_demo_room $mol_page
 		paused? => paused?
 	Scene $bog_gamengine_scene
 		clock <= Clock
+		input <= Input
 		kids <= nodes /
 		batches /
 			<= Wall_batch $bog_gamengine_batch
@@ -91,7 +111,7 @@ $bog_gamengine_demo_room $mol_page
 		frame \wall
 		pos <= pillar_pos Float32Array
 	Walker $bog_gamengine_demo_room_walker
-		key <= Key
+		input <= Input
 		tile <= Tile
 		pos? <=> walker_pos? Float32Array
 		rot? <=> walker_rot? Float32Array

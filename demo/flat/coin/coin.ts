@@ -21,8 +21,18 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		emitter( next?: $bog_gamengine_particle | null ) {
+			return next ?? null
+		}
+
+		@ $mol_mem
 		taken( next = false ) {
-			if( next ) this.sound()?.play( 'coin' )
+			if( next ) {
+				this.sound()?.play( 'coin' )
+				const emitter = this.emitter()
+				const pos = this.pos()
+				if( emitter ) new this.$.$mol_after_tick( ()=> emitter.burst( 20, pos ) )
+			}
 			return next
 		}
 

@@ -3,7 +3,7 @@ namespace $ {
 	export class $bog_gamengine_demo_room_walker extends $bog_gamengine_cam_deep {
 
 		@ $mol_mem
-		key( next?: $bog_gamengine_key | null ) {
+		input( next?: $bog_gamengine_input | null ) {
 			return next ?? null
 		}
 
@@ -39,11 +39,11 @@ namespace $ {
 		}
 
 		step( dt: number ) {
-			const key = this.key()
-			if( !key ) return
+			const input = this.input()
+			if( !input ) return
 			const rot = this.rot()
 			let yaw = rot[ 1 ]
-			const spin = key.axis( 'turn_right', 'turn_left' )
+			const spin = input.axis( 'turn_right', 'turn_left' )
 			if( spin !== 0 ) {
 				yaw += spin * this.turn() * dt
 				const next = new Float32Array( 3 )
@@ -52,8 +52,8 @@ namespace $ {
 				next[ 2 ] = rot[ 2 ]
 				this.rot( next )
 			}
-			const track = key.axis( 'back', 'forward' )
-			const side = key.axis( 'left', 'right' )
+			const track = input.axis( 'back', 'forward' )
+			const side = input.axis( 'left', 'right' )
 			if( track === 0 && side === 0 ) return
 			const way = this.speed() * dt
 			const sin = Math.sin( yaw )

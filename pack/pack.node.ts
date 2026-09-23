@@ -124,6 +124,52 @@ namespace $ {
 		return { names, files: dsts }
 	}
 
+	export type $bog_gamengine_pack_assets_kind = 'image' | 'model' | 'sound' | 'file'
+
+	export type $bog_gamengine_pack_assets_item = {
+		readonly uri: string
+		readonly kind: $bog_gamengine_pack_assets_kind
+	}
+
+	export const $bog_gamengine_pack_assets_kinds: Record< string, $bog_gamengine_pack_assets_kind > = {
+		png: 'image', jpg: 'image', jpeg: 'image', webp: 'image',
+		glb: 'model', gltf: 'model',
+		wav: 'sound', mp3: 'sound', ogg: 'sound',
+	}
+
+	export function $bog_gamengine_pack_assets_kind( uri: string ): $bog_gamengine_pack_assets_kind {
+		const ext = String( $node.path.extname( uri ) ).slice( 1 ).toLowerCase()
+		return $bog_gamengine_pack_assets_kinds[ ext ] ?? 'file'
+	}
+
+	export function $bog_gamengine_pack_assets_metas( pack_dir: string ) {
+		const found = $node.fs.readdirSync( pack_dir, { recursive: true, encoding: 'utf8' } ) as string[]
+		return found
+			.map( rel => String( rel ).replace( /\\/g, '/' ) )
+			.filter( rel => rel.endsWith( '.meta.tree' ) )
+			.filter( rel => !rel.split( '/' ).some( part => part.startsWith( '-' ) ) )
+			.sort()
+			.map( rel => String( $node.path.join( pack_dir, rel ) ) )
+	}
+
+	export function $bog_gamengine_pack_assets( pack_dir: string ): $bog_gamengine_pack_assets_item[] {
+		const uris = new Set< string >()
+		for( const meta of $bog_gamengine_pack_assets_metas( pack_dir ) ) {
+			const tree = $mol_tree2_from_string( String( $node.fs.readFileSync( meta, 'utf8' ) ), meta )
+			for( const path of tree.select( 'deploy', null ).kids ) {
+				if( path.value ) uris.add( path.value.replace( /^\/+/, '' ) )
+			}
+		}
+		return [ ... uris ].sort().map( uri => ({ uri, kind: $bog_gamengine_pack_assets_kind( uri ) }) )
+	}
+
+	export function $bog_gamengine_pack_assets_write( pack_dir: string, out_file: string ) {
+		const list = $bog_gamengine_pack_assets( pack_dir )
+		$node.fs.mkdirSync( $node.path.dirname( out_file ), { recursive: true } )
+		$node.fs.writeFileSync( out_file, JSON.stringify( list, null, '\t' ) + '\n' )
+		return list
+	}
+
 	export function $bog_gamengine_pack_png_size( file: string ) {
 		const head = $node.fs.readFileSync( file )
 		if( head.length < 24 || head.toString( 'latin1', 1, 4 ) !== 'PNG' ) return $mol_fail( new Error( `${ file } is not a PNG` ) )
@@ -197,8 +243,15 @@ namespace $ {
 
 	export async function $bog_gamengine_pack_main( args: readonly string[] ) {
 
+		if( args[ 0 ] === 'assets' ) {
+			const [ , pack_dir, out_file ] = args
+			if( !pack_dir || !out_file ) return $mol_fail( new Error( 'node bog/gamengine/pack/-/node.js assets <pack_dir> <out.json>' ) )
+			const list = $bog_gamengine_pack_assets_write( pack_dir, out_file )
+			return $bog_gamengine_pack_say( `${ list.length } ассетов из ${ pack_dir } в ${ out_file }` )
+		}
+
 		const [ dir, out_dir, size ] = args
-		if( !dir || !out_dir ) return $mol_fail( new Error( 'node bog/gamengine/pack/-/node.js <dir> <out_dir> [size=256]' ) )
+		if( !dir || !out_dir ) return $mol_fail( new Error( 'node bog/gamengine/pack/-/node.js <dir> <out_dir> [size=256] | assets <pack_dir> <out.json>' ) )
 
 		const made = await $bog_gamengine_pack_atlas( dir, out_dir, Number( size ?? 256 ) )
 		if( !made ) return $bog_gamengine_pack_say( $bog_probe_skip )

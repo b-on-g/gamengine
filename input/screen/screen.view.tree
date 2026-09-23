@@ -1,0 +1,30 @@
+$bog_gamengine_input_screen $mol_view
+	shown? false
+	actions /string
+	titles *
+	bind *
+	dead 0.2
+	radius 48
+	knob_shift? \
+	sub /
+		<= Stick $mol_view
+			event *
+				pointerdown? <=> stick_down? null
+				pointermove? <=> stick_move? null
+				pointerup? <=> stick_up? null
+				pointercancel? <=> stick_cancel? null
+				pointerleave? <=> stick_leave? null
+			sub /
+				<= Knob $mol_view
+					style *
+						transform <= knob_shift
+		<= Buttons $mol_view
+			sub <= buttons /
+	Button* $mol_button
+		title <= button_title* \
+		event *
+			^
+			pointerdown? <=> button_down*? null
+			pointerup? <=> button_up*? null
+			pointercancel? <=> button_cancel*? null
+			pointerleave? <=> button_leave*? null

@@ -257,6 +257,33 @@ namespace $ {
 			$mol_assert_equal( [ ...batch.uv.subarray( 4, 8 ) ], [ 0, 0, 1, 1 ] )
 		},
 
+		'source tint, layer and uv are copied per instance'() {
+			const trans = new Float32Array( 32 )
+			const tint = new Float32Array([ 1, 1, 1, 1, 1, 0, 0, 0.5 ])
+			const layer = new Float32Array([ 2, 3 ])
+			const uv = new Float32Array([ 0, 0, 1, 1, 1, 0, -1, 1 ])
+			const batch = new $bog_gamengine_batch
+			batch.source({ trans, count: 2, tint, layer, uv })
+			$mol_assert_equal( batch.fill(), 2 )
+			$mol_assert_equal( [ ...batch.tint.subarray( 4, 8 ) ], [ 1, 0, 0, 0.5 ] )
+			$mol_assert_equal( [ ...batch.layer.subarray( 0, 2 ) ], [ 2, 3 ] )
+			$mol_assert_equal( [ ...batch.uv.subarray( 4, 8 ) ], [ 1, 0, -1, 1 ] )
+		},
+
+		'source tint and layer are compacted with trans under frustum'() {
+			const trans = new Float32Array( 32 )
+			trans.set([ 1, 0, 5 ], 12 )
+			trans.set([ 2, 0, -5 ], 28 )
+			const aabb = new Float32Array([ 0, -1, 4, 2, 1, 6, 1, -1, -6, 3, 1, -4 ])
+			const tint = new Float32Array([ 1, 1, 1, 1, 0, 1, 0, 1 ])
+			const layer = new Float32Array([ 1, 2 ])
+			const batch = new $bog_gamengine_batch
+			batch.source({ trans, count: 2, aabb, tint, layer })
+			$mol_assert_equal( batch.fill( $bog_gamengine_batch_test_frustum() ), 1 )
+			$mol_assert_equal( [ ...batch.tint.subarray( 0, 4 ) ], [ 0, 1, 0, 1 ] )
+			$mol_assert_equal( batch.layer[ 0 ], 2 )
+		},
+
 		'source with skip 1 drops the first matrix'() {
 			const trans = new Float32Array( 32 )
 			trans.set([ 1, 2, 3 ], 12 )

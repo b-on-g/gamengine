@@ -13,6 +13,9 @@ namespace $ {
 		trans: Float32Array
 		count: number
 		aabb?: Float32Array
+		tint?: Float32Array
+		layer?: Float32Array
+		uv?: Float32Array
 	}
 
 	export function $bog_gamengine_batch_scale_max( world: Float32Array ) {
@@ -180,6 +183,9 @@ namespace $ {
 			}
 			const aabb = source.aabb
 			const cull = frustum && aabb && this.cull() ? frustum : null
+			const tint = source.tint ?? null
+			const layer = source.layer ?? null
+			const uv = source.uv ?? null
 			let count = total
 			if( cull && aabb ) {
 				const trans = this.trans
@@ -190,10 +196,16 @@ namespace $ {
 					const src = i * 16
 					const dst = count * 16
 					for( let k = 0; k < 16; ++ k ) trans[ dst + k ] = from[ src + k ]
+					if( tint ) for( let k = 0; k < 4; ++ k ) this.tint[ count * 4 + k ] = tint[ i * 4 + k ]
+					if( layer ) this.layer[ count ] = layer[ i ]
+					if( uv ) for( let k = 0; k < 4; ++ k ) this.uv[ count * 4 + k ] = uv[ i * 4 + k ]
 					++ count
 				}
 			} else {
 				this.trans.set( source.trans.subarray( skip * 16, ( skip + total ) * 16 ) )
+				if( tint ) this.tint.set( tint.subarray( skip * 4, ( skip + total ) * 4 ) )
+				if( layer ) this.layer.set( layer.subarray( skip, skip + total ) )
+				if( uv ) this.uv.set( uv.subarray( skip * 4, ( skip + total ) * 4 ) )
 			}
 			this.count = count
 			++ this.version

@@ -38,6 +38,8 @@ $bog_gamengine_demo_boxes $mol_page
 		<= Cull_stat $mol_view
 			sub / <= cull_stat \
 	seed? 1
+	Input $bog_gamengine_input
+		key <= Key
 	Key $bog_gamengine_key
 		bind *
 			forward / \W
@@ -56,6 +58,7 @@ $bog_gamengine_demo_boxes $mol_page
 	Phys $bog_gamengine_demo_boxes_phys
 	Scene $bog_gamengine_scene
 		clock <= Clock
+		input <= Input
 		kids <= nodes /
 		phys3 <= Phys
 		batches <= batches /
@@ -88,6 +91,6 @@ $bog_gamengine_demo_boxes $mol_page
 	Thrown* $bog_gamengine_phys3_body
 		name \Брошенный
 	Walker $bog_gamengine_demo_room_walker
-		key <= Key
+		input <= Input
 		pos? <=> walker_pos? Float32Array
 		rot? <=> walker_rot? Float32Array

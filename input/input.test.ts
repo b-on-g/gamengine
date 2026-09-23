@@ -64,6 +64,24 @@ namespace $ {
 			$mol_assert_equal( input.action( 'right' ), false )
 		},
 
+		'screen stick gives its axis while keys and pad are silent'() {
+			const { input } = input_move()
+			const screen = new $bog_gamengine_input_screen
+			input.screen( screen )
+			screen.move( 0.5 * screen.radius(), 0 )
+			input.poll()
+			$mol_assert_ok( Math.abs( input.axis( 'left', 'right' ) - 0.5 ) < 1e-6 )
+		},
+
+		'screen button gives action while keys and pad are silent'() {
+			const { input } = input_move()
+			const screen = new $bog_gamengine_input_screen
+			input.screen( screen )
+			screen.press( 'right' )
+			input.poll()
+			$mol_assert_equal( input.action( 'right' ), true )
+		},
+
 	})
 
 }

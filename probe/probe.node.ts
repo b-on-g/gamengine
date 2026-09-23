@@ -10,7 +10,7 @@ namespace $ {
 
 	export const $bog_gamengine_probe_ok = 'центр красный, буферы не создаются'
 
-	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя, клик собирает монету, подпись едет за героем, кадры ходьбы сменяются'
+	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя, клик собирает монету, подпись едет за героем, кадры ходьбы сменяются, джойстик ведёт героя и отпускает'
 
 	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола, ребро ящика с каркасом белое, пол под тёплым светом краснее, блики ярче'
 
@@ -102,10 +102,28 @@ namespace $ {
 		for( let i = 0; i < 10; ++ i ) await frame()
 		const frame_idle = frame_name()
 		const label_after = label ? label.getBoundingClientRect().left : NaN
+		const rest = read()
+		const screen_switch = document.querySelector( '[bog_gamengine_demo_flat_screen_switch]' )
+		if( screen_switch ) screen_switch.click()
+		await frame()
+		await frame()
+		const screen_checked = screen_switch ? screen_switch.getAttribute( 'mol_check_checked' ) : null
+		const stick = document.querySelector( '[bog_gamengine_input_screen_stick]' )
+		const stick_box = stick ? stick.getBoundingClientRect() : null
+		if( stick ) stick.dispatchEvent( new PointerEvent( 'pointerdown', {
+			clientX: stick_box.left + stick_box.width * 0.9, clientY: stick_box.top + stick_box.height / 2, pointerId: 2, bubbles: true,
+		} ) )
+		for( let i = 0; i < 30; ++ i ) await frame()
+		const touch_moved = read()
+		if( stick ) stick.dispatchEvent( new PointerEvent( 'pointerup', { pointerId: 2, bubbles: true } ) )
+		for( let i = 0; i < 10; ++ i ) await frame()
+		const touch_stop = read()
+		for( let i = 0; i < 10; ++ i ) await frame()
+		const touch_rest = read()
 		return {
 			webgl: true, loaded: true, start, moved, center, hero, corner, floor,
 			taken_before, taken_after, label_text, label_before, label_after,
-			frames_walk, frame_idle,
+			frames_walk, frame_idle, rest, screen_checked, stick: !!stick, touch_moved, touch_stop, touch_rest,
 			size: [ canvas.width, canvas.height ],
 		}
 	`
@@ -307,6 +325,12 @@ namespace $ {
 		readonly label_after?: number
 		readonly frames_walk?: readonly string[]
 		readonly frame_idle?: string
+		readonly rest?: readonly [ number, number ] | null
+		readonly screen_checked?: string | null
+		readonly stick?: boolean
+		readonly touch_moved?: readonly [ number, number ] | null
+		readonly touch_stop?: readonly [ number, number ] | null
+		readonly touch_rest?: readonly [ number, number ] | null
 		readonly size?: readonly [ number, number ]
 	}
 
@@ -462,6 +486,10 @@ namespace $ {
 		if( !( got.label_after! > got.label_before! ) ) return fail( 'подпись не поехала за героем' )
 		if( !got.frames_walk || got.frames_walk.length < 2 ) return fail( 'кадры героя не сменялись за 60 кадров ходьбы' )
 		if( got.frame_idle !== 'hero' ) return fail( 'кадр героя после остановки не hero' )
+		if( got.screen_checked !== 'true' ) return fail( 'чекбокс «Кнопки» не включился' )
+		if( !got.stick ) return fail( 'джойстика нет в DOM после включения кнопок' )
+		if( !got.touch_moved || !got.rest || !( got.touch_moved[ 0 ] > got.rest[ 0 ] ) ) return fail( 'герой не пошёл вправо от джойстика' )
+		if( !got.touch_stop || !got.touch_rest || got.touch_stop[ 0 ] !== got.touch_rest[ 0 ] ) return fail( 'герой не остановился после отпускания джойстика' )
 
 		return say( $bog_gamengine_probe_flat_ok )
 	}

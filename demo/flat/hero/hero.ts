@@ -3,7 +3,7 @@ namespace $ {
 	export class $bog_gamengine_demo_flat_hero extends $bog_gamengine_phys_body {
 
 		@ $mol_mem
-		key( next?: $bog_gamengine_key | null ) {
+		input( next?: $bog_gamengine_input | null ) {
 			return next ?? null
 		}
 
@@ -28,11 +28,11 @@ namespace $ {
 		}
 
 		step( dt: number ) {
-			const key = this.key()
-			if( !key ) return
+			const input = this.input()
+			if( !input ) return
 			const speed = this.speed()
-			const vx = key.axis( 'left', 'right' ) * speed
-			const vy = key.axis( 'down', 'up' ) * speed
+			const vx = input.axis( 'left', 'right' ) * speed
+			const vy = input.axis( 'down', 'up' ) * speed
 			if( vx !== 0 ) this.face_left( vx < 0 )
 			const clip = vx !== 0 || vy !== 0 ? 'walk' : ''
 			if( this.clip() !== clip ) this.clip( clip )

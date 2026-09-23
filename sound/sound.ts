@@ -37,6 +37,7 @@ namespace $ {
 
 		@ $mol_mem
 		Room() {
+			$mol_wire_solid()
 			return this.$.$mol_audio_room.make({})
 		}
 
@@ -90,12 +91,14 @@ namespace $ {
 
 		@ $mol_mem_key
 		sample( name: string ) {
+			$mol_wire_solid()
 			const uri = this.uri( name )
 			return this.$.$mol_audio_sample.make({ buffer: ()=> this.$.$mol_fetch.buffer( uri ) })
 		}
 
 		@ $mol_mem_key
 		music_sample( name: string ) {
+			$mol_wire_solid()
 			const uri = this.uri( name )
 			return this.$.$mol_audio_sample.make({
 				buffer: ()=> this.$.$mol_fetch.buffer( uri ),

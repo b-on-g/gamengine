@@ -19,6 +19,31 @@ namespace $ {
 			$mol_assert_fail( ()=> $bog_gamengine_pack_names( 'tex', [ 'tex/a.png', 'tex/a.jpg' ] ), Error )
 		},
 
+		'assets of demo pack come from meta.tree deploy lines with kinds'() {
+			const list = $bog_gamengine_pack_assets( 'bog/gamengine/demo' )
+			const kind = ( uri: string )=> list.find( item => item.uri === uri )?.kind ?? null
+			$mol_assert_equal( kind( 'bog/gamengine/demo/atlas/hero.png' ), 'image' )
+			$mol_assert_equal( kind( 'bog/gamengine/demo/room/model/pillar.glb' ), 'model' )
+			$mol_assert_equal( kind( 'bog/gamengine/demo/sound/coin.wav' ), 'sound' )
+			$mol_assert_equal( list.map( item => item.uri ), [ ... list.map( item => item.uri ) ].sort() )
+		},
+
+		'assets skip meta.tree inside build folders'() {
+			const tmp = String( $node.fs.mkdtempSync( $node.path.join( $node.os.tmpdir(), 'bog-pack-' ) ) )
+			try {
+				$node.fs.mkdirSync( $node.path.join( tmp, '-' ) )
+				$node.fs.mkdirSync( $node.path.join( tmp, 'deep' ) )
+				$node.fs.writeFileSync( $node.path.join( tmp, '-', 'x.meta.tree' ), 'deploy \\/skip/hidden.png\n' )
+				$node.fs.writeFileSync( $node.path.join( tmp, 'deep', 'deep.meta.tree' ), 'deploy \\/deep/seen.txt\ndeploy \\/deep/seen.txt\n' )
+				$mol_assert_equal(
+					$bog_gamengine_pack_assets( tmp ),
+					[ { uri: 'deep/seen.txt', kind: 'file' } ],
+				)
+			} finally {
+				$node.fs.rmSync( tmp, { recursive: true, force: true } )
+			}
+		},
+
 		'square turns hero into 32×32 png'() {
 			const out = $bog_probe_test( 'bog/gamengine/pack/-/node.js', 'bog_gamengine_pack_square_check' )
 			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_pack_square_ok ) )

@@ -15,8 +15,10 @@ namespace $ {
 	}
 
 	function walker_test_walker( key: $bog_gamengine_key, tile: $bog_gamengine_phys_tile | null = null ) {
+		const input = new $bog_gamengine_input
+		input.key( key )
 		const walker = new $bog_gamengine_demo_room_walker
-		walker.key( key )
+		walker.input( input )
 		walker.tile( tile )
 		return walker
 	}
