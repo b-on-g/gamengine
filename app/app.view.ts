@@ -174,12 +174,18 @@ namespace $.$$ {
 			return atlas ? [ ... atlas.names().keys() ] : []
 		}
 
-		gizmo_arrow_points() {
-			return arrow_points
+		@ $mol_mem
+		Gizmo_arrow() {
+			const shape = super.Gizmo_arrow()
+			shape.points( arrow_points )
+			return shape
 		}
 
-		gizmo_box_points() {
-			return box_points
+		@ $mol_mem
+		Gizmo_box() {
+			const shape = super.Gizmo_box()
+			shape.points( box_points )
+			return shape
 		}
 
 		gizmo_tint_x() {
