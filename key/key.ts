@@ -8,15 +8,18 @@ namespace $ {
 			return next
 		}
 
-		@ $mol_mem_key
-		pressed( name: string, next = false ) {
-			return next
+		states = new Map< string, boolean >()
+
+		pressed( name: string, next?: boolean ) {
+			if( next !== undefined ) this.states.set( name, next )
+			return this.states.get( name ) ?? false
 		}
 
-		@ $mol_mem_key
 		action( name: string ) {
-			const keys = this.bind()[ name ] ?? []
-			return keys.some( key => this.pressed( key ) )
+			const keys = this.bind()[ name ]
+			if( !keys ) return false
+			for( let i = 0; i < keys.length; ++ i ) if( this.pressed( keys[ i ] ) ) return true
+			return false
 		}
 
 		axis( neg: string, pos: string ) {
