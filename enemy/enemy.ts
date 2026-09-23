@@ -46,10 +46,9 @@ namespace $ {
 			const tile = this.tile()
 			if( !tile ) return false
 			const pos = this.pos()
-			const size = this.size()
-			const x = pos[ 0 ] + dir * ( size[ 0 ] / 2 + 0.1 )
+			const x = pos[ 0 ] + dir * ( this.size()[ 0 ] / 2 + 0.1 )
 			if( tile.solid_at( x, pos[ 1 ] ) ) return true
-			return !tile.solid_at( x, pos[ 1 ] - size[ 1 ] / 2 - 0.1 )
+			return tile.edge( pos[ 0 ], pos[ 1 ], dir, 0 )
 		}
 
 		edge_left() {
@@ -63,8 +62,6 @@ namespace $ {
 		props(): readonly $bog_gamengine_prop[] {
 			return [
 				... super.props(),
-				{ name: 'edge_left', kind: 'flag', get: ()=> this.edge_left(), set: ()=> {} },
-				{ name: 'edge_right', kind: 'flag', get: ()=> this.edge_right(), set: ()=> {} },
 				{ name: 'dead', kind: 'flag', get: ()=> this.dead(), set: next => this.dead( next as boolean ) },
 			]
 		}

@@ -141,7 +141,7 @@ namespace $.$$ {
 
 		@ $mol_mem
 		nodes() {
-			return [ ... this.bodies(), ... this.sprites() ]
+			return [ ... this.bodies(), ... this.sprites(), this.Cam() ]
 		}
 
 		cam_height() {
@@ -149,16 +149,9 @@ namespace $.$$ {
 		}
 
 		@ $mol_mem
-		cam_pos() {
+		cam_bounds() {
 			const level = this.Level()
-			const height = this.draw_height()
-			const aspect = height ? this.draw_width() / height : 1
-			const half = this.cam_height() * aspect / 2
-			const width = level.width()
-			const x = width <= half * 2
-				? width / 2
-				: Math.min( Math.max( this.hero_pos()[ 0 ], half ), width - half )
-			return new Float32Array([ x, - level.height() / 2, 0 ])
+			return new Float32Array([ 0, - level.height(), level.width(), 0 ])
 		}
 
 		@ $mol_mem

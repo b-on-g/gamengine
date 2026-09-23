@@ -3,8 +3,11 @@ namespace $ {
 	const map = [ '..o.', '..=.', 'E..F', '####' ].join( '\n' )
 
 	function level_test() {
+		const tile = new $bog_gamengine_phys_tile
+		tile.map( map )
+		tile.solid( '#=' )
 		const level = new $bog_jumper_level
-		level.map( map )
+		level.tile( tile )
 		return level
 	}
 

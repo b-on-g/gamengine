@@ -3,42 +3,27 @@ namespace $ {
 	export class $bog_jumper_level extends $mol_object2 {
 
 		@ $mol_mem
-		map( next = '' ) {
-			return next
+		tile( next?: $bog_gamengine_phys_tile | null ) {
+			return next ?? null
 		}
 
-		@ $mol_mem
-		solid_signs( next = '#=' ) {
-			return next
-		}
-
-		@ $mol_mem
-		rows() {
-			return this.map().split( '\n' ) as readonly string[]
-		}
-
-		@ $mol_mem
 		width() {
-			const rows = this.rows()
-			let width = 0
-			for( let i = 0; i < rows.length; ++i ) width = Math.max( width, rows[ i ].length )
-			return width
+			return this.tile()?.width() ?? 0
 		}
 
-		@ $mol_mem
 		height() {
-			return this.rows().length
+			return this.tile()?.height() ?? 0
 		}
 
 		sign( x: number, y: number ) {
-			const rows = this.rows()
-			if( y < 0 || y >= rows.length ) return ''
-			return rows[ y ][ x ] ?? ''
+			return this.tile()?.char( x, y ) ?? ''
 		}
 
 		solid( x: number, y: number ) {
-			const sign = this.sign( x, y )
-			return sign !== '' && this.solid_signs().includes( sign )
+			const tile = this.tile()
+			if( !tile ) return false
+			const sign = tile.char( x, y )
+			return sign !== '' && tile.solid().includes( sign )
 		}
 
 		frame( x: number, y: number ) {
@@ -49,19 +34,9 @@ namespace $ {
 		}
 
 		@ $mol_mem_key
-		spots( sign: string ) {
-			const spots = [] as ( readonly [ number, number ] )[]
-			const height = this.height()
-			const width = this.width()
-			for( let y = 0; y < height; ++y ) {
-				for( let x = 0; x < width; ++x ) if( this.sign( x, y ) === sign ) spots.push( [ x, y ] as const )
-			}
-			return spots as readonly ( readonly [ number, number ] )[]
-		}
-
-		@ $mol_mem_key
 		ids( sign: string ) {
-			return this.spots( sign ).map( spot => `${ spot[ 0 ] }_${ spot[ 1 ] }` ) as readonly string[]
+			const spots = this.tile()?.spots( sign ) ?? []
+			return spots.map( spot => `${ spot[ 0 ] }_${ spot[ 1 ] }` ) as readonly string[]
 		}
 
 		xy( id: string ) {
@@ -69,7 +44,8 @@ namespace $ {
 		}
 
 		pos( x: number, y: number ) {
-			return new Float32Array([ x + 0.5, - y - 0.5, 0 ])
+			const pos = new Float32Array( 3 )
+			return this.tile()?.cell_pos( x, y, pos ) ?? pos
 		}
 
 		pos_of( id: string ) {

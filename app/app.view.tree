@@ -56,7 +56,7 @@ $bog_jumper_app $mol_page
 		\....o........#..E..#....xx....o.........
 		\########################################
 	Level $bog_jumper_level
-		map <= map
+		tile <= Tile
 	Tile $bog_gamengine_phys_tile
 		map <= map
 		solid \#=
@@ -107,7 +107,8 @@ $bog_jumper_app $mol_page
 				nodes <= sprites /
 	Cam $bog_gamengine_cam_flat
 		height <= cam_height 12
-		pos <= cam_pos Float32Array
+		target <= Hero
+		bounds <= cam_bounds Float32Array
 	Sky $bog_gamengine_sprite
 		atlas <= Atlas
 		frame \sky
