@@ -37,6 +37,16 @@ namespace $ {
 		}
 	}
 
+	class $bog_gamengine_scene_generated extends $bog_gamengine_scene {
+
+		extra = new $bog_gamengine_scene_mover
+
+		auto_nodes() {
+			return [ this.extra ] as readonly $bog_gamengine_node[]
+		}
+
+	}
+
 	class $bog_gamengine_scene_input_mock extends $bog_gamengine_input {
 
 		polls = 0
@@ -283,6 +293,35 @@ namespace $ {
 			$mol_assert_equal( a.scene(), scene )
 			$mol_assert_equal( a.input(), input )
 			$mol_assert_equal( a.clock(), scene.clock() )
+		},
+
+		'generated nodes live alongside the tree ones'( $ ) {
+			$.$mol_state_time = $bog_gamengine_scene_time_mock
+			const kid = new $bog_gamengine_scene_mover
+			const scene = new $bog_gamengine_scene_generated
+			scene.$ = $
+			scene.kids([ kid ])
+			$mol_assert_equal( scene.nodes(), [ kid, scene.extra ] )
+			$bog_gamengine_scene_time_mock.stamp( 0 )
+			scene.step()
+			$bog_gamengine_scene_time_mock.stamp( 16 )
+			scene.step()
+			$mol_assert_ok( Math.abs( kid.pos()[ 0 ] - 0.016 ) < 1e-9 )
+			$mol_assert_ok( Math.abs( scene.extra.pos()[ 0 ] - 0.016 ) < 1e-9 )
+			$mol_assert_equal( kid.parent(), scene )
+			$mol_assert_equal( scene.extra.parent(), scene )
+		},
+
+		'auto batches take generated nodes too'() {
+			const atlas = new $bog_gamengine_atlas
+			atlas.uris([ 'bog/gamengine/demo/atlas/hero.png' ])
+			const sprite = new $bog_gamengine_sprite
+			sprite.atlas( atlas )
+			const scene = new $bog_gamengine_scene
+			scene.auto_nodes([ sprite ])
+			const batches = scene.auto_batches()
+			$mol_assert_equal( batches.length, 1 )
+			$mol_assert_equal( batches[ 0 ].nodes(), [ sprite ] )
 		},
 
 		'grandchild of overridden kids sees scene after nodes walk'() {

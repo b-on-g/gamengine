@@ -12,6 +12,11 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		auto_nodes( next?: readonly $bog_gamengine_node[] ): readonly $bog_gamengine_node[] {
+			return next ?? []
+		}
+
+		@ $mol_mem
 		nodes() {
 			const list = [] as $bog_gamengine_node[]
 			const walk = ( node: $bog_gamengine_node )=> {
@@ -23,6 +28,12 @@ namespace $ {
 				}
 			}
 			walk( this )
+			const auto = this.auto_nodes()
+			for( let i = 0; i < auto.length; ++i ) {
+				if( !auto[ i ].parent() ) auto[ i ].parent( this )
+				list.push( auto[ i ] )
+				walk( auto[ i ] )
+			}
 			return list as readonly $bog_gamengine_node[]
 		}
 
