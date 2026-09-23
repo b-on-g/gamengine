@@ -15,6 +15,8 @@ namespace $.$$ {
 		wireframe: WebGLUniformLocation | null
 		depth: boolean
 		vao: WebGLVertexArrayObject
+		vertex: $bog_gamengine_gl_buffer
+		live: boolean
 		trans: $bog_gamengine_gl_buffer
 		tint: $bog_gamengine_gl_buffer
 		layer: $bog_gamengine_gl_buffer | null
@@ -134,6 +136,8 @@ namespace $.$$ {
 				wireframe,
 				depth,
 				vao: gl.createVertexArray()!,
+				vertex: null!,
+				live: mode === 'lines',
 				trans: null!,
 				tint: null!,
 				layer: null,
@@ -148,7 +152,8 @@ namespace $.$$ {
 			}
 
 			gl.bindVertexArray( slot.vao )
-			new $bog_gamengine_gl_buffer( gl, program.attribute( 'vertex' )!, 3, 0 ).send( shape.geometry() )
+			slot.vertex = new $bog_gamengine_gl_buffer( gl, program.attribute( 'vertex' )!, 3, 0 )
+			slot.vertex.send( shape.geometry() )
 			const uv = program.attribute( 'uv' )
 			if( uv !== null ) new $bog_gamengine_gl_buffer( gl, uv, 2, 0 ).send( shape.skin() )
 			const normal = program.attribute( 'normal' )
@@ -231,6 +236,12 @@ namespace $.$$ {
 			const count = batch.count
 			if( !count ) return
 			if( slot.tex && !slot.tex.native ) return
+			if( slot.live ) {
+				const geometry = batch.shape().geometry()
+				slot.vertex.send( geometry )
+				slot.size = geometry.length / 3
+			}
+			if( !slot.size ) return
 			const grown = batch.cap > slot.cap
 			if( slot.depth ) {
 				gl.enable( gl.DEPTH_TEST )

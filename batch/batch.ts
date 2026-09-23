@@ -38,6 +38,11 @@ namespace $ {
 			return next ?? null
 		}
 
+		@ $mol_mem
+		skip( next = 0 ) {
+			return next
+		}
+
 		cap = 0
 		count = 0
 		version = 0
@@ -94,7 +99,8 @@ namespace $ {
 		}
 
 		fill_source( source: $bog_gamengine_batch_source ) {
-			const count = source.count
+			const skip = this.skip()
+			const count = Math.max( 0, source.count - skip )
 			const cap = this.cap
 			this.grow( count )
 			if( this.cap !== cap ) {
@@ -108,7 +114,7 @@ namespace $ {
 					uv[ i * 4 + 3 ] = 1
 				}
 			}
-			this.trans.set( source.trans.subarray( 0, count * 16 ) )
+			this.trans.set( source.trans.subarray( skip * 16, ( skip + count ) * 16 ) )
 			this.count = count
 			++ this.version
 			return count

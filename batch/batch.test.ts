@@ -116,6 +116,18 @@ namespace $ {
 			$mol_assert_equal( [ ...batch.uv.subarray( 4, 8 ) ], [ 0, 0, 1, 1 ] )
 		},
 
+		'source with skip 1 drops the first matrix'() {
+			const trans = new Float32Array( 32 )
+			trans.set([ 1, 2, 3 ], 12 )
+			trans.set([ 4, 5, 6 ], 28 )
+			const batch = new $bog_gamengine_batch
+			batch.source({ trans, count: 2 })
+			batch.skip( 1 )
+			$mol_assert_equal( batch.fill(), 1 )
+			$mol_assert_equal( batch.count, 1 )
+			$mol_assert_equal( [ ...batch.trans.subarray( 12, 15 ) ], [ 4, 5, 6 ] )
+		},
+
 	})
 
 }

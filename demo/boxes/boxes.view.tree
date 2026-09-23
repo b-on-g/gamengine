@@ -1,0 +1,83 @@
+$bog_gamengine_demo_boxes $mol_page
+	title \Ящики
+	tools /
+		<= Count $mol_number
+			value? <=> count? 300
+			value_min 1
+		<= Reset $mol_button_minor
+			title \Сброс
+			click? <=> reset? null
+		<= Wireframe $mol_check_box
+			title \Каркас
+			checked? <=> wireframe?
+		<= Contacts $mol_check_box
+			title \Контакты
+			checked? <=> contacts? false
+		<= Pause $mol_check_box
+			title \Пауза
+			checked? <=> paused?
+	body /
+		<= Draw $bog_gamengine_draw
+			scene <= Scene
+			cam <= Walker
+			wireframe? => wireframe?
+			stat => stat
+			event *
+				pointerdown? <=> shoot? null
+	foot /
+		<= Stat $mol_view
+			sub / <= stat
+		<= Phys_stat $mol_view
+			sub / <= phys_stat \
+	seed? 1
+	Key $bog_gamengine_key
+		bind *
+			forward / \W
+			back / \S
+			left / \A
+			right / \D
+			turn_left / \Q
+			turn_right / \E
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/atlas/wall.png
+			\bog/gamengine/demo/atlas/floor.png
+		size 64
+	Clock $bog_gamengine_clock
+		paused? => paused?
+	Phys $bog_gamengine_demo_boxes_phys
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		kids <= nodes /
+		phys3 <= Phys
+		batches <= batches /
+	Crates $bog_gamengine_batch
+		shader <= Solid $bog_gamengine_shader_solid
+		shape <= Box $bog_gamengine_shape_box
+		atlas <= Atlas
+		source <= Phys
+		skip 1
+	Floor_batch $bog_gamengine_batch
+		shader <= Solid
+		shape <= Plane $bog_gamengine_shape_plane
+			tile 60
+		atlas <= Atlas
+		nodes / <= Floor
+	Contact_batch $bog_gamengine_batch
+		shader <= Flat $bog_gamengine_shader_flat
+		shape <= Lines $bog_gamengine_shape_lines
+			points <= contact_points Float32Array
+		nodes / <= Debug
+	Debug $bog_gamengine_phys3_debug
+		phys3 <= Phys
+	Floor $bog_gamengine_mesh
+		shape <= Plane
+		atlas <= Atlas
+		frame \floor
+		size <= floor_size Float32Array
+	Thrown* $bog_gamengine_phys3_body
+		name \Брошенный
+	Walker $bog_gamengine_demo_room_walker
+		key <= Key
+		pos? <=> walker_pos? Float32Array
+		rot? <=> walker_rot? Float32Array

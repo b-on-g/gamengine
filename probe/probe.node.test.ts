@@ -17,6 +17,11 @@ namespace $ {
 			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_room_ok ) )
 		},
 
+		'boxes settle on the floor with contacts, click throws one more, center is not black'() {
+			const out = $bog_probe_test( 'bog/gamengine/probe/-/node.js', 'bog_gamengine_probe_boxes_check' )
+			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_boxes_ok ) )
+		},
+
 	})
 
 }

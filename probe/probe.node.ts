@@ -14,6 +14,14 @@ namespace $ {
 
 	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола, ребро ящика с каркасом белое'
 
+	export const $bog_gamengine_probe_boxes_page = 'bog/gamengine/demo/-/index.html#!demo=boxes'
+
+	export const $bog_gamengine_probe_boxes_ok = 'куча ящиков лежит на полу с контактами, клик бросает ящик, центр не чёрный'
+
+	export const $bog_gamengine_probe_boxes_count = 300
+
+	export const $bog_gamengine_probe_boxes_low = 0.4
+
 	export const $bog_gamengine_probe_flags = [ '--use-angle=swiftshader' ] as const
 
 	export const $bog_gamengine_probe_script = `
@@ -175,6 +183,37 @@ namespace $ {
 		}
 	`
 
+	export const $bog_gamengine_probe_boxes_script = `
+		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
+		const canvas = document.querySelector( 'canvas' )
+		const gl = canvas && canvas.getContext( 'webgl2' )
+		if( !gl ) return { webgl: false, loaded: false }
+		const read = ()=> {
+			const found = document.body.innerText.match( /bodies (\\d+) \\| contacts (\\d+) \\| phys ([\\d.]+) ms \\| low (-?[\\d.]+|Infinity)/ )
+			return found ? { bodies: Number( found[ 1 ] ), contacts: Number( found[ 2 ] ), phys: Number( found[ 3 ] ), low: Number( found[ 4 ] ) } : null
+		}
+		let start = null
+		for( let i = 0; i < 600 && !start; ++ i ) { await frame(); start = read() }
+		if( !start ) return { webgl: true, loaded: false }
+		const started = performance.now()
+		let frames = 0
+		while( performance.now() - started < 3000 ) { await frame(); ++ frames }
+		const settled = read()
+		const pixel = new Uint8Array( 4 )
+		gl.readPixels( canvas.width / 2 | 0, canvas.height / 2 | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel )
+		const box = canvas.getBoundingClientRect()
+		canvas.dispatchEvent( new PointerEvent( 'pointerdown', {
+			clientX: box.left + box.width / 2, clientY: box.top + box.height / 2, pointerId: 1, bubbles: true,
+		} ) )
+		await frame()
+		await frame()
+		const thrown = read()
+		return {
+			webgl: true, loaded: true, start, settled, thrown, frames,
+			center: Array.from( pixel ), size: [ canvas.width, canvas.height ],
+		}
+	`
+
 	export type $bog_gamengine_probe_result = {
 		readonly webgl: boolean
 		readonly pixel: readonly [ number, number, number, number ]
@@ -223,6 +262,24 @@ namespace $ {
 		readonly edge_at?: readonly [ number, number ]
 		readonly edge_on?: $bog_gamengine_probe_pixel
 		readonly edge_off?: $bog_gamengine_probe_pixel
+		readonly size?: readonly [ number, number ]
+	}
+
+	export type $bog_gamengine_probe_boxes_stat = {
+		readonly bodies: number
+		readonly contacts: number
+		readonly phys: number
+		readonly low: number
+	}
+
+	export type $bog_gamengine_probe_boxes_result = {
+		readonly webgl: boolean
+		readonly loaded: boolean
+		readonly start?: $bog_gamengine_probe_boxes_stat
+		readonly settled?: $bog_gamengine_probe_boxes_stat | null
+		readonly thrown?: $bog_gamengine_probe_boxes_stat | null
+		readonly frames?: number
+		readonly center?: $bog_gamengine_probe_pixel
 		readonly size?: readonly [ number, number ]
 	}
 
@@ -359,6 +416,45 @@ namespace $ {
 		if( $bog_gamengine_probe_white( got.edge_off! ) ) return fail( 'ребро ящика без каркаса белое' )
 
 		return say( $bog_gamengine_probe_room_ok )
+	}
+
+	export async function $bog_gamengine_probe_boxes_check(
+		root = $node.process.cwd(),
+		flags: readonly string[] = $bog_gamengine_probe_flags,
+		count = $bog_gamengine_probe_boxes_count,
+	) {
+
+		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
+
+		const started = Date.now()
+
+		const got = await $bog_probe_run({
+			root,
+			flags,
+			page: `${ $bog_gamengine_probe_boxes_page }/count=${ count }`,
+			ready: $bog_gamengine_probe_ready,
+			script: $bog_gamengine_probe_boxes_script,
+			width: 1024,
+			height: 768,
+			limit: 60000,
+		}) as $bog_gamengine_probe_boxes_result | typeof $bog_probe_skip
+
+		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
+
+		say( `${ flags.join( ' ' ) || 'без флагов' }, count ${ count }: ${ Date.now() - started } мс, ${ JSON.stringify( got ) }` )
+
+		const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( got ) }` ) )
+
+		if( !got.webgl ) return fail( 'нет webgl2' )
+		if( !got.loaded || !got.start ) return fail( 'подвал не показал тела' )
+		if( !got.settled ) return fail( 'подвал пропал после падения' )
+		if( got.settled.bodies !== count + 1 ) return fail( `тел не ${ count + 1 }` )
+		if( !( got.settled.contacts > 0 ) ) return fail( 'контактов нет' )
+		if( !( got.settled.low > $bog_gamengine_probe_boxes_low ) ) return fail( 'ящик ушёл под пол' )
+		if( !got.thrown || got.thrown.bodies !== got.settled.bodies + 1 ) return fail( 'клик не добавил тело' )
+		if( $bog_gamengine_probe_dark( got.center! ) ) return fail( 'центр чёрный' )
+
+		return say( $bog_gamengine_probe_boxes_ok )
 	}
 
 }
