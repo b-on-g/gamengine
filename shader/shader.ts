@@ -2,9 +2,9 @@ namespace $ {
 
 	export class $bog_gamengine_shader extends $mol_object2 {
 
-		programs = new WeakMap< $mol_3d_context, $mol_3d_program< $mol_3d_program_face > >()
+		programs = new WeakMap< WebGL2RenderingContext, $bog_gamengine_gl_program< $bog_gamengine_gl_face > >()
 
-		face(): $mol_3d_program_face {
+		face(): $bog_gamengine_gl_face {
 			return {}
 		}
 
@@ -28,14 +28,14 @@ namespace $ {
 			}
 		}
 
-		program( context: $mol_3d_context ): $mol_3d_program< ReturnType< this[ 'face' ] > > {
-			let program = this.programs.get( context )
+		program( gl: WebGL2RenderingContext ): $bog_gamengine_gl_program< ReturnType< this[ 'face' ] > > {
+			let program = this.programs.get( gl )
 			if( !program ) {
 				const sources = this.sources()
-				program = context.program( this.face(), sources.vert, sources.frag )
-				this.programs.set( context, program )
+				program = new $bog_gamengine_gl_program( gl, this.face(), sources.vert, sources.frag )
+				this.programs.set( gl, program )
 			}
-			return program as $mol_3d_program< ReturnType< this[ 'face' ] > >
+			return program as $bog_gamengine_gl_program< ReturnType< this[ 'face' ] > >
 		}
 
 	}

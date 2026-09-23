@@ -7,19 +7,19 @@ namespace $.$$ {
 
 	type $bog_gamengine_draw_slot = {
 		batch: $bog_gamengine_batch
-		program: $mol_3d_program< $bog_gamengine_draw_face >
-		proj: $mol_3d_glob
-		view: $mol_3d_glob
-		light_dir: $mol_3d_glob | null
-		ambient: $mol_3d_glob | null
+		program: $bog_gamengine_gl_program< $bog_gamengine_draw_face >
+		proj: WebGLUniformLocation | null
+		view: WebGLUniformLocation | null
+		light_dir: WebGLUniformLocation | null
+		ambient: WebGLUniformLocation | null
 		depth: boolean
-		geometry: $mol_3d_geometry
-		trans: $mol_3d_buffer
-		tint: $mol_3d_buffer
-		layer: $mol_3d_buffer | null
-		uv: $mol_3d_buffer | null
+		vao: WebGLVertexArrayObject
+		trans: $bog_gamengine_gl_buffer
+		tint: $bog_gamengine_gl_buffer
+		layer: $bog_gamengine_gl_buffer | null
+		uv: $bog_gamengine_gl_buffer | null
 		atlas: $bog_gamengine_atlas | null
-		sampler: $mol_3d_glob | null
+		sampler: WebGLUniformLocation | null
 		tex: $bog_gamengine_draw_tex | null
 		triangles: boolean
 		size: number
@@ -27,8 +27,7 @@ namespace $.$$ {
 	}
 
 	type $bog_gamengine_draw_tex = {
-		texture: $mol_3d_texture
-		sent: boolean
+		native: WebGLTexture | null
 	}
 
 	const stat_window = 30
@@ -37,7 +36,6 @@ namespace $.$$ {
 
 		slots_all = new WeakMap< $bog_gamengine_batch, $bog_gamengine_draw_slot >()
 		textures_all = new WeakMap< $bog_gamengine_atlas, $bog_gamengine_draw_tex >()
-		unit = new Int32Array([ 0 ])
 		ambient_vec = new Float32Array( 1 )
 		gaps = new Float32Array( stat_window )
 		ticks = new Float32Array( stat_window )
@@ -47,8 +45,40 @@ namespace $.$$ {
 		@ $mol_mem
 		context() {
 			const canvas = this.dom_node() as HTMLCanvasElement
-			const native = canvas.getContext( 'webgl2', { preserveDrawingBuffer: true } )!
-			return new $mol_3d_context( native )
+			return canvas.getContext( 'webgl2', { preserveDrawingBuffer: true } )!
+		}
+
+		@ $mol_mem
+		width() {
+			return Math.ceil( ( this.view_rect()?.width ?? 0 ) * this.$.$mol_dom_context.devicePixelRatio )
+		}
+
+		@ $mol_mem
+		height() {
+			return Math.ceil( ( this.view_rect()?.height ?? 0 ) * this.$.$mol_dom_context.devicePixelRatio )
+		}
+
+		@ $mol_mem
+		viewport() {
+			const viewport = [ 0, 0, this.width(), this.height() ] as const
+			this.context().viewport( ... viewport )
+			return viewport
+		}
+
+		@ $mol_mem
+		scissor() {
+			const scissor = this.viewport()
+			const gl = this.context()
+			gl.enable( gl.SCISSOR_TEST )
+			gl.scissor( ... scissor )
+			return scissor
+		}
+
+		render() {
+			super.render()
+			this.viewport()
+			this.scissor()
+			this.paint()
 		}
 
 		@ $mol_mem
@@ -78,10 +108,9 @@ namespace $.$$ {
 			const found = this.slots_all.get( batch )
 			if( found ) return found
 
-			const context = this.context()
-			const gl = context.native
+			const gl = this.context()
 			const shader = batch.shader()
-			const program = shader.program( context ) as $mol_3d_program< $bog_gamengine_draw_face >
+			const program = shader.program( gl ) as $bog_gamengine_gl_program< $bog_gamengine_draw_face >
 			const globs = shader.face().glob ?? {}
 			const shape = batch.shape()
 			if( !this.shape_ready( shape ) ) return null
@@ -91,37 +120,45 @@ namespace $.$$ {
 			const slot: $bog_gamengine_draw_slot = {
 				batch,
 				program,
-				proj: program.glob( 'proj' ),
-				view: program.glob( 'view' ),
-				light_dir: 'light_dir' in globs ? program.glob( 'light_dir' ) : null,
-				ambient: 'ambient' in globs ? program.glob( 'ambient' ) : null,
+				proj: program.uniform( 'proj' ),
+				view: program.uniform( 'view' ),
+				light_dir: 'light_dir' in globs ? program.uniform( 'light_dir' ) : null,
+				ambient: 'ambient' in globs ? program.uniform( 'ambient' ) : null,
 				depth: shader.depth(),
-				geometry: new $mol_3d_geometry( gl ),
+				vao: gl.createVertexArray()!,
 				trans: null!,
 				tint: null!,
 				layer: null,
 				uv: null,
 				atlas,
-				sampler: atlas ? program.glob( 'atlas' ) : null,
+				sampler: atlas ? program.uniform( 'atlas' ) : null,
 				tex: atlas ? this.tex( atlas ) : null,
 				triangles: shape.mode() === 'triangles',
 				size: shape.size(),
 				cap,
 			}
 
-			slot.geometry.use( ()=> {
-				program.param( 'vertex' )!.vector( 3 ).send([ shape.geometry() ])
-				program.param( 'uv' )?.vector( 2 ).send([ shape.skin() ])
-				program.param( 'normal' )?.vector( 3 ).send([ shape.normals() ])
-				slot.trans = program.param( 'inst_trans' )!.matrices([ 4, 4 ])
-				gl.bufferData( gl.ARRAY_BUFFER, cap * 64, gl.DYNAMIC_DRAW )
-				slot.tint = program.param( 'inst_tint' )!.vectors( 4 )
-				gl.bufferData( gl.ARRAY_BUFFER, cap * 16, gl.DYNAMIC_DRAW )
-				slot.layer = program.param( 'inst_layer' )?.vectors( 1 ) ?? null
-				if( slot.layer ) gl.bufferData( gl.ARRAY_BUFFER, cap * 4, gl.DYNAMIC_DRAW )
-				slot.uv = program.param( 'inst_uv' )?.vectors( 4 ) ?? null
-				if( slot.uv ) gl.bufferData( gl.ARRAY_BUFFER, cap * 16, gl.DYNAMIC_DRAW )
-			} )
+			gl.bindVertexArray( slot.vao )
+			new $bog_gamengine_gl_buffer( gl, program.attribute( 'vertex' )!, 3, 0 ).send( shape.geometry() )
+			const uv = program.attribute( 'uv' )
+			if( uv !== null ) new $bog_gamengine_gl_buffer( gl, uv, 2, 0 ).send( shape.skin() )
+			const normal = program.attribute( 'normal' )
+			if( normal !== null ) new $bog_gamengine_gl_buffer( gl, normal, 3, 0 ).send( shape.normals() )
+			slot.trans = new $bog_gamengine_gl_buffer( gl, program.attribute( 'inst_trans' )!, 16, 1 )
+			slot.trans.reserve( cap * 64 )
+			slot.tint = new $bog_gamengine_gl_buffer( gl, program.attribute( 'inst_tint' )!, 4, 1 )
+			slot.tint.reserve( cap * 16 )
+			const layer = program.attribute( 'inst_layer' )
+			if( layer !== null ) {
+				slot.layer = new $bog_gamengine_gl_buffer( gl, layer, 1, 1 )
+				slot.layer.reserve( cap * 4 )
+			}
+			const inst_uv = program.attribute( 'inst_uv' )
+			if( inst_uv !== null ) {
+				slot.uv = new $bog_gamengine_gl_buffer( gl, inst_uv, 4, 1 )
+				slot.uv.reserve( cap * 16 )
+			}
+			gl.bindVertexArray( null )
 
 			this.slots_all.set( batch, slot )
 			return slot
@@ -140,26 +177,21 @@ namespace $.$$ {
 		tex( atlas: $bog_gamengine_atlas ) {
 			const found = this.textures_all.get( atlas )
 			if( found ) return found
-			const tex: $bog_gamengine_draw_tex = {
-				texture: new $mol_3d_texture( this.context().native ),
-				sent: false,
-			}
+			const tex: $bog_gamengine_draw_tex = { native: null }
 			this.textures_all.set( atlas, tex )
 			return tex
 		}
 
 		@ $mol_mem
 		textures() {
-			const gl = this.context().native
+			const gl = this.context()
 			const slots = this.slots()
 			let sent = 0
 			for( let i = 0; i < slots.length; ++ i ) {
 				const slot = slots[ i ]
-				if( !slot.atlas || slot.tex!.sent ) continue
+				if( !slot.atlas || slot.tex!.native ) continue
 				if( !slot.atlas.ready() ) continue
-				gl.pixelStorei( gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true )
-				slot.tex!.texture.send_multi( slot.atlas.images() )
-				slot.tex!.sent = true
+				slot.tex!.native = $bog_gamengine_gl_texture_array( gl, slot.atlas.images(), slot.atlas.size() )
 				++ sent
 			}
 			return sent
@@ -167,7 +199,7 @@ namespace $.$$ {
 
 		paint() {
 			this.scene().step()
-			const gl = this.context().native
+			const gl = this.context()
 			const slots = this.slots()
 			this.textures()
 			const proj = this.proj()
@@ -188,7 +220,7 @@ namespace $.$$ {
 			const batch = slot.batch
 			const count = batch.count
 			if( !count ) return
-			if( slot.tex && !slot.tex.sent ) return
+			if( slot.tex && !slot.tex.native ) return
 			const grown = batch.cap > slot.cap
 			if( slot.depth ) {
 				gl.enable( gl.DEPTH_TEST )
@@ -199,16 +231,16 @@ namespace $.$$ {
 				gl.disable( gl.CULL_FACE )
 			}
 			gl.useProgram( slot.program.native )
-			slot.proj.matrix( proj )
-			slot.view.matrix( view )
-			if( slot.light_dir ) slot.light_dir.vector_float( light_dir )
-			if( slot.ambient ) slot.ambient.vector_float( this.ambient_vec )
+			$bog_gamengine_gl_uniform_matrix( gl, slot.proj, proj )
+			$bog_gamengine_gl_uniform_matrix( gl, slot.view, view )
+			$bog_gamengine_gl_uniform_vector( gl, slot.light_dir, light_dir )
+			$bog_gamengine_gl_uniform_vector( gl, slot.ambient, this.ambient_vec )
 			if( slot.tex ) {
 				gl.activeTexture( gl.TEXTURE0 )
-				gl.bindTexture( gl.TEXTURE_2D_ARRAY, slot.tex.texture.native )
-				slot.sampler!.vector_int( this.unit )
+				gl.bindTexture( gl.TEXTURE_2D_ARRAY, slot.tex.native )
+				$bog_gamengine_gl_uniform_int( gl, slot.sampler, 0 )
 			}
-			gl.bindVertexArray( slot.geometry.vertexes )
+			gl.bindVertexArray( slot.vao )
 			gl.bindBuffer( gl.ARRAY_BUFFER, slot.trans.native )
 			if( grown ) gl.bufferData( gl.ARRAY_BUFFER, batch.cap * 64, gl.DYNAMIC_DRAW )
 			gl.bufferSubData( gl.ARRAY_BUFFER, 0, batch.trans, 0, count * 16 )
@@ -227,7 +259,7 @@ namespace $.$$ {
 			}
 			if( grown ) slot.cap = batch.cap
 			if( slot.triangles ) gl.drawArraysInstanced( gl.TRIANGLES, 0, slot.size, count )
-			else slot.program.strips( 0, slot.size, count )
+			else gl.drawArraysInstanced( gl.TRIANGLE_STRIP, 0, slot.size, count )
 		}
 
 		measure() {

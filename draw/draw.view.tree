@@ -1,4 +1,9 @@
-$bog_gamengine_draw $mol_3d_pane
+$bog_gamengine_draw $mol_view
+	dom_name \canvas
+	field *
+		^
+		width <= width 0
+		height <= height 0
 	scene $bog_gamengine_scene
 	cam $bog_gamengine_cam
 	light_dir Float32Array
