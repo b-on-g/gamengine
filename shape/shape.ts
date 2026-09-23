@@ -14,6 +14,10 @@ namespace $ {
 			return this.size()
 		}
 
+		mode(): 'strip' | 'triangles' {
+			return 'strip'
+		}
+
 	}
 
 }
