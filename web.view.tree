@@ -1,0 +1,679 @@
+$mol_scroll $mol_view
+	scroll_top? 0
+	scroll_left? 0
+	attr *
+		^
+		tabindex <= tabindex -1
+	event *
+		^
+		scroll? <=> event_scroll? null
+
+$mol_book2 $mol_scroll
+	menu_title \
+	sub /$mol_view
+		^ pages <= pages_deep /$mol_view
+		^ placeholders /$mol_view
+			<= Placeholder $mol_view
+	minimal_width 0
+	Gap* $mol_view title \
+
+$mol_ghost $mol_view
+	Sub $mol_view
+
+$mol_follower $mol_ghost
+	Anchor $mol_view
+	align /number
+		-.5
+		-.5
+	offset /number
+		0
+		0
+	style *
+		^
+		transform <= transform \
+
+$mol_pop $mol_view
+	showed? false
+	align_vert \
+	align_hor \
+	direction \ltr
+	align_enriched <= align \bottom_center
+	prefer \vert
+	auto /
+		<= bubble null
+	sub /
+		<= Anchor null
+	sub_visible /
+		<= Anchor
+		<= Follower $mol_follower
+			offset <= bubble_offset /number
+				0
+				1
+			align <= bubble_align /number
+				0
+				0
+			Anchor <= Anchor
+			Sub <= Bubble $mol_pop_bubble
+				content <= bubble_content /$mol_view_content
+				height_max <= height_max 9999
+
+$mol_pop_bubble $mol_view
+	sub <= content /$mol_view_content
+	style *
+		^
+		maxHeight <= height_max 9999
+	attr *
+		^
+		tabindex 0
+		popover \manual
+
+$mol_hotkey2 $mol_plugin
+	event *
+		^
+		keydown? <=> keydown? null
+	action *
+
+$mol_hotkey $mol_hotkey2
+	key *
+	mod_ctrl false
+	mod_alt false
+	mod_shift false
+
+$mol_nav $mol_plugin
+	cycle? false
+	-
+	mod_ctrl false
+	mod_shift false
+	mod_alt false
+	-
+	keys_x? /
+	keys_y? /
+	-
+	current_x? null
+	current_y? null
+	-
+	event_up? null
+	event_down? null
+	event_left? null
+	event_right? null
+	event *
+		^
+		keydown? <=> event_key? null
+
+$mol_string $mol_view
+	dom_name \input
+	enabled true
+	minimal_height 40
+	autocomplete false
+	selection? /number
+		0
+		0
+	auto /
+		<= selection_watcher null
+		<= error_report null
+	field *
+		^
+		disabled <= disabled false
+		value <= value_changed? <=> value? \
+		placeholder <= hint_visible <= hint \
+		spellcheck <= spellcheck true
+		autocomplete <= autocomplete_native \
+		selectionEnd <= selection_end 0
+		selectionStart <= selection_start 0
+		inputMode <= keyboard \text
+		enterkeyhint <= enter \go
+	attr *
+		^
+		maxlength <= length_max +Infinity
+		type <= type? \text
+	event *
+		^
+		input? <=> event_change? null
+	plugins /
+		<= Submit $mol_hotkey
+			mod_ctrl <= submit_with_ctrl false
+			key * enter? <=> submit? null
+
+$mol_svg $mol_view
+	dom_name \svg
+	dom_name_space \http://www.w3.org/2000/svg
+	font_size 16
+	font_family \
+	style_size *
+
+$mol_svg_root $mol_svg
+	dom_name \svg
+	attr *
+		^
+		viewBox <= view_box \0 0 100 100
+		preserveAspectRatio <= aspect \xMidYMid
+
+$mol_svg_path $mol_svg
+	dom_name \path
+	attr *
+		^
+		d <= geometry \
+
+
+$mol_icon $mol_svg_root
+	view_box \0 0 24 24
+	minimal_width 16
+	minimal_height 16
+	sub /
+		<= Path $mol_svg_path
+			geometry <= path \
+
+$mol_icon_close $mol_icon path \M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z
+
+$mol_speck $mol_view
+	theme \$mol_theme_accent
+	sub /
+		<= value null
+
+$mol_button $mol_view
+	enabled true
+	click? null
+	event_click? null
+	status? /
+	event *
+		^
+		click? <=> activate? <=> event_activate? null
+		dblclick? <=> clicks? null
+		keydown? <=> key_press? <=> event_key_press? null
+	attr *
+		^
+		disabled <= disabled false
+		role \button
+		tabindex <= tab_index 0
+		title <= hint_safe <= hint \
+	sub /$mol_view_content
+		<= title
+	Speck $mol_speck
+		value <= error \
+
+$mol_button_typed $mol_button
+	minimal_height 40
+	minimal_width 40
+
+$mol_button_minor $mol_button_typed
+
+$mol_list $mol_view
+	render_visible_only true
+	render_over 0.1
+	sub <= rows /$mol_view
+		<= Gap_before $mol_view style * paddingTop <= gap_before 0
+		<= Empty $mol_view
+		<= Gap_after $mol_view style * paddingTop <= gap_after 0
+	item_height_min* 1
+	item_width_min* 1
+	view_window_shift? 0
+	view_window /
+		0
+		0
+
+$mol_paragraph $mol_view
+	line_height 24
+	letter_width 7
+	width_limit +Infinity
+	row_width 0
+	sub / <= title
+
+$mol_dimmer $mol_paragraph
+	haystack \
+	needle \
+	sub <= parts /$mol_view_content
+	Low* $mol_paragraph
+		sub /
+			<= string* \
+	High* $mol_paragraph
+		sub /
+			<= string* \
+
+$mol_search $mol_pop
+	query? \
+	suggests /string
+	plugins /$mol_plugin
+		^
+		<= Hotkey $mol_hotkey
+			key * escape? <=> clear? null
+		<= Nav $mol_nav
+			keys_y <= nav_components /$mol_view
+			current_y? <=> nav_focused? null
+	showed? <=> suggests_showed? false
+	align_hor \right
+	Anchor $mol_view
+		sub <= anchor_content /
+			<= Query $mol_string
+				value? <=> query? \
+				hint <= hint @ \Search...
+				submit? <=> submit? null
+				enabled <= enabled true
+				keyboard <= keyboard \search
+				enter <= enter \search
+				bring => bring
+			<= Clear $mol_button_minor
+				hint @ \Clear
+				enabled <= enabled true
+				click? <=> clear? null
+				sub /
+					<= Clear_icon $mol_icon_close
+	bubble_content /$mol_view_content
+		<= Bubble_pane $mol_scroll
+			sub /
+				<= Menu $mol_list
+					rows <= menu_items /$mol_view
+	Suggest* $mol_button_minor
+		click? <=> suggest_select*? null
+		sub <= suggest_content* /$mol_view_content
+			<= Suggest_label* $mol_dimmer
+				haystack <= suggest_label* \
+				needle <= query? \
+
+$mol_link $mol_view
+	uri \
+	dom_name \a
+	uri_off \
+	uri_native null
+	external false
+	attr *
+		^
+		href <= uri_unsafe <= uri_toggle \
+		title <= hint_safe <= hint \
+		target <= target \_self
+		download <= file_name \
+		mol_link_current <= current false
+		rel <= relation \
+	sub /$mol_view_content
+		<= title
+	arg *
+	event *
+		^
+		click? <=> click? <=> event_click? null
+
+$mol_page $mol_view
+	dom_name \article
+	attr *
+		^
+		tabIndex <= tabindex -1
+	sub /
+		<= Head $mol_view
+			minimal_height 64
+			dom_name \header
+			sub <= head /
+				<= Title $mol_view
+					dom_name \h1
+					sub <= title_content /
+						<= Logo null
+						<= title
+				<= Tools $mol_view
+					sub <= tools /$mol_view_content
+		<= Body $mol_scroll
+			scroll_top? => body_scroll_top?
+			sub <= body_content /
+				<= Body_content $mol_view
+					sub <= body /$mol_view
+		<= Foot $mol_view
+			dom_name \footer
+			sub <= foot /$mol_view
+
+$mol_book2_catalog $mol_book2
+	param \
+	spread? \
+	spreads *
+	Spread* $mol_view
+	Spread_default null
+	spread_ids /string
+	menu_filter_enabled false
+	spread_ids_filtered /string
+	spread_current null
+	menu_tools /
+	addon_tools /
+	pages /
+		<= Menu $mol_page
+			Title => Menu_title
+			title <= menu_title \
+			Tools => Menu_tools
+			Logo <= Menu_logo null
+			tools /
+				^ menu_tools
+				^ addon_tools
+			head <= menu_head /$mol_view_content
+				<= Menu_title
+				<= Menu_tools
+			body <= menu_body /$mol_view
+				<= Menu_filter $mol_search
+					query? <=> menu_filter? \
+				<= Menu_links $mol_list
+					Empty <= Menu_links_empty $mol_view
+					rows <= menu_links /$mol_view
+						<= Menu_item*0 $mol_view
+							sub <= menu_item_content* /$mol_view
+								<= Menu_link* $mol_link
+									arg <= menu_link_arg* <= arg* *
+									sub <= menu_link_content* /$mol_view_content
+										<= Menu_link_title* $mol_dimmer
+											needle <= menu_filter
+											haystack <= spread_title* \
+			foot <= menu_foot /$mol_view
+	Spread_close $mol_link
+		arg <= spread_close_arg *
+		hint @ \Close page
+		sub /
+			<= Spread_close_icon $mol_icon_close
+
+$mol_keyboard_state $mol_plugin
+	event *
+		^
+		keydown? <=> down? null
+		keyup? <=> up? null
+	key *
+
+$mol_check $mol_button_minor
+	attr *
+		^
+		mol_check_checked <= checked? false
+		aria-checked <= aria_checked \false
+		role <= aria_role \checkbox
+	sub /$mol_view_content
+		<= Icon null
+		<= label /
+			<= Title $mol_view
+				sub /
+					<= title \
+
+$mol_check_list $mol_view
+	dictionary *
+	Option* $mol_check
+		checked? <=> option_checked*? false
+		label <= option_label* /
+			<= option_title* \
+		enabled <= option_enabled* <= enabled true
+		hint <= option_hint* \
+		minimal_height 24
+	options *
+	keys /string
+	sub <= items /$mol_check
+
+$mol_switch $mol_check_list
+	value? \
+
+$mol_icon_tick $mol_icon path \M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z
+
+$mol_check_box $mol_check
+	Icon $mol_icon_tick
+
+$mol_3d_pane $mol_view
+	dom_name \canvas
+	context $mol_3d_context / <= context_native WebGL2RenderingContext
+	field *
+		^
+		width <= width 0
+		height <= height 0
+	paint null
+
+$bog_gamengine_draw $mol_3d_pane
+	scene $bog_gamengine_scene
+	cam $bog_gamengine_cam
+	light_dir Float32Array
+	ambient 0.35
+	stat \
+
+$mol_labeler $mol_list
+	rows /
+		<= Label $mol_view
+			minimal_height 32
+			sub <= label /$mol_view_content
+				<= title
+		<= Content $mol_view
+			minimal_height 24
+			sub <= content /
+
+$bog_gamengine_demo_flat $mol_page
+	title \Плоский мир
+	tools /
+		<= Coins $mol_labeler
+			title \Монеты
+			content / <= coins_stat \
+	body /
+		<= World $mol_view
+			sub /
+				<= Draw $bog_gamengine_draw
+					scene <= Scene
+					cam <= Cam
+					stat => stat
+					width => draw_width
+					height => draw_height
+					event *
+						pointerdown? <=> pointer_down? null
+				<= Hero_label $mol_view
+					sub / \Герой
+					style *
+						left <= label_left \0px
+						top <= label_top \0px
+	foot /
+		<= Stat $mol_view
+			sub / <= stat
+		<= Hero_stat $mol_view
+			sub / <= hero_stat \
+	Key $bog_gamengine_key
+		bind *
+			left /
+				\A
+				\left
+			right /
+				\D
+				\right
+			up /
+				\W
+				\up
+			down /
+				\S
+				\down
+	map \
+		\####################
+		\#..................#
+		\#..####............#
+		\#..#...............#
+		\#..#....######.....#
+		\#..#.........#.....#
+		\#............#.....#
+		\#......###...#.....#
+		\#............#.....#
+		\#.....#............#
+		\#.....#............#
+		\#.....#.....####...#
+		\#..................#
+		\#..................#
+		\####################
+	Tile $bog_gamengine_phys_tile
+		map <= map
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/atlas/hero.png
+			\bog/gamengine/demo/atlas/hero_1.png
+			\bog/gamengine/demo/atlas/hero_2.png
+			\bog/gamengine/demo/atlas/coin.png
+			\bog/gamengine/demo/atlas/wall.png
+			\bog/gamengine/demo/atlas/floor.png
+		size 64
+	Point $bog_gamengine_point
+		cam <= Cam
+		width <= draw_width
+		height <= draw_height
+	Sound $bog_gamengine_sound
+		uris *
+			coin \bog/gamengine/demo/sound/coin.wav
+	Clock $bog_gamengine_clock
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		kids <= nodes /
+		phys <= Phys $bog_gamengine_phys
+			bodies <= bodies /
+			tile <= Tile
+		batches /
+			<= Batch $bog_gamengine_batch
+				shader <= Sprite_shader $bog_gamengine_shader_sprite
+				atlas <= Atlas
+				nodes <= sprites /
+	Cam $bog_gamengine_cam_flat
+		height 15
+		pos <= cam_pos Float32Array
+	Cell* $bog_gamengine_sprite
+		atlas <= Atlas
+		frame <= cell_frame* \
+		pos <= cell_pos* Float32Array
+	Hero $bog_gamengine_demo_flat_hero
+		key <= Key
+		pos? <=> hero_pos? Float32Array
+		face_left? => hero_face_left?
+		clip? => hero_clip?
+	Hero_sprite $bog_gamengine_sprite
+		parent <= Hero
+		atlas <= Atlas
+		frame \hero
+		flip_x <= hero_face_left
+		clock <= Clock
+		clip <= hero_clip
+		fps 6
+		clips *
+			walk /
+				\hero
+				\hero_1
+				\hero_2
+				\hero_1
+	Coin* $bog_gamengine_demo_flat_coin
+		sound <= Sound
+		pos <= coin_pos* Float32Array
+		taken? => coin_taken*?
+	Coin_sprite* $bog_gamengine_sprite
+		parent <= Coin*
+		atlas <= Atlas
+		frame \coin
+
+$bog_gamengine_demo_room $mol_page
+	title \Комната
+	tools /
+		<= Pause $mol_check_box
+			title \Пауза
+			checked? <=> paused?
+	body /
+		<= Draw $bog_gamengine_draw
+			scene <= Scene
+			cam <= Walker
+			stat => stat
+	foot /
+		<= Stat $mol_view
+			sub / <= stat
+		<= Walker_stat $mol_view
+			sub / <= walker_stat \
+		<= Pillar_stat $mol_view
+			sub / <= pillar_stat \
+	Key $bog_gamengine_key
+		bind *
+			forward / \W
+			back / \S
+			left / \A
+			right / \D
+			turn_left / \Q
+			turn_right / \E
+	map \
+		\############
+		\#..........#
+		\#..........#
+		\#.......#..#
+		\#...#......#
+		\#..........#
+		\#..........#
+		\#..........#
+		\############
+	Tile $bog_gamengine_phys_tile
+		map <= map
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/atlas/wall.png
+			\bog/gamengine/demo/atlas/floor.png
+		size 64
+	Clock $bog_gamengine_clock
+		paused? => paused?
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		kids <= nodes /
+		batches /
+			<= Wall_batch $bog_gamengine_batch
+				shader <= Solid $bog_gamengine_shader_solid
+				shape <= Box $bog_gamengine_shape_box
+				atlas <= Atlas
+				nodes <= walls /
+			<= Floor_batch $bog_gamengine_batch
+				shader <= Solid
+				shape <= Plane $bog_gamengine_shape_plane
+					tile 12
+				atlas <= Atlas
+				nodes / <= Floor
+			<= Pillar_batch $bog_gamengine_batch
+				shader <= Solid
+				shape <= Pillar_shape $bog_gamengine_shape_gltf
+					data <= pillar_data ArrayBuffer
+				atlas <= Atlas
+				nodes / <= Pillar
+	Wall* $bog_gamengine_mesh
+		shape <= Box
+		atlas <= Atlas
+		frame \wall
+		pos <= wall_pos* Float32Array
+	Floor $bog_gamengine_mesh
+		shape <= Plane
+		atlas <= Atlas
+		frame \floor
+		pos <= floor_pos Float32Array
+		size <= floor_size Float32Array
+	Pillar $bog_gamengine_mesh
+		shape <= Pillar_shape
+		atlas <= Atlas
+		frame \wall
+		pos <= pillar_pos Float32Array
+	Walker $bog_gamengine_demo_room_walker
+		key <= Key
+		tile <= Tile
+		pos? <=> walker_pos? Float32Array
+		rot? <=> walker_rot? Float32Array
+
+$bog_gamengine_demo $mol_book2_catalog
+	param \demo
+	plugins /
+		<= Control $mol_keyboard_state
+			key <= key_map *
+	spreads *
+		quad <= Quad $mol_page
+			title \Квад
+			tools /
+				<= Cam_switch $mol_switch
+					value? <=> cam_kind? \flat
+					options *
+						flat \Плоская
+						deep \Объёмная
+				<= Pause $mol_check_box
+					title \Пауза
+					checked? <=> paused?
+			body /
+				<= Draw $bog_gamengine_draw
+					scene <= Scene
+					cam <= cam $bog_gamengine_cam
+					stat => stat
+			foot /
+				<= Stat $mol_view
+					sub / <= stat
+		flat <= Flat $bog_gamengine_demo_flat
+		room <= Room $bog_gamengine_demo_room
+	Clock $bog_gamengine_clock
+		paused? => paused?
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		kids / <= Spin
+		batches /
+			<= Batch $bog_gamengine_batch
+				nodes / <= Spin
+	Spin $bog_gamengine_demo_spin
+	Cam_flat $bog_gamengine_cam_flat
+	Cam_deep $bog_gamengine_cam_deep
+		pos <= cam_deep_pos Float32Array
