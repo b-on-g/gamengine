@@ -1,6 +1,10 @@
 namespace $ {
 
-	export type $bog_gamengine_batch_node = $bog_gamengine_node & { tint?(): Float32Array }
+	export type $bog_gamengine_batch_node = $bog_gamengine_node & {
+		tint?(): Float32Array
+		layer?(): number
+		uv?(): Float32Array
+	}
 
 	export class $bog_gamengine_batch extends $mol_object2 {
 
@@ -15,6 +19,11 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		atlas( next?: $bog_gamengine_atlas | null ) {
+			return next ?? null
+		}
+
+		@ $mol_mem
 		nodes( next?: readonly $bog_gamengine_batch_node[] ) {
 			return next ?? []
 		}
@@ -24,6 +33,8 @@ namespace $ {
 		version = 0
 		trans = new Float32Array( 0 )
 		tint = new Float32Array( 0 )
+		layer = new Float32Array( 0 )
+		uv = new Float32Array( 0 )
 
 		grow( need: number ) {
 			if( need <= this.cap ) return
@@ -32,6 +43,8 @@ namespace $ {
 			this.cap = cap
 			this.trans = new Float32Array( cap * 16 )
 			this.tint = new Float32Array( cap * 4 )
+			this.layer = new Float32Array( cap )
+			this.uv = new Float32Array( cap * 4 )
 		}
 
 		fill() {
@@ -40,6 +53,8 @@ namespace $ {
 			this.grow( count )
 			const trans = this.trans
 			const tint = this.tint
+			const layer = this.layer
+			const uv = this.uv
 			for( let i = 0; i < count; ++ i ) {
 				const node = nodes[ i ]
 				trans.set( node.world(), i * 16 )
@@ -50,6 +65,15 @@ namespace $ {
 					tint[ i * 4 + 1 ] = 1
 					tint[ i * 4 + 2 ] = 1
 					tint[ i * 4 + 3 ] = 1
+				}
+				layer[ i ] = typeof node.layer === 'function' ? node.layer() : 0
+				if( typeof node.uv === 'function' ) {
+					uv.set( node.uv(), i * 4 )
+				} else {
+					uv[ i * 4 ] = 0
+					uv[ i * 4 + 1 ] = 0
+					uv[ i * 4 + 2 ] = 1
+					uv[ i * 4 + 3 ] = 1
 				}
 			}
 			this.count = count

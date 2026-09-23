@@ -6,6 +6,15 @@ namespace $ {
 		}
 	}
 
+	class $bog_gamengine_batch_test_layered extends $bog_gamengine_node {
+		layer() {
+			return 3
+		}
+		uv() {
+			return new Float32Array([ 1, 0, -1, 1 ])
+		}
+	}
+
 	function $bog_gamengine_batch_test_node( x: number, y: number, z: number ) {
 		const node = new $bog_gamengine_node
 		node.pos( new Float32Array([ x, y, z ]) )
@@ -72,6 +81,17 @@ namespace $ {
 			])
 			batch.fill()
 			$mol_assert_equal( [ ...batch.tint.subarray( 4, 8 ) ], [ 1, 0, 0, 0.5 ] )
+		},
+
+		'node with layer and uv writes them, plain node gets 0 and whole uv'() {
+			const batch = new $bog_gamengine_batch
+			batch.nodes([
+				$bog_gamengine_batch_test_node( 0, 0, 0 ),
+				new $bog_gamengine_batch_test_layered,
+			])
+			batch.fill()
+			$mol_assert_equal( [ ...batch.layer.subarray( 0, 2 ) ], [ 0, 3 ] )
+			$mol_assert_equal( [ ...batch.uv.subarray( 0, 8 ) ], [ 0, 0, 1, 1, 1, 0, -1, 1 ] )
 		},
 
 		'version grows on every fill'() {
