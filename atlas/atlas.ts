@@ -1,5 +1,10 @@
 namespace $ {
 
+	export type $bog_gamengine_atlas_source = {
+		name: string
+		image: TexImageSource
+	}
+
 	export class $bog_gamengine_atlas extends $mol_object2 {
 
 		@ $mol_mem
@@ -13,13 +18,32 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		names() {
+		sources( next: readonly $bog_gamengine_atlas_source[] = [] ) {
+			return next
+		}
+
+		@ $mol_mem
+		origins() {
 			const uris = this.uris()
-			const names = new Map< string, number >()
+			const sources = this.sources()
+			const origins = [] as { name: string, from: string }[]
 			for( let i = 0; i < uris.length; ++i ) {
-				const name = uris[ i ].replace( /^.*\//, '' ).replace( /\.[^.]*$/, '' )
+				origins.push({ name: uris[ i ].replace( /^.*\//, '' ).replace( /\.[^.]*$/, '' ), from: uris[ i ] })
+			}
+			for( let i = 0; i < sources.length; ++i ) {
+				origins.push({ name: sources[ i ].name, from: sources[ i ].name })
+			}
+			return origins as readonly { name: string, from: string }[]
+		}
+
+		@ $mol_mem
+		names() {
+			const origins = this.origins()
+			const names = new Map< string, number >()
+			for( let i = 0; i < origins.length; ++i ) {
+				const name = origins[ i ].name
 				const known = names.get( name )
-				if( known !== undefined ) $mol_fail( new Error( `Atlas layer name ${ name } is used twice: ${ uris[ known ] } and ${ uris[ i ] }` ) )
+				if( known !== undefined ) $mol_fail( new Error( `Atlas layer name ${ name } is used twice: ${ origins[ known ].from } and ${ origins[ i ].from }` ) )
 				names.set( name, i )
 			}
 			return names
@@ -45,12 +69,16 @@ namespace $ {
 		images() {
 			const uris = this.uris()
 			const size = this.size()
-			const images = $mol_wire_race( ... uris.map( uri => ()=> this.image( uri ).data() ) )
+			const origins = this.origins()
+			const loaded = $mol_wire_race( ... uris.map( uri => ()=> this.image( uri ).data() ) )
+			const images = [ ... loaded, ... this.sources().map( source => source.image ) ] as readonly TexImageSource[]
 			for( let i = 0; i < images.length; ++i ) {
-				const { width, height } = images[i]
+				const box = images[i] as { width: number, height: number }
+				const width = box.width
+				const height = box.height
 				if( width === size && height === size ) continue
 				const hint = width === 512 && height === 512 ? ', is it loaded?' : ''
-				$mol_fail( new Error( `Atlas image ${ uris[i] } is ${ width }×${ height }, expected ${ size }×${ size }${ hint }` ) )
+				$mol_fail( new Error( `Atlas image ${ origins[i].from } is ${ width }×${ height }, expected ${ size }×${ size }${ hint }` ) )
 			}
 			return images
 		}

@@ -57,6 +57,13 @@ namespace $ {
 			$mol_assert_equal( left.image( uri ).uri(), uri )
 		},
 
+		'source layers follow layers of uris'() {
+			const atlas = atlas_mock([ 'bog/gamengine/demo/atlas/hero.png' ])
+			atlas.sources([ { name: 'A', image: { width: 64, height: 64 } as unknown as TexImageSource } ])
+			$mol_assert_equal( atlas.layer( 'A' ), 1 )
+			$mol_assert_equal( atlas.images().length, 2 )
+		},
+
 		'ready is true when all images match size'() {
 			const atlas = atlas_mock([ 'bog/gamengine/demo/atlas/hero.png' ])
 			$mol_assert_equal( atlas.ready(), true )

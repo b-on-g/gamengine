@@ -89,11 +89,11 @@ $bog_gamengine_demo_flat $mol_page
 		phys <= Phys $bog_gamengine_phys
 			bodies <= bodies /
 			tile <= Tile
-		batches /
-			<= Batch $bog_gamengine_batch
-				shader <= Sprite_shader $bog_gamengine_shader_sprite
-				atlas <= Atlas
-				nodes <= sprites /
+		batches <= batches /
+	Batch $bog_gamengine_batch
+		shader <= Sprite_shader $bog_gamengine_shader_sprite
+		atlas <= Atlas
+		nodes <= sprites /
 	Cam $bog_gamengine_cam_flat
 		height 15
 		pos <= cam_pos Float32Array
@@ -139,3 +139,21 @@ $bog_gamengine_demo_flat $mol_page
 		parent <= Coin*
 		atlas <= Atlas
 		frame \coin
+	Font $bog_gamengine_text_font
+		size 64
+		chars \+1
+	Font_atlas $bog_gamengine_atlas
+		size 64
+		sources <= font_sources /
+	Coin_text* $bog_gamengine_text
+		font <= Font
+		atlas <= Font_atlas
+		value \+1
+		height 0.4
+		align \center
+		color <= coin_text_color Float32Array
+		pos <= coin_text_pos* Float32Array
+	Coin_text_batch* $bog_gamengine_batch
+		shader <= Sprite_shader
+		atlas <= Font_atlas
+		source <= coin_text_pool* null

@@ -82,9 +82,38 @@ namespace $.$$ {
 			return [ ... this.cells(), ... this.coin_sprites(), this.Ghost_sprite(), this.Hero_sprite() ]
 		}
 
+		font_sources() {
+			return this.Font().sources()
+		}
+
+		@ $mol_mem_key
+		coin_text_pos( id: string ) {
+			const pos = this.coin_pos( id )
+			return new Float32Array([ pos[ 0 ], pos[ 1 ] + 0.6, pos[ 2 ] ])
+		}
+
+		@ $mol_mem
+		coin_text_color() {
+			return new Float32Array([ 1, 0.92, 0.35, 1 ])
+		}
+
+		coin_text_pool( id: string ) {
+			return this.Coin_text( id ).pool()
+		}
+
+		@ $mol_mem
+		coin_texts() {
+			return this.coins_left().map( id => this.Coin_text( id ) )
+		}
+
+		@ $mol_mem
+		batches() {
+			return [ this.Batch(), ... this.coins_left().map( id => this.Coin_text_batch( id ) ) ]
+		}
+
 		@ $mol_mem
 		nodes() {
-			return [ ... this.bodies(), this.Ghost(), ... this.sprites() ]
+			return [ ... this.bodies(), this.Ghost(), ... this.sprites(), ... this.coin_texts() ]
 		}
 
 		@ $mol_mem
