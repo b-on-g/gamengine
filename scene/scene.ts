@@ -31,6 +31,11 @@ namespace $ {
 			return next ?? null
 		}
 
+		@ $mol_mem
+		input( next?: $bog_gamengine_input | null ) {
+			return next ?? null
+		}
+
 		frame_done = -1
 
 		@ $mol_mem
@@ -38,6 +43,7 @@ namespace $ {
 			const frame = this.clock().frame()
 			if( frame !== this.frame_done ) {
 				this.frame_done = frame
+				this.input()?.poll()
 				const dt = this.clock().dt()
 				const nodes = this.nodes()
 				for( let i = 0; i < nodes.length; ++i ) nodes[ i ].step( dt )

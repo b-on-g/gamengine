@@ -31,7 +31,32 @@ namespace $ {
 
 	}
 
+	class $bog_gamengine_scene_input_mock extends $bog_gamengine_input {
+
+		polls = 0
+
+		poll() {
+			++ this.polls
+		}
+
+	}
+
 	$mol_test({
+
+		'scene polls input once per frame'( $ ) {
+			$.$mol_state_time = $bog_gamengine_scene_time_mock
+			const input = new $bog_gamengine_scene_input_mock
+			const scene = new $bog_gamengine_scene
+			scene.$ = $
+			scene.input( input )
+			$bog_gamengine_scene_time_mock.stamp( 0 )
+			scene.step()
+			$bog_gamengine_scene_time_mock.stamp( 16 )
+			scene.step()
+			scene.batches([])
+			scene.step()
+			$mol_assert_equal( input.polls, 2 )
+		},
 
 		'three ticks of 16 ms move node by 0.048'( $ ) {
 			$.$mol_state_time = $bog_gamengine_scene_time_mock
