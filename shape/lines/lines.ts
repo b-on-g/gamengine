@@ -3,7 +3,7 @@ namespace $ {
 	export class $bog_gamengine_shape_lines extends $bog_gamengine_shape {
 
 		@ $mol_mem
-		points( next?: Float32Array ) {
+		points( next?: Float32Array< ArrayBuffer > ) {
 			return next ?? new Float32Array( 0 )
 		}
 
