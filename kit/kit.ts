@@ -155,37 +155,6 @@ namespace $ {
 		return true
 	}
 
-	export type $bog_gamestudio_kit_route = {
-		readonly path: string
-		readonly prop: string
-	}
-
-	export function $bog_gamestudio_kit_lead( klass: string ) {
-		return klass.replace( /^\$bog_[a-z0-9]+_/, '' )
-	}
-
-	export function $bog_gamestudio_kit_route_of( doc: $bog_gamestudio_doc, host: string, prop: string ): $bog_gamestudio_kit_route {
-
-		const dot = prop.indexOf( '.' )
-		const plain = { path: host, prop }
-		if( dot < 0 ) return plain
-
-		const lead = prop.slice( 0, dot )
-		const tail = prop.slice( dot + 1 )
-		const items = doc.node( host ).props.parts?.kids[ 0 ]?.kids ?? []
-
-		for( let i = 0; i < items.length; ++i ) {
-			const item = items[ i ]
-			if( item.type !== '<=' ) continue
-			const name = item.kids[ 0 ]?.type ?? ''
-			const klass = name ? doc.decls().get( name )?.type ?? '' : ''
-			if( !klass || $bog_gamestudio_kit_lead( klass ) !== lead ) continue
-			return { path: name, prop: tail }
-		}
-
-		return plain
-	}
-
 	export function $bog_gamestudio_kit_attach( doc: $bog_gamestudio_doc, item: $bog_gamestudio_kit_item, host: string ) {
 		if( !doc.decls().get( host ) ) return ''
 		const name = doc.free_name( item.klass )

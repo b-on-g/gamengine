@@ -904,9 +904,7 @@ namespace $.$$ {
 		write( prop: string, value: $bog_gamestudio_doc_value ) {
 			const path = this.doc_path()
 			if( !path ) return
-			const doc = this.Doc()
-			const route = $bog_gamestudio_kit_route_of( doc, path, prop )
-			doc.set( route.path, route.prop, value )
+			this.Doc().set( path, prop, value )
 		}
 
 		list_fields( name: string ) {
