@@ -243,6 +243,39 @@ namespace $ {
 			$mol_assert_equal( batches[ 1 ].shader(), own.shader() )
 		},
 
+		'source node gets its own batch without uv'() {
+			const atlas = new $bog_gamengine_atlas
+			atlas.uris([ 'bog/gamengine/demo/atlas/hero.png' ])
+			const spark = new $bog_gamengine_particle
+			spark.atlas( atlas )
+			const scene = new $bog_gamengine_scene
+			scene.kids([ spark ])
+			const batches = scene.auto_batches()
+			$mol_assert_equal( batches.length, 1 )
+			$mol_assert_equal( batches[ 0 ].source(), spark.pool() )
+			$mol_assert_equal( batches[ 0 ].nodes(), [] )
+			$mol_assert_equal( batches[ 0 ].atlas(), atlas )
+			$mol_assert_ok( batches[ 0 ].shader() instanceof $bog_gamengine_shader_sprite )
+		},
+
+		'auto batches keep the order the nodes are listed in'() {
+			const atlas = new $bog_gamengine_atlas
+			atlas.uris([ 'bog/gamengine/demo/atlas/hero.png' ])
+			const map = new $bog_gamengine_tilemap
+			map.atlas( atlas )
+			const hero = new $bog_gamengine_sprite
+			hero.atlas( atlas )
+			const spark = new $bog_gamengine_particle
+			spark.atlas( atlas )
+			const scene = new $bog_gamengine_scene
+			scene.kids([ map, hero, spark ])
+			const batches = scene.auto_batches()
+			$mol_assert_equal( batches.length, 3 )
+			$mol_assert_equal( batches[ 0 ].source(), map.pool() )
+			$mol_assert_equal( batches[ 1 ].nodes(), [ hero ] )
+			$mol_assert_equal( batches[ 2 ].source(), spark.pool() )
+		},
+
 		'nodes without layer and uv stay out of auto batches'() {
 			const bare = new $bog_gamengine_node
 			const scene = new $bog_gamengine_scene

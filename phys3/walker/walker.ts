@@ -49,11 +49,8 @@ namespace $ {
 			return next
 		}
 
-		@ $mol_mem
-		yaw( next = 0 ) {
-			return next
-		}
-
+		yaw = 0
+		yaw_shown = 0
 		grounded = false
 		vel_y = 0
 		handle_last = 0
@@ -82,14 +79,15 @@ namespace $ {
 		body() {
 			const world = this.phys3()
 			if( !world ) return 0
+			const size = this.size_write()
 			if( this.world_last !== world ) {
 				this.body_drop()
 				this.world_last = world
-				this.handle_last = world.add( $bog_gamengine_phys3.shape_capsule, this.size_write(), 0, this.pos() )
+				this.handle_last = world.add( $bog_gamengine_phys3.shape_capsule, size, 0, this.pos() )
 				world.kinematic_of( this.handle_last, true )
 			}
 			const i = world.index_of( this.handle_last )
-			if( i >= 0 ) world.size.set( this.size, i * 3 )
+			if( i >= 0 ) world.size.set( size, i * 3 )
 			this.opts.skip = i
 			return this.handle_last
 		}
@@ -101,11 +99,23 @@ namespace $ {
 			this.opts.skip = -1
 		}
 
+		yaw_show() {
+			if( this.yaw === this.yaw_shown ) return
+			this.yaw_shown = this.yaw
+			const rot = this.rot()
+			if( rot[ 1 ] === this.yaw ) return
+			const next = new Float32Array( 3 )
+			next[ 0 ] = rot[ 0 ]
+			next[ 1 ] = this.yaw
+			next[ 2 ] = rot[ 2 ]
+			this.rot( next )
+		}
+
 		step( dt: number ) {
 			const world = this.phys3()
 			if( !world ) return
 			const input = this.input()
-			this.size_write()
+			this.yaw_show()
 			const handle = this.body()
 			this.cos_slope = Math.cos( this.slope() )
 			const pos = this.pos()
@@ -158,7 +168,7 @@ namespace $ {
 			const side = input.axis( 'left', 'right' )
 			const track = input.axis( 'back', 'forward' )
 			if( side === 0 && track === 0 ) return
-			const yaw = this.yaw()
+			const yaw = this.yaw
 			const sin = Math.sin( yaw ), cos = Math.cos( yaw )
 			const dx = - sin * track + cos * side
 			const dz = - cos * track - sin * side

@@ -22,6 +22,25 @@ namespace $ {
 			$mol_assert_ok( Math.abs( out[ 2 ] / out[ 3 ] - 1 ) < 1e-6 )
 		},
 
+		'follow puts the camera over the node with its turn'() {
+			const node = new $bog_gamengine_node
+			node.pos( new Float32Array([ 2, 1, -3 ]) )
+			node.rot( new Float32Array([ 0.25, 0.5, 0 ]) )
+			const cam = new $bog_gamengine_cam_deep
+			cam.follow( node )
+			cam.lift( 0.5 )
+			cam.step( 1 / 60 )
+			$mol_assert_equal( Array.from( cam.pos() ), [ 2, 1.5, -3 ] )
+			$mol_assert_equal( Array.from( cam.rot() ), [ 0.25, 0.5, 0 ] )
+		},
+
+		'follow of nothing leaves the camera alone'() {
+			const cam = new $bog_gamengine_cam_deep
+			const pos = cam.pos()
+			cam.step( 1 / 60 )
+			$mol_assert_equal( cam.pos(), pos )
+		},
+
 	})
 
 }

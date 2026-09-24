@@ -39,6 +39,14 @@ namespace $ {
 			return next ?? new $bog_gamengine_text_pool
 		}
 
+		is_source() {
+			return true
+		}
+
+		source() {
+			return this.pool() as $bog_gamengine_batch_source
+		}
+
 		@ $mol_mem
 		font( next?: $bog_gamengine_text_font ) {
 			return next ?? new $bog_gamengine_text_font

@@ -214,6 +214,14 @@ namespace $ {
 			$mol_assert_equal( tile.solid_at( 0.5, -0.5 ), true )
 		},
 
+		'step_ms is zero before the first step and a time after it'() {
+			const phys = new $bog_gamengine_phys
+			$mol_assert_equal( phys.step_ms(), 0 )
+			phys.step( 1 / 60 )
+			$mol_assert_equal( phys.samples, 1 )
+			$mol_assert_ok( phys.step_ms() >= 0 )
+		},
+
 	})
 
 }

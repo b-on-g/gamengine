@@ -14,6 +14,7 @@ namespace $ {
 
 		static sleep_speed = 0.05
 		static sleep_time = 0.5
+		static stat_window = 30
 
 		cap = 0
 		count = 0
@@ -358,7 +359,25 @@ namespace $ {
 		pending = 0
 		steps_done = 0
 
+		times = new Float32Array( $bog_gamengine_phys3.stat_window )
+		samples = 0
+
 		step( dt: number ) {
+			const window = $bog_gamengine_phys3.stat_window
+			const start = performance.now()
+			this.step_world( dt )
+			this.times[ this.samples % window ] = performance.now() - start
+			++ this.samples
+		}
+
+		step_ms() {
+			const size = Math.min( this.samples, $bog_gamengine_phys3.stat_window )
+			let sum = 0
+			for( let i = 0; i < size; ++ i ) sum += this.times[ i ]
+			return size ? sum / size : 0
+		}
+
+		step_world( dt: number ) {
 			this.steps_done = 0
 			const timestep = this.timestep
 			let pending = this.pending + dt

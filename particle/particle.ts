@@ -68,6 +68,14 @@ namespace $ {
 			return next ?? null
 		}
 
+		is_source() {
+			return true
+		}
+
+		source() {
+			return this.pool() as $bog_gamengine_batch_source
+		}
+
 		@ $mol_mem
 		rate( next = 0 ) {
 			return next

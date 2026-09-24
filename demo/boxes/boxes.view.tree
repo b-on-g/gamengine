@@ -76,7 +76,8 @@ $bog_gamengine_demo_boxes $mol_page
 		shader <= Flat $bog_gamengine_shader_flat
 		shape <= Lines $bog_gamengine_shape_lines
 			points <= contact_points Float32Array
-		nodes / <= Debug
+			count <= contact_count 0
+		instances 1
 	Debug $bog_gamengine_phys3_debug
 		phys3 <= Phys
 	Floor $bog_gamengine_mesh

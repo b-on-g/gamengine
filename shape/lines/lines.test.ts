@@ -6,9 +6,25 @@ namespace $ {
 			lines.points( new Float32Array([ 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0 ]) )
 			$mol_assert_equal( lines.geometry().length, 12 )
 			$mol_assert_equal( lines.size(), 4 )
-			$mol_assert_equal( lines.count(), 4 )
+			$mol_assert_equal( lines.count(), 2 )
 			$mol_assert_equal( lines.normals().length, 12 )
 			$mol_assert_equal( lines.skin().length, 8 )
+		},
+
+		'count cuts the drawn vertices and keeps the buffers'( $ ) {
+			const lines = $bog_gamengine_shape_lines.make({ $ })
+			lines.points( new Float32Array([ 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0 ]) )
+			lines.count( 1 )
+			$mol_assert_equal( lines.size(), 2 )
+			$mol_assert_equal( lines.geometry().length, 12 )
+			$mol_assert_equal( lines.normals().length, 12 )
+		},
+
+		'count over the points draws no more than there are'( $ ) {
+			const lines = $bog_gamengine_shape_lines.make({ $ })
+			lines.points( new Float32Array([ 0, 0, 0, 1, 0, 0 ]) )
+			lines.count( 5 )
+			$mol_assert_equal( lines.size(), 2 )
 		},
 
 		'lines normals and skin are zeros'( $ ) {

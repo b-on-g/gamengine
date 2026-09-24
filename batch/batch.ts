@@ -11,6 +11,11 @@ namespace $ {
 		shader?(): $bog_gamengine_shader | null
 	}
 
+	export type $bog_gamengine_batch_source_node = $bog_gamengine_batch_node & {
+		is_source(): boolean
+		source(): $bog_gamengine_batch_source | null
+	}
+
 	export type $bog_gamengine_batch_source = {
 		trans: Float32Array
 		count: number
@@ -60,6 +65,11 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		instances( next = 0 ) {
+			return next
+		}
+
+		@ $mol_mem
 		cull( next = true ) {
 			return next
 		}
@@ -97,9 +107,43 @@ namespace $ {
 			this.normal_layer = new Float32Array( cap )
 		}
 
+		fill_plain( count: number ) {
+			this.grow( count )
+			const trans = this.trans
+			const tint = this.tint
+			const layer = this.layer
+			const uv = this.uv
+			const material = this.material
+			const normal_layer = this.normal_layer
+			for( let i = 0; i < count; ++ i ) {
+				const at = i * 16
+				for( let k = 0; k < 16; ++ k ) trans[ at + k ] = 0
+				trans[ at ] = 1
+				trans[ at + 5 ] = 1
+				trans[ at + 10 ] = 1
+				trans[ at + 15 ] = 1
+				for( let k = 0; k < 4; ++ k ) tint[ i * 4 + k ] = 1
+				layer[ i ] = 0
+				uv[ i * 4 ] = 0
+				uv[ i * 4 + 1 ] = 0
+				uv[ i * 4 + 2 ] = 1
+				uv[ i * 4 + 3 ] = 1
+				material[ i * 4 ] = 0
+				material[ i * 4 + 1 ] = 0.6
+				material[ i * 4 + 2 ] = 0
+				material[ i * 4 + 3 ] = 0
+				normal_layer[ i ] = -1
+			}
+			this.count = count
+			++ this.version
+			return count
+		}
+
 		fill( frustum: Float32Array | null = null, eye: Float32Array | null = null ) {
 			const source = this.source()
 			if( source ) return this.fill_source( source, frustum )
+			const instances = this.instances()
+			if( instances > 0 ) return this.fill_plain( instances )
 			const nodes = this.nodes()
 			const cull = frustum && this.cull() ? frustum : null
 			const near = this.near()

@@ -155,6 +155,16 @@ namespace $ {
 			$mol_assert_ok( pos[ 2 ] > -3.8 )
 		},
 
+		'yaw field turns the walk and shows up in rot'() {
+			const world = walker_test_world()
+			const walker = walker_test_walker( world, walker_test_key( 'W' ) )
+			walker.yaw = Math.PI / 2
+			const pos = walker_test_run( walker, 60 )
+			walker_test_near( walker.rot()[ 1 ], Math.PI / 2, 1e-6 )
+			walker_test_near( pos[ 0 ], -4, 1e-3 )
+			walker_test_near( pos[ 2 ], 0, 1e-3 )
+		},
+
 		'no input and standing keeps pos reference'() {
 			const walker = walker_test_walker( walker_test_world(), walker_test_key() )
 			walker_test_run( walker, 2 )

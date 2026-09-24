@@ -296,6 +296,14 @@ namespace $ {
 			$mol_assert_equal( [ ...batch.trans.subarray( 12, 15 ) ], [ 4, 5, 6 ] )
 		},
 
+		'instances draw without nodes at the world origin'() {
+			const batch = new $bog_gamengine_batch
+			batch.instances( 1 )
+			$mol_assert_equal( batch.fill(), 1 )
+			$mol_assert_equal( [ ...batch.trans.subarray( 0, 16 ) ], [ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 ] )
+			$mol_assert_equal( [ ...batch.tint.subarray( 0, 4 ) ], [ 1, 1, 1, 1 ] )
+		},
+
 	})
 
 }

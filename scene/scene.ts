@@ -88,6 +88,12 @@ namespace $ {
 			return new this.$.$bog_gamengine_batch
 		}
 
+		node_source( node: $bog_gamengine_node ) {
+			const probe = node as Partial< $bog_gamengine_batch_source_node >
+			if( typeof probe.is_source !== 'function' || !probe.is_source() ) return null
+			return probe.source?.() ?? null
+		}
+
 		node_drawn( node: $bog_gamengine_node ) {
 			const probe = node as Partial< $bog_gamengine_batch_group_node >
 			return typeof probe.atlas === 'function'
@@ -110,15 +116,27 @@ namespace $ {
 		auto_batches() {
 			const nodes = this.nodes() as readonly $bog_gamengine_batch_group_node[]
 			const drawn = [] as $bog_gamengine_batch_group_node[]
+			const sources = new Map< $bog_gamengine_batch_group_node, $bog_gamengine_batch >()
 			for( let i = 0; i < nodes.length; ++ i ) {
-				if( this.node_drawn( nodes[ i ] ) ) drawn.push( nodes[ i ] )
+				const node = nodes[ i ]
+				const source = this.node_source( node )
+				if( source ) {
+					const batch = this.Batch( 'source ' + $bog_gamengine_batch_group_id( node ) )
+					batch.shader( this.node_shader( node ) )
+					batch.shape( this.node_shape( node ) )
+					batch.atlas( node.atlas() )
+					batch.source( source )
+					sources.set( node, batch )
+					continue
+				}
+				if( this.node_drawn( node ) ) drawn.push( node )
 			}
 			const parts = $bog_gamengine_batch_group(
 				drawn,
 				node => this.node_shader( node ),
 				node => this.node_shape( node ),
 			)
-			const batches = [] as $bog_gamengine_batch[]
+			const grouped = new Map< $bog_gamengine_batch_group_node, $bog_gamengine_batch >()
 			for( let i = 0; i < parts.length; ++ i ) {
 				const part = parts[ i ]
 				const batch = this.Batch( part.key )
@@ -126,7 +144,13 @@ namespace $ {
 				batch.shape( part.shape )
 				batch.atlas( part.atlas )
 				batch.nodes( part.nodes )
-				batches.push( batch )
+				grouped.set( part.nodes[ 0 ], batch )
+			}
+			const batches = [] as $bog_gamengine_batch[]
+			for( let i = 0; i < nodes.length; ++ i ) {
+				const node = nodes[ i ]
+				const batch = sources.get( node ) ?? grouped.get( node )
+				if( batch ) batches.push( batch )
 			}
 			return batches as readonly $bog_gamengine_batch[]
 		}

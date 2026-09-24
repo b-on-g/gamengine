@@ -178,6 +178,15 @@ namespace $ {
 			$mol_assert_equal( world.steps_done, 0 )
 		},
 
+		'step_ms is zero before the first step and a time after it'() {
+			const world = new $bog_gamengine_phys3
+			box( world, 1, 0, 0, 0 )
+			$mol_assert_equal( world.step_ms(), 0 )
+			world.step( 1 / 60 )
+			$mol_assert_equal( world.samples, 1 )
+			$mol_assert_ok( world.step_ms() >= 0 )
+		},
+
 	})
 
 }

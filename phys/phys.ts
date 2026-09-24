@@ -2,6 +2,8 @@ namespace $ {
 
 	export class $bog_gamengine_phys extends $mol_object2 {
 
+		static stat_window = 30
+
 		@ $mol_mem
 		bodies( next?: readonly $bog_gamengine_phys_body[] ) {
 			return next ?? []
@@ -21,7 +23,25 @@ namespace $ {
 
 		normal = new Float32Array( 2 )
 
+		times = new Float32Array( $bog_gamengine_phys.stat_window )
+		samples = 0
+
 		step( dt: number ) {
+			const window = $bog_gamengine_phys.stat_window
+			const start = performance.now()
+			this.step_world( dt )
+			this.times[ this.samples % window ] = performance.now() - start
+			++ this.samples
+		}
+
+		step_ms() {
+			const size = Math.min( this.samples, $bog_gamengine_phys.stat_window )
+			let sum = 0
+			for( let i = 0; i < size; ++ i ) sum += this.times[ i ]
+			return size ? sum / size : 0
+		}
+
+		step_world( dt: number ) {
 			const bodies = this.bodies()
 			const tile = this.tile()
 			const gravity = this.gravity()

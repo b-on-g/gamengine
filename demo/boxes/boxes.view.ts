@@ -154,6 +154,11 @@ namespace $.$$ {
 			return this.Debug().points()
 		}
 
+		contact_count() {
+			this.Scene().step()
+			return this.Phys().narrow.contact_count
+		}
+
 		throw_dir = new Float32Array([ 0, 0, -1, 0 ])
 		throw_out = new Float32Array( 4 )
 		dig_dir = new Float32Array( 3 )

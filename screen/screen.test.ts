@@ -4,7 +4,13 @@ namespace $ {
 
 		const calls = [] as string[]
 		const handlers = {} as Record< string, ( event: any )=> void >
-		const target = {} as Element
+
+		const target = {
+			requestPointerLock() {
+				calls.push( 'lock' )
+				return Promise.resolve()
+			},
+		} as unknown as Element
 
 		const doc = {
 			fullscreenElement: null as null | object,
@@ -53,6 +59,14 @@ namespace $ {
 			screen.fullscreen( false )
 			await settle()
 			$mol_assert_equal( calls, [ 'exit' ] )
+		},
+
+		async 'lock on requests pointer lock of the target after tick'() {
+			const { screen, calls } = screen_stub()
+			screen.lock( true )
+			$mol_assert_equal( calls, [] )
+			await settle()
+			$mol_assert_equal( calls, [ 'lock' ] )
 		},
 
 		'fullscreenchange syncs the flag'() {

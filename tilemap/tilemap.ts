@@ -37,6 +37,14 @@ namespace $ {
 			return next ?? new $bog_gamengine_tilemap_pool
 		}
 
+		is_source() {
+			return true
+		}
+
+		source() {
+			return this.pool() as $bog_gamengine_batch_source
+		}
+
 		@ $mol_mem
 		tile( next?: $bog_gamengine_phys_tile | null ) {
 			return next ?? null
