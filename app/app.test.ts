@@ -268,6 +268,17 @@ namespace $ {
 			$mol_assert_equal( walk.pos()[ 0 ], 7 )
 		},
 
+		'inspector signs a field shared by prefab instances'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.source( $bog_gamestudio_sample_prefab )
+			const titles = app.Scene().nodes().map( node => node.title() )
+			app.selected( titles.indexOf( 'Ствол' ) )
+			$mol_assert_equal( app.doc_path(), 'Enemy_1/Gun' )
+			$mol_assert_equal( app.field_bids( 'pos' ), [ 'часть префаба, затронет 2 инстанса' ] )
+			app.selected( titles.indexOf( 'Вожак' ) )
+			$mol_assert_equal( app.field_bids( 'name' ), [] )
+		},
+
 		'gizmo hit on the x arrow'( $ ) {
 			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
 		},

@@ -132,6 +132,11 @@ namespace $ {
 			return line && klass.kids.indexOf( line ) >= 0 ? line : null
 		}
 
+		shared( path: string ): readonly string[] {
+			const name = this.node( path ).name
+			return this.nodes().filter( item => item.name === name ).map( item => item.path )
+		}
+
 		set( path: string, prop: string, value: $bog_gamestudio_doc_value ) {
 			const node = this.node( path )
 			const klass = this.decls().get( node.name )!

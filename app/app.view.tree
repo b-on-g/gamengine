@@ -216,8 +216,14 @@ $bog_gamestudio_app $mol_view
 		uri <= asset_uri*
 	Asset_model* $mol_icon_cube
 	Asset_sound* $mol_icon_music
+	field_bid_lead \часть префаба, затронет
+	field_bid_words /
+		\инстанс
+		\инстанса
+		\инстансов
 	Field* $mol_form_field
 		name <= field_name* \
+		bids <= field_bids* /string
 		content <= field_content* /
 	Vec_num* $mol_number
 		enabled <= editing

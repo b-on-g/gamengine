@@ -240,6 +240,16 @@ namespace $ {
 			$mol_assert_equal( doc.source(), $bog_gamestudio_sample_prefab )
 		},
 
+		'edit of a prefab kid reaches every instance, edit of an instance reaches one'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample_prefab )
+			$mol_assert_equal( doc.shared( 'Enemy_1/Gun' ), [ 'Enemy_1/Gun', 'Enemy_2/Gun' ] )
+			$mol_assert_equal( doc.shared( 'Enemy_1' ), [ 'Enemy_1' ] )
+			$mol_assert_equal( doc.shared( 'Enemy_2' ), [ 'Enemy_2' ] )
+			doc.set( 'Enemy_1/Gun', 'pos', [ 7, 0, 0 ] )
+			const guns = doc.scene().nodes().filter( node => node.title() === 'Ствол' )
+			$mol_assert_equal( guns.map( node => node.pos()[ 0 ] ), [ 7, 7 ] )
+		},
+
 		'syntax error fails with the parser message'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample.replace( '\tatlas <= Atlas', '\t\t\tatlas <= Atlas' ) )
 			const error = $mol_assert_fail( ()=> doc.scene(), Error )

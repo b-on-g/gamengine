@@ -457,6 +457,21 @@ namespace $.$$ {
 			return name
 		}
 
+		field_bids( name: string ) {
+			const path = this.doc_path()
+			if( !path ) return []
+			const kin = this.Doc().shared( path )
+			if( kin.length < 2 ) return []
+			const words = this.field_bid_words()
+			const teen = kin.length % 100
+			const last = kin.length % 10
+			const word = teen > 10 && teen < 15 ? words[ 2 ]
+				: last === 1 ? words[ 0 ]
+				: last > 1 && last < 5 ? words[ 1 ]
+				: words[ 2 ]
+			return [ `${ this.field_bid_lead() } ${ kin.length } ${ word }` ]
+		}
+
 		field_content( name: string ) {
 			switch( this.prop( name )?.kind ) {
 				case 'vec2':
