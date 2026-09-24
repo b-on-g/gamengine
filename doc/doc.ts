@@ -40,38 +40,57 @@ namespace $ {
 		@ $mol_mem
 		decls() {
 			const map = new Map< string, $mol_tree2 >()
+			const tops = this.tree().kids
 			const walk = ( tree: $mol_tree2 )=> {
 				const klass = tree.kids[ 0 ]
-				if( klass?.type.startsWith( '$' ) ) {
-					if( tree.type.startsWith( '$' ) ) map.set( '', klass )
-					if( /^[A-Z]/.test( tree.type ) ) map.set( tree.type, klass )
-				}
+				if( klass?.type.startsWith( '$' ) && /^[A-Z]/.test( tree.type ) ) map.set( tree.type, klass )
 				for( const kid of tree.kids ) walk( kid )
 			}
-			walk( this.tree() )
+			for( let i = 0; i < tops.length; ++ i ) {
+				const klass = tops[ i ].kids[ 0 ]
+				if( klass?.type.startsWith( '$' ) && tops[ i ].type.startsWith( '$' ) ) {
+					map.set( i ? tops[ i ].type : '', klass )
+				}
+				walk( tops[ i ] )
+			}
 			return map
 		}
 
+		@ $mol_mem
+		prefabs() {
+			const names = new Set< string >()
+			const tops = this.tree().kids
+			for( let i = 1; i < tops.length; ++ i ) {
+				if( tops[ i ].type.startsWith( '$' ) ) names.add( tops[ i ].type )
+			}
+			return names
+		}
+
 		refs( name: string ): readonly $mol_tree2[] {
-			const klass = this.decls().get( name )
-			if( !klass ) return []
-			return klass.select( 'kids', '/', '<=', null ).kids
+			const seen = new Set< string >()
+			let klass = this.decls().get( name )
+			while( klass ) {
+				const own = klass.select( 'kids', '/', '<=', null ).kids
+				if( own.length ) return own
+				if( seen.has( klass.type ) ) break
+				seen.add( klass.type )
+				klass = this.decls().get( klass.type )
+			}
+			return []
 		}
 
 		@ $mol_mem
 		nodes(): readonly $bog_gamestudio_doc_node[] {
 			const list = [] as $bog_gamestudio_doc_node[]
-			const seen = new Set< string >()
-			const walk = ( name: string, prefix: string )=> {
-				if( seen.has( name ) ) return
-				seen.add( name )
+			const walk = ( name: string, prefix: string, chain: readonly string[] )=> {
 				for( const ref of this.refs( name ) ) {
+					if( chain.indexOf( ref.type ) >= 0 ) continue
 					const path = prefix + ref.type
 					list.push( this.node( path ) )
-					walk( ref.type, path + '/' )
+					walk( ref.type, path + '/', [ ... chain, ref.type ] )
 				}
 			}
-			walk( '', '' )
+			walk( '', '', [] )
 			return list
 		}
 
@@ -87,14 +106,30 @@ namespace $ {
 			return path
 		}
 
+		chain( name: string ): readonly $mol_tree2[] {
+			const list = [] as $mol_tree2[]
+			const seen = new Set< string >()
+			for( let cur = this.decls().get( name ); cur && !seen.has( cur.type ); cur = this.decls().get( cur.type ) ) {
+				seen.add( cur.type )
+				list.unshift( cur )
+			}
+			return list
+		}
+
 		@ $mol_mem_key
 		node( path: string ): $bog_gamestudio_doc_node {
 			const name = path.slice( path.lastIndexOf( '/' ) + 1 )
 			const klass = this.decls().get( name )
 			if( !klass ) return $mol_fail( new Error( `Node ${ path } is not declared` ) )
 			const props = {} as Record< string, $mol_tree2 >
-			for( const line of klass.kids ) props[ line.type.replace( /\?$/, '' ) ] = line
+			for( const step of this.chain( name ) ) {
+				for( const line of step.kids ) props[ line.type.replace( /\?$/, '' ) ] = line
+			}
 			return { name, path, title: props.name?.text() || name, klass: klass.type, props }
+		}
+
+		own( klass: $mol_tree2, line?: $mol_tree2 ) {
+			return line && klass.kids.indexOf( line ) >= 0 ? line : null
 		}
 
 		set( path: string, prop: string, value: $bog_gamestudio_doc_value ) {
@@ -102,7 +137,7 @@ namespace $ {
 			const klass = this.decls().get( node.name )!
 			const tree = this.tree()
 			const line = this.line( tree, prop, value )
-			const old = node.props[ prop ]
+			const old = this.own( klass, node.props[ prop ] )
 			const kids = old ? klass.kids.map( kid => kid === old ? line : kid ) : [ ... klass.kids, line ]
 			const swap = ( cur: $mol_tree2 ): $mol_tree2 => cur === klass ? cur.clone( kids ) : cur.clone( cur.kids.map( swap ) )
 			this.source( this.print( swap( tree ) ) )
@@ -127,7 +162,7 @@ namespace $ {
 			const slot = $mol_tree2.struct( '*', [], tree.span.span( 3, 1, 0 ) )
 			const items = rows.map( row => $mol_tree2.struct( '*', Object.entries( row ).map( ( [ field, value ] )=> this.line( slot, field, value ) ), body ) )
 			const line = $mol_tree2.struct( prop, [ $mol_tree2.struct( '/', items, head ) ], head )
-			const old = node.props[ prop ]
+			const old = this.own( klass, node.props[ prop ] )
 			const kids = old ? klass.kids.map( kid => kid === old ? line : kid ) : [ ... klass.kids, line ]
 			const swap = ( cur: $mol_tree2 ): $mol_tree2 => cur === klass ? cur.clone( kids ) : cur.clone( cur.kids.map( swap ) )
 			this.source( this.print( swap( tree ) ) )
@@ -336,14 +371,19 @@ namespace $ {
 			return false
 		}
 
+		owned( tree: $mol_tree2 ): boolean {
+			return /^[A-Z]/.test( tree.type ) || this.prefabs().has( tree.type )
+		}
+
 		unlock( tree: $mol_tree2 ): $mol_tree2 {
 			const klass = tree.kids[ 0 ]
-			if( !/^[A-Z]/.test( tree.type ) || !klass?.type.startsWith( '$' ) ) return tree.clone( tree.kids.map( kid => this.unlock( kid ) ) )
+			if( !this.owned( tree ) || !klass?.type.startsWith( '$' ) ) return tree.clone( tree.kids.map( kid => this.unlock( kid ) ) )
+			const prefix = tree.type.replace( /^\$/, '' )
 			return tree.clone([ klass.clone( klass.kids.map( line => {
 				const value = line.kids[ 0 ]
 				if( line.kids.length !== 1 || /^[<=>^@*$]/.test( value.type ) || this.bound( value ) ) return this.unlock( line )
 				const prop = line.type.replace( /\?$/, '' )
-				return line.struct( prop + '?', [ line.struct( '<=>', [ line.struct( `${ tree.type }_${ prop }?`, [ value ] ) ] ) ] )
+				return line.struct( prop + '?', [ line.struct( '<=>', [ line.struct( `${ prefix }_${ prop }?`, [ value ] ) ] ) ] )
 			} ) ) ])
 		}
 

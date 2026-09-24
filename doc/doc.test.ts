@@ -213,6 +213,33 @@ namespace $ {
 			$mol_assert_equal( doc.map()[ 1 ].join( '' ), '#....#' )
 		},
 
+		'prefab declaration leaves the scene as the document root'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample_prefab )
+			$mol_assert_equal( doc.decls().get( '' )!.type, '$bog_gamengine_scene' )
+		},
+
+		'instances and their prefab kids are listed by path'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample_prefab )
+			$mol_assert_equal( doc.nodes().map( node => node.path ), [ 'Enemy_1', 'Enemy_1/Gun', 'Enemy_2', 'Enemy_2/Gun' ] )
+			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Страж', 'Ствол', 'Вожак', 'Ствол' ] )
+		},
+
+		'path of a kid inside an instance walks into the prefab body'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample_prefab )
+			$mol_assert_equal( doc.path_at([ 1, 0 ]), 'Enemy_2/Gun' )
+			$mol_assert_equal( doc.nodes().length, doc.scene().nodes().length )
+		},
+
+		'inherited value of an instance is writable on the node'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample_prefab )
+			const nodes = doc.scene().nodes()
+			$mol_assert_equal( nodes[ 0 ].name(), 'Страж' )
+			nodes[ 0 ].name( 'Дозорный' )
+			$mol_assert_equal( nodes[ 0 ].name(), 'Дозорный' )
+			$mol_assert_equal( nodes[ 2 ].name(), 'Вожак' )
+			$mol_assert_equal( doc.source(), $bog_gamestudio_sample_prefab )
+		},
+
 		'syntax error fails with the parser message'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample.replace( '\tatlas <= Atlas', '\t\t\tatlas <= Atlas' ) )
 			const error = $mol_assert_fail( ()=> doc.scene(), Error )
