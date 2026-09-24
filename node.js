@@ -15238,6 +15238,9 @@ var $;
 				"height": (this.height())
 			};
 		}
+		dpr(){
+			return 1;
+		}
 		scene(){
 			const obj = new this.$.$bog_gamengine_scene();
 			return obj;
@@ -16170,11 +16173,14 @@ var $;
                 const canvas = this.dom_node();
                 return canvas.getContext('webgl2', { preserveDrawingBuffer: true });
             }
+            dpr() {
+                return this.$.$mol_dom_context.devicePixelRatio;
+            }
             width() {
-                return Math.ceil((this.view_rect()?.width ?? 0) * this.$.$mol_dom_context.devicePixelRatio);
+                return Math.ceil((this.view_rect()?.width ?? 0) * this.dpr());
             }
             height() {
-                return Math.ceil((this.view_rect()?.height ?? 0) * this.$.$mol_dom_context.devicePixelRatio);
+                return Math.ceil((this.view_rect()?.height ?? 0) * this.dpr());
             }
             viewport() {
                 const viewport = [0, 0, this.width(), this.height()];
@@ -16622,9 +16628,9 @@ var $;
                 if (slot.tex && !slot.tex.native)
                     return false;
                 if (slot.live) {
-                    const geometry = batch.shape().geometry();
-                    slot.vertex.send(geometry);
-                    slot.size = geometry.length / 3;
+                    const shape = batch.shape();
+                    slot.vertex.send(shape.geometry());
+                    slot.size = shape.size();
                 }
                 if (!slot.size)
                     return false;
@@ -16952,6 +16958,9 @@ var $;
         height(next) {
             return next ?? 0;
         }
+        scale(next) {
+            return next ?? 1;
+        }
         screen_pos = new Float32Array(2);
         down = false;
         move(x, y) {
@@ -16975,8 +16984,9 @@ var $;
         ray_origin = new Float32Array(3);
         ray_dir = new Float32Array(3);
         ndc(out, x, y) {
-            out[0] = x / this.width() * 2 - 1;
-            out[1] = 1 - y / this.height() * 2;
+            const scale = this.scale();
+            out[0] = x * scale / this.width() * 2 - 1;
+            out[1] = 1 - y * scale / this.height() * 2;
             return out;
         }
         ray(out_origin, out_dir, x, y) {
@@ -17025,10 +17035,43 @@ var $;
             clip[3] = 1;
             $bog_gamengine_vec_mat4_apply(clip, this.proj_view(), clip);
             const w = clip[3];
-            out[0] = (clip[0] / w + 1) / 2 * this.width();
-            out[1] = (1 - clip[1] / w) / 2 * this.height();
+            const scale = this.scale();
+            out[0] = (clip[0] / w + 1) / 2 * this.width() / scale;
+            out[1] = (1 - clip[1] / w) / 2 * this.height() / scale;
             out[2] = w;
             return out;
+        }
+        box_from = new Float32Array(3);
+        box_to = new Float32Array(3);
+        box_hits = [];
+        pick_box(nodes, x0, y0, x1, y1, out) {
+            const from = this.world(this.box_from, Math.min(x0, x1), Math.min(y0, y1));
+            const to = this.world(this.box_to, Math.max(x0, x1), Math.max(y0, y1));
+            const lo_x = Math.min(from[0], to[0]);
+            const hi_x = Math.max(from[0], to[0]);
+            const lo_y = Math.min(from[1], to[1]);
+            const hi_y = Math.max(from[1], to[1]);
+            const hits = this.box_hits;
+            hits.length = 0;
+            if (out)
+                out.length = 0;
+            for (let n = 0; n < nodes.length; ++n) {
+                const node = nodes[n];
+                const world = node.world();
+                const size = typeof node.size === 'function' ? node.size() : null;
+                const half_x = size && size.length > 0 ? size[0] / 2 : 0;
+                const half_y = size && size.length > 1 ? size[1] / 2 : 0;
+                const x = world[12];
+                const y = world[13];
+                if (x + half_x < lo_x || x - half_x > hi_x)
+                    continue;
+                if (y + half_y < lo_y || y - half_y > hi_y)
+                    continue;
+                hits.push(nodes[n]);
+                if (out)
+                    out.push(n);
+            }
+            return hits;
         }
         pick(nodes, x, y) {
             const origin = this.ray_origin;
@@ -17092,6 +17135,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_point.prototype, "height", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_point.prototype, "scale", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_point.prototype, "proj_view", null);
@@ -19247,11 +19293,32 @@ var $;
         replan(next = 0.5) {
             return next;
         }
-        target(next) {
-            return next ?? null;
-        }
         others(next) {
             return next ?? [];
+        }
+        goal = new Float32Array(3);
+        goal_on = false;
+        target(next) {
+            if (next !== undefined) {
+                if (next)
+                    this.aim(next[0], next[1], next.length > 2 ? next[2] : 0);
+                else
+                    this.stop();
+            }
+            return this.goal_on ? this.goal : null;
+        }
+        aim(x, y, z = 0) {
+            this.goal[0] = x;
+            this.goal[1] = y;
+            this.goal[2] = z;
+            this.goal_on = true;
+            this.since = Infinity;
+            return this.goal;
+        }
+        stop() {
+            this.goal_on = false;
+            this.count = 0;
+            this.index = 0;
         }
         route = new Float32Array(0);
         stride = 2;
@@ -19361,9 +19428,6 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_nav_agent.prototype, "replan", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_nav_agent.prototype, "target", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_nav_agent.prototype, "others", null);
@@ -20162,6 +20226,9 @@ var $;
 		draw_height(){
 			return (this.Draw().height());
 		}
+		draw_dpr(){
+			return (this.Draw().dpr());
+		}
 		pointer_down(next){
 			if(next !== undefined) return next;
 			return null;
@@ -20355,6 +20422,7 @@ var $;
 			(obj.cam) = () => ((this.Cam()));
 			(obj.width) = () => ((this.draw_width()));
 			(obj.height) = () => ((this.draw_height()));
+			(obj.scale) = () => ((this.draw_dpr()));
 			return obj;
 		}
 		Sound(){
@@ -20622,9 +20690,8 @@ var $;
             pointer_down(event) {
                 if (!event)
                     return null;
-                const dpr = this.$.$mol_dom_context.devicePixelRatio;
-                const x = event.offsetX * dpr;
-                const y = event.offsetY * dpr;
+                const x = event.offsetX;
+                const y = event.offsetY;
                 const point = this.Point();
                 point.move(x, y);
                 const coin = point.pick(this.coins(), x, y);
@@ -20642,13 +20709,12 @@ var $;
                 world[1] = pos[1] + 0.5;
                 world[2] = pos[2];
                 const screen = this.Point().screen(this.label_screen, world);
-                const dpr = this.$.$mol_dom_context.devicePixelRatio;
                 const draw = this.Draw().view_rect();
                 const node = this.Hero_label().dom_node();
                 const page = node.offsetParent?.getBoundingClientRect();
                 const dx = (draw?.left ?? 0) - (page?.left ?? 0);
                 const dy = (draw?.top ?? 0) - (page?.top ?? 0);
-                return [screen[0] / dpr + dx, screen[1] / dpr + dy];
+                return [screen[0] + dx, screen[1] + dy];
             }
             label_left() {
                 return `${this.label_pos()[0].toFixed(1)}px`;

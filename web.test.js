@@ -7340,6 +7340,43 @@ var $;
             point.screen(at, second.pos());
             $mol_assert_equal(point.pick([first, second], at[0], at[1]), second);
         },
+        'box over the middle of five nodes gives three of them'() {
+            const point = flat_point();
+            const nodes = [];
+            for (let i = 0; i < 5; ++i) {
+                const node = new $bog_gamengine_node;
+                node.pos(new Float32Array([(i - 2) * 3, 0, 0]));
+                nodes.push(node);
+            }
+            const found = point.pick_box(nodes, 240, 160, 560, 240);
+            $mol_assert_equal(found.length, 3);
+            $mol_assert_equal(found[0], nodes[1]);
+            $mol_assert_equal(found[1], nodes[2]);
+            $mol_assert_equal(found[2], nodes[3]);
+        },
+        'box reuses the same buffer and fills the given indices'() {
+            const point = flat_point();
+            const first = new $bog_gamengine_node;
+            const second = new $bog_gamengine_node;
+            second.pos(new Float32Array([6, 0, 0]));
+            const at = [];
+            const found = point.pick_box([first, second], 240, 160, 560, 240, at);
+            $mol_assert_equal(at.length, 1);
+            $mol_assert_equal(at[0], 0);
+            $mol_assert_equal(point.pick_box([first, second], 0, 0, 800, 400, at), found);
+            $mol_assert_equal(at.length, 2);
+        },
+        'scale lets the point take css coordinates'() {
+            const point = flat_point();
+            point.scale(2);
+            const out = new Float32Array(3);
+            point.world(out, 400, 0);
+            near(out[0], 10);
+            near(out[1], 5);
+            point.screen(out, new Float32Array([10, 5, 0]));
+            near(out[0], 400);
+            near(out[1], 0);
+        },
         'pick away from all nodes gives null'() {
             const point = deep_point();
             const first = new $bog_gamengine_node;
@@ -7718,6 +7755,29 @@ var $;
             }
             const pos = agent.pos();
             $mol_assert_ok(Math.hypot(pos[0] - target[0], pos[1] - target[1]) < agent.radius());
+        },
+        'goal set once keeps moving the agent on the next frame'() {
+            const tile = new $bog_gamengine_phys_tile;
+            tile.map('#####\n#...#\n#...#\n#...#\n#####');
+            const grid = new $bog_gamengine_nav_grid;
+            grid.tile(tile);
+            const agent = new $bog_gamengine_nav_agent;
+            agent.grid(grid);
+            agent.pos(new Float32Array([1.5, -1.5, 0]));
+            agent.aim(3.5, -1.5);
+            agent.step(1 / 60);
+            const first = agent.pos()[0];
+            agent.step(1 / 60);
+            $mol_assert_ok(first > 1.5);
+            $mol_assert_ok(agent.pos()[0] > first);
+            $mol_assert_equal(agent.target(), agent.goal);
+        },
+        'stop drops the goal and the route'() {
+            const agent = new $bog_gamengine_nav_agent;
+            agent.aim(3.5, -1.5);
+            agent.stop();
+            $mol_assert_equal(agent.target(), null);
+            $mol_assert_equal(agent.path_count(), 0);
         },
         'agents push each other apart'() {
             const tile = new $bog_gamengine_phys_tile;

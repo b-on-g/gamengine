@@ -439,6 +439,7 @@ $bog_gamengine_draw $mol_view
 		^
 		width <= width 0
 		height <= height 0
+	dpr 1
 	scene $bog_gamengine_scene
 	cam $bog_gamengine_cam
 	light_dir Float32Array
@@ -491,6 +492,7 @@ $bog_gamengine_demo_flat $mol_page
 			stat => stat
 			width => draw_width
 			height => draw_height
+			dpr => draw_dpr
 			event *
 				pointerdown? <=> pointer_down? null
 		<= Hero_label $mol_view
@@ -557,6 +559,7 @@ $bog_gamengine_demo_flat $mol_page
 		cam <= Cam
 		width <= draw_width
 		height <= draw_height
+		scale <= draw_dpr
 	Sound $bog_gamengine_sound
 		uris *
 			coin \bog/gamengine/demo/sound/coin.wav
