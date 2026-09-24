@@ -127,5 +127,43 @@ namespace $ {
 			$mol_assert_equal( [ ... node.tint() ], [ 1, 0, 0, 0.5 ] )
 		},
 
+		'attached part takes the node as its owner'() {
+			const node = new $bog_gamengine_node
+			const part = new $bog_gamengine_combat
+			$mol_assert_equal( part.owner(), null )
+			node.parts([ part ])
+			$mol_assert_equal( part.owner(), node )
+			$mol_assert_equal( node.parts().length, 1 )
+		},
+
+		'own owner of a part is not taken away'() {
+			const first = new $bog_gamengine_node
+			const second = new $bog_gamengine_node
+			const part = new $bog_gamengine_combat
+			part.owner( first )
+			second.parts([ part ])
+			$mol_assert_equal( part.owner(), first )
+		},
+
+		'props of a part come with the name of its kind'() {
+			const node = new $bog_gamengine_node
+			const part = new $bog_gamengine_combat
+			part.health_max( 40 )
+			node.parts([ part ])
+			const names = node.props().map( prop => prop.name )
+			$mol_assert_ok( names.indexOf( 'combat.health' ) > 0 )
+			$mol_assert_ok( names.indexOf( 'combat.health_max' ) > 0 )
+			$mol_assert_ok( names.indexOf( 'pos' ) >= 0 )
+			const prop = node_test_prop( node, 'combat.health_max' )
+			$mol_assert_equal( prop.get(), 40 )
+			prop.set( 70 )
+			$mol_assert_equal( part.health_max(), 70 )
+		},
+
+		'node without parts shows the same props as before'() {
+			const node = new $bog_gamengine_node
+			$mol_assert_equal( node.props().map( prop => prop.name ), [ 'pos', 'rot', 'scale', 'tint' ] )
+		},
+
 	})
 }
