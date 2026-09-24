@@ -511,6 +511,48 @@ namespace $ {
 			$mol_assert_ok( bounds[ 3 ] <= pos[ 1 ] + half )
 		},
 
+		'grid snapping rounds to the step, and without it to a thousandth'( $ ) {
+			$mol_assert_equal( $bog_gamestudio_app_grid_value( -4.500001, 0.5 ), -4.5 )
+			$mol_assert_equal( $bog_gamestudio_app_grid_value( 5.3, 0.5 ), 5.5 )
+			$mol_assert_equal( $bog_gamestudio_app_grid_value( 5.3000001907, 0 ), 5.3 )
+		},
+
+		'click puts the node on the grid without a tail of digits'( $ ) {
+			const app = canvas_app( $ )
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			app.pointer_down( press_at( 293, 517 ) )
+			const pos = app.Scene().nodes()[ app.Scene().nodes().length - 1 ].pos()
+			$mol_assert_equal( pos[ 0 ], app.grid_value( pos[ 0 ] ) )
+			$mol_assert_equal( pos[ 1 ], app.grid_value( pos[ 1 ] ) )
+			$mol_assert_not( /\d\.\d{4,}/.test( app.source() ) )
+		},
+
+		'click without snapping keeps the point but drops the float tail'( $ ) {
+			const app = canvas_app( $ )
+			app.Grid().checked( false )
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			const at = spot_at( app, 293, 517 )
+			app.pointer_down( press_at( 293, 517 ) )
+			const pos = app.Scene().nodes()[ app.Scene().nodes().length - 1 ].pos()
+			$mol_assert_ok( Math.abs( pos[ 0 ] - at[ 0 ] ) < 1e-3 )
+			$mol_assert_not( /\d\.\d{4,}/.test( app.source() ) )
+		},
+
+		'gizmo drag writes a snapped position'( $ ) {
+			const app = canvas_app( $ )
+			app.selected( 0 )
+			const node = app.Scene().nodes()[ 0 ]
+			const was = node.pos()[ 0 ]
+			const seen = app.Point().screen( new Float32Array( 3 ), node.pos() )
+			app.pointer_down( press_at( seen[ 0 ], seen[ 1 ] ) )
+			app.pointer_move( press_at( seen[ 0 ] + 97, seen[ 1 ] - 53 ) )
+			app.pointer_up( press_at( seen[ 0 ] + 97, seen[ 1 ] - 53 ) )
+			const pos = app.Scene().nodes()[ 0 ].pos()
+			$mol_assert_ok( pos[ 0 ] !== was )
+			$mol_assert_equal( pos[ 0 ], app.grid_value( pos[ 0 ] ) )
+			$mol_assert_not( /\d\.\d{4,}/.test( app.source() ) )
+		},
+
 		'picked asset stays picked and puts a copy on every click'( $ ) {
 			const app = canvas_app( $ )
 			const before = app.node_rows().length

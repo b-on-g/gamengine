@@ -30,6 +30,9 @@ $bog_gamestudio_app $mol_view
 		<= Canvas $mol_page
 			title \Холст
 			tools /
+				<= Grid $mol_check_box
+					title \К сетке
+					checked? <=> grid? true
 				<= Fit $mol_button_minor
 					title \Показать всё
 					click? <=> fit? null

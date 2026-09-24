@@ -16,6 +16,15 @@ namespace $ {
 
 	export const $bog_gamestudio_app_fit_gap = 1.1
 
+	export const $bog_gamestudio_app_grid_step = 0.5
+
+	export const $bog_gamestudio_app_grid_precision = 1e3
+
+	export function $bog_gamestudio_app_grid_value( value: number, step: number ) {
+		if( step > 0 ) return Math.round( value / step ) * step
+		return Math.round( value * $bog_gamestudio_app_grid_precision ) / $bog_gamestudio_app_grid_precision
+	}
+
 	export function $bog_gamestudio_app_zoom_factor( delta: number, mode = 0 ) {
 		const pixels = mode === 1 ? delta * 16 : mode === 2 ? delta * 400 : delta
 		const step = Math.max( - $bog_gamestudio_app_zoom_step, Math.min( $bog_gamestudio_app_zoom_step, pixels ) )
@@ -402,7 +411,7 @@ namespace $.$$ {
 			const uri = event.dataTransfer?.getData( 'text/plain' ) ?? ''
 			if( !this.Assets().kind( uri ) || !this.editing() ) return event
 			const at = this.Point().world( this.point_world, this.point_x( event ), this.point_y( event ) )
-			this.place( uri, at )
+			this.place( uri, this.grid_at( at ) )
 			return event
 		}
 
@@ -918,6 +927,23 @@ namespace $.$$ {
 		pan_world = new Float32Array( 2 )
 		fit_box = new Float32Array( 4 )
 
+		@ $mol_mem
+		grid( next?: boolean ) {
+			return next ?? true
+		}
+
+		grid_step() {
+			return $bog_gamestudio_app_grid_step
+		}
+
+		grid_value( value: number ) {
+			return $bog_gamestudio_app_grid_value( value, this.grid() ? this.grid_step() : 0 )
+		}
+
+		grid_at( at: ArrayLike< number > ) {
+			return [ this.grid_value( at[ 0 ] ), this.grid_value( at[ 1 ] ), this.grid_value( at[ 2 ] ?? 0 ) ]
+		}
+
 		wheel( event?: WheelEvent ) {
 			if( !event ) return null
 			event.preventDefault()
@@ -965,7 +991,7 @@ namespace $.$$ {
 				return event
 			}
 			if( asset && this.editing() ) {
-				this.place( asset, point.world( this.point_world, x, y ) )
+				this.place( asset, this.grid_at( point.world( this.point_world, x, y ) ) )
 				return event
 			}
 			if( this.brushing() ) {
@@ -1016,8 +1042,8 @@ namespace $.$$ {
 			const from = this.drag_from
 			const start = this.drag_start
 			const next = node.pos() === this.drag_a ? this.drag_b : this.drag_a
-			next[ 0 ] = axis === 'y' ? from[ 0 ] : from[ 0 ] + at[ 0 ] - start[ 0 ]
-			next[ 1 ] = axis === 'x' ? from[ 1 ] : from[ 1 ] + at[ 1 ] - start[ 1 ]
+			next[ 0 ] = axis === 'y' ? from[ 0 ] : this.grid_value( from[ 0 ] + at[ 0 ] - start[ 0 ] )
+			next[ 1 ] = axis === 'x' ? from[ 1 ] : this.grid_value( from[ 1 ] + at[ 1 ] - start[ 1 ] )
 			next[ 2 ] = from[ 2 ]
 			this.drag_moved = true
 			node.pos( next )
@@ -1036,7 +1062,7 @@ namespace $.$$ {
 			if( !event || !this.drag_axis ) return null
 			this.drag_axis = null
 			const node = this.node()
-			if( node && this.drag_moved ) this.write( 'pos', Array.from( node.pos() ) )
+			if( node && this.drag_moved ) this.write( 'pos', this.grid_at( node.pos() ) )
 			return event
 		}
 
