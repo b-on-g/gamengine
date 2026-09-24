@@ -549,12 +549,30 @@ namespace $.$$ {
 
 		@ $mol_mem
 		form_foot() {
-			return this.detachable() ? [ this.Detach() ] : []
+			if( !this.doc_path() ) return []
+			return [ ... this.detachable() ? [ this.Detach() ] : [], this.Node_dup(), this.Node_drop() ]
 		}
 
 		detach( event?: Event | null ) {
 			const path = this.doc_path()
 			if( path ) this.Doc().override( path )
+			return event ?? null
+		}
+
+		node_dup( event?: Event | null ) {
+			const path = this.doc_path()
+			if( !path ) return event ?? null
+			const index = this.selected()
+			this.Doc().dup( path )
+			if( index !== null ) this.selected( index + 1 )
+			return event ?? null
+		}
+
+		node_drop( event?: Event | null ) {
+			const path = this.doc_path()
+			if( !path ) return event ?? null
+			this.Doc().drop( path )
+			this.selected( null )
 			return event ?? null
 		}
 

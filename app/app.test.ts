@@ -395,6 +395,40 @@ namespace $ {
 			$mol_assert_equal( app.fields()[ 0 ], app.Name_field() )
 		},
 
+		'delete button takes the selected node out of the scene and drops the selection'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 1 )
+			app.Node_drop().click( null )
+			$mol_assert_equal( app.node_rows().length, 2 )
+			$mol_assert_equal( app.selected(), null )
+			$mol_assert_not( app.source().includes( 'Монета' ) )
+		},
+
+		'duplicate button copies the node and selects the copy'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 1 )
+			app.Node_dup().click( null )
+			$mol_assert_equal( app.node_rows().length, 4 )
+			$mol_assert_equal( app.selected(), 2 )
+			$mol_assert_equal( app.row_title( 2 ), 'Монета' )
+		},
+
+		'delete leaves the atlas and the map of the scene alone'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 0 )
+			app.Node_drop().click( null )
+			$mol_assert_ok( app.source().includes( 'Atlas $bog_gamengine_atlas' ) )
+			$mol_assert_ok( app.source().includes( '\\######' ) )
+			$mol_assert_equal( app.tile_rows().length, 3 )
+		},
+
+		'inspector shows no delete and no duplicate while nothing is selected'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			$mol_assert_equal( app.form_foot().length, 0 )
+			app.selected( 0 )
+			$mol_assert_equal( app.form_foot(), [ app.Node_dup(), app.Node_drop() ] )
+		},
+
 		'gizmo hit on the x arrow'( $ ) {
 			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
 		},

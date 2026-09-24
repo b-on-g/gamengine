@@ -77,6 +77,14 @@ $bog_gamestudio_app $mol_view
 							title \Переопределить в этом инстансе
 							enabled <= editing
 							click? <=> detach? null
+						<= Node_dup $mol_button_minor
+							title \Дублировать
+							enabled <= editing
+							click? <=> node_dup? null
+						<= Node_drop $mol_button_minor
+							title \Удалить
+							enabled <= editing
+							click? <=> node_drop? null
 		<= Source $mol_page
 			title \Исходник
 			tools /
