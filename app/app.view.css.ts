@@ -95,6 +95,18 @@ namespace $.$$ {
 			background: { color: $mol_theme.card },
 		},
 
+		Kept: {
+			padding: $mol_gap.text,
+			color: $mol_theme.shade,
+			font: { size: '0.75rem' },
+		},
+
+		Undo_stat: {
+			padding: $mol_gap.text,
+			color: $mol_theme.shade,
+			font: { size: '0.75rem' },
+		},
+
 		Vec_num: {
 			flex: { grow: 1, shrink: 1, basis: 0 },
 			minWidth: 0,
