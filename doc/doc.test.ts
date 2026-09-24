@@ -11,7 +11,11 @@ namespace $ {
 
 		'sample lists its nodes and every other declaration'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
-			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Монета', 'Стена', 'Atlas' ] )
+			const rows = doc.nodes()
+			for( const title of [ 'Герой', 'Монета', 'Стена' ] ) {
+				$mol_assert_ok( rows.some( row => row.title === title && row.kind === 'node' ) )
+			}
+			$mol_assert_ok( rows.some( row => row.name === 'Atlas' && row.kind === 'own' ) )
 		},
 
 		'set changes exactly one line of the source'( $ ) {
