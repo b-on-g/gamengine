@@ -135,10 +135,19 @@ namespace $.$$ {
 			return 'bog_gamestudio_source'
 		}
 
+		kept_fail = false
+
 		@ $mol_mem
 		source_own( next?: string ) {
-			const kept = this.$.$mol_state_local.value< string >( this.source_key(), next )
-			return kept ?? $bog_gamestudio_sample
+			try {
+				const kept = this.$.$mol_state_local.value< string >( this.source_key(), next )
+				if( next !== undefined ) this.kept_fail = false
+				return kept ?? $bog_gamestudio_sample
+			} catch( error ) {
+				if( $mol_promise_like( error ) ) return $mol_fail_hidden( error )
+				this.kept_fail = true
+				return next ?? $bog_gamestudio_sample
+			}
 		}
 
 		source( next?: string ) {
@@ -151,7 +160,9 @@ namespace $.$$ {
 
 		kept_stat() {
 			if( this.doc_land() ) return 'Ленд Базы, правки уходят сразу'
-			return `Браузер этой машины, ${ this.source().length } знаков`
+			const size = this.source().length
+			if( this.kept_fail ) return `Браузер не сохраняет, вынимайте файлом: ${ size } знаков`
+			return `Браузер этой машины, ${ size } знаков`
 		}
 
 		@ $mol_mem

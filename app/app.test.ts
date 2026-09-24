@@ -350,6 +350,30 @@ namespace $ {
 			}
 		},
 
+		'editor keeps working and tells the truth when the browser refuses to save'( $ ) {
+			class $mol_state_local_locked< Value > extends $mol_state_local< Value > {
+				@ $mol_mem_key
+				static value< Value >( key: string, next?: Value | null ): Value | null {
+					return $mol_fail( new Error( 'The operation is insecure' ) )
+				}
+			}
+			$.$mol_state_local = $mol_state_local_locked
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			const edited = app.source().replace( '\\Герой', '\\Крошка' )
+			app.source( edited )
+			$mol_assert_equal( app.source(), edited )
+			$mol_assert_equal( app.node_rows().length, 3 )
+			$mol_assert_ok( app.kept_stat().startsWith( 'Браузер не сохраняет, вынимайте файлом' ) )
+			$mol_assert_ok( app.source_uri().length > 0 )
+		},
+
+		'footer says the work lies in the browser while saving goes through'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.source_key = ()=> 'bog_gamestudio_source_test_stat'
+			app.source( app.source() )
+			$mol_assert_ok( app.kept_stat().startsWith( 'Браузер этой машины' ) )
+		},
+
 		'editor without kept source starts from the sample'( $ ) {
 			const app = $$.$bog_gamestudio_app.make({ $ })
 			app.source_key = ()=> 'bog_gamestudio_source_test_empty'
