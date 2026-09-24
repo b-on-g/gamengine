@@ -293,7 +293,7 @@ namespace $ {
 
 		'drop of an unknown node fails with its path'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
-			$mol_assert_fail( ()=> doc.drop( 'Ghost' ), 'Node Ghost is not among the kids of its owner' )
+			$mol_assert_fail( ()=> doc.drop( 'Ghost' ), 'Node Ghost is neither placed nor declared' )
 		},
 
 		'dup puts a copy right after the node and gives it a free name'( $ ) {
@@ -320,7 +320,7 @@ namespace $ {
 			)
 		},
 
-		'drop of a plain reference keeps the declaration for other users'( $ ) {
+		'drop of a node placed once takes its declaration with it'( $ ) {
 			const doc = open( $, [
 				'$bog_gamestudio_sample_ref $bog_gamengine_scene',
 				'\tkids /',
@@ -331,8 +331,28 @@ namespace $ {
 			].join( '\n' ) )
 			doc.drop( 'Hero' )
 			$mol_assert_equal( doc.scene().nodes().length, 0 )
-			$mol_assert_ok( doc.source().includes( 'Hero $bog_gamengine_sprite' ) )
-			$mol_assert_equal( doc.nodes().map( node => node.name ), [ 'Hero' ] )
+			$mol_assert_not( doc.source().includes( 'Hero' ) )
+			$mol_assert_equal( doc.nodes().length, 0 )
+		},
+
+		'drop of a declaration is refused with the name of the user'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample )
+			$mol_assert_fail(
+				()=> doc.drop( 'Atlas' ),
+				'Node Atlas is used by Scene, Hero, Coin, Wall, drop them first',
+			)
+			$mol_assert_ok( doc.source().includes( 'Atlas $bog_gamengine_atlas' ) )
+		},
+
+		'placed sound is dropped by its declaration, the world stays'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample )
+			doc.declare( 'Sound', '$bog_gamengine_sound', {} )
+			doc.add_uri( 'Sound', 'uris', 'bog/gamengine/demo/sound/coin.wav', 'coin' )
+			$mol_assert_ok( doc.source().includes( 'coin.wav' ) )
+			doc.drop( 'Sound' )
+			$mol_assert_not( doc.source().includes( 'coin.wav' ) )
+			$mol_assert_not( doc.source().includes( 'Sound' ) )
+			$mol_assert_equal( doc.scene().nodes().map( node => node.title() ), [ 'Герой', 'Монета', 'Стена' ] )
 		},
 
 		'copy keeps every property of the node and lives on its own'( $ ) {

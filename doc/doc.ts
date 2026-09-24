@@ -370,10 +370,59 @@ namespace $ {
 			return { list, at }
 		}
 
+		without( tree: $mol_tree2, cut: ReadonlySet< $mol_tree2 > ): $mol_tree2 {
+			return tree.clone( tree.kids.filter( kid => !cut.has( kid ) ).map( kid => this.without( kid, cut ) ) )
+		}
+
+		users( name: string ) {
+			const names = [] as string[]
+			for( const [ title, klass ] of this.decls() ) {
+				for( const line of klass.kids ) {
+					if( line.type === 'kids' || line.type === 'parts' ) continue
+					const value = line.kids[ 0 ]
+					if( value?.type !== '<=' ) continue
+					if( value.kids[ 0 ]?.type !== name ) continue
+					names.push( title || 'Scene' )
+				}
+			}
+			return names as readonly string[]
+		}
+
+		spots( name: string ) {
+			const spots = [] as $mol_tree2[]
+			for( const klass of this.decls().values() ) {
+				for( const line of klass.kids ) {
+					if( line.type !== 'kids' && line.type !== 'parts' ) continue
+					for( const kid of line.kids[ 0 ]?.kids ?? [] ) {
+						if( kid.kids[ 0 ]?.type === name ) spots.push( kid )
+					}
+				}
+			}
+			return spots as readonly $mol_tree2[]
+		}
+
+		decl_line( name: string ) {
+			for( const klass of this.decls().values() ) {
+				for( const line of klass.kids ) {
+					if( line.type !== name ) continue
+					if( !line.kids[ 0 ]?.type.startsWith( '$' ) ) continue
+					return line
+				}
+			}
+			return null
+		}
+
 		drop( path: string ) {
-			const { list, at } = this.kid_at( path )
-			const kids = list.kids.filter( ( kid, index )=> index !== at )
-			this.source( this.print( this.swap_tree( this.tree(), list, list.clone( kids ) ) ) )
+			const name = path.slice( path.lastIndexOf( '/' ) + 1 )
+			const users = this.users( name )
+			if( users.length ) {
+				return $mol_fail( new Error( `Node ${ name } is used by ${ users.join( ', ' ) }, drop them first` ) )
+			}
+			const cut = new Set< $mol_tree2 >( this.spots( name ) )
+			const line = this.decl_line( name )
+			if( line ) cut.add( line )
+			if( !cut.size ) return $mol_fail( new Error( `Node ${ path } is neither placed nor declared` ) )
+			this.source( this.print( this.without( this.tree(), cut ) ) )
 			return path
 		}
 
