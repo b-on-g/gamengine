@@ -1,5 +1,6 @@
 $bog_gamengine_demo $mol_book2_catalog
 	param \demo
+	placeholders /$mol_view
 	plugins /
 		<= Control $mol_keyboard_state
 			key <= key_map *

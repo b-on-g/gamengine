@@ -347,6 +347,45 @@ namespace $ {
 		return { room, flat, errors }
 	`
 
+	export const $bog_gamengine_probe_menu_page = 'bog/gamengine/demo/-/index.html#!demo=quad'
+
+	export const $bog_gamengine_probe_menu_ok = 'меню каталога видно на каждой странице широкого окна'
+
+	export const $bog_gamengine_probe_menu_title = 'Комната'
+
+	export const $bog_gamengine_probe_menu_dpr = 2
+
+	export const $bog_gamengine_probe_menu_spreads = [ 'flat', 'room', 'boxes', 'quad' ] as const
+
+	export const $bog_gamengine_probe_menu_script = `
+		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
+		const wait = async ( count )=> { for( let i = 0; i < count; ++ i ) await frame() }
+		Object.defineProperty( window, 'devicePixelRatio', { value: ${ $bog_gamengine_probe_menu_dpr }, configurable: true } )
+		dispatchEvent( new Event( 'resize' ) )
+		await wait( 60 )
+		const book = document.querySelector( '[mol_book2_catalog]' )
+		if( !book ) return { dpr: devicePixelRatio, inner: innerWidth, pages: [] }
+		const pages = []
+		for( const spread of ${ JSON.stringify( $bog_gamengine_probe_menu_spreads ) } ) {
+			location.hash = '#!demo=' + spread
+			await wait( 90 )
+			await new Promise( done => setTimeout( done, 400 ) )
+			await wait( 10 )
+			const link = [ ... document.querySelectorAll( '[mol_book2_catalog_menu_link]' ) ]
+				.find( item => item.textContent.trim() === ${ JSON.stringify( $bog_gamengine_probe_menu_title ) } )
+			const box = link && link.getBoundingClientRect()
+			const canvas = document.querySelector( 'canvas' )
+			pages.push({
+				spread,
+				link: box ? [ Math.round( box.left ), Math.round( box.right ) ] : null,
+				scroll: Math.round( book.scrollWidth ),
+				client: book.clientWidth,
+				canvas: canvas ? canvas.width : 0,
+			})
+		}
+		return { dpr: devicePixelRatio, inner: innerWidth, pages }
+	`
+
 	export const $bog_gamengine_probe_boxes_script = `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 		const canvas = document.querySelector( 'canvas' )
@@ -515,6 +554,20 @@ namespace $ {
 		readonly room: boolean
 		readonly flat: boolean
 		readonly errors: readonly string[]
+	}
+
+	export type $bog_gamengine_probe_menu_page_result = {
+		readonly spread: string
+		readonly link: readonly [ number, number ] | null
+		readonly scroll: number
+		readonly client: number
+		readonly canvas: number
+	}
+
+	export type $bog_gamengine_probe_menu_result = {
+		readonly dpr: number
+		readonly inner: number
+		readonly pages: readonly $bog_gamengine_probe_menu_page_result[]
 	}
 
 	export function $bog_gamengine_probe_warmth( pixel: $bog_gamengine_probe_pixel ) {
@@ -781,6 +834,46 @@ namespace $ {
 		if( got.errors.length ) return fail( 'страница бросила исключения' )
 
 		return say( $bog_gamengine_probe_quiet_ok )
+	}
+
+	export async function $bog_gamengine_probe_menu_check(
+		root = $node.process.cwd(),
+		flags: readonly string[] = $bog_gamengine_probe_flags,
+	) {
+
+		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
+
+		const started = Date.now()
+
+		const got = await $bog_probe_run({
+			root,
+			flags,
+			page: $bog_gamengine_probe_menu_page,
+			ready: $bog_gamengine_probe_ready,
+			script: $bog_gamengine_probe_menu_script,
+			width: 1440,
+			height: 900,
+			limit: 120000,
+		}) as $bog_gamengine_probe_menu_result | typeof $bog_probe_skip
+
+		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
+
+		say( `${ flags.join( ' ' ) || 'без флагов' }: ${ Date.now() - started } мс, ${ JSON.stringify( got ) }` )
+
+		const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( got ) }` ) )
+
+		if( got.dpr !== $bog_gamengine_probe_menu_dpr ) return fail( 'плотность пикселей не подменилась' )
+		if( got.pages.length !== $bog_gamengine_probe_menu_spreads.length ) return fail( 'обошлись не все страницы каталога' )
+
+		for( const page of got.pages ) {
+			if( !page.link ) return fail( `на странице ${ page.spread } нет ссылки «${ $bog_gamengine_probe_menu_title }»` )
+			if( page.link[ 0 ] < 0 ) return fail( `на странице ${ page.spread } меню уехало за левый край` )
+			if( page.link[ 1 ] > got.inner ) return fail( `на странице ${ page.spread } меню не влезло по ширине` )
+			if( page.scroll > page.client + 1 ) return fail( `на странице ${ page.spread } книга шире окна` )
+			if( !( page.canvas > got.inner ) ) return fail( `на странице ${ page.spread } холст не вырос по плотности пикселей` )
+		}
+
+		return say( $bog_gamengine_probe_menu_ok )
 	}
 
 	export async function $bog_gamengine_probe_boxes_check(

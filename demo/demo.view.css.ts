@@ -1,11 +1,22 @@
 namespace $.$$ {
 
+	const spread = {
+		'@media': {
+			'(min-width: 60rem)': {
+				flex: {
+					grow: 1,
+					shrink: 1,
+					basis: 0,
+				},
+				minWidth: 0,
+			},
+		},
+	} as const
+
 	$mol_style_define( $bog_gamengine_demo, {
 
 		Quad: {
-			flex: {
-				grow: 1,
-			},
+			... spread,
 			'>': {
 				$mol_scroll: {
 					'>': {
@@ -16,6 +27,12 @@ namespace $.$$ {
 				},
 			},
 		},
+
+		Flat: spread,
+
+		Room: spread,
+
+		Boxes: spread,
 
 	} )
 

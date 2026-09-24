@@ -27,6 +27,11 @@ namespace $ {
 			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_boxes_ok ) )
 		},
 
+		'catalog menu stays in the viewport of a wide window on every spread'() {
+			const out = $bog_probe_test( 'bog/gamengine/probe/-/node.js', 'bog_gamengine_probe_menu_check' )
+			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_menu_ok ) )
+		},
+
 		'lit over shade holds in linear light and slips in screen light'() {
 			const lit = [ 152, 75, 59, 255 ] as const
 			const shade = [ 120, 55, 47, 255 ] as const
