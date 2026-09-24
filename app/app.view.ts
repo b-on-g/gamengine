@@ -625,6 +625,19 @@ namespace $.$$ {
 			return event ?? null
 		}
 
+		typing( event?: Event | null ) {
+			const target = event?.target as HTMLElement | null
+			if( !target ) return false
+			if( target.isContentEditable ) return true
+			return target.tagName === 'INPUT' || target.tagName === 'TEXTAREA'
+		}
+
+		key_drop( event?: Event | null ) {
+			if( !this.editing() ) return event ?? null
+			if( this.typing( event ) ) return event ?? null
+			return this.node_drop( event )
+		}
+
 		field_bids( name: string ) {
 			const path = this.doc_path()
 			if( !path ) return []

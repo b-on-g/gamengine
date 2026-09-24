@@ -8,6 +8,8 @@ $bog_gamestudio_app $mol_view
 			key <= key_map *
 		<= Escape $mol_hotkey
 			key * escape? <=> tool_drop? null
+		<= Delete_key $mol_hotkey
+			key * delete? <=> key_drop? null
 	sub /
 		<= Side $mol_deck
 			current? <=> tab? \0

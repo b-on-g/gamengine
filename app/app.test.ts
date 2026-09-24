@@ -453,6 +453,32 @@ namespace $ {
 			$mol_assert_equal( app.form_foot(), [ app.Node_dup(), app.Node_drop() ] )
 		},
 
+		'delete key drops the selected node'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 1 )
+			app.Delete_key().keydown({ keyCode: 46, target: { tagName: 'BUTTON' } } as unknown as KeyboardEvent )
+			$mol_assert_equal( app.node_rows().length, 2 )
+			$mol_assert_not( app.source().includes( 'Монета' ) )
+		},
+
+		'delete key typed into a field leaves the node alone'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 1 )
+			for( const tag of [ 'INPUT', 'TEXTAREA' ] ) {
+				app.Delete_key().keydown({ keyCode: 46, target: { tagName: tag } } as unknown as KeyboardEvent )
+			}
+			$mol_assert_equal( app.node_rows().length, 3 )
+			$mol_assert_ok( app.source().includes( 'Монета' ) )
+		},
+
+		'delete key does nothing while the game is playing'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 1 )
+			app.play()
+			app.Delete_key().keydown({ keyCode: 46, target: { tagName: 'BUTTON' } } as unknown as KeyboardEvent )
+			$mol_assert_equal( app.node_rows().length, 3 )
+		},
+
 		'gizmo hit on the x arrow'( $ ) {
 			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
 		},
