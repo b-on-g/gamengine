@@ -330,6 +330,26 @@ namespace $ {
 			}
 		},
 
+		'node put by the mouse is still there after a reload, without asking to save'( $ ) {
+			const key = 'bog_gamestudio_source_test_place'
+			const make = ()=> {
+				const app = $$.$bog_gamestudio_app.make({ $ })
+				app.source_key = ()=> key
+				return app
+			}
+			try {
+				const first = make()
+				first.place( 'bog/gamengine/demo/atlas/floor.png', [ 1, -2, 0 ] )
+				$mol_assert_equal( first.node_rows().length, 4 )
+				const again = make()
+				$mol_assert_equal( again.node_rows().length, 4 )
+				$mol_assert_equal( again.row_title( 3 ), 'floor' )
+				$mol_assert_equal( again.Scene().nodes()[ 3 ].pos()[ 1 ], -2 )
+			} finally {
+				$.$mol_state_local.value( key, null )
+			}
+		},
+
 		'editor without kept source starts from the sample'( $ ) {
 			const app = $$.$bog_gamestudio_app.make({ $ })
 			app.source_key = ()=> 'bog_gamestudio_source_test_empty'
