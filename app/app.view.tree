@@ -115,43 +115,23 @@ $bog_shooter_app $mol_page
 		atlas <= Atlas
 		source <= Phys
 		skip 1
-	Sparks $bog_gamengine_batch
-		shader <= Sprite $bog_gamengine_shader_sprite
-		shape <= Quad $bog_gamengine_shape_quad
-		atlas <= Atlas
-		source <= Spark_pool
-		cull false
 	Traces $bog_gamengine_batch
 		shader <= Flat $bog_gamengine_shader_flat
 		shape <= Lines $bog_gamengine_shape_lines
 			points <= trace_points Float32Array
-		nodes / <= Trace_holder
-	Trace_holder $bog_gamengine_node
+			count <= trace_count 0
+		instances 1
 	Spark_pool $bog_gamengine_particle_pool
 		cap 200
 	Spark $bog_gamengine_particle
 		pool <= Spark_pool
 		atlas <= Atlas
 		frame \spark
-		life /
-			0.12
-			0.3
-		speed /
-			2
-			6
+		life <= spark_life Float32Array
+		speed <= spark_speed Float32Array
 		spread 0.6
-		size /
-			0.12
-			0.01
-		color /
-			1
-			0.9
-			0.6
-			1
-			1
-			0.4
-			0.1
-			0
+		size <= spark_size Float32Array
+		color <= spark_color Float32Array
 		billboard true
 	Floor $bog_gamengine_mesh
 		shape <= Plane $bog_gamengine_shape_plane
@@ -174,9 +154,8 @@ $bog_shooter_app $mol_page
 		pos? <=> player_pos? Float32Array
 		health? => player_health?
 	Eye $bog_gamengine_cam_deep
-		parent <= Player
-		pos <= eye_pos Float32Array
-		rot <= eye_rot Float32Array
+		follow <= Player
+		lift <= eye_lift 0
 		far 60
 	Target* $bog_shooter_target
 		phys3 <= Phys

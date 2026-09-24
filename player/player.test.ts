@@ -33,7 +33,7 @@ namespace $ {
 
 		'quarter turn left aims along minus X'() {
 			const player = player_of( world_of() )
-			player.yaw( Math.PI / 2 )
+			player.yaw = Math.PI / 2
 			const dir = player.aim()
 			$mol_assert_equal( dir[ 0 ].toFixed( 4 ), '-1.0000' )
 			$mol_assert_equal( Math.abs( dir[ 2 ] ) < 1e-6, true )

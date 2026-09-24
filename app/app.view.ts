@@ -60,14 +60,28 @@ namespace $.$$ {
 			return next ?? this.Arena().start_pos( this.player_height() / 2 )
 		}
 
-		@ $mol_mem
-		eye_pos() {
-			return new Float32Array([ 0, this.Player().eye_lift(), 0 ])
+		eye_lift() {
+			return this.Player().eye_lift()
 		}
 
 		@ $mol_mem
-		eye_rot() {
-			return new Float32Array([ this.Player().pitch(), 0, 0 ])
+		spark_life() {
+			return new Float32Array([ 0.12, 0.3 ])
+		}
+
+		@ $mol_mem
+		spark_speed() {
+			return new Float32Array([ 2, 6 ])
+		}
+
+		@ $mol_mem
+		spark_size() {
+			return new Float32Array([ 0.12, 0.01 ])
+		}
+
+		@ $mol_mem
+		spark_color() {
+			return new Float32Array([ 1, 0.9, 0.6, 1, 1, 0.4, 0.1, 0 ])
 		}
 
 		@ $mol_mem
@@ -97,10 +111,11 @@ namespace $.$$ {
 
 		@ $mol_mem
 		batches() {
-			return [ this.Solids(), ... this.Scene().auto_batches(), this.Sparks(), this.Traces() ] as readonly $bog_gamengine_batch[]
+			return [ this.Solids(), ... this.Scene().auto_batches(), this.Traces() ] as readonly $bog_gamengine_batch[]
 		}
 
 		trace_buf = new Float32Array( 0 )
+		trace_at = 0
 
 		trace_points() {
 			this.Scene().step()
@@ -110,7 +125,13 @@ namespace $.$$ {
 			const out = this.trace_buf
 			let at = this.Player().trace_write( out, 0 )
 			for( let i = 0; i < targets.length; ++ i ) at = targets[ i ].trace_write( out, at )
+			this.trace_at = at
 			return out
+		}
+
+		trace_count() {
+			this.trace_points()
+			return this.trace_at / 6
 		}
 
 		@ $mol_mem

@@ -1,9 +1,5 @@
 namespace $ {
 
-	export type $bog_shooter_player_look = {
-		take( out: Float32Array ): Float32Array
-	}
-
 	export type $bog_shooter_player_target = {
 		alive(): boolean
 		index(): number
@@ -13,7 +9,7 @@ namespace $ {
 	export class $bog_shooter_player extends $bog_gamengine_phys3_walker {
 
 		@ $mol_mem
-		screen( next?: $bog_shooter_player_look | null ) {
+		screen( next?: $bog_gamengine_screen | null ) {
 			return next ?? null
 		}
 
@@ -97,13 +93,6 @@ namespace $ {
 			return next
 		}
 
-		yaw_at = 0
-
-		yaw( next?: number ) {
-			if( next !== undefined ) this.yaw_at = next
-			return this.yaw_at
-		}
-
 		look = new Float32Array( 2 )
 		aim_dir = new Float32Array( 3 )
 		eye_at = new Float32Array( 3 )
@@ -131,7 +120,7 @@ namespace $ {
 		}
 
 		aim() {
-			const yaw = this.yaw()
+			const yaw = this.yaw
 			const pitch = this.pitch()
 			const flat = Math.cos( pitch )
 			const dir = this.aim_dir
@@ -144,7 +133,7 @@ namespace $ {
 		revive() {
 			this.health( this.health_max() )
 			this.pitch( 0 )
-			this.yaw( 0 )
+			this.yaw = 0
 			this.rot( new Float32Array( 3 ) )
 			this.vel_y = 0
 			this.wait = 0
@@ -166,7 +155,7 @@ namespace $ {
 		}
 
 		look_step( dt: number ) {
-			let yaw = this.yaw()
+			let yaw = this.yaw
 			let pitch = this.pitch()
 			const screen = this.screen()
 			if( screen ) {
@@ -181,10 +170,11 @@ namespace $ {
 			const limit = this.pitch_limit()
 			if( pitch < - limit ) pitch = - limit
 			if( pitch > limit ) pitch = limit
-			if( pitch !== this.pitch() ) this.pitch( pitch )
-			if( yaw === this.yaw() ) return
-			this.yaw( yaw )
+			if( pitch === this.pitch() && yaw === this.yaw ) return
+			this.pitch( pitch )
+			this.yaw = yaw
 			const rot = new Float32Array( 3 )
+			rot[ 0 ] = pitch
 			rot[ 1 ] = yaw
 			this.rot( rot )
 		}
@@ -208,7 +198,8 @@ namespace $ {
 			const from = this.eye()
 			const dir = this.aim()
 			const reach = this.reach()
-			const index = this.shot_cast.ray( world, from, dir, reach, this.shot_hit, true )
+			this.body()
+			const index = this.shot_cast.ray( world, from, dir, reach, this.shot_hit, this.opts )
 			const far = index < 0 ? reach : this.shot_hit[ 0 ]
 			const trace = this.trace
 			trace[ 0 ] = from[ 0 ]
@@ -232,8 +223,8 @@ namespace $ {
 		}
 
 		trace_write( out: Float32Array, at: number ) {
-			const trace = this.trace_left > 0 ? this.trace : null
-			for( let i = 0; i < 6; ++ i ) out[ at + i ] = trace ? trace[ i ] : 0
+			if( this.trace_left <= 0 ) return at
+			for( let i = 0; i < 6; ++ i ) out[ at + i ] = this.trace[ i ]
 			return at + 6
 		}
 

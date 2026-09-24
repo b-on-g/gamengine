@@ -91,15 +91,17 @@ namespace $ {
 		eye_at = new Float32Array( 3 )
 		move = new Float32Array( 3 )
 		away = new Float32Array([ 0, -1000, 0 ])
+		opts = { skip_ghost: true, skip: -1 }
 
 		alive() {
 			return this.health() > 0
 		}
 
 		index() {
-			if( this.index_last >= 0 ) return this.index_last
-			const world = this.phys3()
+			const known = this.handle_last
 			const i = super.index()
+			if( known || i < 0 ) return i
+			const world = this.phys3()
 			world.layer[ i ] = this.layer()
 			world.pos.set( this.start(), i * 3 )
 			world.bounds_of( i )
@@ -175,7 +177,8 @@ namespace $ {
 			from[ 0 ] = pos[ 0 ] + this.way * skin
 			from[ 1 ] = pos[ 1 ]
 			from[ 2 ] = pos[ 2 ]
-			if( this.cast.ray( world, from, dir, 0.4, this.hit, true ) >= 0 ) {
+			this.opts.skip = this.index()
+			if( this.cast.ray( world, from, dir, 0.4, this.hit, this.opts ) >= 0 ) {
 				this.way = - this.way
 				return
 			}
@@ -205,15 +208,10 @@ namespace $ {
 			dir[ 0 ] = dx / dist
 			dir[ 1 ] = dy / dist
 			dir[ 2 ] = dz / dist
-			const skin = this.size()[ 0 ] + 0.05
-			const span = dist - skin - 0.35
-			if( span > 0 ) {
-				const from = this.from
-				from[ 0 ] = eye[ 0 ] + dir[ 0 ] * skin
-				from[ 1 ] = eye[ 1 ] + dir[ 1 ] * skin
-				from[ 2 ] = eye[ 2 ] + dir[ 2 ] * skin
-				if( this.cast.ray( world, from, dir, span, this.hit, true ) >= 0 ) return
-			}
+			const body = world.index_of( player.body() )
+			this.opts.skip = this.index()
+			const seen = this.cast.ray( world, eye, dir, dist, this.hit, this.opts )
+			if( seen < 0 || seen !== body ) return
 			this.seen = true
 			if( this.wait > 0 ) return
 			this.wait = this.shot_delay()
@@ -229,14 +227,9 @@ namespace $ {
 			player.hurt( this.damage() )
 		}
 
-		destructor() {
-			this.index_last = -1
-			super.destructor()
-		}
-
 		trace_write( out: Float32Array, at: number ) {
-			const trace = this.trace_left > 0 ? this.trace : null
-			for( let i = 0; i < 6; ++ i ) out[ at + i ] = trace ? trace[ i ] : 0
+			if( this.trace_left <= 0 ) return at
+			for( let i = 0; i < 6; ++ i ) out[ at + i ] = this.trace[ i ]
 			return at + 6
 		}
 
