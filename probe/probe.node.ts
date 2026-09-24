@@ -287,8 +287,13 @@ namespace $ {
 		const arm_loaded = arm_ready()
 		let arm_bright = arm_peek()
 		let arm_dim = arm_bright
-		const arm_started = performance.now()
-		while( performance.now() - arm_started < 1500 ) {
+		const arm_near = ( a, b )=> {
+			for( let i = 0; i < 4; ++ i ) if( Math.abs( a[ i ] - b[ i ] ) > 24 ) return false
+			return true
+		}
+		const arm_enough = ()=> sum( arm_bright ) - sum( arm_off ) > 60 && arm_near( arm_dim, arm_off )
+		let arm_frames = 0
+		for( ; arm_frames < 360 && !arm_enough(); ++ arm_frames ) {
 			await frame()
 			const got = arm_peek()
 			if( sum( got ) > sum( arm_bright ) ) arm_bright = got
@@ -316,7 +321,7 @@ namespace $ {
 			fog: true, fog_checked, fog_near_at, fog_far_at, fog_near_off, fog_far_off, fog_near_on, fog_far_on,
 			light_count, warm_at, cold_at, warm, cold, shine: !!shine, shine_checked, row_plain, row_shine,
 			shadow_box: true, shadow_checked, shadow_at, open_at, shadow_on, shadow_off, open_on, open_off,
-			arm: true, arm_loaded, arm_at, arm_off, arm_bright, arm_dim, arm_gone,
+			arm: true, arm_loaded, arm_at, arm_off, arm_bright, arm_dim, arm_gone, arm_frames,
 			size: [ canvas.width, canvas.height ],
 		}
 	`
@@ -502,6 +507,7 @@ namespace $ {
 		readonly arm_bright?: $bog_gamengine_probe_pixel
 		readonly arm_dim?: $bog_gamengine_probe_pixel
 		readonly arm_gone?: $bog_gamengine_probe_pixel
+		readonly arm_frames?: number
 		readonly size?: readonly [ number, number ]
 	}
 
@@ -557,6 +563,11 @@ namespace $ {
 
 	export function $bog_gamengine_probe_dark( pixel: $bog_gamengine_probe_pixel ) {
 		return pixel[ 0 ] < 40 && pixel[ 1 ] < 40 && pixel[ 2 ] < 40
+	}
+
+	/** Не ярче фона: порог по сумме, а не по каналу, иначе синева фона задевает границу. */
+	export function $bog_gamengine_probe_dim( pixel: $bog_gamengine_probe_pixel, limit = 150 ) {
+		return $bog_gamengine_probe_sum( pixel ) < limit
 	}
 
 	export function $bog_gamengine_probe_near( a: $bog_gamengine_probe_pixel, b: $bog_gamengine_probe_pixel, gap = 16 ) {
@@ -704,7 +715,7 @@ namespace $ {
 		}
 		if( !got.arm ) return fail( 'чекбокса руки нет в DOM' )
 		if( !got.arm_loaded ) return fail( 'подвал не показал вершины руки' )
-		if( !$bog_gamengine_probe_dark( got.arm_off! ) ) return fail( 'на конце руки есть пиксель при выключенной руке' )
+		if( !$bog_gamengine_probe_dim( got.arm_off! ) ) return fail( 'на конце руки есть пиксель при выключенной руке' )
 		if( !( $bog_gamengine_probe_sum( got.arm_bright! ) - $bog_gamengine_probe_sum( got.arm_off! ) > 60 ) ) {
 			return fail( 'рука не появилась на конце в позе привязки' )
 		}
