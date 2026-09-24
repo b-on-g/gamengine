@@ -32,6 +32,15 @@ namespace $ {
 			return next ?? []
 		}
 
+		props(): readonly $bog_gamengine_prop[] {
+			return [
+				... super.props(),
+				{ name: 'speed', kind: 'number', get: ()=> this.speed(), set: next => this.speed( next as number ) },
+				{ name: 'radius', kind: 'number', get: ()=> this.radius(), set: next => this.radius( next as number ) },
+				{ name: 'replan', kind: 'number', get: ()=> this.replan(), set: next => this.replan( next as number ) },
+			]
+		}
+
 		goal = new Float32Array( 3 )
 		goal_on = false
 
