@@ -41,6 +41,20 @@ namespace $.$$ {
 		}
 
 		@ $mol_mem
+		screen_target() {
+			return this.Draw().dom_node()
+		}
+
+		fullscreen( next?: boolean ) {
+			return this.Screen_api().fullscreen( next )
+		}
+
+		canvas_down( event?: Event | null ) {
+			this.Screen_api().lock( true )
+			return event ?? null
+		}
+
+		@ $mol_mem
 		fogged( next = false ) {
 			return next
 		}
