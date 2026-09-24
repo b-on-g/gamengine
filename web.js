@@ -19116,6 +19116,32 @@ var $;
                 { name: 'speed', kind: 'number', get: () => this.speed(), set: next => this.speed(next) },
                 { name: 'radius', kind: 'number', get: () => this.radius(), set: next => this.radius(next) },
                 { name: 'replan', kind: 'number', get: () => this.replan(), set: next => this.replan(next) },
+                {
+                    name: 'others',
+                    kind: 'nodes',
+                    get: () => this.others(),
+                    set: next => this.others(next),
+                },
+                {
+                    name: 'target',
+                    kind: 'vec3',
+                    get: () => this.goal,
+                    set: next => {
+                        const at = next;
+                        this.aim(at[0] ?? 0, at[1] ?? 0, at[2] ?? 0);
+                    },
+                },
+                {
+                    name: 'aimed',
+                    kind: 'flag',
+                    get: () => this.goal_on,
+                    set: next => {
+                        if (next)
+                            this.aim(this.goal[0], this.goal[1], this.goal[2]);
+                        else
+                            this.stop();
+                    },
+                },
             ];
         }
         goal = new Float32Array(3);
