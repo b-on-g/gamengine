@@ -78,6 +78,66 @@ namespace $ {
 			$mol_assert_equal( plan.root, [ 'phys <= Phys' ] )
 		},
 
+		'placing a walker into a bare scene writes the world, the tile and the node'( $ ) {
+
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( [
+				'$bog_gamestudio_sample $bog_gamestudio_sample_map',
+				'\tmap \\',
+				'\t\t\\####',
+				'\t\t\\#..#',
+				'\t\t\\####',
+				'\tkids /',
+				'',
+			].join( '\n' ) )
+
+			const kit = new $bog_gamestudio_kit
+			const name = $bog_gamestudio_kit_apply( doc, kit.item( 'walker' )!, '/ 1.5 -1.5 0' )
+			const source = doc.source()
+
+			$mol_assert_ok( name.length > 0 )
+			$mol_assert_ok( source.includes( '$bog_gamengine_phys_tile' ) )
+			$mol_assert_ok( source.includes( 'map <= map' ) )
+			$mol_assert_ok( source.includes( 'Phys $bog_gamengine_phys' ) )
+			$mol_assert_ok( source.includes( 'tile <= Tile' ) )
+			$mol_assert_ok( source.includes( 'phys <= Phys' ) )
+			$mol_assert_ok( source.includes( '$bog_gamengine_phys_walker' ) )
+			$mol_assert_ok( source.includes( 'pos / 1.5 -1.5 0' ) )
+			$mol_assert_ok( source.includes( `<= ${ name }` ) )
+			$mol_assert_ok( doc.tree().kids.length > 0 )
+
+		},
+
+		'second body joins the same world instead of making another'( $ ) {
+
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( [
+				'$bog_gamestudio_sample $bog_gamestudio_sample_map',
+				'\tmap \\',
+				'\t\t\\####',
+				'\t\t\\#..#',
+				'\t\t\\####',
+				'\tkids /',
+				'',
+			].join( '\n' ) )
+
+			const kit = new $bog_gamestudio_kit
+			const first = $bog_gamestudio_kit_apply( doc, kit.item( 'walker' )!, '/ 1.5 -1.5 0' )
+			const second = $bog_gamestudio_kit_apply( doc, kit.item( 'body' )!, '/ 2.5 -1.5 0' )
+			const source = doc.source()
+
+			$mol_assert_ok( first !== second )
+			$mol_assert_equal( source.match( /Phys \$bog_gamengine_phys/g )!.length, 1 )
+			$mol_assert_equal( source.match( /\$bog_gamengine_phys_tile/g )!.length, 1 )
+			$mol_assert_equal( source.match( /phys <= Phys/g )!.length, 1 )
+			$mol_assert_ok( source.includes( `<= ${ first }` ) )
+			$mol_assert_ok( source.includes( `<= ${ second }` ) )
+			$mol_assert_equal( doc.nodes().filter( ( one: $bog_gamestudio_doc_node ) => one.klass.startsWith( '$bog_gamengine_phys' ) ).length, 2 )
+
+		},
+
 		'palette can be replaced from outside'() {
 			const kit = new $bog_gamestudio_kit
 			kit.list([ { id: 'own', title: 'Своё', klass: '$bog_gamengine_sprite', props: {}, world: 'phys' } ])

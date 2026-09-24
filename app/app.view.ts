@@ -385,7 +385,36 @@ namespace $.$$ {
 		}
 
 		placing() {
-			return this.asset() !== null && this.editing()
+			return ( this.asset() !== null || this.kit() !== null ) && this.editing()
+		}
+
+		@ $mol_mem
+		kit( next?: string | null ) {
+			return next ?? null
+		}
+
+		@ $mol_mem
+		kit_rows() {
+			return this.Kit().list().map( item => this.Kit_row( item.id ) )
+		}
+
+		kit_title( id: string ) {
+			return this.Kit().title( id )
+		}
+
+		kit_selected( id: string, next?: boolean ) {
+			if( next !== undefined ) {
+				this.asset( null )
+				this.kit( next ? id : null )
+			}
+			return this.kit() === id
+		}
+
+		kit_place( id: string, at: ArrayLike< number > ) {
+			const item = this.Kit().item( id )
+			if( !item ) return ''
+			const doc = this.Doc()
+			return $bog_gamestudio_kit_apply( doc, item, `/ ${ doc.token( at[ 0 ] ) } ${ doc.token( at[ 1 ] ) } 0` )
 		}
 
 		@ $mol_mem
@@ -814,6 +843,7 @@ namespace $.$$ {
 		tool_drop( event?: Event | null ) {
 			this.tool( '' )
 			this.asset( null )
+			this.kit( null )
 			return event ?? null
 		}
 
@@ -1003,6 +1033,11 @@ namespace $.$$ {
 			}
 			if( asset && this.editing() ) {
 				this.place( asset, this.grid_at( point.world( this.point_world, x, y ) ) )
+				return event
+			}
+			const kit = this.kit()
+			if( kit && this.editing() ) {
+				this.kit_place( kit, this.grid_at( point.world( this.point_world, x, y ) ) )
 				return event
 			}
 			if( this.brushing() ) {

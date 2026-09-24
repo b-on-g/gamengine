@@ -27,6 +27,11 @@ $bog_gamestudio_app $mol_view
 					sub /
 						<= Tile_list $mol_list
 							rows <= tile_rows /
+				<= Kit_page $mol_scroll
+					title \Классы
+					sub /
+						<= Kit_list $mol_list
+							rows <= kit_rows /
 		<= Canvas $mol_page
 			title \Холст
 			tools /
@@ -233,6 +238,10 @@ $bog_gamestudio_app $mol_view
 		attr *
 			^
 			bog_gamestudio_app_shared <= row_shared* false
+	Kit $bog_gamestudio_kit
+	Kit_row* $mol_check
+		title <= kit_title* \
+		checked? <=> kit_selected*? false
 	Asset* $mol_drag
 		transfer *
 			^
