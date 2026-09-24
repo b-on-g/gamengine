@@ -457,6 +457,23 @@ namespace $.$$ {
 			return name
 		}
 
+		@ $mol_mem
+		detachable() {
+			const path = this.doc_path()
+			return Boolean( path && path.includes( '/' ) && this.Doc().shared( path ).length > 1 )
+		}
+
+		@ $mol_mem
+		form_foot() {
+			return this.detachable() ? [ this.Detach() ] : []
+		}
+
+		detach( event?: Event | null ) {
+			const path = this.doc_path()
+			if( path ) this.Doc().override( path )
+			return event ?? null
+		}
+
 		field_bids( name: string ) {
 			const path = this.doc_path()
 			if( !path ) return []

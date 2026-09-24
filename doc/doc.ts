@@ -66,17 +66,40 @@ namespace $ {
 			return names
 		}
 
+		ports( name: string ) {
+			const map = new Map< string, string >()
+			for( const step of this.chain( name ) ) {
+				for( const line of step.kids ) {
+					if( !/^[A-Z]/.test( line.type ) ) continue
+					const bind = line.kids[ 0 ]
+					if( bind?.type !== '<=' ) continue
+					const target = bind.kids[ 0 ]?.type
+					if( target ) map.set( line.type, target )
+				}
+			}
+			return map
+		}
+
 		refs( name: string ): readonly $mol_tree2[] {
 			const seen = new Set< string >()
+			let list = [] as readonly $mol_tree2[]
 			let klass = this.decls().get( name )
 			while( klass ) {
 				const own = klass.select( 'kids', '/', '<=', null ).kids
-				if( own.length ) return own
+				if( own.length ) {
+					list = own
+					break
+				}
 				if( seen.has( klass.type ) ) break
 				seen.add( klass.type )
 				klass = this.decls().get( klass.type )
 			}
-			return []
+			const ports = this.ports( name )
+			if( !ports.size ) return list
+			return list.map( ref => {
+				const target = ports.get( ref.type )
+				return target ? ref.struct( target ) : ref
+			} )
 		}
 
 		@ $mol_mem
@@ -268,6 +291,30 @@ namespace $ {
 			let at = 0
 			for( let i = 0; i < row; ++ i ) at = source.indexOf( '\n', at ) + 1
 			this.source( source.slice( 0, at ) + text + source.slice( at ) )
+		}
+
+		port_name( owner: string, kid: string ) {
+			const base = `${ owner }_${ kid }`
+			if( !this.decls().has( base ) ) return base
+			for( let i = 2; ; ++ i ) {
+				if( !this.decls().has( `${ base }_${ i }` ) ) return `${ base }_${ i }`
+			}
+		}
+
+		override( path: string ) {
+			const cut = path.lastIndexOf( '/' )
+			if( cut < 0 ) return $mol_fail( new Error( `Node ${ path } has no owner to override it in` ) )
+			const root = this.decls().get( '' )
+			if( !root ) return $mol_fail( new Error( `Scene has no root class` ) )
+			const owner = this.node( path.slice( 0, cut ) )
+			const node = this.node( path )
+			if( this.decls().get( owner.name ) === this.decls().get( node.name ) ) return $mol_fail( new Error( `Node ${ path } is already its own` ) )
+			const name = this.port_name( owner.name, node.name )
+			const body = Object.keys( node.props ).map( prop => '\t' + this.print( node.props[ prop ] ).replace( /\n+$/, '' ) )
+			this.insert( this.end_row( root ), this.indent( root.span.row ) + 1, [ [ `${ name } ${ node.klass }`, ... body ].join( '\n' ) ] )
+			const klass = this.decls().get( owner.name )!
+			this.insert( this.end_row( klass ), this.indent( klass.span.row ) + 1, [ `${ node.name } <= ${ name }` ] )
+			return name
 		}
 
 		free_name( klass: string ) {

@@ -68,7 +68,11 @@ $bog_gamestudio_app $mol_view
 			body /
 				<= Form $mol_form
 					form_fields <= fields /
-					foot /
+					foot <= form_foot /
+						<= Detach $mol_button_minor
+							title \Переопределить в этом инстансе
+							enabled <= editing
+							click? <=> detach? null
 		<= Source $mol_page
 			title \Исходник
 			body /

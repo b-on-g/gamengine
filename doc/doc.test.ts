@@ -250,6 +250,19 @@ namespace $ {
 			$mol_assert_equal( guns.map( node => node.pos()[ 0 ] ), [ 7, 7 ] )
 		},
 
+		'override of a prefab kid detaches one instance and keeps the rest'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample_prefab )
+			$mol_assert_equal( doc.override( 'Enemy_1/Gun' ), 'Enemy_1_Gun' )
+			$mol_assert_not( /\n\t\t\t\t</.test( doc.source() ) )
+			$mol_assert_equal( doc.nodes().map( node => node.path ), [ 'Enemy_1', 'Enemy_1/Enemy_1_Gun', 'Enemy_2', 'Enemy_2/Gun' ] )
+			doc.set( 'Enemy_1/Enemy_1_Gun', 'pos', [ 9, 0, 0 ] )
+			const guns = doc.scene().nodes().filter( node => node.title() === 'Ствол' )
+			$mol_assert_equal( guns.length, 2 )
+			$mol_assert_equal( guns.map( node => node.pos()[ 0 ] ), [ 9, 0 ] )
+			const names = doc.scene().nodes().map( node => node.title() )
+			$mol_assert_equal( names, [ 'Страж', 'Ствол', 'Вожак', 'Ствол' ] )
+		},
+
 		'syntax error fails with the parser message'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample.replace( '\tatlas <= Atlas', '\t\t\tatlas <= Atlas' ) )
 			const error = $mol_assert_fail( ()=> doc.scene(), Error )

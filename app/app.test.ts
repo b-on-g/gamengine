@@ -279,6 +279,20 @@ namespace $ {
 			$mol_assert_equal( app.field_bids( 'name' ), [] )
 		},
 
+		'detach button rebinds one instance and leaves the prefab compiling'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.source( $bog_gamestudio_sample_prefab )
+			app.selected( app.Scene().nodes().map( node => node.title() ).indexOf( 'Ствол' ) )
+			$mol_assert_equal( app.form_foot().length, 1 )
+			app.Detach().click( null )
+			$mol_assert_equal( app.doc_path(), 'Enemy_1/Enemy_1_Gun' )
+			$mol_assert_equal( app.form_foot().length, 0 )
+			app.Vec_num( 'pos_0' ).value( 9 )
+			const nodes = app.Scene().nodes()
+			$mol_assert_equal( nodes.map( node => node.title() ), [ 'Страж', 'Ствол', 'Вожак', 'Ствол' ] )
+			$mol_assert_equal( nodes.filter( node => node.title() === 'Ствол' ).map( node => node.pos()[ 0 ] ), [ 9, 0 ] )
+		},
+
 		'gizmo hit on the x arrow'( $ ) {
 			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
 		},
