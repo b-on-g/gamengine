@@ -1,7 +1,14 @@
 namespace $.$$ {
 
-	const mine_home = new Float32Array([ 1, 1, 1, 1 ])
-	const mine_lit = new Float32Array([ 1, 1, 0.45, 1 ])
+	function screen_tint( ... screen: readonly number[] ) {
+		const out = new Float32Array( screen.length )
+		for( let i = 0; i < screen.length; ++ i ) out[ i ] = i % 4 === 3 ? screen[ i ] : Math.pow( screen[ i ], 2.2 )
+		return out
+	}
+
+	const mine_home = screen_tint( 1, 1, 1, 1 )
+	const mine_lit = screen_tint( 1, 1, 0.45, 1 )
+	const flash_tint = screen_tint( 1, 0.92, 0.6, 1, 1, 0.35, 0.15, 0 )
 
 	export class $bog_legion_app extends $.$bog_legion_app {
 
@@ -50,9 +57,8 @@ namespace $.$$ {
 			return new Float32Array([ 0.4, 0.05 ])
 		}
 
-		@ $mol_mem
 		flash_color() {
-			return new Float32Array([ 1, 0.92, 0.6, 1, 1, 0.35, 0.15, 0 ])
+			return flash_tint
 		}
 
 		@ $mol_mem
