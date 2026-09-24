@@ -81,6 +81,15 @@ namespace $ {
 			return next
 		}
 
+		hidden = false
+
+		shown(): boolean {
+			for( let node: $bog_gamengine_node | null = this; node; node = node.parent() ) {
+				if( node.hidden ) return false
+			}
+			return true
+		}
+
 		root(): $bog_gamengine_node {
 			let node: $bog_gamengine_node = this
 			for( let parent = node.parent(); parent; parent = node.parent() ) node = parent

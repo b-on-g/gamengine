@@ -65,6 +65,40 @@ namespace $ {
 			$mol_assert_ok( Math.abs( cam.pos()[ 0 ] - 10 ) < 1e-3 )
 		},
 
+		'pan moves the camera and stops at the bounds'() {
+			const cam = new $bog_gamengine_cam_flat
+			cam.height( 10 )
+			cam.aspect( 2 )
+			cam.bounds( new Float32Array([ 0, 0, 40, 10 ]) )
+			cam.pos( new Float32Array([ 10, 5, 0 ]) )
+			cam.pan( 5, 0 )
+			$mol_assert_equal( cam.pos()[ 0 ], 15 )
+			cam.pan( 100, 0 )
+			$mol_assert_equal( cam.pos()[ 0 ], 30 )
+			cam.pan( 0, 100 )
+			$mol_assert_equal( cam.pos()[ 1 ], 5 )
+		},
+
+		'zoom at a point keeps that point in place'() {
+			const cam = new $bog_gamengine_cam_flat
+			cam.height( 10 )
+			cam.pos( new Float32Array([ 0, 0, 0 ]) )
+			cam.zoom_at( 2, 4, 2 )
+			$mol_assert_equal( cam.zoom(), 2 )
+			$mol_assert_equal( cam.pos()[ 0 ], 2 )
+			$mol_assert_equal( cam.pos()[ 1 ], 1 )
+		},
+
+		'zoom stays within its limits'() {
+			const cam = new $bog_gamengine_cam_flat
+			cam.zoom_min( 0.5 )
+			cam.zoom_max( 2 )
+			cam.zoom_at( 10, 0, 0 )
+			$mol_assert_equal( cam.zoom(), 2 )
+			cam.zoom_at( 0.01, 0, 0 )
+			$mol_assert_equal( cam.zoom(), 0.5 )
+		},
+
 		'set through props changes zoom'() {
 			const cam = new $bog_gamengine_cam_flat
 			cam.props().find( prop => prop.name === 'zoom' )!.set( 2 )

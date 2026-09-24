@@ -379,6 +379,58 @@ namespace $ {
 			$mol_assert_equal( batches[ 0 ].nodes(), [ sprite ] )
 		},
 
+		'node hidden between frames neither steps nor draws'( $ ) {
+			$.$mol_state_time = $bog_gamengine_scene_time_mock
+			const hero = new $bog_gamengine_scene_mover
+			const mate = new $bog_gamengine_scene_mover
+			const batch = new $bog_gamengine_batch
+			batch.nodes([ hero, mate ])
+			const scene = new $bog_gamengine_scene
+			scene.$ = $
+			scene.kids = ()=> [ hero, mate ]
+			scene.batches([ batch ])
+			$bog_gamengine_scene_time_mock.stamp( 0 )
+			scene.step()
+			$bog_gamengine_scene_time_mock.stamp( 16 )
+			scene.step()
+			const nodes = scene.nodes()
+			$mol_assert_equal( batch.count, 2 )
+			const at = hero.pos()[ 0 ]
+			hero.hidden = true
+			$bog_gamengine_scene_time_mock.stamp( 32 )
+			scene.step()
+			$mol_assert_equal( hero.pos()[ 0 ], at )
+			$mol_assert_ok( mate.pos()[ 0 ] > at )
+			$mol_assert_equal( batch.count, 1 )
+			$mol_assert_equal( scene.nodes(), nodes )
+		},
+
+		'snapshot holds positions and its version grows once per frame'( $ ) {
+			$.$mol_state_time = $bog_gamengine_scene_time_mock
+			const hero = new $bog_gamengine_scene_mover
+			const mate = new $bog_gamengine_scene_mover
+			mate.pos( new Float32Array([ 0, 5, 0 ]) )
+			const scene = new $bog_gamengine_scene
+			scene.$ = $
+			scene.kids = ()=> [ hero, mate ]
+			$bog_gamengine_scene_time_mock.stamp( 0 )
+			scene.step()
+			$bog_gamengine_scene_time_mock.stamp( 16 )
+			scene.step()
+			const version = scene.snapshot_version()
+			const snap = scene.snapshot()
+			$mol_assert_equal( scene.snapshot_count(), 2 )
+			$mol_assert_ok( Math.abs( snap[ 0 ] - hero.pos()[ 0 ] ) < 1e-9 )
+			$mol_assert_equal( snap[ 4 ], 5 )
+			scene.aspect( 2 )
+			scene.step()
+			$mol_assert_equal( scene.snapshot_version(), version )
+			$bog_gamengine_scene_time_mock.stamp( 32 )
+			scene.step()
+			$mol_assert_equal( scene.snapshot_version(), version + 1 )
+			$mol_assert_equal( scene.snapshot(), snap )
+		},
+
 		'grandchild of overridden kids sees scene after nodes walk'() {
 			const a = new $bog_gamengine_scene_named
 			const b = new $bog_gamengine_node

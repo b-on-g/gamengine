@@ -188,6 +188,41 @@ namespace $ {
 		frame_done = -1
 		frustum = new Float32Array( 24 )
 		eye = new Float32Array( 3 )
+		snap = new Float32Array( 0 )
+		snap_count = 0
+
+		snapshot(): Float32Array {
+			return this.snap
+		}
+
+		snapshot_count() {
+			return this.snap_count
+		}
+
+		@ $mol_mem
+		snapshot_version( next = 0 ) {
+			return next
+		}
+
+		snap_fill( nodes: readonly $bog_gamengine_node[] ) {
+			if( this.snap.length < nodes.length * 3 ) this.snap = new Float32Array( nodes.length * 3 )
+			const snap = this.snap
+			for( let i = 0; i < nodes.length; ++i ) {
+				const node = nodes[ i ]
+				const at = i * 3
+				if( !node.shown() ) {
+					snap[ at ] = 0
+					snap[ at + 1 ] = 0
+					snap[ at + 2 ] = 0
+					continue
+				}
+				const world = node.world()
+				snap[ at ] = world[ 12 ]
+				snap[ at + 1 ] = world[ 13 ]
+				snap[ at + 2 ] = world[ 14 ]
+			}
+			this.snap_count = nodes.length
+		}
 
 		@ $mol_mem
 		step() {
@@ -204,13 +239,18 @@ namespace $ {
 			if( frame !== this.frame_done ) {
 				this.frame_done = frame
 				input?.poll()
-				for( let i = 0; i < nodes.length; ++i ) nodes[ i ].step( dt )
+				for( let i = 0; i < nodes.length; ++i ) {
+					const node = nodes[ i ]
+					if( node.shown() ) node.step( dt )
+				}
 				phys?.step( dt )
 				phys3?.step( dt )
 				if( cam && nodes.indexOf( cam ) < 0 ) {
 					if( !cam.parent() ) cam.parent( this )
 					cam.step( dt )
 				}
+				this.snap_fill( nodes )
+				this.snapshot_version( frame )
 			}
 			if( cam ) {
 				cam.frustum( aspect, this.frustum )
