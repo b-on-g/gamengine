@@ -553,14 +553,14 @@ namespace $ {
 					const name = port( own, prop )
 					taken.add( name )
 					ports.push({ name, items } )
-					return kid.struct( prop, [ kid.struct( '<=', [ kid.struct( name, [ kid.struct( 'Float32Array' ) ] ) ] ) ] )
+					return kid.struct( prop + '?', [ kid.struct( '<=>', [ kid.struct( name + '?', [ kid.struct( 'Float32Array' ) ] ) ] ) ] )
 				} ) )
 			}
 			const made = walk( root.struct( klass, root.kids ), 'Root' )
 			const body = ports.map( item => [
 				'\t\t@ $mol_mem',
-				`\t\t${ item.name }() {`,
-				`\t\t\treturn new Float32Array([ ${ item.items.join( ', ' ) } ])`,
+				`\t\t${ item.name }( next?: Float32Array ) {`,
+				`\t\t\treturn next ?? new Float32Array([ ${ item.items.join( ', ' ) } ])`,
 				'\t\t}',
 			].join( '\n' ) )
 			const ts = [

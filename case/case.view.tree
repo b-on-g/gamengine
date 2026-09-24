@@ -15,25 +15,25 @@ $bog_gamestudio_case $bog_gamestudio_sample_map
 			atlas <= Atlas
 			input <= input
 			frame \hero
-			pos <= Hero_pos Float32Array
+			pos? <=> Hero_pos? Float32Array
 			speed 3
 		<= Coin $bog_gamengine_sprite
 			name \Монета
 			atlas <= Atlas
 			frame \coin
-			pos <= Coin_pos Float32Array
-			tint <= Coin_tint Float32Array
+			pos? <=> Coin_pos? Float32Array
+			tint? <=> Coin_tint? Float32Array
 		<= Wall $bog_gamengine_sprite
 			name \Стена
 			atlas <= Atlas
 			frame \wall
-			pos <= Wall_pos Float32Array
-			scale <= Wall_scale Float32Array
+			pos? <=> Wall_pos? Float32Array
+			scale? <=> Wall_scale? Float32Array
 		<= Sprite_1 $bog_gamengine_sprite
 			name \Ключ
 			atlas <= Atlas
 			frame \coin
-			pos <= Sprite_1_pos Float32Array
+			pos? <=> Sprite_1_pos? Float32Array
 	Atlas $bog_gamengine_atlas
 		uris /
 			\bog/gamengine/demo/atlas/hero.png

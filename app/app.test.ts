@@ -843,8 +843,8 @@ namespace $ {
 			$mol_assert_equal( app.module_tree_name(), 'sample.view.tree' )
 			$mol_assert_equal( app.module_ts_name(), 'sample.view.ts' )
 			const made = app.module()!
-			$mol_assert_ok( made.tree.includes( 'pos <= Hero_pos Float32Array' ) )
-			$mol_assert_ok( made.ts.includes( 'Hero_pos() {' ) )
+			$mol_assert_ok( made.tree.includes( 'pos? <=> Hero_pos? Float32Array' ) )
+			$mol_assert_ok( made.ts.includes( 'Hero_pos( next?: Float32Array ) {' ) )
 			$mol_assert_not( /^\t+pos \/ /m.test( made.tree ) )
 			$mol_assert_equal( decodeURIComponent( app.module_tree_uri().replace( /^data:[^,]*,/, '' ) ), made.tree )
 			$mol_assert_equal( decodeURIComponent( app.module_ts_uri().replace( /^data:[^,]*,/, '' ) ), made.ts )
