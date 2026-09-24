@@ -226,6 +226,67 @@ namespace $ {
 
 		},
 
+		'agent takes the grid by a reference of its own, not by a list'() {
+			const kit = new $bog_gamestudio_kit
+			const world = kit.world( 'agent' )!
+			$mol_assert_equal( world.node, 'Grid' )
+			$mol_assert_equal( world.klass, '$bog_gamengine_nav_grid' )
+			$mol_assert_equal( world.list, '' )
+			$mol_assert_equal( world.ref, 'grid' )
+			$mol_assert_equal( world.prop, '' )
+			const plan = $bog_gamestudio_kit_plan_of( kit.item( 'agent' )!, [], [ 'map' ], '/ 1.5 -1.5 0' )
+			$mol_assert_equal( plan.decls.map( one => one.node ), [ 'Tile', 'Grid' ] )
+			$mol_assert_equal( plan.root, [] )
+			$mol_assert_equal( plan.join, null )
+			$mol_assert_equal( plan.props.grid, '<= Grid' )
+		},
+
+		'two agents share one grid and one tile'( $ ) {
+
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( [
+				'$bog_gamestudio_sample $bog_gamestudio_sample_map',
+				'\tmap \\',
+				'\t\t\\######',
+				'\t\t\\#....#',
+				'\t\t\\######',
+				'\tkids /',
+				'',
+			].join( '\n' ) )
+
+			const kit = new $bog_gamestudio_kit
+			const first = $bog_gamestudio_kit_apply( doc, kit.item( 'agent' )!, '/ 1.5 -1.5 0' )
+			const second = $bog_gamestudio_kit_apply( doc, kit.item( 'agent' )!, '/ 3.5 -1.5 0' )
+			const source = doc.source()
+
+			$mol_assert_ok( first !== second )
+			$mol_assert_equal( source.match( /Grid \$bog_gamengine_nav_grid/g )!.length, 1 )
+			$mol_assert_equal( source.match( /\$bog_gamengine_phys_tile/g )!.length, 1 )
+			$mol_assert_equal( source.match( /grid <= Grid/g )!.length, 2 )
+			$mol_assert_equal( source.includes( 'phys <= ' ), false )
+
+			const scene = doc.scene()
+			const agents = scene.nodes().filter( one => one instanceof $bog_gamengine_nav_agent )
+			$mol_assert_equal( agents.length, 2 )
+			$mol_assert_ok( Boolean( ( agents[ 0 ] as $bog_gamengine_nav_agent ).grid() ) )
+			$mol_assert_equal(
+				( agents[ 0 ] as $bog_gamengine_nav_agent ).grid(),
+				( agents[ 1 ] as $bog_gamengine_nav_agent ).grid(),
+			)
+
+		},
+
+		'agent shows its numbers to the inspector'() {
+			const agent = new $bog_gamengine_nav_agent
+			const names = agent.props().map( prop => prop.name )
+			$mol_assert_ok( names.indexOf( 'speed' ) > 0 )
+			$mol_assert_ok( names.indexOf( 'radius' ) > 0 )
+			$mol_assert_ok( names.indexOf( 'replan' ) > 0 )
+			agent.props().find( prop => prop.name === 'speed' )!.set( 5 )
+			$mol_assert_equal( agent.speed(), 5 )
+		},
+
 		'palette can be replaced from outside'() {
 			const kit = new $bog_gamestudio_kit
 			kit.list([ { id: 'own', title: 'Своё', klass: '$bog_gamengine_sprite', props: {}, world: 'phys' } ])

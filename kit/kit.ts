@@ -13,6 +13,7 @@ namespace $ {
 		readonly props: Readonly< Record< string, string > >
 		readonly mates: readonly $bog_gamestudio_kit_mate[]
 		readonly list: string
+		readonly ref: string
 	}
 
 	export type $bog_gamestudio_kit_item = {
@@ -34,6 +35,18 @@ namespace $ {
 				{ node: 'Tile', klass: '$bog_gamengine_phys_tile', props: { map: '<= map' } },
 			],
 			list: 'bodies',
+			ref: '',
+		},
+		nav: {
+			prop: '',
+			node: 'Grid',
+			klass: '$bog_gamengine_nav_grid',
+			props: { tile: '<= Tile' },
+			mates: [
+				{ node: 'Tile', klass: '$bog_gamengine_phys_tile', props: { map: '<= map' } },
+			],
+			list: '',
+			ref: 'grid',
 		},
 	}
 
@@ -51,6 +64,13 @@ namespace $ {
 			klass: '$bog_gamengine_phys_body',
 			props: { name: '\\Тело', size: '/ 0.8 0.8' },
 			world: 'phys',
+		},
+		{
+			id: 'agent',
+			title: 'Агент',
+			klass: '$bog_gamengine_nav_agent',
+			props: { name: '\\Агент' },
+			world: 'nav',
 		},
 		{
 			id: 'combat',
@@ -94,15 +114,20 @@ namespace $ {
 			if( known.indexOf( world.node ) < 0 ) {
 				decls.push({ node: world.node, klass: world.klass, props: world.props })
 			}
-			if( root_props.indexOf( world.prop ) < 0 ) root.push( `${ world.prop } <= ${ world.node }` )
+			if( world.prop && root_props.indexOf( world.prop ) < 0 ) {
+				root.push( `${ world.prop } <= ${ world.node }` )
+			}
 		}
+
+		const props = { ... item.props, pos } as Record< string, string >
+		if( world?.ref ) props[ world.ref ] = `<= ${ world.node }`
 
 		return {
 			decls,
 			root,
 			klass: item.klass,
-			props: { ... item.props, pos },
-			join: world ? { node: world.node, prop: world.list } : null,
+			props,
+			join: world?.list ? { node: world.node, prop: world.list } : null,
 		}
 
 	}
