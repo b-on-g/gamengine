@@ -3934,7 +3934,7 @@ declare namespace $ {
 declare namespace $ { }
 
 declare namespace $ {
-    type $bog_gamengine_prop_kind = 'vec2' | 'vec3' | 'vec4' | 'number' | 'flag' | 'text' | 'frame' | 'euler' | 'list' | 'nodes' | 'point';
+    type $bog_gamengine_prop_kind = 'vec2' | 'vec3' | 'vec4' | 'number' | 'flag' | 'text' | 'frame' | 'euler' | 'list' | 'nodes' | 'node' | 'point';
     type $bog_gamengine_prop = {
         name: string;
         kind: $bog_gamengine_prop_kind;
