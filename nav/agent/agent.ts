@@ -46,7 +46,7 @@ namespace $ {
 				},
 				{
 					name: 'target',
-					kind: 'vec3',
+					kind: 'point',
 					get: ()=> this.goal,
 					set: next => {
 						const at = next as ArrayLike< number >
