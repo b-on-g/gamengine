@@ -298,6 +298,125 @@ namespace $ {
 		`
 	}
 
+	export const $bog_gamestudio_probe_grid_ok = 'с галкой узел встаёт на половину клетки, без галки — в точку указателя без хвоста цифр'
+
+	export const $bog_gamestudio_probe_grid_drag = 83
+
+	export const $bog_gamestudio_probe_grid_script = `
+		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
+		const canvas = document.querySelector( 'canvas' )
+		const gl = canvas && canvas.getContext( 'webgl2' )
+		if( !gl ) return { webgl: false }
+		const pixel = ( x, y )=> {
+			const out = new Uint8Array( 4 )
+			gl.readPixels( x | 0, y | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
+			return Array.from( out )
+		}
+		const dark = px => px[ 0 ] < 40 && px[ 1 ] < 40 && px[ 2 ] < 40
+		let waited = 0
+		while( waited < 600 && dark( pixel( canvas.width / 2, canvas.height / 2 ) ) ) { await frame(); ++ waited }
+		const at = ( x, y )=> pixel( x, canvas.height - 1 - y )
+		${ $bog_gamestudio_probe_arrow_script }
+		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+		const coin_x_of = ()=> {
+			const tail = editor.value.split( '<= Coin' )[ 1 ] || ''
+			const found = tail.match( /pos \\/ (-?[\\d.]+)/ )
+			return found ? Number( found[ 1 ] ) : NaN
+		}
+		const rect = canvas.getBoundingClientRect()
+		const dpr = devicePixelRatio
+		const ppu = canvas.height / 6
+		const coin_x = canvas.width / 2 + 2 * ppu
+		const coin_y = canvas.height / 2
+		const pointer = ( type, x, y )=> canvas.dispatchEvent( new PointerEvent( type, {
+			bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: type === 'pointerup' ? 0 : 1,
+			clientX: rect.left + x / dpr, clientY: rect.top + y / dpr,
+		} ) )
+		pointer( 'pointerdown', coin_x, coin_y )
+		pointer( 'pointerup', coin_x, coin_y )
+		await frame()
+		await frame()
+		const grid = document.querySelector( '[bog_gamestudio_app_grid]' )
+		const grid_on = grid ? grid.getAttribute( 'mol_check_checked' ) : null
+		const drag = async ()=> {
+			const seen = canvas.width / 2 + coin_x_of() * ppu
+			const arrow = arrow_at( at, seen, coin_y )
+			if( !arrow ) return null
+			pointer( 'pointerdown', arrow[ 0 ], arrow[ 1 ] )
+			pointer( 'pointermove', arrow[ 0 ] - ${ $bog_gamestudio_probe_grid_drag } / 2, arrow[ 1 ] )
+			await frame()
+			pointer( 'pointermove', arrow[ 0 ] - ${ $bog_gamestudio_probe_grid_drag }, arrow[ 1 ] )
+			await frame()
+			pointer( 'pointerup', arrow[ 0 ] - ${ $bog_gamestudio_probe_grid_drag }, arrow[ 1 ] )
+			await frame()
+			await frame()
+			return coin_x_of()
+		}
+		const start = coin_x_of()
+		const snapped = await drag()
+		if( grid ) grid.click()
+		await frame()
+		await frame()
+		const grid_off = grid ? grid.getAttribute( 'mol_check_checked' ) : null
+		const free = await drag()
+		return { webgl: true, waited, ppu, grid: Boolean( grid ), grid_on, grid_off, start, snapped, free, step: - ${ $bog_gamestudio_probe_grid_drag } / ppu }
+	`
+
+	export type $bog_gamestudio_probe_grid_result = {
+		readonly webgl: boolean
+		readonly grid?: boolean
+		readonly grid_on?: string | null
+		readonly grid_off?: string | null
+		readonly start?: number
+		readonly snapped?: number | null
+		readonly free?: number | null
+		readonly step?: number
+		readonly ppu?: number
+	}
+
+	export async function $bog_gamestudio_probe_grid(
+		root = $node.process.cwd(),
+		flags: readonly string[] = $bog_gamestudio_probe_flags,
+	) {
+
+		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
+
+		const started = Date.now()
+
+		const got = await $bog_probe_run({
+			root,
+			flags,
+			page: $bog_gamestudio_probe_page,
+			ready: $bog_gamestudio_probe_ready,
+			script: $bog_gamestudio_probe_grid_script,
+			width: 1600,
+			height: 800,
+		}) as $bog_gamestudio_probe_grid_result | typeof $bog_probe_skip
+
+		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
+
+		say( `${ flags.join( ' ' ) || 'без флагов' }: ${ Date.now() - started } мс, ${ JSON.stringify( got ) }` )
+
+		const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( got ) }` ) )
+
+		if( !got.webgl ) return fail( 'нет webgl2' )
+		if( !got.grid ) return fail( 'галки «К сетке» нет в шапке холста' )
+		if( got.grid_on !== 'true' ) return fail( 'галка «К сетке» выключена по умолчанию' )
+		if( got.grid_off === 'true' ) return fail( 'клик не снял галку «К сетке»' )
+		if( typeof got.snapped !== 'number' || Number.isNaN( got.snapped ) ) return fail( 'перенос с галкой не дошёл до исходника' )
+		if( typeof got.free !== 'number' || Number.isNaN( got.free ) ) return fail( 'перенос без галки не дошёл до исходника' )
+		if( got.snapped === got.start ) return fail( 'перенос с галкой не сдвинул узел' )
+
+		const half = got.snapped / $bog_gamestudio_app_grid_step
+		if( Math.abs( half - Math.round( half ) ) > 1e-9 ) return fail( `с галкой ${ got.snapped } не кратно ${ $bog_gamestudio_app_grid_step }` )
+
+		const moved = got.free - got.snapped
+		if( Math.abs( moved - got.step! ) > 0.01 ) return fail( `без галки сдвиг ${ moved } вместо ${ got.step }` )
+		if( Number( got.free.toFixed( 3 ) ) !== got.free ) return fail( `без галки ${ got.free } с хвостом длиннее тысячной` )
+
+		return say( $bog_gamestudio_probe_grid_ok )
+	}
+
 	export async function $bog_gamestudio_probe_check(
 		root = $node.process.cwd(),
 		flags: readonly string[] = $bog_gamestudio_probe_flags,
