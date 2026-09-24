@@ -49,6 +49,13 @@ namespace $ {
 				list.push( auto[ i ] )
 				rest( auto[ i ] )
 			}
+			for( let i = 0; i < list.length; ++i ) {
+				const node = list[ i ]
+				const parts = node.parts()
+				for( let k = 0; k < parts.length; ++k ) {
+					if( !parts[ k ].owner() ) parts[ k ].owner( node )
+				}
+			}
 			return list as readonly $bog_gamengine_node[]
 		}
 

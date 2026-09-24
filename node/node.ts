@@ -39,7 +39,6 @@ namespace $ {
 				{ name: 'rot', kind: 'euler', get: ()=> this.rot(), set: next => this.rot( next as ArrayLike< number > ) },
 				{ name: 'scale', kind: 'vec3', get: ()=> this.scale(), set: next => this.scale( next as ArrayLike< number > ) },
 				{ name: 'tint', kind: 'vec4', get: ()=> this.tint(), set: next => this.tint( next as ArrayLike< number > ) },
-				... this.part_props(),
 			]
 		}
 
@@ -50,26 +49,6 @@ namespace $ {
 				if( !next[ i ].owner() ) next[ i ].owner( this )
 			}
 			return next
-		}
-
-		part_lead( part: $bog_gamengine_part ) {
-			const klass = part.constructor as new()=> unknown
-			return this.$.$mol_func_name( klass ).replace( /^\$bog_[a-z0-9]+_/, '' )
-		}
-
-		part_props(): readonly $bog_gamengine_prop[] {
-			const parts = this.parts()
-			const out = [] as $bog_gamengine_prop[]
-			for( let i = 0; i < parts.length; ++i ) {
-				const part = parts[ i ]
-				const own = part.props?.() ?? []
-				const lead = this.part_lead( part )
-				for( let k = 0; k < own.length; ++k ) {
-					const prop = own[ k ]
-					out.push({ ... prop, name: `${ lead }.${ prop.name }` })
-				}
-			}
-			return out
 		}
 
 		@ $mol_mem

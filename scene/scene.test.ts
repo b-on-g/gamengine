@@ -22,6 +22,16 @@ namespace $ {
 
 	}
 
+	class $bog_gamengine_scene_parted extends $bog_gamengine_node {
+
+		own = [] as readonly $bog_gamengine_part[]
+
+		parts() {
+			return this.own
+		}
+
+	}
+
 	class $bog_gamengine_scene_named extends $bog_gamengine_node {
 
 		@ $mol_mem
@@ -429,6 +439,29 @@ namespace $ {
 			scene.step()
 			$mol_assert_equal( scene.snapshot_version(), version + 1 )
 			$mol_assert_equal( scene.snapshot(), snap )
+		},
+
+		'part declared by a tree gets its owner on the nodes walk'() {
+			const part = new $bog_gamengine_combat
+			const node = new $bog_gamengine_scene_parted
+			node.own = [ part ]
+			const scene = new $bog_gamengine_scene
+			scene.kids([ node ])
+			$mol_assert_equal( part.owner(), null )
+			scene.nodes()
+			$mol_assert_equal( part.owner(), node )
+		},
+
+		'own owner of a part is kept by the nodes walk'() {
+			const part = new $bog_gamengine_combat
+			const mate = new $bog_gamengine_node
+			part.owner( mate )
+			const node = new $bog_gamengine_scene_parted
+			node.own = [ part ]
+			const scene = new $bog_gamengine_scene
+			scene.kids([ node ])
+			scene.nodes()
+			$mol_assert_equal( part.owner(), mate )
 		},
 
 		'grandchild of overridden kids sees scene after nodes walk'() {

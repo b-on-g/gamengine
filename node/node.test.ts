@@ -145,19 +145,13 @@ namespace $ {
 			$mol_assert_equal( part.owner(), first )
 		},
 
-		'props of a part come with the name of its kind'() {
+		'part keeps its own props and the node does not borrow them'() {
 			const node = new $bog_gamengine_node
 			const part = new $bog_gamengine_combat
 			part.health_max( 40 )
 			node.parts([ part ])
-			const names = node.props().map( prop => prop.name )
-			$mol_assert_ok( names.indexOf( 'combat.health' ) > 0 )
-			$mol_assert_ok( names.indexOf( 'combat.health_max' ) > 0 )
-			$mol_assert_ok( names.indexOf( 'pos' ) >= 0 )
-			const prop = node_test_prop( node, 'combat.health_max' )
-			$mol_assert_equal( prop.get(), 40 )
-			prop.set( 70 )
-			$mol_assert_equal( part.health_max(), 70 )
+			$mol_assert_equal( node.props().map( prop => prop.name ), [ 'pos', 'rot', 'scale', 'tint' ] )
+			$mol_assert_equal( part.props().find( prop => prop.name === 'health_max' )!.get(), 40 )
 		},
 
 		'node without parts shows the same props as before'() {
