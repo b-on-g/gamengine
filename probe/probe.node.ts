@@ -556,6 +556,13 @@ namespace $ {
 		return pixel[ 0 ] + pixel[ 1 ] + pixel[ 2 ]
 	}
 
+	/** Сумма каналов в линейном свете: в экранном гамма жмёт отношения, и порог «ярче в N раз» врёт. */
+	export function $bog_gamengine_probe_linear( pixel: $bog_gamengine_probe_pixel ) {
+		let sum = 0
+		for( let i = 0; i < 3; ++ i ) sum += Math.pow( pixel[ i ] / 255, 2.2 )
+		return sum
+	}
+
 	export function $bog_gamengine_probe_red( got: $bog_gamengine_probe_result ) {
 		const [ r, g, b, a ] = got.pixel
 		return got.webgl && r > 200 && g < 80 && b < 80 && a > 200
@@ -680,7 +687,7 @@ namespace $ {
 		if( !got.moved || !( got.moved[ 1 ] < got.start[ 1 ] ) ) return fail( 'ходок не пошёл вперёд по W' )
 		if( $bog_gamengine_probe_dark( got.center! ) ) return fail( 'центр чёрный, комната не нарисована' )
 		if( $bog_gamengine_probe_dark( got.lit! ) ) return fail( 'освещённая грань чёрная' )
-		if( !( $bog_gamengine_probe_sum( got.lit! ) > $bog_gamengine_probe_sum( got.shade! ) * 1.3 ) ) return fail( 'грань к свету не ярче грани в тени' )
+		if( !( $bog_gamengine_probe_linear( got.lit! ) > $bog_gamengine_probe_linear( got.shade! ) * 1.3 ) ) return fail( 'грань к свету не ярче грани в тени' )
 		if( !( got.pillar! > 0 ) ) return fail( 'подвал не показал вершины столба' )
 		if( $bog_gamengine_probe_dark( got.pillar_pixel! ) ) return fail( 'столб чёрный' )
 		if( $bog_gamengine_probe_near( got.pillar_pixel!, got.floor_pixel! ) ) return fail( 'столб совпал с полом у его основания' )

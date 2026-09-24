@@ -27,6 +27,13 @@ namespace $ {
 			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_boxes_ok ) )
 		},
 
+		'lit over shade holds in linear light and slips in screen light'() {
+			const lit = [ 152, 75, 59, 255 ] as const
+			const shade = [ 120, 55, 47, 255 ] as const
+			$mol_assert_ok( $bog_gamengine_probe_linear( lit ) > $bog_gamengine_probe_linear( shade ) * 1.3 )
+			$mol_assert_ok( !( $bog_gamengine_probe_sum( lit ) > $bog_gamengine_probe_sum( shade ) * 1.3 ) )
+		},
+
 	})
 
 }
