@@ -190,6 +190,21 @@ namespace $ {
 		return out as readonly string[]
 	}
 
+	export function $bog_gamestudio_kit_bound( doc: $bog_gamestudio_doc, owner: string, prop: string ) {
+		const klass = doc.decls().get( owner )
+		if( !klass ) return ''
+		const line = klass.kids.find( kid => kid.type === prop )
+		const bind = line?.kids[ 0 ]
+		if( bind?.type !== '<=' ) return ''
+		return bind.kids[ 0 ]?.type ?? ''
+	}
+
+	export function $bog_gamestudio_kit_bind( doc: $bog_gamestudio_doc, owner: string, prop: string, name: string ) {
+		if( !doc.decls().get( owner ) ) return false
+		$bog_gamestudio_kit_clear( doc, owner, prop )
+		return $bog_gamestudio_kit_line( doc, owner, `${ prop } <= ${ name }` )
+	}
+
 	export function $bog_gamestudio_kit_clear( doc: $bog_gamestudio_doc, owner: string, prop: string ) {
 		const klass = doc.decls().get( owner )
 		if( !klass ) return false

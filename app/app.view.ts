@@ -597,7 +597,10 @@ namespace $.$$ {
 		refs_names( name: string ) {
 			const path = this.doc_path()
 			if( !path ) return 'никого'
-			const names = $bog_gamestudio_kit_refs( this.Doc(), this.Doc().node( path ).name, name )
+			const doc = this.Doc()
+			const host = doc.node( path ).name
+			if( this.prop( name )?.kind === 'node' ) return $bog_gamestudio_kit_bound( doc, host, name ) || 'никого'
+			const names = $bog_gamestudio_kit_refs( doc, host, name )
 			return names.length ? names.join( ', ' ) : 'никого'
 		}
 
@@ -613,10 +616,17 @@ namespace $.$$ {
 			if( !path ) return
 			const doc = this.Doc()
 			const host = doc.node( path ).name
-			if( this.prop( name )?.kind === 'nodes' ) {
+			const kind = this.prop( name )?.kind
+			if( kind === 'nodes' || kind === 'node' ) {
 				const mate = $bog_gamestudio_kit_path_of( doc, node )
 				if( !mate || mate === host ) return
-				$bog_gamestudio_kit_join( doc, host, name, doc.node( mate ).name )
+				const mate_name = doc.node( mate ).name
+				if( kind === 'node' ) {
+					$bog_gamestudio_kit_bind( doc, host, name, mate_name )
+					this.aiming( null )
+					return
+				}
+				$bog_gamestudio_kit_join( doc, host, name, mate_name )
 				return
 			}
 			doc.set( host, name, [ at[ 0 ], at[ 1 ], 0 ] )
@@ -882,7 +892,8 @@ namespace $.$$ {
 				case 'frame': return [ this.frame_options().length ? this.Frame( name ) : this.Text( name ) ]
 				case 'list': return [ this.List( name ) ]
 				case 'point': return [ ... this.vec_nums( name ), this.Aim_at( name ) ]
-				case 'nodes': return [ this.Refs( name ) ]
+				case 'nodes':
+				case 'node': return [ this.Refs( name ) ]
 			}
 			return []
 		}

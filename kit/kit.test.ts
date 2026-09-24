@@ -293,6 +293,27 @@ namespace $ {
 			$mol_assert_equal( $bog_gamestudio_kit_path_of( doc, new $bog_gamengine_node ), '' )
 		},
 
+		'single reference is bound by name and replaced, not doubled'( $ ) {
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( [
+				'$bog_gamestudio_sample $bog_gamengine_scene',
+				'\tkids /',
+				'\t\t<= Rule $bog_gamengine_node',
+				'\t\t<= First $bog_gamengine_node',
+				'\t\t<= Second $bog_gamengine_node',
+				'',
+			].join( '\n' ) )
+
+			$mol_assert_equal( $bog_gamestudio_kit_bound( doc, 'Rule', 'hero' ), '' )
+			$mol_assert_equal( $bog_gamestudio_kit_bind( doc, 'Rule', 'hero', 'First' ), true )
+			$mol_assert_equal( $bog_gamestudio_kit_bound( doc, 'Rule', 'hero' ), 'First' )
+			$mol_assert_equal( $bog_gamestudio_kit_bind( doc, 'Rule', 'hero', 'Second' ), true )
+			$mol_assert_equal( $bog_gamestudio_kit_bound( doc, 'Rule', 'hero' ), 'Second' )
+			$mol_assert_equal( doc.source().match( /hero <= /g )!.length, 1 )
+			$mol_assert_equal( $bog_gamestudio_kit_bind( doc, 'Ghost', 'hero', 'First' ), false )
+		},
+
 		'clearing a property that is not there changes nothing'( $ ) {
 			const doc = new $bog_gamestudio_doc
 			doc.$ = $
