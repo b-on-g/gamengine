@@ -128,6 +128,7 @@ $bog_gamengine_demo_room $mol_page
 		\############
 	Tile $bog_gamengine_phys_tile
 		map <= map
+		plane <= tile_plane $bog_gamengine_map_plane
 	Atlas $bog_gamengine_atlas
 		uris /
 			\bog/gamengine/demo/atlas/wall.png

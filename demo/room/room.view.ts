@@ -2,22 +2,17 @@ namespace $.$$ {
 
 	export class $bog_gamengine_demo_room extends $.$bog_gamengine_demo_room {
 
-		@ $mol_mem
+		tile_plane(): $bog_gamengine_map_plane {
+			return 'xz'
+		}
+
 		wall_ids() {
-			const rows = this.Tile().rows()
-			const ids = [] as string[]
-			for( let y = 0; y < rows.length; ++y ) {
-				for( let x = 0; x < rows[ y ].length; ++x ) {
-					if( this.Tile().cell( x, y ) ) ids.push( `${ x }_${ y }` )
-				}
-			}
-			return ids as readonly string[]
+			return this.Tile().ids( '#' )
 		}
 
 		@ $mol_mem_key
 		wall_pos( id: string ) {
-			const [ x, y ] = id.split( '_' ).map( Number )
-			return new Float32Array([ x + 0.5, 0.5, y + 0.5 ])
+			return this.Tile().spot_pos( id, 0.5, new Float32Array( 3 ) )
 		}
 
 		@ $mol_mem
