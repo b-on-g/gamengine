@@ -163,6 +163,7 @@ $bog_legion_app $mol_page
 		others <= mine_alive /
 		foes <= foe_alive /
 		brain <= Brain*
+		fight <= Mine_fight*
 		kids <= mine_kids* /
 		speed 3.4
 		pos? <=> mine_pos*? Float32Array
@@ -173,6 +174,10 @@ $bog_legion_app $mol_page
 		frame \mine
 		size <= unit_size Float32Array
 		tint <= mine_tint* Float32Array
+	Mine_fight* $bog_gamengine_combat
+		owner <= Mine*
+		health_max 40
+		rate 0.7
 	Brain* $bog_gamengine_brain_fsm
 		owner <= Mine*
 		kids <= brain_kids* /
@@ -195,6 +200,7 @@ $bog_legion_app $mol_page
 		others <= foe_alive /
 		foes <= mine_alive /
 		brain <= Tree*
+		fight <= Foe_fight*
 		kids <= foe_kids* /
 		home <= foe_home* Float32Array
 		speed 2.9
@@ -205,6 +211,10 @@ $bog_legion_app $mol_page
 		atlas <= Atlas
 		frame \foe
 		size <= unit_size Float32Array
+	Foe_fight* $bog_gamengine_combat
+		owner <= Foe*
+		health_max 40
+		rate 0.7
 	Tree* $bog_gamengine_brain_bt
 		owner <= Foe*
 		kids <= tree_kids* /

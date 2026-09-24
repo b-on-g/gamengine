@@ -38,17 +38,12 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		health_max( next = 40 ) {
-			return next
+		fight( next?: $bog_gamengine_combat | null ) {
+			return next ?? null
 		}
 
 		@ $mol_mem
 		damage( next = 7 ) {
-			return next
-		}
-
-		@ $mol_mem
-		rate( next = 0.7 ) {
 			return next
 		}
 
@@ -81,23 +76,25 @@ namespace $ {
 				... super.props(),
 				{ name: 'camp', kind: 'number', get: ()=> this.camp(), set: next => this.camp( Number( next ) ) },
 				{ name: 'dead', kind: 'flag', get: ()=> this.dead(), set: next => this.dead( Boolean( next ) ) },
+				... this.fight()?.props() ?? [],
 			]
 		}
 
-		health = NaN
 		order_on = false
 		mode_now = ''
 		foe_now = null as $bog_legion_unit | null
 		foe_dist = Infinity
-		cool = 0
 		scan_left = 0
 		roam_left = 0
 		seed = 1
 		here = new Float32Array( 2 )
 
 		hp() {
-			if( Number.isNaN( this.health ) ) this.health = this.health_max()
-			return this.health
+			return this.fight()?.health() ?? 0
+		}
+
+		health_max() {
+			return this.fight()?.health_max() ?? 0
 		}
 
 		mode() {
@@ -142,9 +139,7 @@ namespace $ {
 
 		wound( hurt: number ) {
 			if( this.dead() ) return
-			this.health = this.hp() - hurt
-			if( this.health > 0 ) return
-			this.die()
+			this.fight()?.hurt( hurt )
 		}
 
 		die() {
@@ -157,13 +152,12 @@ namespace $ {
 
 		reset( at: Float32Array ) {
 			this.dead( false )
-			this.health = NaN
+			this.fight()?.revive()
 			this.stop()
 			this.order_on = false
 			this.mode_now = ''
 			this.foe_now = null
 			this.foe_dist = Infinity
-			this.cool = 0
 			this.since = Infinity
 			this.pos( at )
 			this.here[ 0 ] = at[ 0 ]
@@ -264,9 +258,9 @@ namespace $ {
 			this.goal_on = false
 			const foe = this.foe_now
 			if( !foe ) return
-			this.cool -= dt
-			if( this.cool > 0 ) return
-			this.cool = this.rate()
+			const fight = this.fight()
+			if( !fight || !fight.ready() ) return
+			fight.fire()
 			foe.wound( this.damage() )
 			this.sound()?.play( 'hit', this.pos() )
 		}

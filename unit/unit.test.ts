@@ -17,11 +17,22 @@ namespace $ {
 		const foe = new $bog_legion_unit
 		foe.camp( 1 )
 		foe.grid( grid )
+		for( const unit of [ mine, foe ] ) {
+			const fight = new $bog_gamengine_combat
+			fight.owner( unit )
+			fight.health_max( 40 )
+			fight.rate( 0.7 )
+			unit.fight( fight )
+		}
 		mine.foes( [ foe ] )
 		foe.foes( [ mine ] )
 		mine.pos( new Float32Array([ 1.5, -1.5, 0 ]) )
 		foe.pos( new Float32Array([ 3.5, -3.5, 0 ]) )
-		return { tile, grid, mine, foe }
+		const clock = new $bog_gamengine_clock
+		const scene = new $bog_gamengine_scene
+		scene.clock( clock )
+		scene.kids([ mine, foe ])
+		return { tile, grid, mine, foe, clock, scene }
 	}
 
 	$mol_test({
@@ -47,13 +58,17 @@ namespace $ {
 		},
 
 		'attack drains health by the rate and kills'() {
-			const { mine, foe } = $bog_legion_unit_pair()
+			const { mine, foe, clock } = $bog_legion_unit_pair()
 			foe.pos( new Float32Array([ 2, -1.5, 0 ]) )
 			mine.damage( 10 )
-			mine.rate( 0.1 )
+			mine.fight()!.rate( 1 )
 			mine.mode_set( 'attack' )
-			for( let i = 0; i < 3; ++i ) mine.step( 0.1 )
+			for( let i = 0; i < 3; ++i ) {
+				clock.time( i )
+				mine.step( 0.1 )
+			}
 			$mol_assert_equal( foe.hp(), 10 )
+			clock.time( 3 )
 			mine.step( 0.1 )
 			$mol_assert_equal( foe.dead(), true )
 		},
