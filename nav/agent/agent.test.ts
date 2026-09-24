@@ -73,7 +73,7 @@ namespace $ {
 			const agent = new $bog_gamengine_nav_agent
 			const prop = ( name: string )=> agent.props().find( one => one.name === name )!
 
-			$mol_assert_equal( prop( 'target' ).kind, 'vec3' )
+			$mol_assert_equal( prop( 'target' ).kind, 'point' )
 			$mol_assert_equal( prop( 'aimed' ).kind, 'flag' )
 			$mol_assert_equal( prop( 'aimed' ).get(), false )
 
