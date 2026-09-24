@@ -65,13 +65,27 @@ namespace $.$$ {
 
 	export class $bog_gamestudio_app extends $.$bog_gamestudio_app {
 
+		source_key() {
+			return 'bog_gamestudio_source'
+		}
+
 		@ $mol_mem
-		source_own( next = $bog_gamestudio_sample ) {
-			return next
+		source_own( next?: string ) {
+			const kept = this.$.$mol_state_local.value< string >( this.source_key(), next )
+			return kept ?? $bog_gamestudio_sample
 		}
 
 		source( next?: string ) {
 			return this.Doc().source( next )
+		}
+
+		source_uri() {
+			return 'data:text/plain;charset=utf-8,' + encodeURIComponent( this.source() )
+		}
+
+		kept_stat() {
+			if( this.doc_land() ) return 'Ленд Базы, правки уходят сразу'
+			return `Браузер этой машины, ${ this.source().length } знаков`
 		}
 
 		@ $mol_mem

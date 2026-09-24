@@ -293,6 +293,38 @@ namespace $ {
 			$mol_assert_equal( nodes.filter( node => node.title() === 'Ствол' ).map( node => node.pos()[ 0 ] ), [ 9, 0 ] )
 		},
 
+		'edited source comes back to a freshly opened editor'( $ ) {
+			const key = 'bog_gamestudio_source_test_keep'
+			const make = ()=> {
+				const app = $$.$bog_gamestudio_app.make({ $ })
+				app.source_key = ()=> key
+				return app
+			}
+			try {
+				const first = make()
+				const edited = first.source().replace( '\\Герой', '\\Крошка' )
+				first.source( edited )
+				$mol_assert_equal( make().source(), edited )
+			} finally {
+				$.$mol_state_local.value( key, null )
+			}
+		},
+
+		'editor without kept source starts from the sample'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.source_key = ()=> 'bog_gamestudio_source_test_empty'
+			$mol_assert_equal( app.source(), $bog_gamestudio_sample )
+		},
+
+		'source uri carries the document and asks to be saved as a tree file'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.source_key = ()=> 'bog_gamestudio_source_test_uri'
+			const uri = app.source_uri()
+			$mol_assert_ok( uri.startsWith( 'data:text/plain;charset=utf-8,' ) )
+			$mol_assert_equal( decodeURIComponent( uri.slice( 'data:text/plain;charset=utf-8,'.length ) ), app.source() )
+			$mol_assert_equal( app.Save().file_name(), 'scene.view.tree' )
+		},
+
 		'gizmo hit on the x arrow'( $ ) {
 			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
 		},

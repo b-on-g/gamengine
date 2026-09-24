@@ -75,9 +75,17 @@ $bog_gamestudio_app $mol_view
 							click? <=> detach? null
 		<= Source $mol_page
 			title \Исходник
+			tools /
+				<= Save $mol_link
+					uri <= source_uri \
+					file_name \scene.view.tree
+					title \Скачать файлом
 			body /
 				<= Editor $mol_textarea
 					value? <=> source?
+			foot /
+				<= Kept $mol_view
+					sub / <= kept_stat \
 	Doc $bog_gamestudio_doc
 		source_own? <=> source_own?
 		land <= doc_land null
