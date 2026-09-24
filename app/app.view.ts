@@ -536,7 +536,7 @@ namespace $.$$ {
 		}
 
 		placing() {
-			return ( this.asset() !== null || this.kit() !== null ) && this.editing()
+			return ( this.asset() !== null || this.kit() !== null || this.aiming() !== null ) && this.editing()
 		}
 
 		@ $mol_mem
@@ -566,6 +566,49 @@ namespace $.$$ {
 			if( !item ) return ''
 			const doc = this.Doc()
 			return $bog_gamestudio_kit_apply( doc, item, `/ ${ doc.token( at[ 0 ] ) } ${ doc.token( at[ 1 ] ) } 0` )
+		}
+
+		@ $mol_mem
+		aiming( next?: string | null ) {
+			return next ?? null
+		}
+
+		armed( name: string, next?: boolean ) {
+			if( next !== undefined ) {
+				this.asset( null )
+				this.kit( null )
+				this.aiming( next ? name : null )
+			}
+			return this.aiming() === name
+		}
+
+		refs_names( name: string ) {
+			const path = this.doc_path()
+			if( !path ) return 'никого'
+			const names = $bog_gamestudio_kit_refs( this.Doc(), this.Doc().node( path ).name, name )
+			return names.length ? names.join( ', ' ) : 'никого'
+		}
+
+		refs_clear( name: string, next?: any ) {
+			if( next === undefined ) return null
+			const path = this.doc_path()
+			if( path ) $bog_gamestudio_kit_clear( this.Doc(), this.Doc().node( path ).name, name )
+			return null
+		}
+
+		aim_at( name: string, node: $bog_gamengine_node | null, at: ArrayLike< number > ) {
+			const path = this.doc_path()
+			if( !path ) return
+			const doc = this.Doc()
+			const host = doc.node( path ).name
+			if( this.prop( name )?.kind === 'nodes' ) {
+				const mate = $bog_gamestudio_kit_path_of( doc, node )
+				if( !mate || mate === host ) return
+				$bog_gamestudio_kit_join( doc, host, name, doc.node( mate ).name )
+				return
+			}
+			doc.set( host, name, [ at[ 0 ], at[ 1 ], 0 ] )
+			this.aiming( null )
 		}
 
 		kit_attach( id: string ) {
@@ -826,6 +869,8 @@ namespace $.$$ {
 				case 'text': return [ this.Text( name ) ]
 				case 'frame': return [ this.frame_options().length ? this.Frame( name ) : this.Text( name ) ]
 				case 'list': return [ this.List( name ) ]
+				case 'point': return [ ... this.vec_nums( name ), this.Aim_at( name ) ]
+				case 'nodes': return [ this.Refs( name ) ]
 			}
 			return []
 		}
@@ -1021,6 +1066,7 @@ namespace $.$$ {
 			this.tool( '' )
 			this.asset( null )
 			this.kit( null )
+			this.aiming( null )
 			return event ?? null
 		}
 
@@ -1216,6 +1262,12 @@ namespace $.$$ {
 			}
 			if( asset && this.editing() ) {
 				this.place( asset, this.grid_at( point.world( this.point_world, x, y ) ) )
+				return event
+			}
+			const aiming = this.aiming()
+			if( aiming && this.editing() ) {
+				const nodes = this.Scene().nodes()
+				this.aim_at( aiming, point.pick( nodes, x, y ), point.world( this.point_world, x, y ) )
 				return event
 			}
 			const kit = this.kit()

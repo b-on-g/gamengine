@@ -222,7 +222,7 @@ namespace $ {
 			$mol_assert_equal( source.match( /phys <= Phys/g )!.length, 1 )
 			$mol_assert_ok( source.includes( `<= ${ first }` ) )
 			$mol_assert_ok( source.includes( `<= ${ second }` ) )
-			$mol_assert_equal( doc.nodes().filter( ( one: $bog_gamestudio_doc_node ) => one.klass.startsWith( '$bog_gamengine_phys' ) ).length, 2 )
+			$mol_assert_equal( doc.nodes().filter( ( one: $bog_gamestudio_doc_node ) => one.kind === 'node' && one.klass.startsWith( '$bog_gamengine_phys' ) ).length, 2 )
 
 		},
 
@@ -319,6 +319,23 @@ namespace $ {
 			$mol_assert_equal( $bog_gamestudio_kit_refs( doc, 'First', 'others' ), [] )
 			$mol_assert_equal( doc.source().includes( 'others' ), false )
 
+		},
+
+		'path of a live node is found by its place among the kids'( $ ) {
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( [
+				'$bog_gamestudio_sample $bog_gamengine_scene',
+				'\tkids /',
+				'\t\t<= First $bog_gamengine_node',
+				'\t\t<= Second $bog_gamengine_node',
+				'',
+			].join( '\n' ) )
+			const scene = doc.scene()
+			const nodes = scene.nodes()
+			$mol_assert_equal( $bog_gamestudio_kit_path_of( doc, nodes[ 1 ] ), 'Second' )
+			$mol_assert_equal( $bog_gamestudio_kit_path_of( doc, null ), '' )
+			$mol_assert_equal( $bog_gamestudio_kit_path_of( doc, new $bog_gamengine_node ), '' )
 		},
 
 		'clearing a property that is not there changes nothing'( $ ) {

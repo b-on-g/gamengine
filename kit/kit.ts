@@ -194,6 +194,19 @@ namespace $ {
 		return name
 	}
 
+	export function $bog_gamestudio_kit_path_of( doc: $bog_gamestudio_doc, node: $bog_gamengine_node | null ) {
+		if( !node ) return ''
+		let step = node
+		const steps = [] as number[]
+		for( let parent = step.parent(); parent; parent = step.parent() ) {
+			const at = parent.kids().indexOf( step )
+			if( at < 0 ) return ''
+			steps.unshift( at )
+			step = parent
+		}
+		return doc.path_at( steps )
+	}
+
 	export function $bog_gamestudio_kit_refs( doc: $bog_gamestudio_doc, owner: string, prop: string ) {
 		const klass = doc.decls().get( owner )
 		if( !klass ) return [] as readonly string[]

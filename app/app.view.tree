@@ -275,6 +275,20 @@ $bog_gamestudio_app $mol_view
 	Kit_row* $mol_check
 		title <= kit_title* \
 		checked? <=> kit_selected*? false
+	Aim_at* $mol_check
+		title \Указать мышью
+		checked? <=> armed*? false
+	Refs* $mol_row
+		sub /
+			<= Refs_names* $mol_view
+				sub / <= refs_names* \
+			<= Refs_aim* $mol_check
+				title \Указать мышью
+				checked? <=> armed*? false
+			<= Refs_clear* $mol_button_minor
+				title \Очистить
+				enabled <= editing
+				click? <=> refs_clear*? null
 	Asset* $mol_drag
 		transfer *
 			^
