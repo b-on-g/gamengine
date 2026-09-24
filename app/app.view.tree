@@ -30,6 +30,9 @@ $bog_gamestudio_app $mol_view
 		<= Canvas $mol_page
 			title \Холст
 			tools /
+				<= Fit $mol_button_minor
+					title \Показать всё
+					click? <=> fit? null
 				<= Play $mol_button_minor
 					title \Играть
 					enabled <= editing true
@@ -57,6 +60,7 @@ $bog_gamestudio_app $mol_view
 							pointerdown? <=> pointer_down? null
 							pointermove? <=> pointer_move? null
 							pointerup? <=> pointer_up? null
+							wheel? <=> wheel? null
 			foot <= canvas_foot /
 				<= Status $mol_status
 					status <= scene_status null
@@ -179,6 +183,8 @@ $bog_gamestudio_app $mol_view
 		key <= Key
 	Cam $bog_gamengine_cam_flat
 		height 6
+		zoom_min 0.05
+		zoom_max 8
 	Point $bog_gamengine_point
 		cam <= Cam
 		width <= draw_width

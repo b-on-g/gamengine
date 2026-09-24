@@ -27,6 +27,26 @@ namespace $ {
 		return app
 	}
 
+	function canvas_app( $: $ ) {
+		return $$.$bog_gamestudio_app.make({ $, draw_width: ()=> 616, draw_height: ()=> 801 })
+	}
+
+	function spot_at( app: $bog_gamestudio_app, x: number, y: number ) {
+		return Array.from( app.Point().world( new Float32Array( 3 ), x, y ) )
+	}
+
+	function wheel_at( delta: number, x: number, y: number ) {
+		return {
+			deltaY: delta, deltaMode: 0, offsetX: x, offsetY: y, preventDefault: ()=> {},
+		} as unknown as WheelEvent
+	}
+
+	function press_at( x: number, y: number, button = 0 ) {
+		return {
+			button, offsetX: x, offsetY: y, pointerId: 1, isTrusted: false,
+		} as unknown as PointerEvent
+	}
+
 	$mol_test({
 
 		'play with D held moves the hero right'( $ ) {
@@ -369,6 +389,81 @@ namespace $ {
 
 		'gizmo miss'( $ ) {
 			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.5, 0.5, 1 ), null )
+		},
+
+		'wheel up zooms in, wheel down zooms out, line mode counts as pixels'( $ ) {
+			$mol_assert_ok( $bog_gamestudio_app_zoom_factor( -100 ) > 1 )
+			$mol_assert_ok( $bog_gamestudio_app_zoom_factor( 100 ) < 1 )
+			$mol_assert_equal( $bog_gamestudio_app_zoom_factor( -3, 1 ), $bog_gamestudio_app_zoom_factor( -48 ) )
+		},
+
+		'wheel keeps the world point under the cursor'( $ ) {
+			const app = canvas_app( $ )
+			const before = spot_at( app, 500, 700 )
+			app.wheel( wheel_at( -240, 500, 700 ) )
+			const after = spot_at( app, 500, 700 )
+			$mol_assert_ok( app.Cam().zoom() > 1 )
+			$mol_assert_ok( Math.abs( after[ 0 ] - before[ 0 ] ) < 1e-4 )
+			$mol_assert_ok( Math.abs( after[ 1 ] - before[ 1 ] ) < 1e-4 )
+		},
+
+		'zoom stops at the camera limits'( $ ) {
+			const app = canvas_app( $ )
+			for( let i = 0; i < 40; ++ i ) app.wheel( wheel_at( -400, 300, 400 ) )
+			$mol_assert_equal( app.Cam().zoom(), app.Cam().zoom_max() )
+			for( let i = 0; i < 80; ++ i ) app.wheel( wheel_at( 400, 300, 400 ) )
+			$mol_assert_equal( app.Cam().zoom(), app.Cam().zoom_min() )
+		},
+
+		'middle button drag pans the camera by the grabbed distance'( $ ) {
+			const app = canvas_app( $ )
+			const from = spot_at( app, 300, 400 )
+			const to = spot_at( app, 400, 500 )
+			app.pointer_down( press_at( 300, 400, 1 ) )
+			app.pointer_move( press_at( 400, 500, 1 ) )
+			app.pointer_up( press_at( 400, 500, 1 ) )
+			const pos = app.Cam().pos()
+			$mol_assert_ok( Math.abs( pos[ 0 ] - ( from[ 0 ] - to[ 0 ] ) ) < 1e-4 )
+			$mol_assert_ok( Math.abs( pos[ 1 ] - ( from[ 1 ] - to[ 1 ] ) ) < 1e-4 )
+		},
+
+		'drag on empty space pans, drag started on a node does not'( $ ) {
+			const app = canvas_app( $ )
+			app.pointer_down( press_at( 10, 10 ) )
+			app.pointer_move( press_at( 120, 120 ) )
+			app.pointer_up( press_at( 120, 120 ) )
+			const panned = app.Cam().pos()[ 0 ]
+			$mol_assert_ok( panned !== 0 )
+			const hero = app.Scene().nodes()[ 0 ]
+			const seen = app.Point().screen( new Float32Array( 3 ), hero.pos() )
+			app.pointer_down( press_at( seen[ 0 ], seen[ 1 ] ) )
+			app.pointer_move( press_at( seen[ 0 ] + 60, seen[ 1 ] + 60 ) )
+			app.pointer_up( press_at( seen[ 0 ] + 60, seen[ 1 ] + 60 ) )
+			$mol_assert_equal( app.Cam().pos()[ 0 ], panned )
+		},
+
+		'fit brings every node of the scene into the view'( $ ) {
+			const app = canvas_app( $ )
+			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 40, -30, 0 ] )
+			app.fit()
+			const bounds = $bog_gamestudio_app_bounds( app.Scene().nodes(), new Float32Array( 4 ) )!
+			const cam = app.Cam()
+			const half = cam.height() / cam.zoom() / 2
+			const aspect = app.draw_width() / app.draw_height()
+			const pos = cam.pos()
+			$mol_assert_ok( bounds[ 0 ] >= pos[ 0 ] - half * aspect )
+			$mol_assert_ok( bounds[ 2 ] <= pos[ 0 ] + half * aspect )
+			$mol_assert_ok( bounds[ 1 ] >= pos[ 1 ] - half )
+			$mol_assert_ok( bounds[ 3 ] <= pos[ 1 ] + half )
+		},
+
+		'fit of a wide map zooms out, fit of one sprite zooms in'( $ ) {
+			const wide = canvas_app( $ )
+			wide.fit()
+			const first = wide.Cam().zoom()
+			wide.place( 'bog/gamengine/demo/atlas/floor.png', [ 40, -30, 0 ] )
+			wide.fit()
+			$mol_assert_ok( wide.Cam().zoom() < first )
 		},
 
 	})

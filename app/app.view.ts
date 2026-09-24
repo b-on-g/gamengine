@@ -10,6 +10,63 @@ namespace $ {
 		readonly value: unknown
 	}
 
+	export const $bog_gamestudio_app_zoom_rate = 0.0015
+
+	export const $bog_gamestudio_app_zoom_step = 400
+
+	export const $bog_gamestudio_app_fit_gap = 1.1
+
+	export function $bog_gamestudio_app_zoom_factor( delta: number, mode = 0 ) {
+		const pixels = mode === 1 ? delta * 16 : mode === 2 ? delta * 400 : delta
+		const step = Math.max( - $bog_gamestudio_app_zoom_step, Math.min( $bog_gamestudio_app_zoom_step, pixels ) )
+		return Math.exp( - step * $bog_gamestudio_app_zoom_rate )
+	}
+
+	export function $bog_gamestudio_app_bounds( nodes: readonly $bog_gamengine_node[], out: Float32Array ) {
+
+		out[ 0 ] = Infinity
+		out[ 1 ] = Infinity
+		out[ 2 ] = - Infinity
+		out[ 3 ] = - Infinity
+		let found = false
+
+		for( let i = 0; i < nodes.length; ++ i ) {
+
+			const node = nodes[ i ] as $bog_gamengine_point_node & { aabb?(): Float32Array }
+			const box = typeof node.aabb === 'function' ? node.aabb() : null
+			let left = 0
+			let bottom = 0
+			let right = 0
+			let top = 0
+
+			if( box ) {
+				left = box[ 0 ]
+				bottom = box[ 1 ]
+				right = box[ 3 ]
+				top = box[ 4 ]
+			} else {
+				const world = node.world()
+				const size = typeof node.size === 'function' ? node.size() : null
+				const half_x = size && size.length > 0 ? size[ 0 ] / 2 : 0.5
+				const half_y = size && size.length > 1 ? size[ 1 ] / 2 : 0.5
+				left = world[ 12 ] - half_x
+				right = world[ 12 ] + half_x
+				bottom = world[ 13 ] - half_y
+				top = world[ 13 ] + half_y
+			}
+
+			if( !Number.isFinite( left ) || !Number.isFinite( bottom ) ) continue
+			if( left < out[ 0 ] ) out[ 0 ] = left
+			if( bottom < out[ 1 ] ) out[ 1 ] = bottom
+			if( right > out[ 2 ] ) out[ 2 ] = right
+			if( top > out[ 3 ] ) out[ 3 ] = top
+			found = true
+
+		}
+
+		return found ? out : null
+	}
+
 	export const $bog_gamestudio_app_gizmo_box = 0.15
 
 	export const $bog_gamestudio_app_gizmo_near = 0.1
@@ -838,12 +895,56 @@ namespace $.$$ {
 			return event.offsetY * this.$.$mol_dom_context.devicePixelRatio
 		}
 
+		pan_grab = null as Float32Array | null
+		pan_world = new Float32Array( 2 )
+		fit_box = new Float32Array( 4 )
+
+		wheel( event?: WheelEvent ) {
+			if( !event ) return null
+			event.preventDefault()
+			const at = this.Point().world( this.point_world, this.point_x( event ), this.point_y( event ) )
+			this.Cam().zoom_at( $bog_gamestudio_app_zoom_factor( event.deltaY, event.deltaMode ), at[ 0 ], at[ 1 ] )
+			return event
+		}
+
+		pan_down( event: PointerEvent ) {
+			const at = this.Point().world( this.point_world, this.point_x( event ), this.point_y( event ) )
+			this.pan_world[ 0 ] = at[ 0 ]
+			this.pan_world[ 1 ] = at[ 1 ]
+			this.pan_grab = this.pan_world
+			if( event.isTrusted ) ( this.Draw().dom_node() as HTMLElement ).setPointerCapture( event.pointerId )
+		}
+
+		pan_move( event: PointerEvent ) {
+			const grab = this.pan_grab
+			if( !grab ) return
+			const at = this.Point().world( this.point_world, this.point_x( event ), this.point_y( event ) )
+			this.Cam().pan( grab[ 0 ] - at[ 0 ], grab[ 1 ] - at[ 1 ] )
+		}
+
+		fit( event?: Event ) {
+			const bounds = $bog_gamestudio_app_bounds( this.Scene().nodes(), this.fit_box )
+			if( !bounds ) return event ?? null
+			const cam = this.Cam()
+			const aspect = this.draw_width() / this.draw_height() || cam.aspect()
+			const width = Math.max( ( bounds[ 2 ] - bounds[ 0 ] ) * $bog_gamestudio_app_fit_gap, 1 )
+			const height = Math.max( ( bounds[ 3 ] - bounds[ 1 ] ) * $bog_gamestudio_app_fit_gap, 1 )
+			const zoom = Math.min( cam.height() / height, cam.height() * aspect / width )
+			cam.zoom( Math.min( cam.zoom_max(), Math.max( cam.zoom_min(), zoom ) ) )
+			cam.place( ( bounds[ 0 ] + bounds[ 2 ] ) / 2, ( bounds[ 1 ] + bounds[ 3 ] ) / 2 )
+			return event ?? null
+		}
+
 		pointer_down( event?: PointerEvent ) {
 			if( !event ) return null
 			const x = this.point_x( event )
 			const y = this.point_y( event )
 			const point = this.Point()
 			const asset = this.asset()
+			if( event.button === 1 ) {
+				this.pan_down( event )
+				return event
+			}
 			if( asset && this.editing() ) {
 				this.place( asset, point.world( this.point_world, x, y ) )
 				this.asset( null )
@@ -871,11 +972,16 @@ namespace $.$$ {
 			const nodes = this.Scene().nodes()
 			const picked = point.pick( nodes, x, y )
 			this.selected( picked ? nodes.indexOf( picked ) : null )
+			if( !picked ) this.pan_down( event )
 			return event
 		}
 
 		pointer_move( event?: PointerEvent ) {
 			if( !event ) return null
+			if( this.pan_grab ) {
+				this.pan_move( event )
+				return event
+			}
 			if( this.doc_land() ) {
 				const at = this.Point().world( this.point_world, this.point_x( event ), this.point_y( event ) )
 				this.spot( new Float32Array([ at[ 0 ], at[ 1 ] ]) )
@@ -901,6 +1007,10 @@ namespace $.$$ {
 		}
 
 		pointer_up( event?: PointerEvent ) {
+			if( this.pan_grab ) {
+				this.pan_grab = null
+				return event ?? null
+			}
 			if( event && this.brush_from ) {
 				this.brush_up( this.brush_cell( event ) )
 				return event
