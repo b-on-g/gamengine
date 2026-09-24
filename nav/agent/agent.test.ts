@@ -68,6 +68,41 @@ namespace $ {
 			$mol_assert_ok( b.pos()[ 0 ] - a.pos()[ 0 ] > 0.2 )
 		},
 
+		'goal of an agent is set through props and survives a snapshot'() {
+
+			const agent = new $bog_gamengine_nav_agent
+			const prop = ( name: string )=> agent.props().find( one => one.name === name )!
+
+			$mol_assert_equal( prop( 'target' ).kind, 'vec3' )
+			$mol_assert_equal( prop( 'aimed' ).kind, 'flag' )
+			$mol_assert_equal( prop( 'aimed' ).get(), false )
+
+			prop( 'target' ).set( new Float32Array([ 4.5, -2.5, 0 ]) )
+			$mol_assert_equal( [ ... prop( 'target' ).get() as Float32Array ], [ 4.5, -2.5, 0 ] )
+			$mol_assert_equal( prop( 'aimed' ).get(), true )
+			$mol_assert_equal( agent.target(), agent.goal )
+
+			const snap = [ new Float32Array( prop( 'target' ).get() as Float32Array ), prop( 'aimed' ).get() ]
+			agent.aim( 9, 9 )
+			prop( 'target' ).set( snap[ 0 ] as Float32Array )
+			prop( 'aimed' ).set( snap[ 1 ] )
+			$mol_assert_equal( [ ... agent.goal ], [ 4.5, -2.5, 0 ] )
+			$mol_assert_equal( agent.goal_on, true )
+
+		},
+
+		'restored snapshot of an agent without a goal leaves it without a goal'() {
+			const agent = new $bog_gamengine_nav_agent
+			const prop = ( name: string )=> agent.props().find( one => one.name === name )!
+			const snap = [ new Float32Array( prop( 'target' ).get() as Float32Array ), prop( 'aimed' ).get() ]
+			agent.aim( 3, -3 )
+			$mol_assert_equal( agent.goal_on, true )
+			prop( 'target' ).set( snap[ 0 ] as Float32Array )
+			prop( 'aimed' ).set( snap[ 1 ] )
+			$mol_assert_equal( agent.goal_on, false )
+			$mol_assert_equal( agent.target(), null )
+		},
+
 		'neighbours of an agent are a property of node kind'() {
 			const agent = new $bog_gamengine_nav_agent
 			const mate = new $bog_gamengine_nav_agent

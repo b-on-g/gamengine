@@ -44,6 +44,24 @@ namespace $ {
 					get: ()=> this.others(),
 					set: next => this.others( next as readonly $bog_gamengine_nav_agent[] ),
 				},
+				{
+					name: 'target',
+					kind: 'vec3',
+					get: ()=> this.goal,
+					set: next => {
+						const at = next as ArrayLike< number >
+						this.aim( at[ 0 ] ?? 0, at[ 1 ] ?? 0, at[ 2 ] ?? 0 )
+					},
+				},
+				{
+					name: 'aimed',
+					kind: 'flag',
+					get: ()=> this.goal_on,
+					set: next => {
+						if( next ) this.aim( this.goal[ 0 ], this.goal[ 1 ], this.goal[ 2 ] )
+						else this.stop()
+					},
+				},
 			]
 		}
 
