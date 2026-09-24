@@ -1,5 +1,13 @@
 namespace $.$$ {
 
+	function screen_tint( ... screen: readonly number[] ) {
+		const out = new Float32Array( screen.length )
+		for( let i = 0; i < screen.length; ++ i ) out[ i ] = i % 4 === 3 ? screen[ i ] : Math.pow( screen[ i ], 2.2 )
+		return out
+	}
+
+	const spark_tint = screen_tint( 1, 0.9, 0.6, 1, 1, 0.4, 0.1, 0 )
+
 	const wall_half = new Float32Array([ 0.5, 1, 0.5 ])
 	const wall_lift = 1
 	const target_lift = 0.9
@@ -79,9 +87,8 @@ namespace $.$$ {
 			return new Float32Array([ 0.12, 0.01 ])
 		}
 
-		@ $mol_mem
 		spark_color() {
-			return new Float32Array([ 1, 0.9, 0.6, 1, 1, 0.4, 0.1, 0 ])
+			return spark_tint
 		}
 
 		@ $mol_mem
