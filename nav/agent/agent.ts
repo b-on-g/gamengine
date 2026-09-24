@@ -38,6 +38,12 @@ namespace $ {
 				{ name: 'speed', kind: 'number', get: ()=> this.speed(), set: next => this.speed( next as number ) },
 				{ name: 'radius', kind: 'number', get: ()=> this.radius(), set: next => this.radius( next as number ) },
 				{ name: 'replan', kind: 'number', get: ()=> this.replan(), set: next => this.replan( next as number ) },
+				{
+					name: 'others',
+					kind: 'nodes',
+					get: ()=> this.others(),
+					set: next => this.others( next as readonly $bog_gamengine_nav_agent[] ),
+				},
 			]
 		}
 

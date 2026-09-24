@@ -68,6 +68,17 @@ namespace $ {
 			$mol_assert_ok( b.pos()[ 0 ] - a.pos()[ 0 ] > 0.2 )
 		},
 
+		'neighbours of an agent are a property of node kind'() {
+			const agent = new $bog_gamengine_nav_agent
+			const mate = new $bog_gamengine_nav_agent
+			const prop = agent.props().find( one => one.name === 'others' )!
+			$mol_assert_equal( prop.kind, 'nodes' )
+			$mol_assert_equal( ( prop.get() as readonly $bog_gamengine_node[] ).length, 0 )
+			prop.set([ mate ])
+			$mol_assert_equal( agent.others(), [ mate ] )
+			$mol_assert_equal( ( prop.get() as readonly $bog_gamengine_node[] )[ 0 ], mate )
+		},
+
 	})
 
 }
