@@ -5,6 +5,7 @@ namespace $.$$ {
 			proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray',
 			light_count: 'int', light_pos: 'vec4[8]', light_dir: 'vec4[8]', light_color: 'vec4[8]',
 			ambient: 'vec3', cam_pos: 'vec3', wireframe: 'float',
+			fog: 'vec2', fog_color: 'vec3',
 			shadow_mat: 'mat4', shadow_map: 'sampler2DShadow', shadow_light: 'int',
 			bones: 'sampler2D',
 		}
@@ -40,6 +41,8 @@ namespace $.$$ {
 		light_color = null as WebGLUniformLocation | null
 		ambient = null as WebGLUniformLocation | null
 		cam_pos = null as WebGLUniformLocation | null
+		fog = null as WebGLUniformLocation | null
+		fog_color = null as WebGLUniformLocation | null
 		wireframe = null as WebGLUniformLocation | null
 		shadow_mat = null as WebGLUniformLocation | null
 		shadow_map = null as WebGLUniformLocation | null
@@ -147,6 +150,8 @@ namespace $.$$ {
 		textures_last = [] as readonly $bog_gamengine_draw_tex[]
 		ambient_vec = new Float32Array( 3 )
 		cam_pos_vec = new Float32Array( 3 )
+		fog_vec = new Float32Array( 2 )
+		fog_color_vec = new Float32Array( 3 )
 		lights_pos = new Float32Array( light_max * 4 )
 		lights_dir = new Float32Array( light_max * 4 )
 		lights_color = new Float32Array( light_max * 4 )
@@ -231,6 +236,18 @@ namespace $.$$ {
 		@ $mol_mem
 		clear( next?: ArrayLike< number > ) {
 			return next ? $bog_gamengine_node_vec( next ) : new Float32Array([ 0.08, 0.08, 0.1, 1 ])
+		}
+
+		@ $mol_mem
+		fog( next?: ArrayLike< number > ) {
+			return next ? $bog_gamengine_node_vec( next ) : new Float32Array([ 0, 0 ])
+		}
+
+		@ $mol_mem
+		fog_color( next?: ArrayLike< number > ) {
+			if( next ) return $bog_gamengine_node_vec( next )
+			const clear = this.clear()
+			return new Float32Array([ clear[ 0 ], clear[ 1 ], clear[ 2 ] ])
 		}
 
 		@ $mol_mem
@@ -403,6 +420,8 @@ namespace $.$$ {
 				light_color: glob( 'light_color' ),
 				ambient: glob( 'ambient' ),
 				cam_pos: glob( 'cam_pos' ),
+				fog: glob( 'fog' ),
+				fog_color: glob( 'fog_color' ),
 				wireframe,
 				shadow_mat: glob( 'shadow_mat' ),
 				shadow_map: glob( 'shadow_map' ),
@@ -584,6 +603,13 @@ namespace $.$$ {
 			this.ambient_vec[ 0 ] = ambient
 			this.ambient_vec[ 1 ] = ambient
 			this.ambient_vec[ 2 ] = ambient
+			const fog = this.fog()
+			this.fog_vec[ 0 ] = fog[ 0 ]
+			this.fog_vec[ 1 ] = fog[ 1 ]
+			const fog_color = this.fog_color()
+			this.fog_color_vec[ 0 ] = fog_color[ 0 ]
+			this.fog_color_vec[ 1 ] = fog_color[ 1 ]
+			this.fog_color_vec[ 2 ] = fog_color[ 2 ]
 			const cam_world = this.cam().world()
 			this.cam_pos_vec[ 0 ] = cam_world[ 12 ]
 			this.cam_pos_vec[ 1 ] = cam_world[ 13 ]
@@ -770,6 +796,8 @@ namespace $.$$ {
 			$bog_gamengine_gl_uniform_vec4s( gl, slot.light_color, this.lights_color )
 			$bog_gamengine_gl_uniform_vector( gl, slot.ambient, this.ambient_vec )
 			$bog_gamengine_gl_uniform_vector( gl, slot.cam_pos, this.cam_pos_vec )
+			$bog_gamengine_gl_uniform_vector( gl, slot.fog, this.fog_vec )
+			$bog_gamengine_gl_uniform_vector( gl, slot.fog_color, this.fog_color_vec )
 			$bog_gamengine_gl_uniform_vector( gl, slot.wireframe, this.wire_off )
 			$bog_gamengine_gl_uniform_matrix( gl, slot.shadow_mat, this.shadow_mat_buf )
 			$bog_gamengine_gl_uniform_int( gl, slot.shadow_light, this.shadow_at )

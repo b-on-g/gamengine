@@ -58,6 +58,11 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		billboard( next = false ) {
+			return next
+		}
+
+		@ $mol_mem
 		shader( next?: $bog_gamengine_shader | null ) {
 			return next ?? null
 		}
@@ -103,13 +108,21 @@ namespace $ {
 			return this.scene()?.clock() ?? null
 		}
 
+		cam_yaw() {
+			const cam = this.scene()?.cam() ?? null
+			if( !cam ) return this.rot()[ 1 ]
+			const world = cam.world()
+			return Math.atan2( world[ 8 ], world[ 10 ] )
+		}
+
 		@ $mol_mem
 		trans() {
 			const rot = this.rot()
+			const yaw = this.billboard() ? this.cam_yaw() : rot[ 1 ]
 			return $mol_3d_mat4.multiply(
 				$mol_3d_mat4.translation( this.pos() ),
 				$mol_3d_mat4.rotation( [ 0, 0, 1 ], rot[ 2 ] ),
-				$mol_3d_mat4.rotation( [ 0, 1, 0 ], rot[ 1 ] ),
+				$mol_3d_mat4.rotation( [ 0, 1, 0 ], yaw ),
 				$mol_3d_mat4.rotation( [ 1, 0, 0 ], rot[ 0 ] ),
 				$mol_3d_mat4.scaling( this.scale() ),
 			)

@@ -12,7 +12,7 @@ namespace $ {
 
 	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя, клик собирает монету, подпись едет за героем, кадры ходьбы сменяются, джойстик ведёт героя и отпускает'
 
-	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола, ребро ящика с каркасом белое, пол под тёплым светом краснее, блики ярче, пол за столбом в тени, со свечением строка ярче, отчёт кадра считает батчи, рука машет костью'
+	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола, ребро ящика с каркасом белое, дальняя стена в тумане темнеет сильнее ближнего пола, пол под тёплым светом краснее, блики ярче, пол за столбом в тени, со свечением строка ярче, отчёт кадра считает батчи, рука машет костью'
 
 	export const $bog_gamengine_probe_boxes_page = 'bog/gamengine/demo/-/index.html#!demo=boxes'
 
@@ -189,6 +189,21 @@ namespace $ {
 		await frame()
 		await frame()
 		const edge_off = edge()
+		const fog_check = document.querySelector( '[bog_gamengine_demo_room_fog_check]' )
+		if( !fog_check ) return { webgl: true, loaded: true, start, fog: false }
+		const fog_near_at = at( start[ 0 ], 0, start[ 1 ] - 1 )
+		const fog_far_at = lit_at
+		const fog_near_off = pixel( ... fog_near_at )
+		const fog_far_off = pixel( ... fog_far_at )
+		fog_check.click()
+		await frame()
+		await frame()
+		const fog_checked = fog_check.getAttribute( 'mol_check_checked' )
+		const fog_near_on = pixel( ... fog_near_at )
+		const fog_far_on = pixel( ... fog_far_at )
+		fog_check.click()
+		await frame()
+		await frame()
 		const lights = ()=> {
 			const found = document.body.innerText.match( /lights (\\d+)/ )
 			return found ? Number( found[ 1 ] ) : -1
@@ -298,6 +313,7 @@ namespace $ {
 			glow: !!glow, glow_checked, row_dim, row_glow, profile_checked, report_batches,
 			pillar, pillar_at, floor_at, pillar_pixel, floor_pixel,
 			wire: true, wire_checked, edge_at, edge_on, edge_off,
+			fog: true, fog_checked, fog_near_at, fog_far_at, fog_near_off, fog_far_off, fog_near_on, fog_far_on,
 			light_count, warm_at, cold_at, warm, cold, shine: !!shine, shine_checked, row_plain, row_shine,
 			shadow_box: true, shadow_checked, shadow_at, open_at, shadow_on, shadow_off, open_on, open_off,
 			arm: true, arm_loaded, arm_at, arm_off, arm_bright, arm_dim, arm_gone,
@@ -448,6 +464,14 @@ namespace $ {
 		readonly edge_at?: readonly [ number, number ]
 		readonly edge_on?: $bog_gamengine_probe_pixel
 		readonly edge_off?: $bog_gamengine_probe_pixel
+		readonly fog?: boolean
+		readonly fog_checked?: string | null
+		readonly fog_near_at?: readonly [ number, number ]
+		readonly fog_far_at?: readonly [ number, number ]
+		readonly fog_near_off?: $bog_gamengine_probe_pixel
+		readonly fog_far_off?: $bog_gamengine_probe_pixel
+		readonly fog_near_on?: $bog_gamengine_probe_pixel
+		readonly fog_far_on?: $bog_gamengine_probe_pixel
 		readonly light_count?: number
 		readonly warm_at?: readonly [ number, number ]
 		readonly cold_at?: readonly [ number, number ]
@@ -653,6 +677,12 @@ namespace $ {
 		if( got.wire_checked !== 'true' ) return fail( 'клик по чекбоксу каркаса его не включил' )
 		if( !$bog_gamengine_probe_white( got.edge_on! ) ) return fail( 'ребро ящика с каркасом не белое' )
 		if( $bog_gamengine_probe_white( got.edge_off! ) ) return fail( 'ребро ящика без каркаса белое' )
+		if( !got.fog ) return fail( 'чекбокса тумана нет в DOM' )
+		if( got.fog_checked !== 'true' ) return fail( 'клик по чекбоксу тумана его не включил' )
+		const fog_far_drop = $bog_gamengine_probe_sum( got.fog_far_off! ) - $bog_gamengine_probe_sum( got.fog_far_on! )
+		const fog_near_drop = $bog_gamengine_probe_sum( got.fog_near_off! ) - $bog_gamengine_probe_sum( got.fog_near_on! )
+		if( !( fog_far_drop > 10 ) ) return fail( 'туман не затемнил дальнюю стену' )
+		if( !( fog_far_drop > fog_near_drop ) ) return fail( 'дальняя стена в тумане потемнела не сильнее ближнего пола' )
 		if( got.light_count !== 4 ) return fail( 'подвал не показал 4 источника света' )
 		if( $bog_gamengine_probe_dark( got.warm! ) ) return fail( 'пол под тёплым светом чёрный' )
 		if( !( $bog_gamengine_probe_warmth( got.warm! ) > $bog_gamengine_probe_warmth( got.cold! ) * 1.1 ) ) return fail( 'пол под тёплым светом не краснее пола под холодным' )

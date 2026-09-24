@@ -14,6 +14,8 @@ namespace $ {
 					light_color: 'vec4[8]',
 					ambient: 'vec3',
 					cam_pos: 'vec3',
+					fog: 'vec2',
+					fog_color: 'vec3',
 					wireframe: 'float',
 					shadow_mat: 'mat4',
 					shadow_map: 'sampler2DShadow',
@@ -131,7 +133,8 @@ namespace $ {
 							}
 						}
 					}
-					color = vec4( sum, base.a );
+					float haze = fog.y > fog.x ? clamp( ( length( cam_pos - pipe_pos ) - fog.x ) / ( fog.y - fog.x ), 0.0, 1.0 ) : 0.0;
+					color = vec4( mix( sum, fog_color * base.a, haze ), base.a );
 				}
 			`
 		}

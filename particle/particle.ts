@@ -127,11 +127,6 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		billboard( next = false ) {
-			return next
-		}
-
-		@ $mol_mem
 		world_space( next = true ) {
 			return next
 		}

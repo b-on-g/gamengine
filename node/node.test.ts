@@ -91,6 +91,35 @@ namespace $ {
 			$mol_assert_equal( node.clock(), null )
 		},
 
+		'billboard normal looks at the camera turned by half pi'() {
+
+			const scene = new $bog_gamengine_scene
+			const cam = new $bog_gamengine_cam
+			cam.rot( new Float32Array([ 0, Math.PI / 2, 0 ]) )
+			scene.cam( cam )
+
+			const node = new $bog_gamengine_node
+			node.billboard( true )
+			scene.kids([ node ])
+
+			const trans = node.trans()
+			const to_cam = [ - Math.sin( Math.PI / 2 ), 0, - Math.cos( Math.PI / 2 ) ]
+			const normal = [ trans[ 8 ], trans[ 9 ], trans[ 10 ] ]
+			const dot = - ( normal[ 0 ] * to_cam[ 0 ] + normal[ 1 ] * to_cam[ 1 ] + normal[ 2 ] * to_cam[ 2 ] )
+			$mol_assert_ok( Math.abs( dot - 1 ) < 1e-6 )
+
+		},
+
+		'node without billboard keeps its own yaw'() {
+			const scene = new $bog_gamengine_scene
+			const cam = new $bog_gamengine_cam
+			cam.rot( new Float32Array([ 0, Math.PI / 2, 0 ]) )
+			scene.cam( cam )
+			const node = new $bog_gamengine_node
+			scene.kids([ node ])
+			$mol_assert_ok( Math.abs( node.trans()[ 10 ] - 1 ) < 1e-6 )
+		},
+
 		'tint of bare node defaults to opaque white through props'() {
 			const node = new $bog_gamengine_node
 			$mol_assert_equal( [ ... node_test_prop( node, 'tint' ).get() as Float32Array ], [ 1, 1, 1, 1 ] )

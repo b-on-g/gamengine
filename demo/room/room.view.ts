@@ -41,6 +41,21 @@ namespace $.$$ {
 		}
 
 		@ $mol_mem
+		fogged( next = false ) {
+			return next
+		}
+
+		@ $mol_mem
+		fog() {
+			return this.fogged() ? new Float32Array([ 1, 9 ]) : new Float32Array([ 0, 0 ])
+		}
+
+		@ $mol_mem
+		fog_color() {
+			return new Float32Array([ 0.05, 0.06, 0.09 ])
+		}
+
+		@ $mol_mem
 		passes() {
 			const tail = [ this.Tone(), this.Vignette() ]
 			return this.glow() ? [ this.Bloom(), ... tail ] : tail
@@ -111,6 +126,11 @@ namespace $.$$ {
 		@ $mol_mem
 		floor_size() {
 			return new Float32Array([ this.Tile().width(), 1, this.Tile().height() ])
+		}
+
+		@ $mol_mem
+		floor_tile() {
+			return new Float32Array([ this.Tile().width(), this.Tile().height() ])
 		}
 
 		@ $mol_mem

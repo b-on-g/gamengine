@@ -34,8 +34,18 @@ namespace $ {
 		'plane skin stretches by tile'( $ ) {
 			const plane = $bog_gamengine_shape_plane.make({ $ })
 			$mol_assert_equal( Math.max( ...plane.skin() ), 1 )
-			plane.tile( 4 )
+			plane.tile([ 4, 4 ])
 			$mol_assert_equal( Math.max( ...plane.skin() ), 4 )
+		},
+
+		'plane skin tiles each axis on its own'( $ ) {
+			const plane = $bog_gamengine_shape_plane.make({ $ })
+			plane.tile([ 4, 2 ])
+			const skin = plane.skin()
+			$mol_assert_equal( [ skin[ 0 ], skin[ 1 ] ], [ 0, 2 ] )
+			$mol_assert_equal( [ skin[ 2 ], skin[ 3 ] ], [ 4, 2 ] )
+			$mol_assert_equal( [ skin[ 4 ], skin[ 5 ] ], [ 0, 0 ] )
+			$mol_assert_equal( [ skin[ 6 ], skin[ 7 ] ], [ 4, 0 ] )
 		},
 
 	})

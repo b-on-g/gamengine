@@ -115,6 +115,11 @@ namespace $.$$ {
 		}
 
 		@ $mol_mem
+		floor_tile() {
+			return new Float32Array([ 60, 60 ])
+		}
+
+		@ $mol_mem
 		walker_pos( next?: Float32Array ) {
 			return next ?? new Float32Array([ 0, 1.5, ( this.pile_side() - 1 ) / 2 * pile_step + 8 ])
 		}
