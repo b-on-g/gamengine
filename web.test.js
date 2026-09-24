@@ -4300,6 +4300,17 @@ var $;
             $mol_assert_equal([...$bog_gamengine_map_test_make().center(0, new Float32Array(3))], [2.5, -2, 0]);
             $mol_assert_equal([...$bog_gamengine_map_test_make('xz').center(0, new Float32Array(3))], [2.5, 0, 2]);
         },
+        'unknown plane falls at the first place, not into xy silently'() {
+            const map = $bog_gamengine_map_test_make();
+            map.plane('zx');
+            $mol_assert_fail(() => map.pos(2, 1, 0, new Float32Array(3)), 'Map plane zx is unknown, known: xy, xz');
+            $mol_assert_fail(() => map.center(0, new Float32Array(3)), 'Map plane zx is unknown, known: xy, xz');
+        },
+        'plane set by a tree literal is checked too, the accessor is overridden there'() {
+            const map = new $bog_gamengine_map;
+            Object.assign(map, { plane: () => 'zx' });
+            $mol_assert_fail(() => map.pos(0, 0, 0, new Float32Array(3)), 'Map plane zx is unknown, known: xy, xz');
+        },
         'edit of the map moves the spots'() {
             const map = $bog_gamengine_map_test_make();
             map.map('..\n.E');

@@ -4379,7 +4379,7 @@ declare namespace $ {
     type $bog_gamengine_map_plane = 'xy' | 'xz';
     class $bog_gamengine_map extends $mol_object2 {
         map(next?: string): string;
-        plane(next?: $bog_gamengine_map_plane): $bog_gamengine_map_plane;
+        plane(next?: string): string;
         rows(): readonly string[];
         width(): number;
         height(): number;
@@ -7186,7 +7186,7 @@ declare namespace $ {
 		ReturnType< $bog_gamengine_phys_tile['map'] >
 	>
 	type $bog_gamengine_phys_tile__plane_bog_gamengine_demo_room_86 = $mol_type_enforce<
-		ReturnType< $bog_gamengine_demo_room['tile_plane'] >
+		string
 		,
 		ReturnType< $bog_gamengine_phys_tile['plane'] >
 	>
@@ -7489,7 +7489,6 @@ declare namespace $ {
 		report_bytes( ): string
 		Report_bytes( ): $mol_labeler
 		screen_target( ): Element
-		tile_plane( ): $bog_gamengine_map_plane
 		paused( next?: ReturnType< ReturnType< $bog_gamengine_demo_room['Clock'] >['paused'] > ): ReturnType< ReturnType< $bog_gamengine_demo_room['Clock'] >['paused'] >
 		nodes( ): readonly(any)[]
 		Solid( ): $bog_gamengine_shader_solid
@@ -7554,7 +7553,6 @@ declare namespace $ {
 //# sourceMappingURL=room.view.tree.d.ts.map
 declare namespace $.$$ {
     class $bog_gamengine_demo_room extends $.$bog_gamengine_demo_room {
-        tile_plane(): $bog_gamengine_map_plane;
         wall_ids(): readonly string[];
         wall_pos(id: string): Float32Array<ArrayBufferLike>;
         walls(): $bog_gamengine_mesh[];
@@ -8479,6 +8477,7 @@ declare namespace $ {
 		Batch( ): $bog_gamengine_batch
 		cam_deep_pos( ): Float32Array
 		param( ): string
+		placeholders( ): readonly($mol_view)[]
 		plugins( ): readonly(any)[]
 		spreads( ): ({ 
 			'quad': ReturnType< $bog_gamengine_demo['Quad'] >,

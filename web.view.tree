@@ -763,7 +763,7 @@ $bog_gamengine_demo_room $mol_page
 		\############
 	Tile $bog_gamengine_phys_tile
 		map <= map
-		plane <= tile_plane $bog_gamengine_map_plane
+		plane \xz
 	Atlas $bog_gamengine_atlas
 		uris /
 			\bog/gamengine/demo/atlas/wall.png
@@ -1001,6 +1001,7 @@ $bog_gamengine_demo_boxes $mol_page
 
 $bog_gamengine_demo $mol_book2_catalog
 	param \demo
+	placeholders /$mol_view
 	plugins /
 		<= Control $mol_keyboard_state
 			key <= key_map *

@@ -11702,8 +11702,8 @@ var $;
         map(next) {
             return next ?? '';
         }
-        plane(next) {
-            return next ?? 'xy';
+        plane(next = 'xy') {
+            return next;
         }
         rows() {
             return this.map().split('\n');
@@ -11764,17 +11764,20 @@ var $;
             return out;
         }
         place(cx, cy, lift, out) {
-            if (this.plane() === 'xz') {
+            const plane = this.plane();
+            if (plane === 'xz') {
                 out[0] = cx;
                 out[1] = lift;
                 out[2] = cy;
+                return out;
             }
-            else {
+            if (plane === 'xy') {
                 out[0] = cx;
                 out[1] = -cy;
                 out[2] = lift;
+                return out;
             }
-            return out;
+            return $mol_fail(new Error(`Map plane ${plane} is unknown, known: xy, xz`));
         }
         pos(x, y, lift, out) {
             return this.place(x + 0.5, y + 0.5, lift, out);
@@ -22123,10 +22126,6 @@ var $;
 			const obj = new this.$.Element();
 			return obj;
 		}
-		tile_plane(){
-			const obj = new this.$.$bog_gamengine_map_plane();
-			return obj;
-		}
 		paused(next){
 			return (this.Clock().paused(next));
 		}
@@ -22354,7 +22353,7 @@ var $;
 		Tile(){
 			const obj = new this.$.$bog_gamengine_phys_tile();
 			(obj.map) = () => ((this.map()));
-			(obj.plane) = () => ((this.tile_plane()));
+			(obj.plane) = () => ("xz");
 			return obj;
 		}
 		Atlas(){
@@ -22497,7 +22496,6 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Report_triangles"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Report_bytes"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "screen_target"));
-	($mol_mem(($.$bog_gamengine_demo_room.prototype), "tile_plane"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Solid"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Box"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Wall_batch"));
@@ -22559,9 +22557,6 @@ var $;
     var $$;
     (function ($$) {
         class $bog_gamengine_demo_room extends $.$bog_gamengine_demo_room {
-            tile_plane() {
-                return 'xz';
-            }
             wall_ids() {
                 return this.Tile().ids('#');
             }
@@ -24967,6 +24962,9 @@ var $;
 		param(){
 			return "demo";
 		}
+		placeholders(){
+			return [];
+		}
 		plugins(){
 			return [(this.Control())];
 		}
@@ -25092,11 +25090,21 @@ var $;
 (function ($) {
     var $$;
     (function ($$) {
+        const spread = {
+            '@media': {
+                '(min-width: 60rem)': {
+                    flex: {
+                        grow: 1,
+                        shrink: 1,
+                        basis: 0,
+                    },
+                    minWidth: 0,
+                },
+            },
+        };
         $mol_style_define($bog_gamengine_demo, {
             Quad: {
-                flex: {
-                    grow: 1,
-                },
+                ...spread,
                 '>': {
                     $mol_scroll: {
                         '>': {
@@ -25107,6 +25115,9 @@ var $;
                     },
                 },
             },
+            Flat: spread,
+            Room: spread,
+            Boxes: spread,
         });
     })($$ = $.$$ || ($.$$ = {}));
 })($ || ($ = {}));
