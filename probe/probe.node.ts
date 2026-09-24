@@ -554,6 +554,11 @@ namespace $ {
 		return pixel[ 0 ] > 200 && pixel[ 1 ] > 200 && pixel[ 2 ] > 200
 	}
 
+	/** Разброс каналов: у серого он нулевой, у освещённой грани нет. Не зависит от конца цепочки. */
+	export function $bog_gamengine_probe_spread( pixel: $bog_gamengine_probe_pixel ) {
+		return Math.max( pixel[ 0 ], pixel[ 1 ], pixel[ 2 ] ) - Math.min( pixel[ 0 ], pixel[ 1 ], pixel[ 2 ] )
+	}
+
 	export function $bog_gamengine_probe_sum( pixel: $bog_gamengine_probe_pixel ) {
 		return pixel[ 0 ] + pixel[ 1 ] + pixel[ 2 ]
 	}
@@ -704,8 +709,11 @@ namespace $ {
 		if( $bog_gamengine_probe_near( got.pillar_pixel!, got.floor_pixel! ) ) return fail( 'столб совпал с полом у его основания' )
 		if( !got.wire ) return fail( 'чекбокса каркаса нет в DOM' )
 		if( got.wire_checked !== 'true' ) return fail( 'клик по чекбоксу каркаса его не включил' )
-		if( !$bog_gamengine_probe_white( got.edge_on! ) ) return fail( 'ребро ящика с каркасом не белое' )
-		if( $bog_gamengine_probe_white( got.edge_off! ) ) return fail( 'ребро ящика без каркаса белое' )
+		if( !( $bog_gamengine_probe_spread( got.edge_on! ) < 16 ) ) return fail( 'ребро ящика с каркасом не серое' )
+		if( !( $bog_gamengine_probe_linear( got.edge_on! ) > $bog_gamengine_probe_linear( got.edge_off! ) * 1.5 ) ) {
+			return fail( 'ребро ящика с каркасом не ярче ребра без каркаса' )
+		}
+		if( $bog_gamengine_probe_spread( got.edge_off! ) < 16 ) return fail( 'ребро ящика без каркаса серое' )
 		if( !got.fog ) return fail( 'чекбокса тумана нет в DOM' )
 		if( got.fog_checked !== 'true' ) return fail( 'клик по чекбоксу тумана его не включил' )
 		const fog_far_drop = $bog_gamengine_probe_sum( got.fog_far_off! ) - $bog_gamengine_probe_sum( got.fog_far_on! )
