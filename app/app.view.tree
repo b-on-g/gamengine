@@ -233,6 +233,13 @@ $bog_gamestudio_app $mol_view
 		\инстанс
 		\инстанса
 		\инстансов
+	Name_field $mol_form_field
+		name \Имя
+		content /
+			<= Name_string $mol_string
+				enabled <= editing
+				hint <= node_hint \
+				value? <=> node_name? \
 	Field* $mol_form_field
 		name <= field_name* \
 		bids <= field_bids* /string

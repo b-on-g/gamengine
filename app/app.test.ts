@@ -325,6 +325,36 @@ namespace $ {
 			$mol_assert_equal( app.Save().file_name(), 'scene.view.tree' )
 		},
 
+		'name typed into the inspector renames the node in the tree and in the source'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 0 )
+			app.Name_string().value( 'Крошка' )
+			$mol_assert_equal( app.row_title( 0 ), 'Крошка' )
+			$mol_assert_ok( app.source().includes( 'name \\Крошка\n' ) )
+			$mol_assert_not( app.source().includes( 'name \\Герой\n' ) )
+		},
+
+		'cleared name falls the node back to its declaration name'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 0 )
+			app.Name_string().value( '' )
+			$mol_assert_equal( app.node_name(), '' )
+			$mol_assert_not( app.source().includes( 'name \\Герой' ) )
+		},
+
+		'name hint shows what the node is called now'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 1 )
+			$mol_assert_equal( app.node_hint(), 'Монета' )
+		},
+
+		'form has no name field while nothing is selected'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			$mol_assert_equal( app.fields().length, 0 )
+			app.selected( 0 )
+			$mol_assert_equal( app.fields()[ 0 ], app.Name_field() )
+		},
+
 		'gizmo hit on the x arrow'( $ ) {
 			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
 		},

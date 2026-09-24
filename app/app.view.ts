@@ -464,7 +464,20 @@ namespace $.$$ {
 
 		@ $mol_mem
 		fields() {
-			return this.props().map( prop => this.Field( prop.name ) )
+			const fields = this.props().map( prop => this.Field( prop.name ) )
+			return this.doc_path() ? [ this.Name_field(), ... fields ] : fields
+		}
+
+		node_name( next?: string ) {
+			const path = this.doc_path()
+			if( !path ) return ''
+			if( next === undefined ) return this.Doc().node( path ).props.name?.text() ?? ''
+			this.Doc().set( path, 'name', next )
+			return next
+		}
+
+		node_hint() {
+			return this.node()?.title() ?? ''
 		}
 
 		field_name( name: string ) {
