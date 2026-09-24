@@ -10510,6 +10510,14 @@ var $;
             }
             return next;
         }
+        hidden = false;
+        shown() {
+            for (let node = this; node; node = node.parent()) {
+                if (node.hidden)
+                    return false;
+            }
+            return true;
+        }
         root() {
             let node = this;
             for (let parent = node.parent(); parent; parent = node.parent())
@@ -11406,6 +11414,8 @@ var $;
             let count = 0;
             for (let i = 0; i < nodes.length; ++i) {
                 const node = nodes[i];
+                if (!node.shown())
+                    continue;
                 const world = node.world();
                 if (ranged) {
                     const dx = world[12] - ranged[0];
@@ -15114,6 +15124,37 @@ var $;
         frame_done = -1;
         frustum = new Float32Array(24);
         eye = new Float32Array(3);
+        snap = new Float32Array(0);
+        snap_count = 0;
+        snapshot() {
+            return this.snap;
+        }
+        snapshot_count() {
+            return this.snap_count;
+        }
+        snapshot_version(next = 0) {
+            return next;
+        }
+        snap_fill(nodes) {
+            if (this.snap.length < nodes.length * 3)
+                this.snap = new Float32Array(nodes.length * 3);
+            const snap = this.snap;
+            for (let i = 0; i < nodes.length; ++i) {
+                const node = nodes[i];
+                const at = i * 3;
+                if (!node.shown()) {
+                    snap[at] = 0;
+                    snap[at + 1] = 0;
+                    snap[at + 2] = 0;
+                    continue;
+                }
+                const world = node.world();
+                snap[at] = world[12];
+                snap[at + 1] = world[13];
+                snap[at + 2] = world[14];
+            }
+            this.snap_count = nodes.length;
+        }
         step() {
             const frame = this.clock().frame();
             const dt = this.clock().dt();
@@ -15128,8 +15169,11 @@ var $;
             if (frame !== this.frame_done) {
                 this.frame_done = frame;
                 input?.poll();
-                for (let i = 0; i < nodes.length; ++i)
-                    nodes[i].step(dt);
+                for (let i = 0; i < nodes.length; ++i) {
+                    const node = nodes[i];
+                    if (node.shown())
+                        node.step(dt);
+                }
                 phys?.step(dt);
                 phys3?.step(dt);
                 if (cam && nodes.indexOf(cam) < 0) {
@@ -15137,6 +15181,8 @@ var $;
                         cam.parent(this);
                     cam.step(dt);
                 }
+                this.snap_fill(nodes);
+                this.snapshot_version(frame);
             }
             if (cam) {
                 cam.frustum(aspect, this.frustum);
@@ -15199,6 +15245,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "aspect", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_scene.prototype, "snapshot_version", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "step", null);
@@ -18255,6 +18304,42 @@ var $;
         follow(next) {
             return next ?? 0;
         }
+        zoom_min(next) {
+            return next ?? 0.25;
+        }
+        zoom_max(next) {
+            return next ?? 4;
+        }
+        place(x, y) {
+            const bounds = this.bounds();
+            if (bounds) {
+                const height = this.height() / this.zoom();
+                x = $bog_gamengine_cam_flat_clamp(x, bounds[0], bounds[2], height * this.aspect());
+                y = $bog_gamengine_cam_flat_clamp(y, bounds[1], bounds[3], height);
+            }
+            const pos = this.pos();
+            if (x === pos[0] && y === pos[1])
+                return pos;
+            const next = new Float32Array(3);
+            next[0] = x;
+            next[1] = y;
+            next[2] = pos[2];
+            return this.pos(next);
+        }
+        pan(dx, dy) {
+            const pos = this.pos();
+            return this.place(pos[0] + dx, pos[1] + dy);
+        }
+        zoom_at(factor, x, y) {
+            const zoom = this.zoom();
+            const next = Math.min(this.zoom_max(), Math.max(this.zoom_min(), zoom * factor));
+            if (next === zoom)
+                return this.pos();
+            this.zoom(next);
+            const rate = zoom / next;
+            const pos = this.pos();
+            return this.place(x + (pos[0] - x) * rate, y + (pos[1] - y) * rate);
+        }
         step(dt) {
             const target = this.target();
             if (!target)
@@ -18271,15 +18356,7 @@ var $;
             const pos = this.pos();
             const follow = this.follow();
             const rate = follow > 0 ? 1 - Math.exp(-dt / follow) : 1;
-            x = pos[0] + (x - pos[0]) * rate;
-            y = pos[1] + (y - pos[1]) * rate;
-            if (x === pos[0] && y === pos[1])
-                return;
-            const next = new Float32Array(3);
-            next[0] = x;
-            next[1] = y;
-            next[2] = pos[2];
-            this.pos(next);
+            this.place(pos[0] + (x - pos[0]) * rate, pos[1] + (y - pos[1]) * rate);
         }
         proj(aspect) {
             const h = this.height() / this.zoom();
@@ -18304,6 +18381,12 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_cam_flat.prototype, "follow", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_cam_flat.prototype, "zoom_min", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_cam_flat.prototype, "zoom_max", null);
     __decorate([
         $mol_mem_key
     ], $bog_gamengine_cam_flat.prototype, "proj", null);
@@ -31858,6 +31941,56 @@ var $;
             $mol_assert_equal(batches.length, 1);
             $mol_assert_equal(batches[0].nodes(), [sprite]);
         },
+        'node hidden between frames neither steps nor draws'($) {
+            $.$mol_state_time = $bog_gamengine_scene_time_mock;
+            const hero = new $bog_gamengine_scene_mover;
+            const mate = new $bog_gamengine_scene_mover;
+            const batch = new $bog_gamengine_batch;
+            batch.nodes([hero, mate]);
+            const scene = new $bog_gamengine_scene;
+            scene.$ = $;
+            scene.kids = () => [hero, mate];
+            scene.batches([batch]);
+            $bog_gamengine_scene_time_mock.stamp(0);
+            scene.step();
+            $bog_gamengine_scene_time_mock.stamp(16);
+            scene.step();
+            const nodes = scene.nodes();
+            $mol_assert_equal(batch.count, 2);
+            const at = hero.pos()[0];
+            hero.hidden = true;
+            $bog_gamengine_scene_time_mock.stamp(32);
+            scene.step();
+            $mol_assert_equal(hero.pos()[0], at);
+            $mol_assert_ok(mate.pos()[0] > at);
+            $mol_assert_equal(batch.count, 1);
+            $mol_assert_equal(scene.nodes(), nodes);
+        },
+        'snapshot holds positions and its version grows once per frame'($) {
+            $.$mol_state_time = $bog_gamengine_scene_time_mock;
+            const hero = new $bog_gamengine_scene_mover;
+            const mate = new $bog_gamengine_scene_mover;
+            mate.pos(new Float32Array([0, 5, 0]));
+            const scene = new $bog_gamengine_scene;
+            scene.$ = $;
+            scene.kids = () => [hero, mate];
+            $bog_gamengine_scene_time_mock.stamp(0);
+            scene.step();
+            $bog_gamengine_scene_time_mock.stamp(16);
+            scene.step();
+            const version = scene.snapshot_version();
+            const snap = scene.snapshot();
+            $mol_assert_equal(scene.snapshot_count(), 2);
+            $mol_assert_ok(Math.abs(snap[0] - hero.pos()[0]) < 1e-9);
+            $mol_assert_equal(snap[4], 5);
+            scene.aspect(2);
+            scene.step();
+            $mol_assert_equal(scene.snapshot_version(), version);
+            $bog_gamengine_scene_time_mock.stamp(32);
+            scene.step();
+            $mol_assert_equal(scene.snapshot_version(), version + 1);
+            $mol_assert_equal(scene.snapshot(), snap);
+        },
         'grandchild of overridden kids sees scene after nodes walk'() {
             const a = new $bog_gamengine_scene_named;
             const b = new $bog_gamengine_node;
@@ -32613,6 +32746,37 @@ var $;
             for (let i = 0; i < 100; ++i)
                 cam.step(0.1);
             $mol_assert_ok(Math.abs(cam.pos()[0] - 10) < 1e-3);
+        },
+        'pan moves the camera and stops at the bounds'() {
+            const cam = new $bog_gamengine_cam_flat;
+            cam.height(10);
+            cam.aspect(2);
+            cam.bounds(new Float32Array([0, 0, 40, 10]));
+            cam.pos(new Float32Array([10, 5, 0]));
+            cam.pan(5, 0);
+            $mol_assert_equal(cam.pos()[0], 15);
+            cam.pan(100, 0);
+            $mol_assert_equal(cam.pos()[0], 30);
+            cam.pan(0, 100);
+            $mol_assert_equal(cam.pos()[1], 5);
+        },
+        'zoom at a point keeps that point in place'() {
+            const cam = new $bog_gamengine_cam_flat;
+            cam.height(10);
+            cam.pos(new Float32Array([0, 0, 0]));
+            cam.zoom_at(2, 4, 2);
+            $mol_assert_equal(cam.zoom(), 2);
+            $mol_assert_equal(cam.pos()[0], 2);
+            $mol_assert_equal(cam.pos()[1], 1);
+        },
+        'zoom stays within its limits'() {
+            const cam = new $bog_gamengine_cam_flat;
+            cam.zoom_min(0.5);
+            cam.zoom_max(2);
+            cam.zoom_at(10, 0, 0);
+            $mol_assert_equal(cam.zoom(), 2);
+            cam.zoom_at(0.01, 0, 0);
+            $mol_assert_equal(cam.zoom(), 0.5);
         },
         'set through props changes zoom'() {
             const cam = new $bog_gamengine_cam_flat;

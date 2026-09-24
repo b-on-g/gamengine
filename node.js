@@ -10519,6 +10519,14 @@ var $;
             }
             return next;
         }
+        hidden = false;
+        shown() {
+            for (let node = this; node; node = node.parent()) {
+                if (node.hidden)
+                    return false;
+            }
+            return true;
+        }
         root() {
             let node = this;
             for (let parent = node.parent(); parent; parent = node.parent())
@@ -11415,6 +11423,8 @@ var $;
             let count = 0;
             for (let i = 0; i < nodes.length; ++i) {
                 const node = nodes[i];
+                if (!node.shown())
+                    continue;
                 const world = node.world();
                 if (ranged) {
                     const dx = world[12] - ranged[0];
@@ -15123,6 +15133,37 @@ var $;
         frame_done = -1;
         frustum = new Float32Array(24);
         eye = new Float32Array(3);
+        snap = new Float32Array(0);
+        snap_count = 0;
+        snapshot() {
+            return this.snap;
+        }
+        snapshot_count() {
+            return this.snap_count;
+        }
+        snapshot_version(next = 0) {
+            return next;
+        }
+        snap_fill(nodes) {
+            if (this.snap.length < nodes.length * 3)
+                this.snap = new Float32Array(nodes.length * 3);
+            const snap = this.snap;
+            for (let i = 0; i < nodes.length; ++i) {
+                const node = nodes[i];
+                const at = i * 3;
+                if (!node.shown()) {
+                    snap[at] = 0;
+                    snap[at + 1] = 0;
+                    snap[at + 2] = 0;
+                    continue;
+                }
+                const world = node.world();
+                snap[at] = world[12];
+                snap[at + 1] = world[13];
+                snap[at + 2] = world[14];
+            }
+            this.snap_count = nodes.length;
+        }
         step() {
             const frame = this.clock().frame();
             const dt = this.clock().dt();
@@ -15137,8 +15178,11 @@ var $;
             if (frame !== this.frame_done) {
                 this.frame_done = frame;
                 input?.poll();
-                for (let i = 0; i < nodes.length; ++i)
-                    nodes[i].step(dt);
+                for (let i = 0; i < nodes.length; ++i) {
+                    const node = nodes[i];
+                    if (node.shown())
+                        node.step(dt);
+                }
                 phys?.step(dt);
                 phys3?.step(dt);
                 if (cam && nodes.indexOf(cam) < 0) {
@@ -15146,6 +15190,8 @@ var $;
                         cam.parent(this);
                     cam.step(dt);
                 }
+                this.snap_fill(nodes);
+                this.snapshot_version(frame);
             }
             if (cam) {
                 cam.frustum(aspect, this.frustum);
@@ -15208,6 +15254,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "aspect", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_scene.prototype, "snapshot_version", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "step", null);
@@ -18264,6 +18313,42 @@ var $;
         follow(next) {
             return next ?? 0;
         }
+        zoom_min(next) {
+            return next ?? 0.25;
+        }
+        zoom_max(next) {
+            return next ?? 4;
+        }
+        place(x, y) {
+            const bounds = this.bounds();
+            if (bounds) {
+                const height = this.height() / this.zoom();
+                x = $bog_gamengine_cam_flat_clamp(x, bounds[0], bounds[2], height * this.aspect());
+                y = $bog_gamengine_cam_flat_clamp(y, bounds[1], bounds[3], height);
+            }
+            const pos = this.pos();
+            if (x === pos[0] && y === pos[1])
+                return pos;
+            const next = new Float32Array(3);
+            next[0] = x;
+            next[1] = y;
+            next[2] = pos[2];
+            return this.pos(next);
+        }
+        pan(dx, dy) {
+            const pos = this.pos();
+            return this.place(pos[0] + dx, pos[1] + dy);
+        }
+        zoom_at(factor, x, y) {
+            const zoom = this.zoom();
+            const next = Math.min(this.zoom_max(), Math.max(this.zoom_min(), zoom * factor));
+            if (next === zoom)
+                return this.pos();
+            this.zoom(next);
+            const rate = zoom / next;
+            const pos = this.pos();
+            return this.place(x + (pos[0] - x) * rate, y + (pos[1] - y) * rate);
+        }
         step(dt) {
             const target = this.target();
             if (!target)
@@ -18280,15 +18365,7 @@ var $;
             const pos = this.pos();
             const follow = this.follow();
             const rate = follow > 0 ? 1 - Math.exp(-dt / follow) : 1;
-            x = pos[0] + (x - pos[0]) * rate;
-            y = pos[1] + (y - pos[1]) * rate;
-            if (x === pos[0] && y === pos[1])
-                return;
-            const next = new Float32Array(3);
-            next[0] = x;
-            next[1] = y;
-            next[2] = pos[2];
-            this.pos(next);
+            this.place(pos[0] + (x - pos[0]) * rate, pos[1] + (y - pos[1]) * rate);
         }
         proj(aspect) {
             const h = this.height() / this.zoom();
@@ -18313,6 +18390,12 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_cam_flat.prototype, "follow", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_cam_flat.prototype, "zoom_min", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_cam_flat.prototype, "zoom_max", null);
     __decorate([
         $mol_mem_key
     ], $bog_gamengine_cam_flat.prototype, "proj", null);

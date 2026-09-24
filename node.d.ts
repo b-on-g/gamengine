@@ -4038,6 +4038,8 @@ declare namespace $ {
         shader(next?: $bog_gamengine_shader | null): $bog_gamengine_shader | null;
         parent(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
         kids(next?: readonly $bog_gamengine_node[]): readonly $bog_gamengine_node[];
+        hidden: boolean;
+        shown(): boolean;
         root(): $bog_gamengine_node;
         is_scene(): boolean;
         is_brain(): boolean;
@@ -4844,6 +4846,12 @@ declare namespace $ {
         frame_done: number;
         frustum: Float32Array<ArrayBuffer>;
         eye: Float32Array<ArrayBuffer>;
+        snap: Float32Array<ArrayBuffer>;
+        snap_count: number;
+        snapshot(): Float32Array;
+        snapshot_count(): number;
+        snapshot_version(next?: number): number;
+        snap_fill(nodes: readonly $bog_gamengine_node[]): void;
         step(): number;
     }
 }
@@ -5733,6 +5741,11 @@ declare namespace $ {
         target(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
         bounds(next?: Float32Array | null): Float32Array<ArrayBufferLike> | null;
         follow(next?: number): number;
+        zoom_min(next?: number): number;
+        zoom_max(next?: number): number;
+        place(x: number, y: number): Float32Array<ArrayBufferLike>;
+        pan(dx: number, dy: number): Float32Array<ArrayBufferLike>;
+        zoom_at(factor: number, x: number, y: number): Float32Array<ArrayBufferLike>;
         step(dt: number): void;
         proj(aspect: number): $mol_3d_mat4;
     }
