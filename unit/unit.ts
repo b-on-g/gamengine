@@ -87,7 +87,6 @@ namespace $ {
 		scan_left = 0
 		roam_left = 0
 		seed = 1
-		here = new Float32Array( 2 )
 
 		hp() {
 			return this.fight()?.health() ?? 0
@@ -132,9 +131,9 @@ namespace $ {
 			return this.seed / 0x7fffffff
 		}
 
-		order_to( x: number, y: number ) {
-			this.aim( x, y )
+		aim( x: number, y: number, z = 0 ) {
 			this.order_on = true
+			return super.aim( x, y, z )
 		}
 
 		wound( hurt: number ) {
@@ -147,11 +146,13 @@ namespace $ {
 			this.dead( true )
 			this.stop()
 			this.order_on = false
+			this.hidden = true
 			this.flash()?.burst( 12, this.pos() )
 		}
 
 		reset( at: Float32Array ) {
 			this.dead( false )
+			this.hidden = false
 			this.fight()?.revive()
 			this.stop()
 			this.order_on = false
@@ -160,8 +161,6 @@ namespace $ {
 			this.foe_dist = Infinity
 			this.since = Infinity
 			this.pos( at )
-			this.here[ 0 ] = at[ 0 ]
-			this.here[ 1 ] = at[ 1 ]
 			const brain = this.brain()
 			if( brain instanceof $bog_gamengine_brain_fsm ) brain.state_now = ''
 		}
@@ -279,10 +278,6 @@ namespace $ {
 			else this.goal_on = false
 
 			super.step( dt )
-
-			const pos = this.pos()
-			this.here[ 0 ] = pos[ 0 ]
-			this.here[ 1 ] = pos[ 1 ]
 
 		}
 

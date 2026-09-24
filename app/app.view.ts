@@ -237,8 +237,8 @@ namespace $.$$ {
 		sprites() {
 			return [
 				... this.resources(),
-				... this.foe_live_ids().map( id => this.Foe_sprite( id ) ),
-				... this.mine_live_ids().map( id => this.Mine_sprite( id ) ),
+				... this.unit_ids().map( id => this.Foe_sprite( id ) ),
+				... this.unit_ids().map( id => this.Mine_sprite( id ) ),
 			]
 		}
 
@@ -246,10 +246,11 @@ namespace $.$$ {
 		nodes() {
 			return [
 				this.Tilemap(),
-				... this.foe_alive(),
-				... this.mine_alive(),
+				... this.unit_ids().map( id => this.Foe( id ) ),
+				... this.unit_ids().map( id => this.Mine( id ) ),
 				... this.sprites(),
 				this.Flash(),
+				this.Edge(),
 				this.Cam(),
 			]
 		}
@@ -304,7 +305,7 @@ namespace $.$$ {
 		pointer_move( event?: PointerEvent ) {
 			if( !event ) return null
 			const dpr = this.Draw().dpr()
-			this.Cam().aim( event.offsetX * dpr, event.offsetY * dpr )
+			this.Edge().aim( event.offsetX * dpr, event.offsetY * dpr )
 			const drag = this.drag()
 			if( drag ) this.drag([ drag[ 0 ], drag[ 1 ], event.offsetX, event.offsetY ])
 			return event
@@ -318,7 +319,7 @@ namespace $.$$ {
 
 		pointer_leave( event?: PointerEvent ) {
 			if( !event ) return null
-			this.Cam().away()
+			this.Edge().away()
 			this.choose()
 			return event
 		}
@@ -326,7 +327,8 @@ namespace $.$$ {
 		wheel( event?: WheelEvent ) {
 			if( !event ) return null
 			event.preventDefault()
-			this.Cam().roll( event.deltaY )
+			const at = this.spot( event.offsetX, event.offsetY )
+			this.Cam().zoom_at( event.deltaY < 0 ? 1.15 : 1 / 1.15, at[ 0 ], at[ 1 ] )
 			return event
 		}
 
@@ -362,20 +364,7 @@ namespace $.$$ {
 			const ids = this.sel_live()
 			if( !ids.length ) return
 			const at = this.spot( x, y )
-			const grid = this.Grid()
-			const side = Math.ceil( Math.sqrt( ids.length ) ) || 1
-			const gap = 0.95
-			for( let i = 0; i < ids.length; ++i ) {
-				const col = i % side
-				const row = ( i / side ) | 0
-				let gx = at[ 0 ] + ( col - ( side - 1 ) / 2 ) * gap
-				let gy = at[ 1 ] - ( row - ( side - 1 ) / 2 ) * gap
-				if( grid.solid_at( gx, gy ) ) {
-					gx = at[ 0 ]
-					gy = at[ 1 ]
-				}
-				this.Mine( ids[ i ] ).order_to( gx, gy )
-			}
+			this.Squad().order( ids.map( id => this.Mine( id ) ), at[ 0 ], at[ 1 ], this.Grid() )
 			this.Sound().play( 'order' )
 		}
 
@@ -396,14 +385,22 @@ namespace $.$$ {
 			return id[ 0 ] === 'm' ? this.Mine( id.slice( 1 ) ) : this.Foe( id.slice( 1 ) )
 		}
 
-		dot_left( id: string ) {
+		@ $mol_mem_key
+		dot_index( id: string ) {
+			return this.Scene().nodes().indexOf( this.dot_unit( id ) ) * 3
+		}
+
+		dot_at( id: string, axis: number ) {
 			this.map_tick()
-			return `${ ( this.dot_unit( id ).here[ 0 ] / this.Tile().width() * 100 ).toFixed( 1 ) }%`
+			return this.Scene().snapshot()[ this.dot_index( id ) + axis ]
+		}
+
+		dot_left( id: string ) {
+			return `${ ( this.dot_at( id, 0 ) / this.Tile().width() * 100 ).toFixed( 1 ) }%`
 		}
 
 		dot_top( id: string ) {
-			this.map_tick()
-			return `${ ( - this.dot_unit( id ).here[ 1 ] / this.Tile().height() * 100 ).toFixed( 1 ) }%`
+			return `${ ( - this.dot_at( id, 1 ) / this.Tile().height() * 100 ).toFixed( 1 ) }%`
 		}
 
 		dot_back( id: string ) {

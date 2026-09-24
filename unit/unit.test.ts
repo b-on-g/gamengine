@@ -40,7 +40,7 @@ namespace $ {
 		'order sends the unit toward the goal'() {
 			const { mine } = $bog_legion_unit_pair()
 			mine.mode_set( 'move' )
-			mine.order_to( 3.5, -3.5 )
+			mine.aim( 3.5, -3.5 )
 			const before = mine.pos()[ 0 ]
 			for( let i = 0; i < 10; ++i ) mine.step( 0.05 )
 			$mol_assert_ok( mine.pos()[ 0 ] > before )
@@ -76,11 +76,12 @@ namespace $ {
 		'dead unit stops moving'() {
 			const { mine } = $bog_legion_unit_pair()
 			mine.mode_set( 'move' )
-			mine.order_to( 3.5, -3.5 )
+			mine.aim( 3.5, -3.5 )
 			mine.die()
 			const at = mine.pos()[ 0 ]
 			for( let i = 0; i < 10; ++i ) mine.step( 0.05 )
 			$mol_assert_equal( mine.pos()[ 0 ], at )
+			$mol_assert_equal( mine.shown(), false )
 		},
 
 		'reset brings the unit back to full health at the start'() {

@@ -122,13 +122,19 @@ $bog_legion_app $mol_page
 		cam <= Cam
 		kids <= nodes /
 		batches <= batches /
-	Cam $bog_legion_cam
+	Cam $bog_gamengine_cam_flat
 		height 22
 		zoom? <=> cam_zoom? 1
+		zoom_min 0.6
+		zoom_max 3
 		pos? <=> cam_pos? Float32Array
 		bounds <= cam_bounds Float32Array
+	Edge $bog_gamengine_cam_edge
+		cam <= Cam
 		width <= draw_width
-		height_px <= draw_height
+		height <= draw_height
+		speed 14
+	Squad $bog_gamengine_nav_squad
 	Tilemap $bog_gamengine_tilemap
 		tile <= Tile
 		atlas <= Atlas
