@@ -443,6 +443,61 @@ namespace $ {
 			return typeof value === 'number' ? String( Math.round( value * 1e6 ) / 1e6 ) : String( value )
 		}
 
+		numbers( list: $mol_tree2 ): readonly string[] | null {
+			if( list.type !== '/' || !list.kids.length ) return null
+			const out = [] as string[]
+			for( const kid of list.kids ) {
+				if( kid.kids.length || !kid.type || Number.isNaN( Number( kid.type ) ) ) return null
+				out.push( kid.type )
+			}
+			return out
+		}
+
+		module( klass: string ) {
+			const root = this.flat( this.tree() ).kids[ 0 ]
+			if( !root ) return $mol_fail( new Error( `Document has no root class` ) )
+			const ports = [] as { readonly name: string, readonly items: readonly string[] }[]
+			const taken = new Set< string >()
+			const port = ( owner: string, prop: string )=> {
+				const base = `${ owner }_${ prop }`
+				if( !taken.has( base ) ) return base
+				for( let i = 2; ; ++ i ) {
+					if( !taken.has( `${ base }_${ i }` ) ) return `${ base }_${ i }`
+				}
+			}
+			const walk = ( tree: $mol_tree2, owner: string ): $mol_tree2 => {
+				const own = /^[A-Z]/.test( tree.type ) ? tree.type : owner
+				return tree.clone( tree.kids.map( kid => {
+					const items = kid.kids.length === 1 ? this.numbers( kid.kids[ 0 ] ) : null
+					if( !items ) return walk( kid, own )
+					const prop = kid.type.replace( /\?$/, '' )
+					const name = port( own, prop )
+					taken.add( name )
+					ports.push({ name, items } )
+					return kid.struct( prop, [ kid.struct( '<=', [ kid.struct( name, [ kid.struct( 'Float32Array' ) ] ) ] ) ] )
+				} ) )
+			}
+			const made = walk( root.struct( klass, root.kids ), 'Root' )
+			const body = ports.map( item => [
+				'\t\t@ $mol_mem',
+				`\t\t${ item.name }() {`,
+				`\t\t\treturn new Float32Array([ ${ item.items.join( ', ' ) } ])`,
+				'\t\t}',
+			].join( '\n' ) )
+			const ts = [
+				'namespace $.$$ {',
+				'',
+				`\texport class ${ klass } extends $.${ klass } {`,
+				'',
+				... body.length ? [ body.join( '\n\n' ), '' ] : [],
+				'\t}',
+				'',
+				'}',
+				'',
+			].join( '\n' )
+			return { tree: this.print( made ), ts }
+		}
+
 		flat( tree: $mol_tree2 ): $mol_tree2 {
 			if( tree.type !== '/' ) return tree.clone( tree.kids.map( kid => this.flat( kid ) ) )
 			const items = [] as $mol_tree2[]
