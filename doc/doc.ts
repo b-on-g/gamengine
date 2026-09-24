@@ -347,6 +347,49 @@ namespace $ {
 			return name
 		}
 
+		swap_tree( tree: $mol_tree2, from: $mol_tree2, to: $mol_tree2 ): $mol_tree2 {
+			if( tree === from ) return to
+			return tree.clone( tree.kids.map( kid => this.swap_tree( kid, from, to ) ) )
+		}
+
+		kids_list( path: string ) {
+			const at = path.lastIndexOf( '/' )
+			const owner = at < 0 ? '' : path.slice( 0, at ).replace( /^.*\//, '' )
+			const klass = this.decls().get( owner )
+			if( !klass ) return $mol_fail( new Error( `Node ${ path } has no owner` ) )
+			const list = klass.select( 'kids', '/' ).kids[ 0 ]
+			if( !list ) return $mol_fail( new Error( `Node ${ path } is not in a kids list` ) )
+			return list
+		}
+
+		kid_at( path: string ) {
+			const name = path.slice( path.lastIndexOf( '/' ) + 1 )
+			const list = this.kids_list( path )
+			const at = list.kids.findIndex( kid => kid.kids[ 0 ]?.type === name )
+			if( at < 0 ) return $mol_fail( new Error( `Node ${ path } is not among the kids of its owner` ) )
+			return { list, at }
+		}
+
+		drop( path: string ) {
+			const { list, at } = this.kid_at( path )
+			const kids = list.kids.filter( ( kid, index )=> index !== at )
+			this.source( this.print( this.swap_tree( this.tree(), list, list.clone( kids ) ) ) )
+			return path
+		}
+
+		dup( path: string ) {
+			const { list, at } = this.kid_at( path )
+			const ref = list.kids[ at ]
+			const decl = ref.kids[ 0 ]
+			const klass = decl.kids[ 0 ]?.type ?? ''
+			if( !klass.startsWith( '$' ) ) return $mol_fail( new Error( `Node ${ path } is a reference without a class of its own` ) )
+			const made = this.free_name( klass )
+			const copy = ref.clone([ decl.struct( made, decl.kids ) ])
+			const kids = [ ... list.kids.slice( 0, at + 1 ), copy, ... list.kids.slice( at + 1 ) ]
+			this.source( this.print( this.swap_tree( this.tree(), list, list.clone( kids ) ) ) )
+			return made
+		}
+
 		add_uri( owner: string, prop: string, uri: string, name?: string ) {
 			const klass = this.decls().get( owner )
 			if( !klass ) return $mol_fail( new Error( `Node ${ owner } is not declared` ) )

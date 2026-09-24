@@ -274,6 +274,45 @@ namespace $ {
 			$mol_assert_fail( ()=> doc.scene().nodes(), 'Unknown class $' + 'bog_ghost of Coin' )
 		},
 
+		'drop takes the node out of the scene and out of the source'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample )
+			doc.drop( 'Coin' )
+			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Стена' ] )
+			$mol_assert_not( doc.source().includes( 'Coin' ) )
+			$mol_assert_not( doc.source().includes( 'Монета' ) )
+			$mol_assert_equal( doc.scene().nodes().map( node => node.title() ), [ 'Герой', 'Стена' ] )
+		},
+
+		'drop leaves the world of the scene alone'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample )
+			doc.drop( 'Hero' )
+			$mol_assert_ok( doc.source().includes( 'Atlas $bog_gamengine_atlas' ) )
+			$mol_assert_ok( doc.source().includes( 'palette *' ) )
+			$mol_assert_ok( doc.source().includes( '\\######' ) )
+		},
+
+		'drop of an unknown node fails with its path'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample )
+			$mol_assert_fail( ()=> doc.drop( 'Ghost' ), 'Node Ghost is not among the kids of its owner' )
+		},
+
+		'dup puts a copy right after the node and gives it a free name'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample )
+			const made = doc.dup( 'Coin' )
+			$mol_assert_equal( made, 'Sprite_1' )
+			$mol_assert_equal( doc.nodes().map( node => node.name ), [ 'Hero', 'Coin', 'Sprite_1', 'Wall' ] )
+			$mol_assert_equal( doc.scene().nodes().map( node => node.title() ), [ 'Герой', 'Монета', 'Монета', 'Стена' ] )
+		},
+
+		'copy keeps every property of the node and lives on its own'( $ ) {
+			const doc = open( $, $bog_gamestudio_sample )
+			const made = doc.dup( 'Coin' )
+			$mol_assert_equal( doc.node( made ).klass, '$bog_gamengine_sprite' )
+			$mol_assert_equal( doc.scene().nodes()[ 2 ].pos()[ 0 ], 2 )
+			doc.set( made, 'pos', [ 7, 0, 0 ] )
+			$mol_assert_equal( doc.scene().nodes().map( node => node.pos()[ 0 ] ), [ -2, 2, 7, 0 ] )
+		},
+
 	})
 
 }
