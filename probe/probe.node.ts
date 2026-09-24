@@ -156,6 +156,10 @@ namespace $ {
 			const fields_coin = inspect ? inspect.innerText : ''
 			const row_coin = rows[ 1 ] ? rows[ 1 ].getAttribute( 'mol_check_checked' ) : null
 			${ $bog_gamestudio_probe_arrow_script }
+			const grid = document.querySelector( '[bog_gamestudio_app_grid]' )
+			if( grid && grid.getAttribute( 'mol_check_checked' ) === 'true' ) grid.click()
+			await frame()
+			await frame()
 			const arrow = arrow_at( at, coin_x, coin_y )
 			if( arrow ) {
 				pointer( 'pointerdown', arrow[ 0 ], arrow[ 1 ] )
@@ -583,6 +587,132 @@ namespace $ {
 			if( slow.length ) return $mol_fail( new Error( `задержка выше порога: ${ delays.join( ', ' ) } мс` ) )
 
 			return say( $bog_gamestudio_probe_live_ok )
+
+		} finally {
+			for( const { browser, profile } of windows ) {
+				browser.close()
+				try { $node.fs.rmSync( profile, { recursive: true, force: true } ) } catch( error ) {}
+			}
+			site.close()
+		}
+
+	}
+
+	export const $bog_gamestudio_probe_keep_page = 'bog/gamestudio/app/-/index.html'
+
+	export const $bog_gamestudio_probe_keep_ok = 'правка дожила до перезагрузки, подвал сказал где она лежит, при запрете записи редактор жив и признался'
+
+	export const $bog_gamestudio_probe_keep_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0 && !!document.querySelector( '[bog_gamestudio_app_kept]' )`
+
+	export const $bog_gamestudio_probe_keep_state_script = `
+		const kept_editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+		const text = kept_editor ? kept_editor.value : ''
+		const foot = document.querySelector( '[bog_gamestudio_app_kept]' )
+		const canvas = document.querySelector( 'canvas' )
+		const gl = canvas && canvas.getContext( 'webgl2' )
+		const out = new Uint8Array( 4 )
+		if( gl ) gl.readPixels( ( canvas.width / 2 ) | 0, ( canvas.height / 2 ) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
+		const state = {
+			first: /name \\\\Крошка/.test( text ),
+			second: /name \\\\Дозор/.test( text ),
+			size: text.length,
+			rows: document.querySelectorAll( '[bog_gamestudio_app_row]' ).length,
+			foot: foot ? foot.innerText : '',
+			stored: localStorage.getItem( 'bog_gamestudio_source' ) !== null,
+			center: Array.from( out ),
+		}
+	`
+
+	export const $bog_gamestudio_probe_keep_type_script = ( from: string, to: string )=> `
+		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
+		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+		editor.value = editor.value.replace( 'name \\\\${ from }', 'name \\\\${ to }' )
+		editor.dispatchEvent( new Event( 'input', { bubbles: true } ) )
+		await frame()
+		await frame()
+		${ $bog_gamestudio_probe_keep_state_script }
+		return state
+	`
+
+	export const $bog_gamestudio_probe_keep_read_script = `
+		${ $bog_gamestudio_probe_keep_state_script }
+		return state
+	`
+
+	export const $bog_gamestudio_probe_keep_lock_script = `
+		Storage.prototype.setItem = function() { throw new Error( 'The operation is insecure' ) }
+		return { locked: true }
+	`
+
+	export type $bog_gamestudio_probe_keep_state = {
+		readonly first: boolean
+		readonly second: boolean
+		readonly size: number
+		readonly rows: number
+		readonly foot: string
+		readonly stored: boolean
+		readonly center: readonly number[]
+	}
+
+	export function $bog_gamestudio_probe_keep_dark( center: readonly number[] ) {
+		return center[ 0 ] < 40 && center[ 1 ] < 40 && center[ 2 ] < 40
+	}
+
+	export async function $bog_gamestudio_probe_keep(
+		root = $node.process.cwd(),
+		flags: readonly string[] = $bog_gamestudio_probe_flags,
+	) {
+
+		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
+
+		const bin = $bog_probe_chrome_bin()
+		if( !bin ) return say( $bog_probe_skip )
+
+		const site = await new $bog_probe_static( String( $node.path.resolve( root ) ) ).open()
+		const windows = [] as { browser: $bog_probe_browser, profile: string }[]
+
+		try {
+
+			windows.push( await $bog_gamestudio_probe_window( bin, flags, 1600, 800 ) )
+			const browser = windows[ 0 ].browser
+			const page = site.uri( $bog_gamestudio_probe_keep_page )
+			const fail = ( reason: string, state: unknown )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( state ) }` ) )
+
+			await browser.open_page( page, $bog_gamestudio_probe_keep_ready, 60000 )
+
+			const typed = await browser.evaluate(
+				$bog_gamestudio_probe_keep_type_script( 'Герой', 'Крошка' ),
+				15000,
+			) as $bog_gamestudio_probe_keep_state
+			say( `правка: ${ JSON.stringify( typed ) }` )
+
+			if( !typed.first ) return fail( 'правка не попала в исходник', typed )
+			if( !typed.stored ) return fail( 'правка не дошла до хранилища браузера', typed )
+			if( !typed.foot.startsWith( 'Браузер этой машины' ) ) return fail( 'подвал не сказал, что работа лежит в браузере', typed )
+
+			await browser.open_page( page, $bog_gamestudio_probe_keep_ready, 60000 )
+
+			const back = await browser.evaluate( $bog_gamestudio_probe_keep_read_script, 15000 ) as $bog_gamestudio_probe_keep_state
+			say( `после перезагрузки: ${ JSON.stringify( back ) }` )
+
+			if( !back.first ) return fail( 'перезагрузка потеряла правку', back )
+			if( back.rows !== 3 ) return fail( 'после перезагрузки в дереве сцены не три узла', back )
+			if( $bog_gamestudio_probe_keep_dark( back.center ) ) return fail( 'после перезагрузки холст чёрный', back )
+
+			await browser.evaluate( $bog_gamestudio_probe_keep_lock_script, 15000 )
+
+			const locked = await browser.evaluate(
+				$bog_gamestudio_probe_keep_type_script( 'Крошка', 'Дозор' ),
+				15000,
+			) as $bog_gamestudio_probe_keep_state
+			say( `при запрете записи: ${ JSON.stringify( locked ) }` )
+
+			if( !locked.second ) return fail( 'при запрете записи правка пропала из редактора', locked )
+			if( locked.rows !== 3 ) return fail( 'при запрете записи дерево сцены осыпалось', locked )
+			if( $bog_gamestudio_probe_keep_dark( locked.center ) ) return fail( 'при запрете записи холст почернел', locked )
+			if( !locked.foot.startsWith( 'Браузер не сохраняет' ) ) return fail( 'подвал не признался, что запись не идёт', locked )
+
+			return say( $bog_gamestudio_probe_keep_ok )
 
 		} finally {
 			for( const { browser, profile } of windows ) {
