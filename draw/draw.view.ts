@@ -6,11 +6,13 @@ namespace $.$$ {
 			light_count: 'int', light_pos: 'vec4[8]', light_dir: 'vec4[8]', light_color: 'vec4[8]',
 			ambient: 'vec3', cam_pos: 'vec3', wireframe: 'float',
 			shadow_mat: 'mat4', shadow_map: 'sampler2DShadow', shadow_light: 'int',
+			bones: 'sampler2D',
 		}
 		input: {
 			vertex: 'vec3', uv: 'vec2', normal: 'vec3',
 			inst_trans: 'mat4', inst_tint: 'vec4', inst_layer: 'float', inst_uv: 'vec4',
 			inst_material: 'vec4', inst_normal_layer: 'float',
+			joints: 'vec4', weights: 'vec4',
 		}
 	}
 
@@ -42,6 +44,8 @@ namespace $.$$ {
 		shadow_mat = null as WebGLUniformLocation | null
 		shadow_map = null as WebGLUniformLocation | null
 		shadow_light = null as WebGLUniformLocation | null
+		bones = null as WebGLUniformLocation | null
+		bones_tex = null as $bog_gamengine_skin_gl_data | null
 		depth = false
 		ready = false
 		vao = null! as WebGLVertexArrayObject
@@ -70,6 +74,8 @@ namespace $.$$ {
 			for( let i = 0; i < this.buffers.length; ++ i ) gl.deleteBuffer( this.buffers[ i ].native )
 			this.buffers = []
 			gl.deleteVertexArray( this.vao )
+			this.bones_tex?.dispose()
+			this.bones_tex = null
 			return this
 		}
 	}
@@ -216,6 +222,11 @@ namespace $.$$ {
 		@ $mol_mem
 		light_dir( next?: Float32Array ) {
 			return next ?? new Float32Array([ 0.4, 1, 0.6 ])
+		}
+
+		@ $mol_mem
+		clear( next?: ArrayLike< number > ) {
+			return next ? $bog_gamengine_node_vec( next ) : new Float32Array([ 0.08, 0.08, 0.1, 1 ])
 		}
 
 		@ $mol_mem
@@ -392,6 +403,7 @@ namespace $.$$ {
 				shadow_mat: glob( 'shadow_mat' ),
 				shadow_map: glob( 'shadow_map' ),
 				shadow_light: glob( 'shadow_light' ),
+				bones: glob( 'bones' ),
 				depth,
 				vao: gl.createVertexArray()!,
 				live: mode === 'lines',
@@ -428,6 +440,15 @@ namespace $.$$ {
 			slot.material?.reserve( cap * 16 )
 			slot.normal_layer = buffer( program.attribute( 'inst_normal_layer' ), 1, 1 )
 			slot.normal_layer?.reserve( cap * 4 )
+			let bytes_skin = 0
+			if( slot.bones ) {
+				const joints = $bog_gamengine_skin_shape_joints( shape )
+				const weights = $bog_gamengine_skin_shape_weights( shape )
+				buffer( program.attribute( 'joints' ), 4, 0 )?.send( joints )
+				buffer( program.attribute( 'weights' ), 4, 0 )?.send( weights )
+				bytes_skin = joints.byteLength + weights.byteLength
+				slot.bones_tex = $bog_gamengine_skin_gl_bones( gl )
+			}
 			gl.bindVertexArray( null )
 
 			slot.tris = mode === 'lines' ? 0 : mode === 'triangles' ? slot.size / 3 : Math.max( slot.size - 2, 0 )
@@ -436,7 +457,7 @@ namespace $.$$ {
 				+ ( slot.uv ? 16 : 0 )
 				+ ( slot.material ? 16 : 0 )
 				+ ( slot.normal_layer ? 4 : 0 )
-			slot.bytes_shape = shape.geometry().byteLength
+			slot.bytes_shape = shape.geometry().byteLength + bytes_skin
 			slot.bytes = slot.stride * cap + slot.bytes_shape
 
 			this.slots_all.set( batch, slot )
@@ -533,10 +554,19 @@ namespace $.$$ {
 			return count
 		}
 
+		step() {
+			try {
+				return this.scene().step()
+			} catch( error ) {
+				if( $mol_promise_like( error ) ) return -1
+				return $mol_fail_hidden( error )
+			}
+		}
+
 		paint() {
 			const at_start = performance.now()
 			this.scene().aspect( this.width() / this.height() || 1 )
-			this.scene().step()
+			this.step()
 			const at_step = performance.now()
 			const gl = this.context()
 			const slots = this.slots()
@@ -571,7 +601,8 @@ namespace $.$$ {
 			gl.cullFace( gl.BACK )
 			gl.enable( gl.BLEND )
 			gl.blendFunc( gl.ONE, gl.ONE_MINUS_SRC_ALPHA )
-			gl.clearColor( 0.08, 0.08, 0.1, 1 )
+			const clear = this.clear()
+			gl.clearColor( clear[ 0 ], clear[ 1 ], clear[ 2 ], clear[ 3 ] )
 			gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT )
 			for( let i = 0; i < slots.length; ++ i ) {
 				if( slots[ i ].ready ) this.paint_slot( gl, slots[ i ], proj, view, wireframe )
@@ -747,6 +778,13 @@ namespace $.$$ {
 				gl.activeTexture( gl.TEXTURE0 )
 				gl.bindTexture( gl.TEXTURE_2D_ARRAY, slot.tex.native )
 				$bog_gamengine_gl_uniform_int( gl, slot.sampler, 0 )
+			}
+			if( slot.bones_tex ) {
+				gl.activeTexture( gl.TEXTURE4 )
+				const bones = $bog_gamengine_skin_bones( batch )
+				if( bones ) slot.bones_tex.send( bones )
+				else gl.bindTexture( gl.TEXTURE_2D, slot.bones_tex.native )
+				$bog_gamengine_gl_uniform_int( gl, slot.bones, 4 )
 			}
 			gl.bindVertexArray( slot.vao )
 			gl.drawArraysInstanced( slot.prim, 0, slot.size, count )

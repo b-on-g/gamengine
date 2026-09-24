@@ -146,7 +146,7 @@ namespace $ {
 			$.$mol_state_time = $bog_gamengine_scene_time_mock
 			const world = new $bog_gamengine_phys3
 			world.gravity( new Float32Array( 3 ) )
-			const i = world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ 0.5, 0.5, 0.5 ]), 1, new Float32Array( 3 ) )
+			const i = world.index_of( world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ 0.5, 0.5, 0.5 ]), 1, new Float32Array( 3 ) ) )
 			world.vel[ i * 3 ] = 1
 			const scene = new $bog_gamengine_scene
 			scene.$ = $

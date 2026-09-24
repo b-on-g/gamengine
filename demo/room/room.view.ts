@@ -52,6 +52,7 @@ namespace $.$$ {
 				this.Stat(),
 				this.Walker_stat(),
 				this.Pillar_stat(),
+				this.Arm_stat(),
 				this.Light_stat(),
 				... this.profile() ? [ this.Report() ] : [],
 			]
@@ -123,6 +124,21 @@ namespace $.$$ {
 		}
 
 		@ $mol_mem
+		arm_data() {
+			return $mol_fetch.buffer( 'bog/gamengine/skin/model/arm.glb' )
+		}
+
+		@ $mol_mem
+		arm_pos() {
+			return new Float32Array([ 4, 0, 3.5 ])
+		}
+
+		@ $mol_mem
+		arm_nodes() {
+			return this.arm_shown() ? [ this.Arm() ] : []
+		}
+
+		@ $mol_mem
 		walker_pos( next?: Float32Array ) {
 			return next ?? new Float32Array([ 6, 0.5, 7.5 ])
 		}
@@ -169,12 +185,22 @@ namespace $.$$ {
 
 		@ $mol_mem
 		nodes() {
-			return [ ... this.walls(), this.Floor(), this.Pillar(), this.Walker(), ... this.lights() ]
+			return [ ... this.walls(), this.Floor(), this.Pillar(), this.Walker(), ... this.lights(), ... this.arm_nodes() ]
 		}
 
 		pillar_stat() {
 			try {
 				return `pillar ${ this.Pillar_shape().size() }`
+			} catch( error ) {
+				if( $mol_promise_like( error ) ) return ''
+				return $mol_fail_hidden( error )
+			}
+		}
+
+		arm_stat() {
+			if( !this.arm_shown() ) return ''
+			try {
+				return `arm ${ this.Arm_shape().size() }`
 			} catch( error ) {
 				if( $mol_promise_like( error ) ) return ''
 				return $mol_fail_hidden( error )

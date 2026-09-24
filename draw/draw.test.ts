@@ -17,6 +17,16 @@ namespace $ {
 
 		deleted = [] as string[]
 
+		createTexture() {
+			return 'bones'
+		}
+
+		bindTexture() {}
+
+		texStorage2D() {}
+
+		texParameteri() {}
+
 		deleteVertexArray( vao: string ) {
 			this.deleted.push( vao )
 		}
@@ -76,6 +86,45 @@ namespace $ {
 			draw.scene().batches([ kept ])
 			draw.slots()
 			$mol_assert_equal( draw.gl.deleted, [ 'buffer gone', 'vao gone' ] )
+		},
+
+		'slot with bones frees its bone texture as well'( $ ) {
+			const draw = new $bog_gamengine_draw_mock
+			draw.$ = $
+			const gone = new $bog_gamengine_batch
+			gone[ Symbol.toStringTag ] = 'gone'
+			draw.scene().batches([ gone ])
+			draw.slots()[ 0 ]!.bones_tex = $bog_gamengine_skin_gl_bones( draw.context() )
+			draw.scene().batches([])
+			draw.slots()
+			$mol_assert_equal( draw.gl.deleted, [ 'buffer gone', 'vao gone', 'bones' ] )
+		},
+
+		'clear colour is the dark default until it is set'( $ ) {
+			const draw = new $$.$bog_gamengine_draw
+			draw.$ = $
+			$mol_assert_equal( draw.clear(), new Float32Array([ 0.08, 0.08, 0.1, 1 ]) )
+			draw.clear([ 0.5, 0.7, 1, 1 ])
+			$mol_assert_equal( draw.clear(), new Float32Array([ 0.5, 0.7, 1, 1 ]) )
+		},
+
+		'report of a ready slot with bones counts its instance'( $ ) {
+			$.$mol_state_time = $bog_gamengine_draw_time_mock
+			const draw = new $bog_gamengine_draw_mock
+			draw.$ = $
+			const slot = new $$.$bog_gamengine_draw_slot
+			slot.batch = new $bog_gamengine_batch
+			slot.batch.count = 1
+			slot.batch.cap = 1
+			slot.ready = true
+			slot.tris = 12
+			slot.bytes = 512
+			slot.bones_tex = $bog_gamengine_skin_gl_bones( draw.context() )
+			draw.count_fill([ slot ])
+			draw.measure( 0, 1, 1, 2, 3, 4, 5 )
+			$mol_assert_equal( draw.report().instances, 1 )
+			$mol_assert_equal( draw.report().triangles, 12 )
+			$mol_assert_equal( draw.report().bytes, 512 )
 		},
 
 		'light matrix puts a point on the sphere border into ±1'( $ ) {

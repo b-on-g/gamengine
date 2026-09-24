@@ -13,6 +13,9 @@ $bog_gamengine_demo_room $mol_page
 		<= Shadows $mol_check_box
 			title \Тени
 			checked? <=> shadows?
+		<= Arm_check $mol_check_box
+			title \Рука
+			checked? <=> arm_shown? false
 		<= Pause $mol_check_box
 			title \Пауза
 			checked? <=> paused?
@@ -51,6 +54,8 @@ $bog_gamengine_demo_room $mol_page
 			sub / <= walker_stat \
 		<= Pillar_stat $mol_view
 			sub / <= pillar_stat \
+		<= Arm_stat $mol_view
+			sub / <= arm_stat \
 		<= Light_stat $mol_view
 			sub / <= light_stat \
 	Tone $bog_gamengine_shader_post_tone
@@ -140,6 +145,19 @@ $bog_gamengine_demo_room $mol_page
 					data <= pillar_data ArrayBuffer
 				atlas <= Atlas
 				nodes / <= Pillar
+			<= Arm_batch $bog_gamengine_batch
+				shader <= Skin $bog_gamengine_shader_skin
+				shape <= Arm_shape $bog_gamengine_shape_gltf
+					data <= arm_data ArrayBuffer
+				atlas <= Atlas
+				nodes <= arm_nodes /
+	Arm $bog_gamengine_mesh_skin
+		skin <= Arm_skin $bog_gamengine_skin
+			shape <= Arm_shape
+			clip \wave
+		atlas <= Atlas
+		frame \wall
+		pos <= arm_pos Float32Array
 	Wall* $bog_gamengine_mesh
 		shape <= Box
 		atlas <= Atlas

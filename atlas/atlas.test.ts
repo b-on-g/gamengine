@@ -11,6 +11,22 @@ namespace $ {
 
 	}
 
+	class $bog_gamengine_atlas_wait_mock extends $bog_gamengine_atlas {
+
+		image( uri: string ) {
+			return { data: ()=> $mol_fail_hidden( new Promise( ()=> {} ) ) } as unknown as $mol_3d_image
+		}
+
+	}
+
+	class $bog_gamengine_atlas_blank_mock extends $bog_gamengine_atlas {
+
+		image( uri: string ) {
+			return { data: ()=> ({ width: 512, height: 512, data: new Uint8ClampedArray( 4 ) }) } as unknown as $mol_3d_image
+		}
+
+	}
+
 	function atlas_mock( uris: string[], sizes: Record< string, [ number, number ] > = {} ) {
 		const atlas = new $bog_gamengine_atlas_mock
 		atlas.uris( uris )
@@ -67,6 +83,19 @@ namespace $ {
 		'ready is true when all images match size'() {
 			const atlas = atlas_mock([ 'bog/gamengine/demo/atlas/hero.png' ])
 			$mol_assert_equal( atlas.ready(), true )
+		},
+
+		'ready is false while the image is still loading'() {
+			const atlas = new $bog_gamengine_atlas_wait_mock
+			atlas.uris([ 'bog/gamengine/demo/atlas/hero.png' ])
+			$mol_assert_equal( atlas.ready(), false )
+		},
+
+		'placeholder image gives no size error and keeps atlas not ready'() {
+			const atlas = new $bog_gamengine_atlas_blank_mock
+			atlas.uris([ 'bog/gamengine/demo/atlas/hero.png' ])
+			$mol_assert_equal( atlas.images().length, 1 )
+			$mol_assert_equal( atlas.ready(), false )
 		},
 
 	})

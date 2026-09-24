@@ -12,7 +12,7 @@ namespace $ {
 
 	export const $bog_gamengine_probe_flat_ok = 'герой идёт вправо, пол под прозрачным углом героя, клик собирает монету, подпись едет за героем, кадры ходьбы сменяются, джойстик ведёт героя и отпускает'
 
-	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола, ребро ящика с каркасом белое, пол под тёплым светом краснее, блики ярче, пол за столбом в тени, со свечением строка ярче, отчёт кадра считает батчи'
+	export const $bog_gamengine_probe_room_ok = 'ходок идёт вперёд, стена к свету ярче стены в тени, столб из glb отличим от пола, ребро ящика с каркасом белое, пол под тёплым светом краснее, блики ярче, пол за столбом в тени, со свечением строка ярче, отчёт кадра считает батчи, рука машет костью'
 
 	export const $bog_gamengine_probe_boxes_page = 'bog/gamengine/demo/-/index.html#!demo=boxes'
 
@@ -244,6 +244,45 @@ namespace $ {
 		shadows.click()
 		await frame()
 		await frame()
+		const sum = got => got[ 0 ] + got[ 1 ] + got[ 2 ]
+		const arm_spot = ()=> {
+			const depth = start[ 1 ] - 3.5
+			const wide = canvas.width / canvas.height
+			return [
+				( ( 4 - start[ 0 ] ) / ( half * wide * depth ) + 1 ) / 2 * canvas.width,
+				( ( 1.9 - 0.5 ) / ( half * depth ) + 1 ) / 2 * canvas.height,
+			]
+		}
+		const arm_peek = ()=> {
+			const spot = arm_spot()
+			let best = [ 0, 0, 0, 0 ]
+			for( let dy = -3; dy <= 3; ++ dy ) for( let dx = -3; dx <= 3; ++ dx ) {
+				const got = pixel( spot[ 0 ] + dx, spot[ 1 ] + dy )
+				if( sum( got ) > sum( best ) ) best = got
+			}
+			return best
+		}
+		const arm_at = arm_spot()
+		const arm_off = arm_peek()
+		const arm_check = document.querySelector( '[bog_gamengine_demo_room_arm_check]' )
+		if( !arm_check ) return { webgl: true, loaded: true, start, arm: false }
+		arm_check.click()
+		const arm_ready = ()=> /arm \\d+/.test( document.body.innerText )
+		for( let i = 0; i < 600 && !arm_ready(); ++ i ) await frame()
+		const arm_loaded = arm_ready()
+		let arm_bright = arm_peek()
+		let arm_dim = arm_bright
+		const arm_started = performance.now()
+		while( performance.now() - arm_started < 1500 ) {
+			await frame()
+			const got = arm_peek()
+			if( sum( got ) > sum( arm_bright ) ) arm_bright = got
+			if( sum( got ) < sum( arm_dim ) ) arm_dim = got
+		}
+		arm_check.click()
+		await frame()
+		await frame()
+		const arm_gone = arm_peek()
 		document.body.dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 87, bubbles: true } ) )
 		for( let i = 0; i < 60; ++ i ) await frame()
 		const moved = read()
@@ -261,8 +300,30 @@ namespace $ {
 			wire: true, wire_checked, edge_at, edge_on, edge_off,
 			light_count, warm_at, cold_at, warm, cold, shine: !!shine, shine_checked, row_plain, row_shine,
 			shadow_box: true, shadow_checked, shadow_at, open_at, shadow_on, shadow_off, open_on, open_off,
+			arm: true, arm_loaded, arm_at, arm_off, arm_bright, arm_dim, arm_gone,
 			size: [ canvas.width, canvas.height ],
 		}
+	`
+
+	export const $bog_gamengine_probe_quiet_page = 'bog/gamengine/demo/-/index.html#!demo=quad'
+
+	export const $bog_gamengine_probe_quiet_ok = 'комната и плоский мир грузятся без единого исключения'
+
+	export const $bog_gamengine_probe_quiet_script = `
+		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
+		const errors = []
+		addEventListener( 'error', event => errors.push( String( event.message || event.error ) ) )
+		addEventListener( 'unhandledrejection', event => errors.push( 'rejection: ' + String( event.reason ) ) )
+		const settle = async ( hash, mark )=> {
+			location.hash = hash
+			let seen = false
+			for( let i = 0; i < 600 && !seen; ++ i ) { await frame(); seen = document.body.innerText.includes( mark ) }
+			for( let i = 0; i < 60; ++ i ) await frame()
+			return seen
+		}
+		const room = await settle( '#!demo=room', 'walker ' )
+		const flat = await settle( '#!demo=flat', 'hero ' )
+		return { room, flat, errors }
 	`
 
 	export const $bog_gamengine_probe_boxes_script = `
@@ -410,7 +471,20 @@ namespace $ {
 		readonly shadow_off?: $bog_gamengine_probe_pixel
 		readonly open_on?: $bog_gamengine_probe_pixel
 		readonly open_off?: $bog_gamengine_probe_pixel
+		readonly arm?: boolean
+		readonly arm_loaded?: boolean
+		readonly arm_at?: readonly [ number, number ]
+		readonly arm_off?: $bog_gamengine_probe_pixel
+		readonly arm_bright?: $bog_gamengine_probe_pixel
+		readonly arm_dim?: $bog_gamengine_probe_pixel
+		readonly arm_gone?: $bog_gamengine_probe_pixel
 		readonly size?: readonly [ number, number ]
+	}
+
+	export type $bog_gamengine_probe_quiet_result = {
+		readonly room: boolean
+		readonly flat: boolean
+		readonly errors: readonly string[]
 	}
 
 	export function $bog_gamengine_probe_warmth( pixel: $bog_gamengine_probe_pixel ) {
@@ -598,8 +672,48 @@ namespace $ {
 		if( !( Math.abs( $bog_gamengine_probe_sum( got.open_off! ) - $bog_gamengine_probe_sum( got.open_on! ) ) < 10 ) ) {
 			return fail( 'открытый пол поменялся от теней' )
 		}
+		if( !got.arm ) return fail( 'чекбокса руки нет в DOM' )
+		if( !got.arm_loaded ) return fail( 'подвал не показал вершины руки' )
+		if( !$bog_gamengine_probe_dark( got.arm_off! ) ) return fail( 'на конце руки есть пиксель при выключенной руке' )
+		if( !( $bog_gamengine_probe_sum( got.arm_bright! ) - $bog_gamengine_probe_sum( got.arm_off! ) > 60 ) ) {
+			return fail( 'рука не появилась на конце в позе привязки' )
+		}
+		if( !$bog_gamengine_probe_near( got.arm_dim!, got.arm_off!, 24 ) ) return fail( 'кость не увела конец руки из точки за клип' )
+		if( !$bog_gamengine_probe_near( got.arm_gone!, got.arm_off!, 24 ) ) return fail( 'рука осталась после выключения' )
 
 		return say( $bog_gamengine_probe_room_ok )
+	}
+
+	export async function $bog_gamengine_probe_quiet_check(
+		root = $node.process.cwd(),
+		flags: readonly string[] = $bog_gamengine_probe_flags,
+	) {
+
+		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
+
+		const started = Date.now()
+
+		const got = await $bog_probe_run({
+			root,
+			flags,
+			page: $bog_gamengine_probe_quiet_page,
+			ready: $bog_gamengine_probe_ready,
+			script: $bog_gamengine_probe_quiet_script,
+			width: 1024,
+			height: 768,
+		}) as $bog_gamengine_probe_quiet_result | typeof $bog_probe_skip
+
+		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
+
+		say( `${ flags.join( ' ' ) || 'без флагов' }: ${ Date.now() - started } мс, ${ JSON.stringify( got ) }` )
+
+		const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( got ) }` ) )
+
+		if( !got.room ) return fail( 'комната не дошла до кадра с подвалом' )
+		if( !got.flat ) return fail( 'плоский мир не дошёл до кадра с подвалом' )
+		if( got.errors.length ) return fail( 'страница бросила исключения' )
+
+		return say( $bog_gamengine_probe_quiet_ok )
 	}
 
 	export async function $bog_gamengine_probe_boxes_check(

@@ -22,6 +22,7 @@ namespace $ {
 
 		send( floats: Float32Array ) {
 			const gl = this.gl
+			gl.pixelStorei( gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false )
 			gl.bindTexture( gl.TEXTURE_2D, this.native )
 			gl.texSubImage2D( gl.TEXTURE_2D, 0, 0, 0, this.width, this.height, gl.RGBA, gl.FLOAT, floats )
 			return floats

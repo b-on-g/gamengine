@@ -5,6 +5,20 @@ namespace $ {
 		image: TexImageSource
 	}
 
+	export class $bog_gamengine_atlas_image extends $mol_3d_image {
+
+		@ $mol_mem
+		data(): HTMLImageElement | ImageData {
+			$mol_wire_solid()
+			return $mol_wire_sync( this as $mol_3d_image ).load()
+		}
+
+	}
+
+	export function $bog_gamengine_atlas_blank( image: TexImageSource ) {
+		return ArrayBuffer.isView( ( image as { data?: unknown } ).data as ArrayBufferView )
+	}
+
 	export class $bog_gamengine_atlas extends $mol_object2 {
 
 		@ $mol_mem
@@ -58,7 +72,7 @@ namespace $ {
 		@ $mol_mem_key
 		static image( uri: string ) {
 			$mol_wire_solid()
-			return this.$.$mol_3d_image.make({ uri: ()=> uri })
+			return this.$.$bog_gamengine_atlas_image.make({ uri: ()=> uri })
 		}
 
 		image( uri: string ) {
@@ -73,12 +87,12 @@ namespace $ {
 			const loaded = $mol_wire_race( ... uris.map( uri => ()=> this.image( uri ).data() ) )
 			const images = [ ... loaded, ... this.sources().map( source => source.image ) ] as readonly TexImageSource[]
 			for( let i = 0; i < images.length; ++i ) {
+				if( $bog_gamengine_atlas_blank( images[i] ) ) continue
 				const box = images[i] as { width: number, height: number }
 				const width = box.width
 				const height = box.height
 				if( width === size && height === size ) continue
-				const hint = width === 512 && height === 512 ? ', is it loaded?' : ''
-				$mol_fail( new Error( `Atlas image ${ origins[i].from } is ${ width }×${ height }, expected ${ size }×${ size }${ hint }` ) )
+				$mol_fail( new Error( `Atlas image ${ origins[i].from } is ${ width }×${ height }, expected ${ size }×${ size }` ) )
 			}
 			return images
 		}
@@ -86,7 +100,8 @@ namespace $ {
 		@ $mol_mem
 		ready() {
 			try {
-				this.images()
+				const images = this.images()
+				for( let i = 0; i < images.length; ++i ) if( $bog_gamengine_atlas_blank( images[i] ) ) return false
 				return true
 			} catch( error ) {
 				if( $mol_promise_like( error ) ) return false

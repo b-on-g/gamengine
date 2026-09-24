@@ -7,6 +7,7 @@ $bog_gamengine_draw $mol_view
 	scene $bog_gamengine_scene
 	cam $bog_gamengine_cam
 	light_dir Float32Array
+	clear? Float32Array
 	ambient 0.35
 	wireframe? false
 	shadows? true

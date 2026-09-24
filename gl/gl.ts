@@ -185,6 +185,7 @@ namespace $ {
 		gl.texParameteri( gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR )
 		gl.texParameteri( gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR )
 		gl.generateMipmap( gl.TEXTURE_2D_ARRAY )
+		gl.pixelStorei( gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false )
 
 		return texture
 	}
