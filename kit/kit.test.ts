@@ -287,6 +287,50 @@ namespace $ {
 			$mol_assert_equal( agent.speed(), 5 )
 		},
 
+		'nodes are handed to a property one by one and read back by name'( $ ) {
+
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( [
+				'$bog_gamestudio_sample $bog_gamengine_scene',
+				'\tkids /',
+				'\t\t<= First $bog_gamengine_nav_agent',
+				'\t\t<= Second $bog_gamengine_nav_agent',
+				'\t\t<= Third $bog_gamengine_nav_agent',
+				'',
+			].join( '\n' ) )
+
+			$mol_assert_equal( $bog_gamestudio_kit_refs( doc, 'First', 'others' ), [] )
+
+			$bog_gamestudio_kit_join( doc, 'First', 'others', 'Second' )
+			$bog_gamestudio_kit_join( doc, 'First', 'others', 'Third' )
+			$mol_assert_equal( $bog_gamestudio_kit_refs( doc, 'First', 'others' ), [ 'Second', 'Third' ] )
+
+			$bog_gamestudio_kit_join( doc, 'First', 'others', 'Second' )
+			$mol_assert_equal( $bog_gamestudio_kit_refs( doc, 'First', 'others' ), [ 'Second', 'Third' ] )
+
+			const scene = doc.scene()
+			const agents = scene.nodes() as readonly $bog_gamengine_nav_agent[]
+			$mol_assert_equal( agents[ 0 ].others().length, 2 )
+			$mol_assert_equal( agents[ 0 ].others()[ 0 ], agents[ 1 ] )
+			$mol_assert_equal( agents[ 0 ].props().find( one => one.name === 'others' )!.kind, 'nodes' )
+
+			$mol_assert_equal( $bog_gamestudio_kit_clear( doc, 'First', 'others' ), true )
+			$mol_assert_equal( $bog_gamestudio_kit_refs( doc, 'First', 'others' ), [] )
+			$mol_assert_equal( doc.source().includes( 'others' ), false )
+
+		},
+
+		'clearing a property that is not there changes nothing'( $ ) {
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( '$bog_gamestudio_sample $bog_gamengine_scene\n\tkids /\n\t\t<= First $bog_gamengine_node\n' )
+			const before = doc.source()
+			$mol_assert_equal( $bog_gamestudio_kit_clear( doc, 'First', 'others' ), false )
+			$mol_assert_equal( $bog_gamestudio_kit_clear( doc, 'Ghost', 'others' ), false )
+			$mol_assert_equal( doc.source(), before )
+		},
+
 		'palette can be replaced from outside'() {
 			const kit = new $bog_gamestudio_kit
 			kit.list([ { id: 'own', title: 'Своё', klass: '$bog_gamengine_sprite', props: {}, world: 'phys' } ])

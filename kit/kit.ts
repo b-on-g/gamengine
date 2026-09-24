@@ -194,6 +194,32 @@ namespace $ {
 		return name
 	}
 
+	export function $bog_gamestudio_kit_refs( doc: $bog_gamestudio_doc, owner: string, prop: string ) {
+		const klass = doc.decls().get( owner )
+		if( !klass ) return [] as readonly string[]
+		const items = klass.kids.find( kid => kid.type === prop )?.kids[ 0 ]?.kids ?? []
+		const out = [] as string[]
+		for( let i = 0; i < items.length; ++i ) {
+			const item = items[ i ]
+			if( item.type !== '<=' ) continue
+			const name = item.kids[ 0 ]?.type
+			if( name ) out.push( name )
+		}
+		return out as readonly string[]
+	}
+
+	export function $bog_gamestudio_kit_clear( doc: $bog_gamestudio_doc, owner: string, prop: string ) {
+		const klass = doc.decls().get( owner )
+		if( !klass ) return false
+		const line = klass.kids.find( kid => kid.type === prop )
+		if( !line ) return false
+		const tree = doc.tree()
+		const kids = klass.kids.filter( kid => kid !== line )
+		const swap = ( cur: $mol_tree2 ): $mol_tree2 => cur === klass ? cur.clone( kids ) : cur.clone( cur.kids.map( swap ) )
+		doc.source( doc.print( swap( tree ) ) )
+		return true
+	}
+
 	export function $bog_gamestudio_kit_apply( doc: $bog_gamestudio_doc, item: $bog_gamestudio_kit_item, pos: string ) {
 
 		const root = doc.decls().get( '' )
