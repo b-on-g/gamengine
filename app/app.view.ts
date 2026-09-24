@@ -100,8 +100,10 @@ namespace $.$$ {
 			return new Float32Array([ arena.width(), 1, arena.height() ])
 		}
 
+		@ $mol_mem
 		floor_tile() {
-			return this.Arena().width()
+			const arena = this.Arena()
+			return new Float32Array([ arena.width(), arena.height() ])
 		}
 
 		@ $mol_mem

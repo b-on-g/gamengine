@@ -135,7 +135,7 @@ $bog_shooter_app $mol_page
 		billboard true
 	Floor $bog_gamengine_mesh
 		shape <= Plane $bog_gamengine_shape_plane
-			tile <= floor_tile 12
+			tile <= floor_tile Float32Array
 		atlas <= Atlas
 		frame \floor
 		pos <= floor_pos Float32Array
