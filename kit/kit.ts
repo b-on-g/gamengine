@@ -40,8 +40,8 @@ namespace $ {
 		{
 			id: 'walker',
 			title: 'Ходок',
-			klass: '$bog_gamestudio_kit_walker',
-			props: { input: '<= input', size: '/ 0.8 0.8', speed: '3' },
+			klass: '$bog_gamengine_phys_walker',
+			props: { size: '/ 0.8 0.8' },
 			world: 'phys',
 		},
 		{

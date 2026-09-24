@@ -13,7 +13,7 @@ namespace $ {
 
 		'item is found by id and missing one is null'() {
 			const kit = new $bog_gamestudio_kit
-			$mol_assert_equal( kit.item( 'walker' )!.klass, '$bog_gamestudio_kit_walker' )
+			$mol_assert_equal( kit.item( 'walker' )!.klass, '$bog_gamengine_phys_walker' )
 			$mol_assert_equal( kit.item( 'body' )!.klass, '$bog_gamengine_phys_body' )
 			$mol_assert_equal( kit.item( 'ghost' ), null )
 			$mol_assert_equal( kit.title( 'walker' ), 'Ходок' )
@@ -37,11 +37,12 @@ namespace $ {
 			$mol_assert_equal( kit.world( 'walker' )!.mates[ 0 ].props.map, '<= map' )
 		},
 
-		'walker is placed with input of the scene and its own speed'() {
+		'walker is the engine primitive and asks for no input wiring'() {
 			const kit = new $bog_gamestudio_kit
 			const item = kit.item( 'walker' )!
-			$mol_assert_equal( item.props.input, '<= input' )
-			$mol_assert_equal( item.props.speed, '3' )
+			$mol_assert_equal( item.klass, '$bog_gamengine_phys_walker' )
+			$mol_assert_equal( item.props.input, undefined )
+			$mol_assert_equal( new $bog_gamengine_phys_walker().speed(), 3 )
 		},
 
 		'empty scene gets the tile, the world and a line on the root'() {
@@ -50,9 +51,8 @@ namespace $ {
 			$mol_assert_equal( plan.decls.map( one => one.node ), [ 'Tile', 'Phys' ] )
 			$mol_assert_equal( plan.decls[ 1 ].props.bodies, '/' )
 			$mol_assert_equal( plan.root, [ 'phys <= Phys' ] )
-			$mol_assert_equal( plan.klass, '$bog_gamestudio_kit_walker' )
+			$mol_assert_equal( plan.klass, '$bog_gamengine_phys_walker' )
 			$mol_assert_equal( plan.props.pos, '/ 1.5 -1.5 0' )
-			$mol_assert_equal( plan.props.input, '<= input' )
 			$mol_assert_equal( plan.join, { node: 'Phys', prop: 'bodies' } )
 		},
 
@@ -77,32 +77,6 @@ namespace $ {
 			$mol_assert_equal( kit.list().length, 1 )
 			$mol_assert_equal( kit.item( 'own' )!.title, 'Своё' )
 			$mol_assert_equal( kit.item( 'walker' ), null )
-		},
-
-		'walker turns input axes into velocity and keeps the reference when it stands'() {
-			const walker = new $bog_gamestudio_kit_walker
-			const key = new $bog_gamengine_key
-			key.bind({ left: [ 'A' ], right: [ 'D' ], up: [ 'W' ], down: [ 'S' ] })
-			const input = new $bog_gamengine_input
-			input.key( key )
-			walker.input( input )
-			const still = walker.vel()
-			walker.step( 0.1 )
-			$mol_assert_equal( walker.vel(), still )
-			key.pressed( 'D', true )
-			walker.step( 0.1 )
-			$mol_assert_equal( [ ... walker.vel() ], [ 3, 0, 0 ] )
-			key.pressed( 'W', true )
-			walker.step( 0.1 )
-			$mol_assert_equal( [ ... walker.vel() ], [ 3, 3, 0 ] )
-		},
-
-		'walker shows its speed among props'() {
-			const walker = new $bog_gamestudio_kit_walker
-			const prop = walker.props().find( one => one.name === 'speed' )!
-			$mol_assert_equal( prop.kind, 'number' )
-			prop.set( 5 )
-			$mol_assert_equal( walker.speed(), 5 )
 		},
 
 	})
