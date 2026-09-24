@@ -23,6 +23,19 @@ namespace $ {
 		return walker
 	}
 
+	function walker_test_screen() {
+		const doc = {
+			fullscreenElement: null,
+			pointerLockElement: null,
+			documentElement: {},
+			addEventListener() {},
+			removeEventListener() {},
+		}
+		const screen = new $bog_gamengine_screen
+		screen.$ = $$.$mol_ambient({ $mol_dom_context: { document: doc } as unknown as typeof globalThis })
+		return screen
+	}
+
 	function walker_test_tile() {
 		const tile = new $bog_gamengine_phys_tile
 		tile.map( [
@@ -63,6 +76,45 @@ namespace $ {
 			const pos = walker.pos()
 			walker.step( 1 )
 			$mol_assert_equal( walker.pos(), pos )
+		},
+
+		'mouse right turns right and mouse down looks down'() {
+			const walker = walker_test_walker( walker_test_key() )
+			const screen = walker_test_screen()
+			walker.screen( screen )
+			walker.sense( 0.01 )
+			screen.dx = 10
+			screen.dy = 4
+			walker.step( 1 )
+			const rot = walker.rot()
+			$mol_assert_ok( Math.abs( rot[ 1 ] + 0.1 ) < 1e-6 )
+			$mol_assert_ok( Math.abs( rot[ 0 ] + 0.04 ) < 1e-6 )
+			walker.step( 1 )
+			$mol_assert_equal( walker.rot(), rot )
+		},
+
+		'mouse look forward follows the new yaw'() {
+			const walker = walker_test_walker( walker_test_key( 'W' ) )
+			const screen = walker_test_screen()
+			walker.screen( screen )
+			walker.sense( Math.PI / 2 )
+			screen.dx = -1
+			walker.step( 1 )
+			const pos = walker.pos()
+			$mol_assert_ok( Math.abs( walker.rot()[ 1 ] - Math.PI / 2 ) < 1e-6 )
+			$mol_assert_ok( Math.abs( pos[ 0 ] + walker.speed() ) < 1e-6 )
+			$mol_assert_ok( Math.abs( pos[ 2 ] ) < 1e-6 )
+		},
+
+		'pitch stops just short of straight down'() {
+			const walker = walker_test_walker( walker_test_key() )
+			const screen = walker_test_screen()
+			walker.screen( screen )
+			walker.sense( 0.01 )
+			screen.dy = 1000
+			walker.step( 1 )
+			$mol_assert_ok( Math.abs( walker.rot()[ 0 ] + Math.PI / 2 ) < 1e-2 )
+			$mol_assert_ok( walker.rot()[ 0 ] > - Math.PI / 2 )
 		},
 
 		'wall ahead stops at its face with radius'() {

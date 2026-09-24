@@ -1,11 +1,25 @@
 namespace $ {
 
+	const pitch_limit = Math.PI / 2 - 1e-3
+
 	export class $bog_gamengine_demo_room_walker extends $bog_gamengine_cam_deep {
 
 		@ $mol_mem
 		input( next?: $bog_gamengine_input | null ) {
 			return next ?? null
 		}
+
+		@ $mol_mem
+		screen( next?: $bog_gamengine_screen | null ) {
+			return next ?? null
+		}
+
+		@ $mol_mem
+		sense( next = 0.003 ) {
+			return next
+		}
+
+		look = new Float32Array( 2 )
 
 		@ $mol_mem
 		tile( next?: $bog_gamengine_phys_tile | null ) {
@@ -42,12 +56,29 @@ namespace $ {
 			const input = this.input()
 			if( !input ) return
 			const rot = this.rot()
+			let pitch = rot[ 0 ]
 			let yaw = rot[ 1 ]
+			let turned = false
 			const spin = input.axis( 'turn_right', 'turn_left' )
 			if( spin !== 0 ) {
 				yaw += spin * this.turn() * dt
+				turned = true
+			}
+			const screen = this.screen()
+			if( screen ) {
+				const look = screen.take( this.look )
+				if( look[ 0 ] !== 0 || look[ 1 ] !== 0 ) {
+					const sense = this.sense()
+					yaw -= look[ 0 ] * sense
+					pitch -= look[ 1 ] * sense
+					if( pitch > pitch_limit ) pitch = pitch_limit
+					if( pitch < - pitch_limit ) pitch = - pitch_limit
+					turned = true
+				}
+			}
+			if( turned ) {
 				const next = new Float32Array( 3 )
-				next[ 0 ] = rot[ 0 ]
+				next[ 0 ] = pitch
 				next[ 1 ] = yaw
 				next[ 2 ] = rot[ 2 ]
 				this.rot( next )
