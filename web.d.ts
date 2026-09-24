@@ -3956,6 +3956,7 @@ declare namespace $ {
         parent(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
         kids(next?: readonly $bog_gamengine_node[]): readonly $bog_gamengine_node[];
         hidden: boolean;
+        shown_now: boolean;
         shown(): boolean;
         root(): $bog_gamengine_node;
         is_scene(): boolean;
@@ -4782,9 +4783,12 @@ declare namespace $ {
         eye: Float32Array<ArrayBuffer>;
         snap: Float32Array<ArrayBuffer>;
         snap_count: number;
+        snap_frame: number;
+        kin(): Int32Array<ArrayBuffer>;
+        shown_fill(nodes: readonly $bog_gamengine_node[], owner: Int32Array): void;
         snapshot(): Float32Array;
         snapshot_count(): number;
-        snapshot_version(next?: number): number;
+        snapshot_version(): number;
         snap_fill(nodes: readonly $bog_gamengine_node[]): void;
         step(): number;
     }

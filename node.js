@@ -10529,6 +10529,7 @@ var $;
             return next;
         }
         hidden = false;
+        shown_now = true;
         shown() {
             for (let node = this; node; node = node.parent()) {
                 if (node.hidden)
@@ -11445,7 +11446,7 @@ var $;
             let count = 0;
             for (let i = 0; i < nodes.length; ++i) {
                 const node = nodes[i];
-                if (!node.shown())
+                if (node.hidden || !node.shown_now)
                     continue;
                 const world = node.world();
                 if (ranged) {
@@ -15211,14 +15212,48 @@ var $;
         eye = new Float32Array(3);
         snap = new Float32Array(0);
         snap_count = 0;
+        snap_frame = -1;
+        kin() {
+            const nodes = this.nodes();
+            const at = new Map();
+            for (let i = 0; i < nodes.length; ++i)
+                at.set(nodes[i], i);
+            const owner = new Int32Array(nodes.length);
+            for (let i = 0; i < nodes.length; ++i) {
+                const parent = nodes[i].parent();
+                const found = parent ? at.get(parent) : undefined;
+                owner[i] = found === undefined ? -1 : found;
+            }
+            return owner;
+        }
+        shown_fill(nodes, owner) {
+            for (let i = 0; i < nodes.length; ++i) {
+                let shown = true;
+                for (let at = i, step = 0; at >= 0 && step < 64; at = owner[at], ++step) {
+                    if (!nodes[at].hidden)
+                        continue;
+                    shown = false;
+                    break;
+                }
+                nodes[i].shown_now = shown;
+            }
+        }
         snapshot() {
+            const frame = this.step();
+            if (frame === this.snap_frame)
+                return this.snap;
+            this.snap_frame = frame;
+            this.snap_fill(this.nodes());
             return this.snap;
         }
         snapshot_count() {
+            this.snapshot();
             return this.snap_count;
         }
-        snapshot_version(next = 0) {
-            return next;
+        snapshot_version() {
+            this.step();
+            this.snapshot();
+            return this.snap_frame;
         }
         snap_fill(nodes) {
             if (this.snap.length < nodes.length * 3)
@@ -15227,7 +15262,7 @@ var $;
             for (let i = 0; i < nodes.length; ++i) {
                 const node = nodes[i];
                 const at = i * 3;
-                if (!node.shown()) {
+                if (node.hidden || !node.shown_now) {
                     snap[at] = 0;
                     snap[at + 1] = 0;
                     snap[at + 2] = 0;
@@ -15245,6 +15280,7 @@ var $;
             const dt = this.clock().dt();
             const input = this.input();
             const nodes = this.nodes();
+            const owner = this.kin();
             const phys = this.phys();
             const phys3 = this.phys3();
             phys?.pull();
@@ -15254,9 +15290,10 @@ var $;
             if (frame !== this.frame_done) {
                 this.frame_done = frame;
                 input?.poll();
+                this.shown_fill(nodes, owner);
                 for (let i = 0; i < nodes.length; ++i) {
                     const node = nodes[i];
-                    if (node.shown())
+                    if (node.shown_now)
                         node.step(dt);
                 }
                 phys?.step(dt);
@@ -15266,8 +15303,6 @@ var $;
                         cam.parent(this);
                     cam.step(dt);
                 }
-                this.snap_fill(nodes);
-                this.snapshot_version(frame);
             }
             if (cam) {
                 cam.frustum(aspect, this.frustum);
@@ -15330,6 +15365,12 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "aspect", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_scene.prototype, "kin", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_scene.prototype, "snapshot", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "snapshot_version", null);
