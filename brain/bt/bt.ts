@@ -23,9 +23,11 @@ namespace $ {
 			return true
 		}
 
-		@ $mol_mem
+		owner_now = null as $bog_gamengine_node | null
+
 		owner( next?: $bog_gamengine_node | null ) {
-			return next ?? this.parent()
+			if( next !== undefined ) this.owner_now = next
+			return this.owner_now ?? this.parent()
 		}
 
 		@ $mol_mem

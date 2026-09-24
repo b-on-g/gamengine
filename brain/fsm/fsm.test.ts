@@ -98,6 +98,14 @@ namespace $ {
 
 	$mol_test({
 
+		'owner set on a bare machine does not loop through ownership'() {
+			const host = new $bog_gamengine_node
+			const brain = new $bog_gamengine_brain_fsm
+			brain.owner( host )
+			$mol_assert_equal( brain.owner(), host )
+			$mol_assert_equal( brain.$, brain.$ )
+		},
+
 		'condition comes from a method of the owner'() {
 			const walker = fsm_test_walker()
 			walker.Brain.owner( walker )
