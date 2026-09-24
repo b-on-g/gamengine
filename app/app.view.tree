@@ -11,6 +11,13 @@ $bog_gamestudio_app $mol_view
 			key * escape? <=> tool_drop? null
 		<= Delete_key $mol_hotkey
 			key * delete? <=> key_drop? null
+		<= Undo_key $mol_hotkey
+			mod_ctrl true
+			key * Z? <=> key_undo? null
+		<= Redo_key $mol_hotkey
+			mod_ctrl true
+			mod_shift true
+			key * Z? <=> key_redo? null
 	sub /
 		<= Side $mol_deck
 			current? <=> tab? \0
@@ -41,6 +48,14 @@ $bog_gamestudio_app $mol_view
 				<= Grid $mol_check_box
 					title \К сетке
 					checked? <=> grid? true
+				<= Undo $mol_button_minor
+					title \Отменить
+					enabled <= can_undo false
+					click? <=> undo? null
+				<= Redo $mol_button_minor
+					title \Вернуть
+					enabled <= can_redo false
+					click? <=> redo? null
 				<= Fit $mol_button_minor
 					title \Показать всё
 					click? <=> fit? null
@@ -120,6 +135,8 @@ $bog_gamestudio_app $mol_view
 			foot /
 				<= Kept $mol_view
 					sub / <= kept_stat \
+				<= Undo_stat $mol_view
+					sub / <= undo_stat \
 	Doc $bog_gamestudio_doc
 		source_own? <=> source_own?
 		land <= doc_land null

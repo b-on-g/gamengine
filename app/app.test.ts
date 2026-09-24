@@ -479,6 +479,107 @@ namespace $ {
 			$mol_assert_equal( app.node_rows().length, 3 )
 		},
 
+		'undo returns the document to the state before the edit, redo brings it back'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			const before = app.source()
+			app.selected( 0 )
+			app.Vec_num( 'pos_0' ).value( 7 )
+			$mol_assert_ok( app.source().includes( 'pos / 7 0 0' ) )
+			app.undo()
+			$mol_assert_equal( app.source(), before )
+			$mol_assert_equal( app.node_rows().length, 3 )
+			app.redo()
+			$mol_assert_ok( app.source().includes( 'pos / 7 0 0' ) )
+		},
+
+		'undo takes back a deleted node'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 1 )
+			app.Node_drop().click( null )
+			$mol_assert_equal( app.node_rows().length, 2 )
+			app.undo()
+			$mol_assert_equal( app.node_rows().length, 3 )
+			$mol_assert_equal( app.row_title( 1 ), 'Монета' )
+		},
+
+		'two edits within the pause give one step of history'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			const before = app.source()
+			app.source( before.replace( '\\Герой', '\\Первый' ) )
+			app.source( app.source().replace( '\\Первый', '\\Второй' ) )
+			$mol_assert_equal( app.history.length, 1 )
+			app.undo()
+			$mol_assert_equal( app.source(), before )
+		},
+
+		'pointer gesture holds the history window open until the pointer is up'( $ ) {
+			const app = canvas_app( $ )
+			app.pointer_down( press_at( 5, 5 ) )
+			$mol_assert_equal( app.history_gesture, true )
+			app.pointer_up( press_at( 5, 5 ) )
+			$mol_assert_equal( app.history_gesture, false )
+		},
+
+		'one undo takes the whole gesture, not a frame of it'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 0 )
+			const before = app.source()
+			app.history_gesture = true
+			app.history_taken = false
+			for( const x of [ 3, 4, 5 ] ) app.write( 'pos', [ x, 0, 0 ] )
+			app.history_gesture = false
+			$mol_assert_ok( app.source().includes( 'pos / 5 0 0' ) )
+			$mol_assert_equal( app.history.length, 1 )
+			app.undo()
+			$mol_assert_equal( app.source(), before )
+		},
+
+		'undo button is dark while there is nothing to undo'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			$mol_assert_equal( app.can_undo(), false )
+			$mol_assert_equal( app.can_redo(), false )
+			$mol_assert_equal( app.undo_stat(), 'Отмена: отменять нечего' )
+			app.selected( 0 )
+			app.Vec_num( 'pos_0' ).value( 7 )
+			$mol_assert_equal( app.can_undo(), true )
+			$mol_assert_equal( app.undo_stat(), 'Отмена: 1 шаг, до перезагрузки' )
+			app.undo()
+			$mol_assert_equal( app.can_undo(), false )
+			$mol_assert_equal( app.can_redo(), true )
+		},
+
+		'history forgets the oldest step when it is full'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.history_depth = ()=> 2
+			app.selected( 0 )
+			for( const x of [ 1, 2, 3, 4 ] ) {
+				app.history_at = 0
+				app.Vec_num( 'pos_0' ).value( x )
+			}
+			$mol_assert_equal( app.history.length, 2 )
+			$mol_assert_equal( app.undo_stat(), 'Отмена: 2 шага, до перезагрузки' )
+		},
+
+		'shared document leaves undo to the base'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 0 )
+			app.Vec_num( 'pos_0' ).value( 7 )
+			app.doc_land = ()=> ( {} as unknown as $bog_gamestudio_doc_land )
+			$mol_assert_equal( app.can_undo(), false )
+			$mol_assert_equal( app.undo_stat(), 'Отмена у Базы: документ общий' )
+		},
+
+		'ctrl z typed into a field leaves the document to the browser'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 0 )
+			app.Vec_num( 'pos_0' ).value( 7 )
+			const typed = app.source()
+			app.Undo_key().keydown({ keyCode: 90, ctrlKey: true, target: { tagName: 'TEXTAREA' } } as unknown as KeyboardEvent )
+			$mol_assert_equal( app.source(), typed )
+			app.Undo_key().keydown({ keyCode: 90, ctrlKey: true, target: { tagName: 'BUTTON' } } as unknown as KeyboardEvent )
+			$mol_assert_not( app.source().includes( 'pos / 7 0 0' ) )
+		},
+
 		'gizmo hit on the x arrow'( $ ) {
 			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
 		},

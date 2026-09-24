@@ -159,8 +159,38 @@ namespace $.$$ {
 
 		kept_fail = false
 
+		history = [] as string[]
+		future = [] as string[]
+		history_at = 0
+		history_gesture = false
+		history_taken = false
+		history_back = false
+
+		history_depth() {
+			return 30
+		}
+
+		history_gap() {
+			return 600
+		}
+
+		history_push( next: string ) {
+			if( this.history_back ) return
+			if( this.history_gesture && this.history_taken ) return
+			const now = Date.now()
+			if( !this.history_gesture && now - this.history_at < this.history_gap() ) return
+			const before = $mol_wire_probe( ()=> this.source_own() )
+			if( before === undefined || before === next ) return
+			this.history.push( before )
+			while( this.history.length > this.history_depth() ) this.history.shift()
+			this.future = []
+			this.history_at = now
+			if( this.history_gesture ) this.history_taken = true
+		}
+
 		@ $mol_mem
 		source_own( next?: string ) {
+			if( next !== undefined ) this.history_push( next )
 			try {
 				const kept = this.$.$mol_state_local.value< string >( this.source_key(), next )
 				if( next !== undefined ) this.kept_fail = false
@@ -217,6 +247,66 @@ namespace $.$$ {
 		module_ts_uri() {
 			const made = this.module()
 			return made ? 'data:text/plain;charset=utf-8,' + encodeURIComponent( made.ts ) : ''
+		}
+
+		steps_word( count: number ) {
+			const tail = count % 100
+			if( tail > 10 && tail < 20 ) return 'шагов'
+			const last = count % 10
+			if( last === 1 ) return 'шаг'
+			if( last > 1 && last < 5 ) return 'шага'
+			return 'шагов'
+		}
+
+		undo_stat() {
+			if( this.doc_land() ) return 'Отмена у Базы: документ общий'
+			const depth = this.history.length
+			if( !depth ) return 'Отмена: отменять нечего'
+			return `Отмена: ${ depth } ${ this.steps_word( depth ) }, до перезагрузки`
+		}
+
+		can_undo() {
+			return this.editing() && !this.doc_land() && this.history.length > 0
+		}
+
+		can_redo() {
+			return this.editing() && !this.doc_land() && this.future.length > 0
+		}
+
+		swap_source( text: string ) {
+			this.history_back = true
+			try {
+				this.source( text )
+			} finally {
+				this.history_back = false
+			}
+			this.selected( null )
+		}
+
+		undo( event?: Event | null ) {
+			if( !this.can_undo() ) return event ?? null
+			const now = this.source()
+			this.future.push( now )
+			this.swap_source( this.history.pop()! )
+			return event ?? null
+		}
+
+		redo( event?: Event | null ) {
+			if( !this.can_redo() ) return event ?? null
+			const now = this.source()
+			this.history.push( now )
+			this.swap_source( this.future.pop()! )
+			return event ?? null
+		}
+
+		key_undo( event?: Event | null ) {
+			if( this.typing( event ) ) return event ?? null
+			return this.undo( event )
+		}
+
+		key_redo( event?: Event | null ) {
+			if( this.typing( event ) ) return event ?? null
+			return this.redo( event )
 		}
 
 		kept_stat() {
@@ -1114,6 +1204,8 @@ namespace $.$$ {
 
 		pointer_down( event?: PointerEvent ) {
 			if( !event ) return null
+			this.history_gesture = true
+			this.history_taken = false
 			const x = this.point_x( event )
 			const y = this.point_y( event )
 			const point = this.Point()
@@ -1198,6 +1290,7 @@ namespace $.$$ {
 		}
 
 		pointer_up( event?: PointerEvent ) {
+			this.history_gesture = false
 			if( this.pan_grab ) {
 				this.pan_grab = null
 				return event ?? null
