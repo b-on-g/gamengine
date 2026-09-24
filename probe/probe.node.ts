@@ -518,7 +518,9 @@ namespace $ {
 	}
 
 	export function $bog_gamengine_probe_warmth( pixel: $bog_gamengine_probe_pixel ) {
-		return pixel[ 0 ] / Math.max( pixel[ 2 ], 1 )
+		const red = $bog_gamengine_probe_lin( pixel[ 0 ] )
+		const blue = $bog_gamengine_probe_lin( pixel[ 2 ] )
+		return red / Math.max( blue, $bog_gamengine_probe_lin( 1 ) )
 	}
 
 	export type $bog_gamengine_probe_boxes_stat = {
@@ -556,10 +558,19 @@ namespace $ {
 		return pixel[ 0 ] + pixel[ 1 ] + pixel[ 2 ]
 	}
 
-	/** Сумма каналов в линейном свете: в экранном гамма жмёт отношения, и порог «ярче в N раз» врёт. */
+	/** Канал в линейный свет: та же гамма 2.2, что тон-маппинг ставит в конце цепочки. */
+	export function $bog_gamengine_probe_lin( channel: number ) {
+		return Math.pow( channel / 255, 2.2 )
+	}
+
+	/**
+	 * Сумма каналов в линейном свете. В экранном гамма жмёт отношения, и порог «ярче в N раз»
+	 * сторожит не яркость, а величину гаммы. Отношения сравнивать здесь, разности — в экранном:
+	 * там у них запас больше.
+	 */
 	export function $bog_gamengine_probe_linear( pixel: $bog_gamengine_probe_pixel ) {
 		let sum = 0
-		for( let i = 0; i < 3; ++ i ) sum += Math.pow( pixel[ i ] / 255, 2.2 )
+		for( let i = 0; i < 3; ++ i ) sum += $bog_gamengine_probe_lin( pixel[ i ] )
 		return sum
 	}
 
