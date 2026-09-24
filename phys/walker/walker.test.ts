@@ -8,6 +8,16 @@ namespace $ {
 		return { key, input }
 	}
 
+	class $bog_gamengine_phys_walker_stick extends $bog_gamengine_input {
+
+		lean = 0
+
+		axis( neg: string, pos: string ) {
+			return pos === 'right' ? this.lean : 0
+		}
+
+	}
+
 	$mol_test({
 
 		'walker without input writes no velocity at all'() {
@@ -25,9 +35,33 @@ namespace $ {
 			key.pressed( 'D', true )
 			walker.step( 0.1 )
 			$mol_assert_equal( [ ... walker.vel() ], [ 4, 0, 0 ] )
+		},
+
+		'diagonal does not go faster than a straight line'() {
+			const { key, input } = $bog_gamengine_phys_walker_keys()
+			const walker = new $bog_gamengine_phys_walker
+			walker.input( input )
+			walker.speed( 4 )
+			key.pressed( 'D', true )
 			key.pressed( 'W', true )
 			walker.step( 0.1 )
-			$mol_assert_equal( [ ... walker.vel() ], [ 4, 4, 0 ] )
+			const vel = walker.vel()
+			$mol_assert_ok( Math.abs( Math.sqrt( vel[ 0 ] * vel[ 0 ] + vel[ 1 ] * vel[ 1 ] ) - 4 ) < 1e-6 )
+			$mol_assert_ok( Math.abs( vel[ 0 ] - vel[ 1 ] ) < 1e-6 )
+			$mol_assert_ok( vel[ 0 ] > 2.8 && vel[ 0 ] < 2.9 )
+		},
+
+		'half pressed stick keeps half of the speed'() {
+			const stick = new $bog_gamengine_phys_walker_stick
+			const walker = new $bog_gamengine_phys_walker
+			walker.input( stick )
+			walker.speed( 4 )
+			stick.lean = 0.5
+			walker.step( 0.1 )
+			$mol_assert_equal( [ ... walker.vel() ], [ 2, 0, 0 ] )
+			stick.lean = 1
+			walker.step( 0.1 )
+			$mol_assert_equal( [ ... walker.vel() ], [ 4, 0, 0 ] )
 		},
 
 		'released keys stop the walker once and then it keeps silent'() {

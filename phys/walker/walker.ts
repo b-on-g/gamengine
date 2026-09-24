@@ -23,8 +23,17 @@ namespace $ {
 
 			const input = this.input()
 			const speed = this.speed()
-			const vx = input ? input.axis( 'left', 'right' ) * speed : 0
-			const vy = input ? input.axis( 'down', 'up' ) * speed : 0
+			let want_x = input ? input.axis( 'left', 'right' ) : 0
+			let want_y = input ? input.axis( 'down', 'up' ) : 0
+
+			const len = Math.sqrt( want_x * want_x + want_y * want_y )
+			if( len > 1 ) {
+				want_x /= len
+				want_y /= len
+			}
+
+			const vx = want_x * speed
+			const vy = want_y * speed
 
 			const vel = this.vel()
 			if( vel[ 0 ] === vx && vel[ 1 ] === vy ) return
