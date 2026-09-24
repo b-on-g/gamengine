@@ -118,6 +118,8 @@
 	pack icon git \https://github.com/nin-jin/mol_icon.git
 \/mol/view
 	include \/mol/view/tree/test
+\/bog/gamengine/skin
+	deploy \/bog/gamengine/skin/model/arm.glb
 \/bog/gamengine/demo/room
 	deploy \/bog/gamengine/demo/room/model/pillar.glb
 \/bog/gamengine/demo

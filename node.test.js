@@ -9518,6 +9518,7 @@ var $;
         gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
         gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
         return texture;
     }
     $.$bog_gamengine_gl_texture_array = $bog_gamengine_gl_texture_array;
@@ -11144,6 +11145,20 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    class $bog_gamengine_atlas_image extends $mol_3d_image {
+        data() {
+            $mol_wire_solid();
+            return $mol_wire_sync(this).load();
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_atlas_image.prototype, "data", null);
+    $.$bog_gamengine_atlas_image = $bog_gamengine_atlas_image;
+    function $bog_gamengine_atlas_blank(image) {
+        return ArrayBuffer.isView(image.data);
+    }
+    $.$bog_gamengine_atlas_blank = $bog_gamengine_atlas_blank;
     class $bog_gamengine_atlas extends $mol_object2 {
         uris(next = []) {
             return next;
@@ -11186,7 +11201,7 @@ var $;
         }
         static image(uri) {
             $mol_wire_solid();
-            return this.$.$mol_3d_image.make({ uri: () => uri });
+            return this.$.$bog_gamengine_atlas_image.make({ uri: () => uri });
         }
         image(uri) {
             return this.constructor.image(uri);
@@ -11198,19 +11213,23 @@ var $;
             const loaded = $mol_wire_race(...uris.map(uri => () => this.image(uri).data()));
             const images = [...loaded, ...this.sources().map(source => source.image)];
             for (let i = 0; i < images.length; ++i) {
+                if ($bog_gamengine_atlas_blank(images[i]))
+                    continue;
                 const box = images[i];
                 const width = box.width;
                 const height = box.height;
                 if (width === size && height === size)
                     continue;
-                const hint = width === 512 && height === 512 ? ', is it loaded?' : '';
-                $mol_fail(new Error(`Atlas image ${origins[i].from} is ${width}×${height}, expected ${size}×${size}${hint}`));
+                $mol_fail(new Error(`Atlas image ${origins[i].from} is ${width}×${height}, expected ${size}×${size}`));
             }
             return images;
         }
         ready() {
             try {
-                this.images();
+                const images = this.images();
+                for (let i = 0; i < images.length; ++i)
+                    if ($bog_gamengine_atlas_blank(images[i]))
+                        return false;
                 return true;
             }
             catch (error) {
@@ -11958,6 +11977,7 @@ var $;
     class $bog_gamengine_phys3_broad extends $mol_object2 {
         static shape_plane = 3;
         static flag_sleep = 1;
+        static flag_kinematic = 4;
         pairs = new Uint32Array(0);
         pair_count = 0;
         order = new Uint32Array(0);
@@ -12015,6 +12035,7 @@ var $;
             const aabb = world.aabb, inv_mass = world.inv_mass, flags = world.flags, shape = world.shape;
             const plane = $bog_gamengine_phys3_broad.shape_plane;
             const sleep = $bog_gamengine_phys3_broad.flag_sleep;
+            const kind = $bog_gamengine_phys3_broad.flag_kinematic;
             for (let a = 0; a < len; ++a) {
                 const i = order[a];
                 if (shape[i] === plane)
@@ -12023,7 +12044,7 @@ var $;
                 const max_x = aabb[i6 + 3];
                 const min_y = aabb[i6 + 1], max_y = aabb[i6 + 4];
                 const min_z = aabb[i6 + 2], max_z = aabb[i6 + 5];
-                const active_i = inv_mass[i] > 0 && !(flags[i] & sleep);
+                const active_i = (inv_mass[i] > 0 || (flags[i] & kind) !== 0) && !(flags[i] & sleep);
                 for (let b = a + 1; b < len; ++b) {
                     const j = order[b];
                     const j6 = j * 6;
@@ -12031,7 +12052,7 @@ var $;
                         break;
                     if (shape[j] === plane)
                         continue;
-                    if (!active_i && !(inv_mass[j] > 0 && !(flags[j] & sleep)))
+                    if (!active_i && !((inv_mass[j] > 0 || (flags[j] & kind) !== 0) && !(flags[j] & sleep)))
                         continue;
                     if (aabb[j6 + 1] > max_y || aabb[j6 + 4] < min_y)
                         continue;
@@ -14311,6 +14332,7 @@ var $;
         static shape_hull = 4;
         static flag_sleep = 1;
         static flag_ghost = 2;
+        static flag_kinematic = 4;
         static sleep_speed = 0.05;
         static sleep_time = 0.5;
         cap = 0;
@@ -14332,6 +14354,11 @@ var $;
         hull_count = new Uint32Array(0);
         hull = new Float32Array(0);
         hull_len = 0;
+        handle_at = new Int32Array(0);
+        index_at = new Int32Array(0);
+        handle_seq = 0;
+        free = new Int32Array(0);
+        free_count = 0;
         pos_view = [];
         rot_view = [];
         ang_view = [];
@@ -14388,6 +14415,9 @@ var $;
             const hull_count = new Uint32Array(cap);
             hull_count.set(this.hull_count);
             this.hull_count = hull_count;
+            const handle_at = new Int32Array(cap);
+            handle_at.set(this.handle_at);
+            this.handle_at = handle_at;
             this.pos_view = this.views(this.pos, 3);
             this.rot_view = this.views(this.rot, 4);
             this.ang_view = this.views(this.ang, 3);
@@ -14424,7 +14454,93 @@ var $;
             this.mass_set(i, mass);
             this.trans_write(i);
             this.bounds_of(i);
-            return i;
+            return this.handle_new(i);
+        }
+        handle_grow(need) {
+            if (need <= this.index_at.length)
+                return;
+            let len = Math.max(this.index_at.length, 16);
+            while (len < need)
+                len *= 2;
+            const index_at = new Int32Array(len);
+            index_at.set(this.index_at);
+            this.index_at = index_at;
+            const free = new Int32Array(len);
+            free.set(this.free);
+            this.free = free;
+        }
+        handle_new(index) {
+            let handle = 0;
+            if (this.free_count > 0)
+                handle = this.free[--this.free_count];
+            else {
+                handle = ++this.handle_seq;
+                this.handle_grow(handle);
+            }
+            this.index_at[handle - 1] = index;
+            this.handle_at[index] = handle;
+            return handle;
+        }
+        index_of(handle) {
+            if (handle < 1 || handle > this.handle_seq)
+                return -1;
+            return this.index_at[handle - 1];
+        }
+        handle_of(index) {
+            return index >= 0 && index < this.count ? this.handle_at[index] : 0;
+        }
+        pos_of(handle) {
+            const i = this.index_of(handle);
+            return i < 0 ? null : this.pos_view[i];
+        }
+        rot_of(handle) {
+            const i = this.index_of(handle);
+            return i < 0 ? null : this.rot_view[i];
+        }
+        mass_of(handle, next) {
+            const i = this.index_of(handle);
+            if (i < 0)
+                return 0;
+            if (next !== undefined)
+                this.mass_set(i, next);
+            return this.mass[i];
+        }
+        flag_set(i, flag, on) {
+            if (on)
+                this.flags[i] |= flag;
+            else
+                this.flags[i] &= ~flag;
+        }
+        ghost_of(handle, next) {
+            const i = this.index_of(handle);
+            if (i < 0)
+                return false;
+            const flag = $bog_gamengine_phys3.flag_ghost;
+            if (next !== undefined)
+                this.flag_set(i, flag, next);
+            return (this.flags[i] & flag) !== 0;
+        }
+        kinematic_of(handle, next) {
+            const i = this.index_of(handle);
+            if (i < 0)
+                return false;
+            const flag = $bog_gamengine_phys3.flag_kinematic;
+            if (next !== undefined)
+                this.flag_set(i, flag, next);
+            return (this.flags[i] & flag) !== 0;
+        }
+        move(handle, pos, rot) {
+            const i = this.index_of(handle);
+            if (i < 0)
+                return false;
+            this.pos.set(pos, i * 3);
+            if (rot)
+                this.rot.set(rot, i * 4);
+            this.flags[i] &= ~$bog_gamengine_phys3.flag_sleep;
+            this.sleep_timer[i] = 0;
+            this.bounds_of(i);
+            this.trans_write(i);
+            return true;
         }
         mass_set(i, mass) {
             this.mass[i] = mass;
@@ -14464,28 +14580,47 @@ var $;
                 }
             }
         }
-        remove(index) {
+        remove(handle) {
+            const index = this.index_of(handle);
+            if (index < 0)
+                return false;
+            this.drop(index);
+            return true;
+        }
+        drop(index) {
             const last = this.count - 1;
+            const handle = this.handle_at[index];
             if (index !== last) {
-                this.pos.copyWithin(index * 3, last * 3, last * 3 + 3);
-                this.rot.copyWithin(index * 4, last * 4, last * 4 + 4);
-                this.vel.copyWithin(index * 3, last * 3, last * 3 + 3);
-                this.ang.copyWithin(index * 3, last * 3, last * 3 + 3);
-                this.mass[index] = this.mass[last];
-                this.inv_mass[index] = this.inv_mass[last];
-                this.inv_inertia.copyWithin(index * 3, last * 3, last * 3 + 3);
-                this.shape[index] = this.shape[last];
-                this.size.copyWithin(index * 3, last * 3, last * 3 + 3);
-                this.flags[index] = this.flags[last];
-                this.trans.copyWithin(index * 16, last * 16, last * 16 + 16);
-                this.aabb.copyWithin(index * 6, last * 6, last * 6 + 6);
-                this.sleep_timer[index] = this.sleep_timer[last];
-                this.hull_off[index] = this.hull_off[last];
-                this.hull_count[index] = this.hull_count[last];
+                this.swap(index, last);
+                const moved = this.handle_at[last];
+                this.handle_at[index] = moved;
+                this.index_at[moved - 1] = index;
+            }
+            this.handle_at[last] = 0;
+            if (handle > 0) {
+                this.index_at[handle - 1] = -1;
+                this.free[this.free_count++] = handle;
             }
             this.count = last;
             this.joint.body_remove(index, last);
             return last;
+        }
+        swap(index, last) {
+            this.pos.copyWithin(index * 3, last * 3, last * 3 + 3);
+            this.rot.copyWithin(index * 4, last * 4, last * 4 + 4);
+            this.vel.copyWithin(index * 3, last * 3, last * 3 + 3);
+            this.ang.copyWithin(index * 3, last * 3, last * 3 + 3);
+            this.mass[index] = this.mass[last];
+            this.inv_mass[index] = this.inv_mass[last];
+            this.inv_inertia.copyWithin(index * 3, last * 3, last * 3 + 3);
+            this.shape[index] = this.shape[last];
+            this.size.copyWithin(index * 3, last * 3, last * 3 + 3);
+            this.flags[index] = this.flags[last];
+            this.trans.copyWithin(index * 16, last * 16, last * 16 + 16);
+            this.aabb.copyWithin(index * 6, last * 6, last * 6 + 6);
+            this.sleep_timer[index] = this.sleep_timer[last];
+            this.hull_off[index] = this.hull_off[last];
+            this.hull_count[index] = this.hull_count[last];
         }
         hull_points(index, points) {
             const off = this.hull_len;
@@ -14560,8 +14695,9 @@ var $;
             const inv_mass = this.inv_mass, flags = this.flags, timer = this.sleep_timer;
             const rot_view = this.rot_view, ang_view = this.ang_view;
             const sleep = $bog_gamengine_phys3.flag_sleep;
+            const kind = $bog_gamengine_phys3.flag_kinematic;
             for (let i = 0; i < count; ++i) {
-                if (flags[i] & sleep || !(inv_mass[i] > 0))
+                if (flags[i] & (sleep | kind) || !(inv_mass[i] > 0))
                     continue;
                 const p = i * 3;
                 vel[p] += gx;
@@ -14575,11 +14711,18 @@ var $;
             this.solve.solve(this, this.narrow, dt, this.joint);
             const speed2 = $bog_gamengine_phys3.sleep_speed * $bog_gamengine_phys3.sleep_speed;
             const sleep_time = $bog_gamengine_phys3.sleep_time;
+            const kinematic = $bog_gamengine_phys3.flag_kinematic;
             for (let i = 0; i < count; ++i) {
                 if (flags[i] & sleep)
                     continue;
                 const p = i * 3;
-                if (inv_mass[i] > 0) {
+                if (flags[i] & kinematic) {
+                    pos[p] += vel[p] * dt;
+                    pos[p + 1] += vel[p + 1] * dt;
+                    pos[p + 2] += vel[p + 2] * dt;
+                    $bog_gamengine_vec_quat_integrate(rot_view[i], rot_view[i], ang_view[i], dt);
+                }
+                else if (inv_mass[i] > 0) {
                     const v2 = vel[p] * vel[p] + vel[p + 1] * vel[p + 1] + vel[p + 2] * vel[p + 2];
                     const w2 = ang[p] * ang[p] + ang[p + 1] * ang[p + 1] + ang[p + 2] * ang[p + 2];
                     if (v2 < speed2 && w2 < speed2) {
@@ -15098,6 +15241,11 @@ var $;
 			const obj = new this.$.Float32Array();
 			return obj;
 		}
+		clear(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
 		ambient(){
 			return 0.35;
 		}
@@ -15149,6 +15297,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_draw.prototype), "scene"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "cam"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "light_dir"));
+	($mol_mem(($.$bog_gamengine_draw.prototype), "clear"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "wireframe"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "shadows"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "shadow_size"));
@@ -15156,6 +15305,661 @@ var $;
 	($mol_mem(($.$bog_gamengine_draw.prototype), "post"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "Tone"));
 
+
+;
+"use strict";
+var $;
+(function ($) {
+    const magic = 0x46546C67;
+    const chunk_json = 0x4E4F534A;
+    const chunk_bin = 0x004E4942;
+    const dims = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
+    const zero3 = [0, 0, 0];
+    const one3 = [1, 1, 1];
+    const unit4 = [0, 0, 0, 1];
+    class $bog_gamengine_shape_gltf extends $bog_gamengine_shape {
+        data(next) {
+            return next ?? null;
+        }
+        chunks() {
+            const data = this.data();
+            if (!data)
+                return $mol_fail(new Error('glTF has no data'));
+            const view = new DataView(data);
+            if (view.getUint32(0, true) !== magic)
+                return $mol_fail(new Error('glTF is not a GLB container'));
+            let json = null;
+            let bin = null;
+            let at = 12;
+            while (at + 8 <= data.byteLength) {
+                const length = view.getUint32(at, true);
+                const type = view.getUint32(at + 4, true);
+                const body = data.slice(at + 8, at + 8 + length);
+                if (type === chunk_json)
+                    json = JSON.parse(new TextDecoder().decode(body));
+                if (type === chunk_bin)
+                    bin = body;
+                at += 8 + length;
+            }
+            if (!json)
+                return $mol_fail(new Error('GLB has no JSON chunk'));
+            return { json, bin };
+        }
+        json(next) {
+            return next ?? this.chunks().json;
+        }
+        bin(next) {
+            return next ?? this.chunks().bin ?? $mol_fail(new Error('GLB has no BIN chunk'));
+        }
+        accessor(index) {
+            const doc = this.json();
+            const accessor = doc.accessors?.[index] ?? $mol_fail(new Error(`glTF has no accessor ${index}`));
+            const dim = dims[accessor.type] ?? $mol_fail(new Error(`glTF accessor type ${accessor.type} is not supported`));
+            const out = new Float32Array(accessor.count * dim);
+            if (accessor.bufferView === undefined)
+                return out;
+            const bview = doc.bufferViews?.[accessor.bufferView] ?? $mol_fail(new Error(`glTF has no bufferView ${accessor.bufferView}`));
+            const view = new DataView(this.bin(), (bview.byteOffset ?? 0) + (accessor.byteOffset ?? 0));
+            const unit = accessor.componentType === 5126 || accessor.componentType === 5125 ? 4 : accessor.componentType === 5123 ? 2 : 1;
+            const stride = bview.byteStride ?? unit * dim;
+            for (let i = 0; i < accessor.count; ++i) {
+                for (let d = 0; d < dim; ++d) {
+                    const at = i * stride + d * unit;
+                    switch (accessor.componentType) {
+                        case 5126:
+                            out[i * dim + d] = view.getFloat32(at, true);
+                            break;
+                        case 5125:
+                            out[i * dim + d] = view.getUint32(at, true);
+                            break;
+                        case 5123:
+                            out[i * dim + d] = view.getUint16(at, true);
+                            break;
+                        case 5121:
+                            out[i * dim + d] = view.getUint8(at);
+                            break;
+                        case 5122:
+                            out[i * dim + d] = view.getInt16(at, true);
+                            break;
+                        case 5120:
+                            out[i * dim + d] = view.getInt8(at);
+                            break;
+                        default: return $mol_fail(new Error(`glTF component type ${accessor.componentType} is not supported`));
+                    }
+                }
+            }
+            return out;
+        }
+        arrays() {
+            const doc = this.json();
+            const prim = doc.meshes?.[0]?.primitives?.[0] ?? $mol_fail(new Error('glTF has no mesh primitive'));
+            const attrs = prim.attributes;
+            if (attrs.POSITION === undefined)
+                return $mol_fail(new Error('glTF primitive has no POSITION'));
+            const pos = this.accessor(attrs.POSITION);
+            const norm = attrs.NORMAL === undefined ? null : this.accessor(attrs.NORMAL);
+            const tex = attrs.TEXCOORD_0 === undefined ? null : this.accessor(attrs.TEXCOORD_0);
+            const bone = attrs.JOINTS_0 === undefined ? null : this.accessor(attrs.JOINTS_0);
+            const load = attrs.WEIGHTS_0 === undefined ? null : this.accessor(attrs.WEIGHTS_0);
+            const index = prim.indices === undefined ? null : this.accessor(prim.indices);
+            const size = index ? index.length : pos.length / 3;
+            const geometry = new Float32Array(size * 3);
+            const normals = new Float32Array(size * 3);
+            const skin = new Float32Array(size * 2);
+            const joints = new Float32Array(bone ? size * 4 : 0);
+            const weights = new Float32Array(load ? size * 4 : 0);
+            for (let i = 0; i < size; ++i) {
+                const v = index ? index[i] : i;
+                for (let axis = 0; axis < 3; ++axis) {
+                    geometry[i * 3 + axis] = pos[v * 3 + axis];
+                    if (norm)
+                        normals[i * 3 + axis] = norm[v * 3 + axis];
+                }
+                if (tex) {
+                    skin[i * 2] = tex[v * 2];
+                    skin[i * 2 + 1] = 1 - tex[v * 2 + 1];
+                }
+                for (let k = 0; k < 4; ++k) {
+                    if (bone)
+                        joints[i * 4 + k] = bone[v * 4 + k];
+                    if (load)
+                        weights[i * 4 + k] = load[v * 4 + k];
+                }
+            }
+            if (!norm) {
+                for (let t = 0; t + 2 < size; t += 3) {
+                    const a = t * 3;
+                    const b = a + 3;
+                    const c = a + 6;
+                    const ux = geometry[b] - geometry[a];
+                    const uy = geometry[b + 1] - geometry[a + 1];
+                    const uz = geometry[b + 2] - geometry[a + 2];
+                    const vx = geometry[c] - geometry[a];
+                    const vy = geometry[c + 1] - geometry[a + 1];
+                    const vz = geometry[c + 2] - geometry[a + 2];
+                    let nx = uy * vz - uz * vy;
+                    let ny = uz * vx - ux * vz;
+                    let nz = ux * vy - uy * vx;
+                    const len = Math.hypot(nx, ny, nz) || 1;
+                    nx /= len;
+                    ny /= len;
+                    nz /= len;
+                    for (let k = 0; k < 3; ++k) {
+                        normals[a + k * 3] = nx;
+                        normals[a + k * 3 + 1] = ny;
+                        normals[a + k * 3 + 2] = nz;
+                    }
+                }
+            }
+            return { geometry, normals, skin, joints, weights };
+        }
+        geometry() {
+            return this.arrays().geometry;
+        }
+        normals() {
+            return this.arrays().normals;
+        }
+        skin() {
+            return this.arrays().skin;
+        }
+        joints() {
+            return this.arrays().joints;
+        }
+        weights() {
+            return this.arrays().weights;
+        }
+        skeleton() {
+            const doc = this.json();
+            const skin = doc.skins?.[0];
+            if (!skin)
+                return null;
+            const nodes = doc.nodes ?? [];
+            const count = skin.joints.length;
+            const at_joint = new Map();
+            for (let i = 0; i < count; ++i)
+                at_joint.set(skin.joints[i], i);
+            const parents = new Int32Array(count).fill(-1);
+            for (let i = 0; i < nodes.length; ++i) {
+                const kids = nodes[i].children;
+                if (!kids)
+                    continue;
+                for (let k = 0; k < kids.length; ++k) {
+                    const kid = at_joint.get(kids[k]);
+                    if (kid === undefined)
+                        continue;
+                    parents[kid] = at_joint.get(i) ?? -1;
+                }
+            }
+            const names = [];
+            const base = new Float32Array(count * 10);
+            for (let i = 0; i < count; ++i) {
+                const node = nodes[skin.joints[i]] ?? {};
+                names.push(node.name ?? `joint${i}`);
+                const move = node.translation ?? zero3;
+                const turn = node.rotation ?? unit4;
+                const size = node.scale ?? one3;
+                for (let k = 0; k < 3; ++k)
+                    base[i * 10 + k] = move[k];
+                for (let k = 0; k < 4; ++k)
+                    base[i * 10 + 3 + k] = turn[k];
+                for (let k = 0; k < 3; ++k)
+                    base[i * 10 + 7 + k] = size[k];
+            }
+            const binds = new Float32Array(count * 16);
+            if (skin.inverseBindMatrices === undefined) {
+                for (let i = 0; i < count; ++i)
+                    for (let k = 0; k < 4; ++k)
+                        binds[i * 16 + k * 5] = 1;
+            }
+            else {
+                const source = this.accessor(skin.inverseBindMatrices);
+                for (let k = 0; k < binds.length && k < source.length; ++k)
+                    binds[k] = source[k];
+            }
+            const order = new Int32Array(count);
+            const ready = new Uint8Array(count);
+            let done = 0;
+            while (done < count) {
+                const was = done;
+                for (let i = 0; i < count; ++i) {
+                    if (ready[i])
+                        continue;
+                    const parent = parents[i];
+                    if (parent >= 0 && !ready[parent])
+                        continue;
+                    ready[i] = 1;
+                    order[done++] = i;
+                }
+                if (done === was)
+                    return $mol_fail(new Error('glTF skeleton has a cycle'));
+            }
+            return { count, names, parents, order, base, binds };
+        }
+        clips() {
+            const doc = this.json();
+            const clips = new Map();
+            const skin = doc.skins?.[0];
+            if (!skin)
+                return clips;
+            const at_joint = new Map();
+            for (let i = 0; i < skin.joints.length; ++i)
+                at_joint.set(skin.joints[i], i);
+            const anims = doc.animations ?? [];
+            for (let a = 0; a < anims.length; ++a) {
+                const anim = anims[a];
+                const channels = [];
+                let duration = 0;
+                for (let c = 0; c < anim.channels.length; ++c) {
+                    const target = anim.channels[c].target;
+                    if (target.path !== 'translation' && target.path !== 'rotation' && target.path !== 'scale')
+                        continue;
+                    const joint = target.node === undefined ? undefined : at_joint.get(target.node);
+                    if (joint === undefined)
+                        continue;
+                    const sampler = anim.samplers[anim.channels[c].sampler]
+                        ?? $mol_fail(new Error(`glTF animation has no sampler ${anim.channels[c].sampler}`));
+                    const interp = sampler.interpolation ?? 'LINEAR';
+                    if (interp !== 'LINEAR' && interp !== 'STEP') {
+                        return $mol_fail(new Error(`glTF animation interpolation ${interp} is not supported`));
+                    }
+                    const times = this.accessor(sampler.input);
+                    const values = this.accessor(sampler.output);
+                    if (times.length)
+                        duration = Math.max(duration, times[times.length - 1]);
+                    channels.push({ joint, path: target.path, step: interp === 'STEP', times, values });
+                }
+                const name = anim.name ?? `clip${a}`;
+                clips.set(name, { name, duration, channels });
+            }
+            return clips;
+        }
+        mode() {
+            return 'triangles';
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_shape_gltf.prototype, "data", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_shape_gltf.prototype, "chunks", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_shape_gltf.prototype, "json", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_shape_gltf.prototype, "bin", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_shape_gltf.prototype, "arrays", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_shape_gltf.prototype, "skeleton", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_shape_gltf.prototype, "clips", null);
+    $.$bog_gamengine_shape_gltf = $bog_gamengine_shape_gltf;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    $.$bog_gamengine_skin_max = 64;
+    $.$bog_gamengine_skin_empty = new Float32Array(0);
+    function $bog_gamengine_skin_mat_trs(out, at, trs, from) {
+        const x = trs[from + 3];
+        const y = trs[from + 4];
+        const z = trs[from + 5];
+        const w = trs[from + 6];
+        const sx = trs[from + 7];
+        const sy = trs[from + 8];
+        const sz = trs[from + 9];
+        const xx = x * x;
+        const yy = y * y;
+        const zz = z * z;
+        const xy = x * y;
+        const xz = x * z;
+        const yz = y * z;
+        const wx = w * x;
+        const wy = w * y;
+        const wz = w * z;
+        out[at] = (1 - 2 * (yy + zz)) * sx;
+        out[at + 1] = 2 * (xy + wz) * sx;
+        out[at + 2] = 2 * (xz - wy) * sx;
+        out[at + 3] = 0;
+        out[at + 4] = 2 * (xy - wz) * sy;
+        out[at + 5] = (1 - 2 * (xx + zz)) * sy;
+        out[at + 6] = 2 * (yz + wx) * sy;
+        out[at + 7] = 0;
+        out[at + 8] = 2 * (xz + wy) * sz;
+        out[at + 9] = 2 * (yz - wx) * sz;
+        out[at + 10] = (1 - 2 * (xx + yy)) * sz;
+        out[at + 11] = 0;
+        out[at + 12] = trs[from];
+        out[at + 13] = trs[from + 1];
+        out[at + 14] = trs[from + 2];
+        out[at + 15] = 1;
+        return out;
+    }
+    $.$bog_gamengine_skin_mat_trs = $bog_gamengine_skin_mat_trs;
+    function $bog_gamengine_skin_mat_mul(out, at, left, left_at, right, right_at) {
+        for (let col = 0; col < 4; ++col) {
+            const b0 = right[right_at + col * 4];
+            const b1 = right[right_at + col * 4 + 1];
+            const b2 = right[right_at + col * 4 + 2];
+            const b3 = right[right_at + col * 4 + 3];
+            for (let row = 0; row < 4; ++row) {
+                out[at + col * 4 + row] =
+                    left[left_at + row] * b0
+                        + left[left_at + 4 + row] * b1
+                        + left[left_at + 8 + row] * b2
+                        + left[left_at + 12 + row] * b3;
+            }
+        }
+        return out;
+    }
+    $.$bog_gamengine_skin_mat_mul = $bog_gamengine_skin_mat_mul;
+    function $bog_gamengine_skin_quat_mix(out, at, left, left_at, right, right_at, weight) {
+        const ax = left[left_at];
+        const ay = left[left_at + 1];
+        const az = left[left_at + 2];
+        const aw = left[left_at + 3];
+        let bx = right[right_at];
+        let by = right[right_at + 1];
+        let bz = right[right_at + 2];
+        let bw = right[right_at + 3];
+        let dot = ax * bx + ay * by + az * bz + aw * bw;
+        if (dot < 0) {
+            dot = -dot;
+            bx = -bx;
+            by = -by;
+            bz = -bz;
+            bw = -bw;
+        }
+        let ka = 1 - weight;
+        let kb = weight;
+        if (dot < 0.9995) {
+            const angle = Math.acos(dot > 1 ? 1 : dot);
+            const sin = Math.sin(angle);
+            ka = Math.sin(ka * angle) / sin;
+            kb = Math.sin(kb * angle) / sin;
+        }
+        const x = ax * ka + bx * kb;
+        const y = ay * ka + by * kb;
+        const z = az * ka + bz * kb;
+        const w = aw * ka + bw * kb;
+        const len = Math.sqrt(x * x + y * y + z * z + w * w) || 1;
+        out[at] = x / len;
+        out[at + 1] = y / len;
+        out[at + 2] = z / len;
+        out[at + 3] = w / len;
+        return out;
+    }
+    $.$bog_gamengine_skin_quat_mix = $bog_gamengine_skin_quat_mix;
+    function $bog_gamengine_skin_sample(channel, time, out, at) {
+        const times = channel.times;
+        const values = channel.values;
+        const size = times.length;
+        if (!size)
+            return out;
+        const shift = channel.path === 'translation' ? 0 : channel.path === 'rotation' ? 3 : 7;
+        const dim = channel.path === 'rotation' ? 4 : 3;
+        let from = 0;
+        while (from < size - 1 && times[from + 1] <= time)
+            ++from;
+        const to = from + 1 < size ? from + 1 : from;
+        const span = times[to] - times[from];
+        let part = span > 0 ? (time - times[from]) / span : 0;
+        if (part < 0)
+            part = 0;
+        if (part > 1)
+            part = 1;
+        if (channel.step)
+            part = 0;
+        if (dim === 4) {
+            $bog_gamengine_skin_quat_mix(out, at + shift, values, from * 4, values, to * 4, part);
+        }
+        else {
+            for (let k = 0; k < 3; ++k) {
+                out[at + shift + k] = values[from * 3 + k] * (1 - part) + values[to * 3 + k] * part;
+            }
+        }
+        return out;
+    }
+    $.$bog_gamengine_skin_sample = $bog_gamengine_skin_sample;
+    function $bog_gamengine_skin_bones(batch) {
+        const nodes = batch.nodes();
+        if (nodes.length !== 1)
+            return null;
+        const node = nodes[0];
+        const skin = typeof node.skin === 'function' ? node.skin() : null;
+        return skin ? skin.pose() : null;
+    }
+    $.$bog_gamengine_skin_bones = $bog_gamengine_skin_bones;
+    function $bog_gamengine_skin_shape_joints(shape) {
+        const probe = shape;
+        return typeof probe.joints === 'function' ? probe.joints() : $.$bog_gamengine_skin_empty;
+    }
+    $.$bog_gamengine_skin_shape_joints = $bog_gamengine_skin_shape_joints;
+    function $bog_gamengine_skin_shape_weights(shape) {
+        const probe = shape;
+        return typeof probe.weights === 'function' ? probe.weights() : $.$bog_gamengine_skin_empty;
+    }
+    $.$bog_gamengine_skin_shape_weights = $bog_gamengine_skin_shape_weights;
+    class $bog_gamengine_skin extends $mol_object2 {
+        shape(next) {
+            return next ?? null;
+        }
+        clip(next) {
+            return next ?? '';
+        }
+        mix(next) {
+            return next ?? '';
+        }
+        weight(next) {
+            return next ?? 0;
+        }
+        time(next) {
+            return next ?? 0;
+        }
+        loop(next) {
+            return next ?? true;
+        }
+        speed(next) {
+            return next ?? 1;
+        }
+        blend(clip, weight) {
+            this.mix(clip);
+            this.weight(weight);
+            return weight;
+        }
+        duration() {
+            return this.shape()?.clips().get(this.clip())?.duration ?? 0;
+        }
+        version = 0;
+        bones = $.$bog_gamengine_skin_empty;
+        locals = $.$bog_gamengine_skin_empty;
+        worlds = $.$bog_gamengine_skin_empty;
+        trs_main = $.$bog_gamengine_skin_empty;
+        trs_mix = $.$bog_gamengine_skin_empty;
+        done_skeleton = null;
+        done_time = NaN;
+        done_clip = '';
+        done_mix = '';
+        done_weight = NaN;
+        prepare() {
+            if (this.bones.length)
+                return this.bones;
+            const max = $.$bog_gamengine_skin_max;
+            this.bones = new Float32Array(max * 16);
+            for (let i = 0; i < max; ++i)
+                for (let k = 0; k < 4; ++k)
+                    this.bones[i * 16 + k * 5] = 1;
+            this.locals = new Float32Array(max * 16);
+            this.worlds = new Float32Array(max * 16);
+            this.trs_main = new Float32Array(max * 10);
+            this.trs_mix = new Float32Array(max * 10);
+            return this.bones;
+        }
+        apply(clip, time, trs, count, base) {
+            for (let k = 0; k < count * 10; ++k)
+                trs[k] = base[k];
+            if (!clip)
+                return trs;
+            const channels = clip.channels;
+            for (let c = 0; c < channels.length; ++c) {
+                const channel = channels[c];
+                if (channel.joint >= count)
+                    continue;
+                $bog_gamengine_skin_sample(channel, time, trs, channel.joint * 10);
+            }
+            return trs;
+        }
+        pose() {
+            const shape = this.shape();
+            const skeleton = shape?.skeleton() ?? null;
+            this.prepare();
+            if (!skeleton)
+                return this.bones;
+            if (skeleton.count > $.$bog_gamengine_skin_max) {
+                return $mol_fail(new Error(`Skeleton has more than ${$.$bog_gamengine_skin_max} joints`));
+            }
+            const time = this.time();
+            const clip = this.clip();
+            const mix = this.mix();
+            const weight = this.weight();
+            if (this.done_skeleton === skeleton
+                && this.done_time === time
+                && this.done_clip === clip
+                && this.done_mix === mix
+                && this.done_weight === weight)
+                return this.bones;
+            const clips = shape.clips();
+            const count = skeleton.count;
+            const trs = this.trs_main;
+            this.apply(clips.get(clip), time, trs, count, skeleton.base);
+            if (mix && weight > 0) {
+                const other = this.trs_mix;
+                this.apply(clips.get(mix), time, other, count, skeleton.base);
+                for (let i = 0; i < count; ++i) {
+                    const at = i * 10;
+                    for (let k = 0; k < 3; ++k) {
+                        trs[at + k] = trs[at + k] * (1 - weight) + other[at + k] * weight;
+                        trs[at + 7 + k] = trs[at + 7 + k] * (1 - weight) + other[at + 7 + k] * weight;
+                    }
+                    $bog_gamengine_skin_quat_mix(trs, at + 3, trs, at + 3, other, at + 3, weight);
+                }
+            }
+            for (let o = 0; o < count; ++o) {
+                const i = skeleton.order[o];
+                $bog_gamengine_skin_mat_trs(this.locals, i * 16, trs, i * 10);
+                const parent = skeleton.parents[i];
+                if (parent < 0) {
+                    for (let k = 0; k < 16; ++k)
+                        this.worlds[i * 16 + k] = this.locals[i * 16 + k];
+                }
+                else {
+                    $bog_gamengine_skin_mat_mul(this.worlds, i * 16, this.worlds, parent * 16, this.locals, i * 16);
+                }
+                $bog_gamengine_skin_mat_mul(this.bones, i * 16, this.worlds, i * 16, skeleton.binds, i * 16);
+            }
+            this.done_skeleton = skeleton;
+            this.done_time = time;
+            this.done_clip = clip;
+            this.done_mix = mix;
+            this.done_weight = weight;
+            ++this.version;
+            return this.bones;
+        }
+        step(dt) {
+            const speed = this.speed();
+            const duration = this.duration();
+            if (!speed || !duration)
+                return;
+            let time = this.time() + dt * speed;
+            if (this.loop()) {
+                time = time % duration;
+                if (time < 0)
+                    time += duration;
+            }
+            else {
+                if (time > duration)
+                    time = duration;
+                if (time < 0)
+                    time = 0;
+            }
+            this.time(time);
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_skin.prototype, "shape", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_skin.prototype, "clip", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_skin.prototype, "mix", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_skin.prototype, "weight", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_skin.prototype, "time", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_skin.prototype, "loop", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_skin.prototype, "speed", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_skin.prototype, "duration", null);
+    $.$bog_gamengine_skin = $bog_gamengine_skin;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_skin_gl_data extends Object {
+        gl;
+        width;
+        height;
+        native;
+        constructor(gl, width, height) {
+            super();
+            this.gl = gl;
+            this.width = width;
+            this.height = height;
+            this.native = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, this.native);
+            gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, width, height);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+        }
+        send(floats) {
+            const gl = this.gl;
+            gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+            gl.bindTexture(gl.TEXTURE_2D, this.native);
+            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, this.width, this.height, gl.RGBA, gl.FLOAT, floats);
+            return floats;
+        }
+        dispose() {
+            this.gl.deleteTexture(this.native);
+            return this;
+        }
+    }
+    $.$bog_gamengine_skin_gl_data = $bog_gamengine_skin_gl_data;
+    function $bog_gamengine_skin_gl_bones(gl) {
+        return new $bog_gamengine_skin_gl_data(gl, 4, $bog_gamengine_skin_max);
+    }
+    $.$bog_gamengine_skin_gl_bones = $bog_gamengine_skin_gl_bones;
+})($ || ($ = {}));
 
 ;
 "use strict";
@@ -15221,6 +16025,8 @@ var $;
             shadow_mat = null;
             shadow_map = null;
             shadow_light = null;
+            bones = null;
+            bones_tex = null;
             depth = false;
             ready = false;
             vao = null;
@@ -15249,6 +16055,8 @@ var $;
                     gl.deleteBuffer(this.buffers[i].native);
                 this.buffers = [];
                 gl.deleteVertexArray(this.vao);
+                this.bones_tex?.dispose();
+                this.bones_tex = null;
                 return this;
             }
         }
@@ -15379,6 +16187,9 @@ var $;
             }
             light_dir(next) {
                 return next ?? new Float32Array([0.4, 1, 0.6]);
+            }
+            clear(next) {
+                return next ? $bog_gamengine_node_vec(next) : new Float32Array([0.08, 0.08, 0.1, 1]);
             }
             proj() {
                 const aspect = this.width() / this.height();
@@ -15547,6 +16358,7 @@ var $;
                     shadow_mat: glob('shadow_mat'),
                     shadow_map: glob('shadow_map'),
                     shadow_light: glob('shadow_light'),
+                    bones: glob('bones'),
                     depth,
                     vao: gl.createVertexArray(),
                     live: mode === 'lines',
@@ -15582,6 +16394,15 @@ var $;
                 slot.material?.reserve(cap * 16);
                 slot.normal_layer = buffer(program.attribute('inst_normal_layer'), 1, 1);
                 slot.normal_layer?.reserve(cap * 4);
+                let bytes_skin = 0;
+                if (slot.bones) {
+                    const joints = $bog_gamengine_skin_shape_joints(shape);
+                    const weights = $bog_gamengine_skin_shape_weights(shape);
+                    buffer(program.attribute('joints'), 4, 0)?.send(joints);
+                    buffer(program.attribute('weights'), 4, 0)?.send(weights);
+                    bytes_skin = joints.byteLength + weights.byteLength;
+                    slot.bones_tex = $bog_gamengine_skin_gl_bones(gl);
+                }
                 gl.bindVertexArray(null);
                 slot.tris = mode === 'lines' ? 0 : mode === 'triangles' ? slot.size / 3 : Math.max(slot.size - 2, 0);
                 slot.stride = 80
@@ -15589,7 +16410,7 @@ var $;
                     + (slot.uv ? 16 : 0)
                     + (slot.material ? 16 : 0)
                     + (slot.normal_layer ? 4 : 0);
-                slot.bytes_shape = shape.geometry().byteLength;
+                slot.bytes_shape = shape.geometry().byteLength + bytes_skin;
                 slot.bytes = slot.stride * cap + slot.bytes_shape;
                 this.slots_all.set(batch, slot);
                 return slot;
@@ -15686,10 +16507,20 @@ var $;
                 this.lights_count = count;
                 return count;
             }
+            step() {
+                try {
+                    return this.scene().step();
+                }
+                catch (error) {
+                    if ($mol_promise_like(error))
+                        return -1;
+                    return $mol_fail_hidden(error);
+                }
+            }
             paint() {
                 const at_start = performance.now();
                 this.scene().aspect(this.width() / this.height() || 1);
-                this.scene().step();
+                this.step();
                 const at_step = performance.now();
                 const gl = this.context();
                 const slots = this.slots();
@@ -15726,7 +16557,8 @@ var $;
                 gl.cullFace(gl.BACK);
                 gl.enable(gl.BLEND);
                 gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-                gl.clearColor(0.08, 0.08, 0.1, 1);
+                const clear = this.clear();
+                gl.clearColor(clear[0], clear[1], clear[2], clear[3]);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
                 for (let i = 0; i < slots.length; ++i) {
                     if (slots[i].ready)
@@ -15913,6 +16745,15 @@ var $;
                     gl.bindTexture(gl.TEXTURE_2D_ARRAY, slot.tex.native);
                     $bog_gamengine_gl_uniform_int(gl, slot.sampler, 0);
                 }
+                if (slot.bones_tex) {
+                    gl.activeTexture(gl.TEXTURE4);
+                    const bones = $bog_gamengine_skin_bones(batch);
+                    if (bones)
+                        slot.bones_tex.send(bones);
+                    else
+                        gl.bindTexture(gl.TEXTURE_2D, slot.bones_tex.native);
+                    $bog_gamengine_gl_uniform_int(gl, slot.bones, 4);
+                }
                 gl.bindVertexArray(slot.vao);
                 gl.drawArraysInstanced(slot.prim, 0, slot.size, count);
                 ++this.count_draws;
@@ -15992,6 +16833,9 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_draw.prototype, "light_dir", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_draw.prototype, "clear", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_draw.prototype, "proj", null);
@@ -20022,295 +20866,56 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    const magic = 0x46546C67;
-    const chunk_json = 0x4E4F534A;
-    const chunk_bin = 0x004E4942;
-    const dims = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
-    const zero3 = [0, 0, 0];
-    const one3 = [1, 1, 1];
-    const unit4 = [0, 0, 0, 1];
-    class $bog_gamengine_shape_gltf extends $bog_gamengine_shape {
-        data(next) {
-            return next ?? null;
+    const programs = new WeakMap();
+    class $bog_gamengine_shader_skin extends $bog_gamengine_shader_solid {
+        programs = programs;
+        face() {
+            const base = super.face();
+            return {
+                glob: { ...base.glob, bones: 'sampler2D' },
+                input: { ...base.input, joints: 'vec4', weights: 'vec4' },
+                pipe: { ...base.pipe },
+                output: { ...base.output },
+            };
         }
-        chunks() {
-            const data = this.data();
-            if (!data)
-                return $mol_fail(new Error('glTF has no data'));
-            const view = new DataView(data);
-            if (view.getUint32(0, true) !== magic)
-                return $mol_fail(new Error('glTF is not a GLB container'));
-            let json = null;
-            let bin = null;
-            let at = 12;
-            while (at + 8 <= data.byteLength) {
-                const length = view.getUint32(at, true);
-                const type = view.getUint32(at + 4, true);
-                const body = data.slice(at + 8, at + 8 + length);
-                if (type === chunk_json)
-                    json = JSON.parse(new TextDecoder().decode(body));
-                if (type === chunk_bin)
-                    bin = body;
-                at += 8 + length;
-            }
-            if (!json)
-                return $mol_fail(new Error('GLB has no JSON chunk'));
-            return { json, bin };
-        }
-        json(next) {
-            return next ?? this.chunks().json;
-        }
-        bin(next) {
-            return next ?? this.chunks().bin ?? $mol_fail(new Error('GLB has no BIN chunk'));
-        }
-        accessor(index) {
-            const doc = this.json();
-            const accessor = doc.accessors?.[index] ?? $mol_fail(new Error(`glTF has no accessor ${index}`));
-            const dim = dims[accessor.type] ?? $mol_fail(new Error(`glTF accessor type ${accessor.type} is not supported`));
-            const out = new Float32Array(accessor.count * dim);
-            if (accessor.bufferView === undefined)
-                return out;
-            const bview = doc.bufferViews?.[accessor.bufferView] ?? $mol_fail(new Error(`glTF has no bufferView ${accessor.bufferView}`));
-            const view = new DataView(this.bin(), (bview.byteOffset ?? 0) + (accessor.byteOffset ?? 0));
-            const unit = accessor.componentType === 5126 || accessor.componentType === 5125 ? 4 : accessor.componentType === 5123 ? 2 : 1;
-            const stride = bview.byteStride ?? unit * dim;
-            for (let i = 0; i < accessor.count; ++i) {
-                for (let d = 0; d < dim; ++d) {
-                    const at = i * stride + d * unit;
-                    switch (accessor.componentType) {
-                        case 5126:
-                            out[i * dim + d] = view.getFloat32(at, true);
-                            break;
-                        case 5125:
-                            out[i * dim + d] = view.getUint32(at, true);
-                            break;
-                        case 5123:
-                            out[i * dim + d] = view.getUint16(at, true);
-                            break;
-                        case 5121:
-                            out[i * dim + d] = view.getUint8(at);
-                            break;
-                        case 5122:
-                            out[i * dim + d] = view.getInt16(at, true);
-                            break;
-                        case 5120:
-                            out[i * dim + d] = view.getInt8(at);
-                            break;
-                        default: return $mol_fail(new Error(`glTF component type ${accessor.componentType} is not supported`));
-                    }
-                }
-            }
-            return out;
-        }
-        arrays() {
-            const doc = this.json();
-            const prim = doc.meshes?.[0]?.primitives?.[0] ?? $mol_fail(new Error('glTF has no mesh primitive'));
-            const attrs = prim.attributes;
-            if (attrs.POSITION === undefined)
-                return $mol_fail(new Error('glTF primitive has no POSITION'));
-            const pos = this.accessor(attrs.POSITION);
-            const norm = attrs.NORMAL === undefined ? null : this.accessor(attrs.NORMAL);
-            const tex = attrs.TEXCOORD_0 === undefined ? null : this.accessor(attrs.TEXCOORD_0);
-            const bone = attrs.JOINTS_0 === undefined ? null : this.accessor(attrs.JOINTS_0);
-            const load = attrs.WEIGHTS_0 === undefined ? null : this.accessor(attrs.WEIGHTS_0);
-            const index = prim.indices === undefined ? null : this.accessor(prim.indices);
-            const size = index ? index.length : pos.length / 3;
-            const geometry = new Float32Array(size * 3);
-            const normals = new Float32Array(size * 3);
-            const skin = new Float32Array(size * 2);
-            const joints = new Float32Array(bone ? size * 4 : 0);
-            const weights = new Float32Array(load ? size * 4 : 0);
-            for (let i = 0; i < size; ++i) {
-                const v = index ? index[i] : i;
-                for (let axis = 0; axis < 3; ++axis) {
-                    geometry[i * 3 + axis] = pos[v * 3 + axis];
-                    if (norm)
-                        normals[i * 3 + axis] = norm[v * 3 + axis];
-                }
-                if (tex) {
-                    skin[i * 2] = tex[v * 2];
-                    skin[i * 2 + 1] = 1 - tex[v * 2 + 1];
-                }
-                for (let k = 0; k < 4; ++k) {
-                    if (bone)
-                        joints[i * 4 + k] = bone[v * 4 + k];
-                    if (load)
-                        weights[i * 4 + k] = load[v * 4 + k];
-                }
-            }
-            if (!norm) {
-                for (let t = 0; t + 2 < size; t += 3) {
-                    const a = t * 3;
-                    const b = a + 3;
-                    const c = a + 6;
-                    const ux = geometry[b] - geometry[a];
-                    const uy = geometry[b + 1] - geometry[a + 1];
-                    const uz = geometry[b + 2] - geometry[a + 2];
-                    const vx = geometry[c] - geometry[a];
-                    const vy = geometry[c + 1] - geometry[a + 1];
-                    const vz = geometry[c + 2] - geometry[a + 2];
-                    let nx = uy * vz - uz * vy;
-                    let ny = uz * vx - ux * vz;
-                    let nz = ux * vy - uy * vx;
-                    const len = Math.hypot(nx, ny, nz) || 1;
-                    nx /= len;
-                    ny /= len;
-                    nz /= len;
-                    for (let k = 0; k < 3; ++k) {
-                        normals[a + k * 3] = nx;
-                        normals[a + k * 3 + 1] = ny;
-                        normals[a + k * 3 + 2] = nz;
-                    }
-                }
-            }
-            return { geometry, normals, skin, joints, weights };
-        }
-        geometry() {
-            return this.arrays().geometry;
-        }
-        normals() {
-            return this.arrays().normals;
-        }
-        skin() {
-            return this.arrays().skin;
-        }
-        joints() {
-            return this.arrays().joints;
-        }
-        weights() {
-            return this.arrays().weights;
-        }
-        skeleton() {
-            const doc = this.json();
-            const skin = doc.skins?.[0];
-            if (!skin)
-                return null;
-            const nodes = doc.nodes ?? [];
-            const count = skin.joints.length;
-            const at_joint = new Map();
-            for (let i = 0; i < count; ++i)
-                at_joint.set(skin.joints[i], i);
-            const parents = new Int32Array(count).fill(-1);
-            for (let i = 0; i < nodes.length; ++i) {
-                const kids = nodes[i].children;
-                if (!kids)
-                    continue;
-                for (let k = 0; k < kids.length; ++k) {
-                    const kid = at_joint.get(kids[k]);
-                    if (kid === undefined)
-                        continue;
-                    parents[kid] = at_joint.get(i) ?? -1;
-                }
-            }
-            const names = [];
-            const base = new Float32Array(count * 10);
-            for (let i = 0; i < count; ++i) {
-                const node = nodes[skin.joints[i]] ?? {};
-                names.push(node.name ?? `joint${i}`);
-                const move = node.translation ?? zero3;
-                const turn = node.rotation ?? unit4;
-                const size = node.scale ?? one3;
-                for (let k = 0; k < 3; ++k)
-                    base[i * 10 + k] = move[k];
-                for (let k = 0; k < 4; ++k)
-                    base[i * 10 + 3 + k] = turn[k];
-                for (let k = 0; k < 3; ++k)
-                    base[i * 10 + 7 + k] = size[k];
-            }
-            const binds = new Float32Array(count * 16);
-            if (skin.inverseBindMatrices === undefined) {
-                for (let i = 0; i < count; ++i)
-                    for (let k = 0; k < 4; ++k)
-                        binds[i * 16 + k * 5] = 1;
-            }
-            else {
-                const source = this.accessor(skin.inverseBindMatrices);
-                for (let k = 0; k < binds.length && k < source.length; ++k)
-                    binds[k] = source[k];
-            }
-            const order = new Int32Array(count);
-            const ready = new Uint8Array(count);
-            let done = 0;
-            while (done < count) {
-                const was = done;
-                for (let i = 0; i < count; ++i) {
-                    if (ready[i])
-                        continue;
-                    const parent = parents[i];
-                    if (parent >= 0 && !ready[parent])
-                        continue;
-                    ready[i] = 1;
-                    order[done++] = i;
-                }
-                if (done === was)
-                    return $mol_fail(new Error('glTF skeleton has a cycle'));
-            }
-            return { count, names, parents, order, base, binds };
-        }
-        clips() {
-            const doc = this.json();
-            const clips = new Map();
-            const skin = doc.skins?.[0];
-            if (!skin)
-                return clips;
-            const at_joint = new Map();
-            for (let i = 0; i < skin.joints.length; ++i)
-                at_joint.set(skin.joints[i], i);
-            const anims = doc.animations ?? [];
-            for (let a = 0; a < anims.length; ++a) {
-                const anim = anims[a];
-                const channels = [];
-                let duration = 0;
-                for (let c = 0; c < anim.channels.length; ++c) {
-                    const target = anim.channels[c].target;
-                    if (target.path !== 'translation' && target.path !== 'rotation' && target.path !== 'scale')
-                        continue;
-                    const joint = target.node === undefined ? undefined : at_joint.get(target.node);
-                    if (joint === undefined)
-                        continue;
-                    const sampler = anim.samplers[anim.channels[c].sampler]
-                        ?? $mol_fail(new Error(`glTF animation has no sampler ${anim.channels[c].sampler}`));
-                    const interp = sampler.interpolation ?? 'LINEAR';
-                    if (interp !== 'LINEAR' && interp !== 'STEP') {
-                        return $mol_fail(new Error(`glTF animation interpolation ${interp} is not supported`));
-                    }
-                    const times = this.accessor(sampler.input);
-                    const values = this.accessor(sampler.output);
-                    if (times.length)
-                        duration = Math.max(duration, times[times.length - 1]);
-                    channels.push({ joint, path: target.path, step: interp === 'STEP', times, values });
-                }
-                const name = anim.name ?? `clip${a}`;
-                clips.set(name, { name, duration, channels });
-            }
-            return clips;
-        }
-        mode() {
-            return 'triangles';
+        vert() {
+            return `
+				mat4 bone( float index ) {
+					int at = int( index );
+					return mat4(
+						texelFetch( bones, ivec2( 0, at ), 0 ),
+						texelFetch( bones, ivec2( 1, at ), 0 ),
+						texelFetch( bones, ivec2( 2, at ), 0 ),
+						texelFetch( bones, ivec2( 3, at ), 0 )
+					);
+				}
+				void main() {
+					float total = weights.x + weights.y + weights.z + weights.w;
+					mat4 pose = mat4( 1.0 );
+					if( total > 0.0 ) {
+						pose = (
+							bone( joints.x ) * weights.x
+							+ bone( joints.y ) * weights.y
+							+ bone( joints.z ) * weights.z
+							+ bone( joints.w ) * weights.w
+						) * ( 1.0 / total );
+					}
+					mat4 model = inst_trans * pose;
+					vec4 world = model * vec4( vertex, 1.0 );
+					gl_Position = proj * view * world;
+					if( wireframe > 0.5 ) gl_Position.z -= 0.001;
+					pipe_pos = world.xyz;
+					pipe_normal = normalize( mat3( model ) * normal );
+					pipe_uv = uv * inst_uv.zw + inst_uv.xy;
+					pipe_layer = inst_layer;
+					pipe_tint = inst_tint;
+					pipe_material = inst_material;
+					pipe_normal_layer = inst_normal_layer;
+				}
+			`;
         }
     }
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_shape_gltf.prototype, "data", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_shape_gltf.prototype, "chunks", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_shape_gltf.prototype, "json", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_shape_gltf.prototype, "bin", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_shape_gltf.prototype, "arrays", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_shape_gltf.prototype, "skeleton", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_shape_gltf.prototype, "clips", null);
-    $.$bog_gamengine_shape_gltf = $bog_gamengine_shape_gltf;
+    $.$bog_gamengine_shader_skin = $bog_gamengine_shader_skin;
 })($ || ($ = {}));
 
 ;
@@ -20509,6 +21114,46 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    class $bog_gamengine_mesh_skin extends $bog_gamengine_mesh {
+        skin(next) {
+            return next ?? null;
+        }
+        Shader() {
+            return new this.$.$bog_gamengine_shader_skin;
+        }
+        shader(next) {
+            return next ?? this.Shader();
+        }
+        shape(next) {
+            return next ?? this.skin()?.shape() ?? new $bog_gamengine_shape_box;
+        }
+        bones() {
+            return this.skin()?.pose() ?? null;
+        }
+        step(dt) {
+            super.step(dt);
+            this.skin()?.step(dt);
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_mesh_skin.prototype, "skin", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_mesh_skin.prototype, "Shader", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_mesh_skin.prototype, "shader", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_mesh_skin.prototype, "shape", null);
+    $.$bog_gamengine_mesh_skin = $bog_gamengine_mesh_skin;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     class $bog_gamengine_cam_deep extends $bog_gamengine_cam {
         fov(next) {
             return next ?? Math.PI / 3;
@@ -20673,6 +21318,16 @@ var $;
 			(obj.checked) = (next) => ((this.shadows(next)));
 			return obj;
 		}
+		arm_shown(next){
+			if(next !== undefined) return next;
+			return false;
+		}
+		Arm_check(){
+			const obj = new this.$.$mol_check_box();
+			(obj.title) = () => ("Рука");
+			(obj.checked) = (next) => ((this.arm_shown(next)));
+			return obj;
+		}
 		Pause(){
 			const obj = new this.$.$mol_check_box();
 			(obj.title) = () => ("Пауза");
@@ -20755,6 +21410,14 @@ var $;
 			(obj.sub) = () => ([(this.pillar_stat())]);
 			return obj;
 		}
+		arm_stat(){
+			return "";
+		}
+		Arm_stat(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ([(this.arm_stat())]);
+			return obj;
+		}
 		light_stat(){
 			return "";
 		}
@@ -20768,6 +21431,7 @@ var $;
 				(this.Stat()), 
 				(this.Walker_stat()), 
 				(this.Pillar_stat()), 
+				(this.Arm_stat()), 
 				(this.Light_stat())
 			];
 		}
@@ -20916,6 +21580,40 @@ var $;
 			(obj.nodes) = () => ([(this.Pillar())]);
 			return obj;
 		}
+		Skin(){
+			const obj = new this.$.$bog_gamengine_shader_skin();
+			return obj;
+		}
+		arm_data(){
+			const obj = new this.$.ArrayBuffer();
+			return obj;
+		}
+		Arm_shape(){
+			const obj = new this.$.$bog_gamengine_shape_gltf();
+			(obj.data) = () => ((this.arm_data()));
+			return obj;
+		}
+		arm_nodes(){
+			return [];
+		}
+		Arm_batch(){
+			const obj = new this.$.$bog_gamengine_batch();
+			(obj.shader) = () => ((this.Skin()));
+			(obj.shape) = () => ((this.Arm_shape()));
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.nodes) = () => ((this.arm_nodes()));
+			return obj;
+		}
+		Arm_skin(){
+			const obj = new this.$.$bog_gamengine_skin();
+			(obj.shape) = () => ((this.Arm_shape()));
+			(obj.clip) = () => ("wave");
+			return obj;
+		}
+		arm_pos(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
 		wall_pos(id){
 			const obj = new this.$.Float32Array();
 			return obj;
@@ -20979,6 +21677,7 @@ var $;
 				(this.Shine()), 
 				(this.Glow()), 
 				(this.Shadows()), 
+				(this.Arm_check()), 
 				(this.Pause()), 
 				(this.Screen_switch()), 
 				(this.Profile())
@@ -21062,8 +21761,17 @@ var $;
 			(obj.batches) = () => ([
 				(this.Wall_batch()), 
 				(this.Floor_batch()), 
-				(this.Pillar_batch())
+				(this.Pillar_batch()), 
+				(this.Arm_batch())
 			]);
+			return obj;
+		}
+		Arm(){
+			const obj = new this.$.$bog_gamengine_mesh_skin();
+			(obj.skin) = () => ((this.Arm_skin()));
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.frame) = () => ("wall");
+			(obj.pos) = () => ((this.arm_pos()));
 			return obj;
 		}
 		Wall(id){
@@ -21142,6 +21850,8 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "glow"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Glow"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Shadows"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "arm_shown"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Arm_check"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pause"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "screen_shown"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Screen_switch"));
@@ -21152,6 +21862,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Stat"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Walker_stat"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pillar_stat"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Arm_stat"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Light_stat"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Report_tick"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Report_fill"));
@@ -21171,6 +21882,12 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "pillar_data"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pillar_shape"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pillar_batch"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Skin"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "arm_data"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Arm_shape"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Arm_batch"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Arm_skin"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "arm_pos"));
 	($mol_mem_key(($.$bog_gamengine_demo_room.prototype), "wall_pos"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "wall_material"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "floor_pos"));
@@ -21194,6 +21911,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Atlas"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Clock"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Scene"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Arm"));
 	($mol_mem_key(($.$bog_gamengine_demo_room.prototype), "Wall"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Floor"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pillar"));
@@ -21251,6 +21969,7 @@ var $;
                     this.Stat(),
                     this.Walker_stat(),
                     this.Pillar_stat(),
+                    this.Arm_stat(),
                     this.Light_stat(),
                     ...this.profile() ? [this.Report()] : [],
                 ];
@@ -21300,6 +22019,15 @@ var $;
             pillar_pos() {
                 return new Float32Array([6.5, 0.5, 3.5]);
             }
+            arm_data() {
+                return $mol_fetch.buffer('bog/gamengine/skin/model/arm.glb');
+            }
+            arm_pos() {
+                return new Float32Array([4, 0, 3.5]);
+            }
+            arm_nodes() {
+                return this.arm_shown() ? [this.Arm()] : [];
+            }
             walker_pos(next) {
                 return next ?? new Float32Array([6, 0.5, 7.5]);
             }
@@ -21328,11 +22056,23 @@ var $;
                 return [this.Sun(), this.Light_warm(), this.Light_cold(), this.Light_torch()];
             }
             nodes() {
-                return [...this.walls(), this.Floor(), this.Pillar(), this.Walker(), ...this.lights()];
+                return [...this.walls(), this.Floor(), this.Pillar(), this.Walker(), ...this.lights(), ...this.arm_nodes()];
             }
             pillar_stat() {
                 try {
                     return `pillar ${this.Pillar_shape().size()}`;
+                }
+                catch (error) {
+                    if ($mol_promise_like(error))
+                        return '';
+                    return $mol_fail_hidden(error);
+                }
+            }
+            arm_stat() {
+                if (!this.arm_shown())
+                    return '';
+                try {
+                    return `arm ${this.Arm_shape().size()}`;
                 }
                 catch (error) {
                     if ($mol_promise_like(error))
@@ -21390,6 +22130,15 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_room.prototype, "pillar_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "arm_data", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "arm_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "arm_nodes", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_room.prototype, "walker_pos", null);
@@ -21932,34 +22681,82 @@ var $;
             return next ?? new Float32Array([0.5, 0.5, 0.5]);
         }
         mass(next) {
-            if (next !== undefined && this.index_last >= 0)
-                this.phys3().mass_set(this.index_last, next);
+            if (next !== undefined && this.handle_last)
+                this.world_last.mass_of(this.handle_last, next);
             return next ?? 1;
         }
-        index_last = -1;
+        ghost(next) {
+            if (next !== undefined && this.handle_last)
+                this.world_last.ghost_of(this.handle_last, next);
+            return next ?? false;
+        }
+        kinematic(next) {
+            if (next !== undefined && this.handle_last)
+                this.world_last.kinematic_of(this.handle_last, next);
+            return next ?? false;
+        }
+        handle_last = 0;
+        world_last = null;
+        mass_now = NaN;
+        ghost_now = null;
+        kinematic_now = null;
         pos_out = new Float32Array(3);
         rot_out = new Float32Array(3);
         rot_tmp = new Float32Array(4);
+        mass_set(next) {
+            this.mass_now = next;
+            if (this.handle_last)
+                this.world_last.mass_of(this.handle_last, next);
+        }
+        ghost_set(next) {
+            this.ghost_now = next;
+            if (this.handle_last)
+                this.world_last.ghost_of(this.handle_last, next);
+        }
+        kinematic_set(next) {
+            this.kinematic_now = next;
+            if (this.handle_last)
+                this.world_last.kinematic_of(this.handle_last, next);
+        }
+        handle() {
+            if (this.handle_last)
+                return this.handle_last;
+            const world = this.phys3();
+            this.world_last = world;
+            const mass = Number.isNaN(this.mass_now) ? this.mass() : this.mass_now;
+            this.handle_last = world.add(this.shape(), this.size(), mass, this.pos_out);
+            world.ghost_of(this.handle_last, this.ghost_now ?? this.ghost());
+            world.kinematic_of(this.handle_last, this.kinematic_now ?? this.kinematic());
+            return this.handle_last;
+        }
         index() {
-            if (this.index_last >= 0)
-                return this.index_last;
-            this.index_last = this.phys3().add(this.shape(), this.size(), this.mass(), this.pos_out);
-            return this.index_last;
+            const handle = this.handle();
+            return this.world_last.index_of(handle);
+        }
+        alive() {
+            return this.index() >= 0;
         }
         pos(next) {
             const i = this.index();
-            const world = this.phys3();
+            if (i < 0) {
+                if (next)
+                    this.pos_out.set(next);
+                return this.pos_out;
+            }
+            const world = this.world_last;
             if (next)
-                world.pos.set(next, i * 3);
+                world.move(this.handle_last, next);
             this.pos_out.set(world.pos.subarray(i * 3, i * 3 + 3));
             return this.pos_out;
         }
         rot(next) {
             const i = this.index();
-            const world = this.phys3();
+            if (i < 0)
+                return this.rot_out;
+            const world = this.world_last;
             if (next) {
                 $bog_gamengine_vec_quat_from_euler(this.rot_tmp, next[0], next[1], next[2]);
-                world.rot.set(this.rot_tmp, i * 4);
+                world.move(this.handle_last, world.pos_view[i], this.rot_tmp);
             }
             $bog_gamengine_vec_quat_to_euler(this.rot_out, world.rot.subarray(i * 4, i * 4 + 4));
             return this.rot_out;
@@ -21967,13 +22764,16 @@ var $;
         props() {
             return [
                 ...super.props(),
-                { name: 'mass', kind: 'number', get: () => this.mass(), set: next => this.mass(next) },
+                { name: 'mass', kind: 'number', get: () => this.mass(), set: next => this.mass_set(next) },
+                { name: 'ghost', kind: 'flag', get: () => this.ghost(), set: next => this.ghost_set(next) },
+                { name: 'kinematic', kind: 'flag', get: () => this.kinematic(), set: next => this.kinematic_set(next) },
             ];
         }
         destructor() {
-            if (this.index_last >= 0)
-                this.phys3().remove(this.index_last);
-            this.index_last = -1;
+            if (this.handle_last)
+                this.world_last?.remove(this.handle_last);
+            this.handle_last = 0;
+            this.world_last = null;
             super.destructor();
         }
     }
@@ -21989,7 +22789,55 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_phys3_body.prototype, "mass", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_phys3_body.prototype, "ghost", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_phys3_body.prototype, "kinematic", null);
     $.$bog_gamengine_phys3_body = $bog_gamengine_phys3_body;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_demo_boxes_platform extends $bog_gamengine_phys3_body {
+        span(next = 2) {
+            return next;
+        }
+        speed(next = 0.6) {
+            return next;
+        }
+        center(next) {
+            return next ?? new Float32Array(3);
+        }
+        way = 1;
+        step(dt) {
+            const i = this.index();
+            if (i < 0)
+                return;
+            const world = this.world_last;
+            const span = this.span();
+            const from = this.center()[0];
+            const at = world.pos[i * 3];
+            if (at > from + span)
+                this.way = -1;
+            if (at < from - span)
+                this.way = 1;
+            world.vel[i * 3] = this.way * this.speed();
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_boxes_platform.prototype, "span", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_boxes_platform.prototype, "speed", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_boxes_platform.prototype, "center", null);
+    $.$bog_gamengine_demo_boxes_platform = $bog_gamengine_demo_boxes_platform;
 })($ || ($ = {}));
 
 ;
@@ -22066,11 +22914,15 @@ var $;
 			if(next !== undefined) return next;
 			return null;
 		}
+		dig(next){
+			if(next !== undefined) return next;
+			return null;
+		}
 		Draw(){
 			const obj = new this.$.$bog_gamengine_draw();
 			(obj.scene) = () => ((this.Scene()));
 			(obj.cam) = () => ((this.Walker()));
-			(obj.event) = () => ({"pointerdown": (next) => (this.shoot(next))});
+			(obj.event) = () => ({"pointerdown": (next) => (this.shoot(next)), "contextmenu": (next) => (this.dig(next))});
 			return obj;
 		}
 		Stat(){
@@ -22133,6 +22985,10 @@ var $;
 			return obj;
 		}
 		floor_size(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		platform_size(){
 			const obj = new this.$.Float32Array();
 			return obj;
 		}
@@ -22251,6 +23107,15 @@ var $;
 			(obj.name) = () => ("Брошенный");
 			return obj;
 		}
+		Platform(id){
+			const obj = new this.$.$bog_gamengine_demo_boxes_platform();
+			(obj.name) = () => ("Платформа");
+			(obj.phys3) = () => ((this.Phys()));
+			(obj.size) = () => ((this.platform_size()));
+			(obj.mass) = () => (0);
+			(obj.kinematic) = () => (true);
+			return obj;
+		}
 		Walker(){
 			const obj = new this.$.$bog_gamengine_demo_room_walker();
 			(obj.input) = () => ((this.Input()));
@@ -22272,6 +23137,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Contacts"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Pause"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "shoot"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "dig"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Draw"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Stat"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Phys_stat"));
@@ -22283,6 +23149,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Lines"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Plane"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "floor_size"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "platform_size"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "walker_pos"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "walker_rot"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "seed"));
@@ -22297,8 +23164,723 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Debug"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Floor"));
 	($mol_mem_key(($.$bog_gamengine_demo_boxes.prototype), "Thrown"));
+	($mol_mem_key(($.$bog_gamengine_demo_boxes.prototype), "Platform"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Walker"));
 
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_phys3_cast extends $mol_object2 {
+        static tolerance = 1e-3;
+        static iterations = 32;
+        world = {};
+        shape = new Uint8Array(2);
+        size = new Float32Array(6);
+        pos = new Float32Array(6);
+        rot = new Float32Array(8);
+        hoff = new Uint32Array(2);
+        hcnt = new Uint32Array(2);
+        skip_ghost = false;
+        skip_one = -1;
+        skip_list = null;
+        ud = new Float32Array(3);
+        origin = new Float32Array(3);
+        hit = new Float32Array(7);
+        box_lo = new Float32Array(3);
+        box_hi = new Float32Array(3);
+        lo = new Float32Array(3);
+        ld = new Float32Array(3);
+        ln = new Float32Array(3);
+        pn = new Float32Array(3);
+        tmp = new Float32Array(3);
+        v = new Float64Array(3);
+        wa = new Float64Array(3);
+        wb = new Float64Array(3);
+        pb = new Float64Array(3);
+        last = new Float64Array(6);
+        sw = new Float64Array(12);
+        sa = new Float64Array(12);
+        sb = new Float64Array(12);
+        sn = 0;
+        keep = new Int32Array(4);
+        coef = new Float64Array(4);
+        keep_n = 0;
+        best_keep = new Int32Array(4);
+        best_coef = new Float64Array(4);
+        best_n = 0;
+        opts_read(opts) {
+            this.skip_ghost = opts?.skip_ghost ?? false;
+            const skip = opts?.skip;
+            if (typeof skip === 'number') {
+                this.skip_one = skip;
+                this.skip_list = null;
+            }
+            else {
+                this.skip_one = -1;
+                this.skip_list = skip ?? null;
+            }
+        }
+        skipped(i) {
+            if (i === this.skip_one)
+                return true;
+            if (this.skip_ghost && this.world.flags[i] & $bog_gamengine_phys3.flag_ghost)
+                return true;
+            const list = this.skip_list;
+            if (!list)
+                return false;
+            for (let k = 0; k < list.length; ++k)
+                if (list[k] === i)
+                    return true;
+            return false;
+        }
+        ray(world, origin, dir, max, out, opts) {
+            this.world = world;
+            this.opts_read(opts);
+            const ud = this.ud;
+            const len = Math.sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
+            if (!(len > 0) || !(max > 0))
+                return -1;
+            ud[0] = dir[0] / len;
+            ud[1] = dir[1] / len;
+            ud[2] = dir[2] / len;
+            const o = this.origin;
+            o[0] = origin[0];
+            o[1] = origin[1];
+            o[2] = origin[2];
+            this.shape[0] = $bog_gamengine_phys3.shape_sphere;
+            this.size[0] = this.size[1] = this.size[2] = 0;
+            this.pos[0] = o[0];
+            this.pos[1] = o[1];
+            this.pos[2] = o[2];
+            this.rot[0] = this.rot[1] = this.rot[2] = 0;
+            this.rot[3] = 1;
+            const shape = world.shape;
+            const hit = this.hit;
+            let best = -1;
+            let limit = max;
+            for (let i = 0; i < world.count; ++i) {
+                if (this.skipped(i))
+                    continue;
+                if (shape[i] !== $bog_gamengine_phys3.shape_plane && !this.slab(i, limit))
+                    continue;
+                this.load(1, i);
+                let t = -1;
+                switch (shape[i]) {
+                    case $bog_gamengine_phys3.shape_sphere:
+                        t = this.ray_sphere(limit);
+                        break;
+                    case $bog_gamengine_phys3.shape_box:
+                        t = this.ray_box(limit);
+                        break;
+                    case $bog_gamengine_phys3.shape_capsule:
+                        t = this.ray_capsule(limit);
+                        break;
+                    case $bog_gamengine_phys3.shape_plane:
+                        t = this.sweep_plane(limit);
+                        break;
+                    default: t = this.advance(limit);
+                }
+                if (t < 0 || t > limit)
+                    continue;
+                best = i;
+                limit = t;
+                out.set(hit);
+            }
+            return best;
+        }
+        sweep(world, shape, size, origin, rot, dir, max, out, opts) {
+            this.world = world;
+            this.opts_read(opts);
+            const ud = this.ud;
+            const len = Math.sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
+            if (!(len > 0) || !(max > 0))
+                return -1;
+            ud[0] = dir[0] / len;
+            ud[1] = dir[1] / len;
+            ud[2] = dir[2] / len;
+            const o = this.origin;
+            o[0] = origin[0];
+            o[1] = origin[1];
+            o[2] = origin[2];
+            this.shape[0] = shape;
+            this.size[0] = size[0];
+            this.size[1] = size[1];
+            this.size[2] = size[2];
+            this.rot[0] = rot[0];
+            this.rot[1] = rot[1];
+            this.rot[2] = rot[2];
+            this.rot[3] = rot[3];
+            this.pos[0] = o[0];
+            this.pos[1] = o[1];
+            this.pos[2] = o[2];
+            this.bounds(max);
+            const shapes = world.shape, aabb = world.aabb;
+            const lo = this.box_lo, hi = this.box_hi;
+            const hit = this.hit;
+            let best = -1;
+            let limit = max;
+            for (let i = 0; i < world.count; ++i) {
+                if (this.skipped(i))
+                    continue;
+                const a = i * 6;
+                if (aabb[a] > hi[0] || aabb[a + 3] < lo[0])
+                    continue;
+                if (aabb[a + 1] > hi[1] || aabb[a + 4] < lo[1])
+                    continue;
+                if (aabb[a + 2] > hi[2] || aabb[a + 5] < lo[2])
+                    continue;
+                this.load(1, i);
+                let t = -1;
+                const sb = shapes[i];
+                if (sb === $bog_gamengine_phys3.shape_plane)
+                    t = this.sweep_plane(limit);
+                else if (sb === $bog_gamengine_phys3.shape_sphere && shape === $bog_gamengine_phys3.shape_sphere)
+                    t = this.ray_sphere(limit);
+                else
+                    t = this.advance(limit);
+                if (t < 0 || t > limit)
+                    continue;
+                best = i;
+                limit = t;
+                out.set(hit);
+            }
+            return best;
+        }
+        load(s, i) {
+            const world = this.world;
+            this.shape[s] = world.shape[i];
+            this.size[s * 3] = world.size[i * 3];
+            this.size[s * 3 + 1] = world.size[i * 3 + 1];
+            this.size[s * 3 + 2] = world.size[i * 3 + 2];
+            this.pos[s * 3] = world.pos[i * 3];
+            this.pos[s * 3 + 1] = world.pos[i * 3 + 1];
+            this.pos[s * 3 + 2] = world.pos[i * 3 + 2];
+            this.rot[s * 4] = world.rot[i * 4];
+            this.rot[s * 4 + 1] = world.rot[i * 4 + 1];
+            this.rot[s * 4 + 2] = world.rot[i * 4 + 2];
+            this.rot[s * 4 + 3] = world.rot[i * 4 + 3];
+            this.hoff[s] = world.hull_off[i];
+            this.hcnt[s] = world.hull_count[i];
+        }
+        bounds(max) {
+            const lo = this.box_lo, hi = this.box_hi, tmp = this.tmp, ud = this.ud;
+            for (let k = 0; k < 3; ++k) {
+                this.support(0, k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0, tmp);
+                hi[k] = tmp[k];
+                this.support(0, k === 0 ? -1 : 0, k === 1 ? -1 : 0, k === 2 ? -1 : 0, tmp);
+                lo[k] = tmp[k];
+                const d = ud[k] * max;
+                if (d > 0)
+                    hi[k] += d;
+                else
+                    lo[k] += d;
+            }
+        }
+        slab(i, max) {
+            const aabb = this.world.aabb, a = i * 6;
+            const o = this.origin, ud = this.ud;
+            let t0 = 0, t1 = max;
+            for (let k = 0; k < 3; ++k) {
+                const d = ud[k];
+                if (d === 0) {
+                    if (o[k] < aabb[a + k] || o[k] > aabb[a + k + 3])
+                        return false;
+                    continue;
+                }
+                const inv = 1 / d;
+                let n = (aabb[a + k] - o[k]) * inv;
+                let f = (aabb[a + k + 3] - o[k]) * inv;
+                if (n > f) {
+                    const s = n;
+                    n = f;
+                    f = s;
+                }
+                if (n > t0)
+                    t0 = n;
+                if (f < t1)
+                    t1 = f;
+                if (t0 > t1)
+                    return false;
+            }
+            return true;
+        }
+        rotate(out, s, x, y, z, inv) {
+            const q = this.rot, r = s * 4;
+            const k = inv ? -1 : 1;
+            const qx = q[r] * k, qy = q[r + 1] * k, qz = q[r + 2] * k, qw = q[r + 3];
+            const tx = 2 * (qy * z - qz * y);
+            const ty = 2 * (qz * x - qx * z);
+            const tz = 2 * (qx * y - qy * x);
+            out[0] = x + qw * tx + qy * tz - qz * ty;
+            out[1] = y + qw * ty + qz * tx - qx * tz;
+            out[2] = z + qw * tz + qx * ty - qy * tx;
+            return out;
+        }
+        support(s, dx, dy, dz, out) {
+            const shape = this.shape[s], size = this.size, so = s * 3, pos = this.pos;
+            if (shape === $bog_gamengine_phys3.shape_sphere) {
+                const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                const k = len > 0 ? size[so] / len : 0;
+                out[0] = dx * k;
+                out[1] = dy * k;
+                out[2] = dz * k;
+            }
+            else if (shape === $bog_gamengine_phys3.shape_box) {
+                const l = this.rotate(this.tmp, s, dx, dy, dz, true);
+                this.rotate(out, s, l[0] >= 0 ? size[so] : -size[so], l[1] >= 0 ? size[so + 1] : -size[so + 1], l[2] >= 0 ? size[so + 2] : -size[so + 2], false);
+            }
+            else if (shape === $bog_gamengine_phys3.shape_capsule) {
+                const l = this.rotate(this.tmp, s, dx, dy, dz, true);
+                this.rotate(out, s, 0, l[1] >= 0 ? size[so + 1] : -size[so + 1], 0, false);
+                const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                const k = len > 0 ? size[so] / len : 0;
+                out[0] += dx * k;
+                out[1] += dy * k;
+                out[2] += dz * k;
+            }
+            else if (shape === $bog_gamengine_phys3.shape_hull) {
+                const l = this.rotate(this.tmp, s, dx, dy, dz, true);
+                const hull = this.world.hull, off = this.hoff[s], count = this.hcnt[s];
+                let best = -Infinity, bx = 0, by = 0, bz = 0;
+                for (let k = 0; k < count; ++k) {
+                    const vx = hull[off + k * 3], vy = hull[off + k * 3 + 1], vz = hull[off + k * 3 + 2];
+                    const d = vx * l[0] + vy * l[1] + vz * l[2];
+                    if (d > best) {
+                        best = d;
+                        bx = vx;
+                        by = vy;
+                        bz = vz;
+                    }
+                }
+                this.rotate(out, s, bx, by, bz, false);
+            }
+            else {
+                out[0] = 0;
+                out[1] = 0;
+                out[2] = 0;
+            }
+            out[0] += pos[so];
+            out[1] += pos[so + 1];
+            out[2] += pos[so + 2];
+            return out;
+        }
+        record(t, px, py, pz, nx, ny, nz) {
+            const hit = this.hit;
+            hit[0] = t;
+            hit[1] = px;
+            hit[2] = py;
+            hit[3] = pz;
+            hit[4] = nx;
+            hit[5] = ny;
+            hit[6] = nz;
+            return t;
+        }
+        ray_sphere(limit) {
+            const o = this.origin, ud = this.ud, pos = this.pos;
+            const r = this.size[3] + this.size[0];
+            const mx = o[0] - pos[3], my = o[1] - pos[4], mz = o[2] - pos[5];
+            const b = mx * ud[0] + my * ud[1] + mz * ud[2];
+            const c = mx * mx + my * my + mz * mz - r * r;
+            if (c > 0 && b > 0)
+                return -1;
+            const disc = b * b - c;
+            if (disc < 0)
+                return -1;
+            let t = -b - Math.sqrt(disc);
+            if (t < 0)
+                t = 0;
+            if (t > limit)
+                return -1;
+            const cx = o[0] + ud[0] * t, cy = o[1] + ud[1] * t, cz = o[2] + ud[2] * t;
+            let nx = cx - pos[3], ny = cy - pos[4], nz = cz - pos[5];
+            const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+            if (len > 0) {
+                nx /= len;
+                ny /= len;
+                nz /= len;
+            }
+            else {
+                nx = -ud[0];
+                ny = -ud[1];
+                nz = -ud[2];
+            }
+            const rb = this.size[3];
+            return this.record(t, pos[3] + nx * rb, pos[4] + ny * rb, pos[5] + nz * rb, nx, ny, nz);
+        }
+        local() {
+            const o = this.origin, ud = this.ud, pos = this.pos;
+            this.rotate(this.lo, 1, o[0] - pos[3], o[1] - pos[4], o[2] - pos[5], true);
+            this.rotate(this.ld, 1, ud[0], ud[1], ud[2], true);
+        }
+        local_hit(t, nx, ny, nz) {
+            const o = this.origin, ud = this.ud;
+            const n = this.rotate(this.ln, 1, nx, ny, nz, false);
+            return this.record(t, o[0] + ud[0] * t, o[1] + ud[1] * t, o[2] + ud[2] * t, n[0], n[1], n[2]);
+        }
+        ray_box(limit) {
+            this.local();
+            const lo = this.lo, ld = this.ld, size = this.size;
+            let t0 = 0, t1 = limit, axis = -1, sign = 0;
+            for (let k = 0; k < 3; ++k) {
+                const h = size[3 + k];
+                const d = ld[k];
+                if (Math.abs(d) < 1e-9) {
+                    if (lo[k] < -h || lo[k] > h)
+                        return -1;
+                    continue;
+                }
+                const inv = 1 / d;
+                let n = (-h - lo[k]) * inv;
+                let f = (h - lo[k]) * inv;
+                let s = -1;
+                if (n > f) {
+                    const x = n;
+                    n = f;
+                    f = x;
+                    s = 1;
+                }
+                if (n > t0) {
+                    t0 = n;
+                    axis = k;
+                    sign = s;
+                }
+                if (f < t1)
+                    t1 = f;
+                if (t0 > t1)
+                    return -1;
+            }
+            if (axis < 0)
+                return this.record(0, this.origin[0], this.origin[1], this.origin[2], -this.ud[0], -this.ud[1], -this.ud[2]);
+            return this.local_hit(t0, axis === 0 ? sign : 0, axis === 1 ? sign : 0, axis === 2 ? sign : 0);
+        }
+        ray_capsule(limit) {
+            this.local();
+            const lo = this.lo, ld = this.ld;
+            const r = this.size[3], h = this.size[4];
+            const cy = Math.max(-h, Math.min(h, lo[1]));
+            if (lo[0] * lo[0] + (lo[1] - cy) * (lo[1] - cy) + lo[2] * lo[2] <= r * r) {
+                return this.record(0, this.origin[0], this.origin[1], this.origin[2], -this.ud[0], -this.ud[1], -this.ud[2]);
+            }
+            let best = Infinity, nx = 0, ny = 0, nz = 0;
+            const a = ld[0] * ld[0] + ld[2] * ld[2];
+            if (a > 1e-12) {
+                const b = lo[0] * ld[0] + lo[2] * ld[2];
+                const c = lo[0] * lo[0] + lo[2] * lo[2] - r * r;
+                const disc = b * b - a * c;
+                if (disc >= 0) {
+                    const t = (-b - Math.sqrt(disc)) / a;
+                    const y = lo[1] + ld[1] * t;
+                    if (t >= 0 && t <= limit && y >= -h && y <= h) {
+                        best = t;
+                        nx = (lo[0] + ld[0] * t) / r;
+                        ny = 0;
+                        nz = (lo[2] + ld[2] * t) / r;
+                    }
+                }
+            }
+            for (let s = -1; s <= 1; s += 2) {
+                const my = lo[1] - h * s;
+                const b = lo[0] * ld[0] + my * ld[1] + lo[2] * ld[2];
+                const c = lo[0] * lo[0] + my * my + lo[2] * lo[2] - r * r;
+                const disc = b * b - c;
+                if (disc < 0)
+                    continue;
+                const t = -b - Math.sqrt(disc);
+                if (t < 0 || t > limit || t >= best)
+                    continue;
+                best = t;
+                nx = (lo[0] + ld[0] * t) / r;
+                ny = (my + ld[1] * t) / r;
+                nz = (lo[2] + ld[2] * t) / r;
+            }
+            if (best > limit)
+                return -1;
+            return this.local_hit(best, nx, ny, nz);
+        }
+        sweep_plane(limit) {
+            const n = this.rotate(this.pn, 1, this.size[3], this.size[4], this.size[5], false);
+            const len = Math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+            if (!(len > 0))
+                return -1;
+            n[0] /= len;
+            n[1] /= len;
+            n[2] /= len;
+            const pos = this.pos, ud = this.ud;
+            const deep = this.support(0, -n[0], -n[1], -n[2], this.tmp);
+            const d0 = (deep[0] - pos[3]) * n[0] + (deep[1] - pos[4]) * n[1] + (deep[2] - pos[5]) * n[2];
+            if (d0 <= 0)
+                return this.record(0, deep[0], deep[1], deep[2], n[0], n[1], n[2]);
+            const approach = -(ud[0] * n[0] + ud[1] * n[1] + ud[2] * n[2]);
+            if (approach <= 1e-9)
+                return -1;
+            const t = d0 / approach;
+            if (t > limit)
+                return -1;
+            return this.record(t, deep[0] + ud[0] * t, deep[1] + ud[1] * t, deep[2] + ud[2] * t, n[0], n[1], n[2]);
+        }
+        advance(limit) {
+            const o = this.origin, ud = this.ud, pos = this.pos, v = this.v, pb = this.pb, last = this.last;
+            const tol = $bog_gamengine_phys3_cast.tolerance;
+            pos[0] = o[0];
+            pos[1] = o[1];
+            pos[2] = o[2];
+            let t = 0;
+            for (let iter = 0; iter < $bog_gamengine_phys3_cast.iterations; ++iter) {
+                const d = this.gjk();
+                if (d < tol) {
+                    if (this.sn !== 4) {
+                        const approach = -(ud[0] * v[0] + ud[1] * v[1] + ud[2] * v[2]);
+                        if (approach > 0.1)
+                            t = Math.min(limit, t + d / approach);
+                        return this.record(t, pb[0], pb[1], pb[2], v[0], v[1], v[2]);
+                    }
+                    if (iter === 0)
+                        return this.record(0, pos[0], pos[1], pos[2], -ud[0], -ud[1], -ud[2]);
+                    return this.record(t, last[0], last[1], last[2], last[3], last[4], last[5]);
+                }
+                const approach = -(ud[0] * v[0] + ud[1] * v[1] + ud[2] * v[2]);
+                if (approach <= 1e-6)
+                    return -1;
+                last[0] = pb[0];
+                last[1] = pb[1];
+                last[2] = pb[2];
+                last[3] = v[0];
+                last[4] = v[1];
+                last[5] = v[2];
+                t += d / approach;
+                if (t > limit)
+                    return -1;
+                pos[0] = o[0] + ud[0] * t;
+                pos[1] = o[1] + ud[1] * t;
+                pos[2] = o[2] + ud[2] * t;
+            }
+            return -1;
+        }
+        gjk() {
+            const v = this.v, wa = this.wa, wb = this.wb, sw = this.sw, sa = this.sa, sb = this.sb, pos = this.pos;
+            v[0] = pos[0] - pos[3];
+            v[1] = pos[1] - pos[4];
+            v[2] = pos[2] - pos[5];
+            let vv = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+            if (vv < 1e-12) {
+                v[0] = 1;
+                vv = 1;
+            }
+            this.sn = 0;
+            for (let iter = 0; iter < 48; ++iter) {
+                this.support(0, -v[0], -v[1], -v[2], wa);
+                this.support(1, v[0], v[1], v[2], wb);
+                const wx = wa[0] - wb[0], wy = wa[1] - wb[1], wz = wa[2] - wb[2];
+                const vw = v[0] * wx + v[1] * wy + v[2] * wz;
+                if (this.sn > 0 && vv - vw <= 1e-6 * vv + 1e-6 * Math.sqrt(vv))
+                    break;
+                let dup = false;
+                for (let k = 0; k < this.sn; ++k) {
+                    if (sw[k * 3] === wx && sw[k * 3 + 1] === wy && sw[k * 3 + 2] === wz)
+                        dup = true;
+                }
+                if (dup)
+                    break;
+                const k = this.sn;
+                sw[k * 3] = wx;
+                sw[k * 3 + 1] = wy;
+                sw[k * 3 + 2] = wz;
+                sa[k * 3] = wa[0];
+                sa[k * 3 + 1] = wa[1];
+                sa[k * 3 + 2] = wa[2];
+                sb[k * 3] = wb[0];
+                sb[k * 3 + 1] = wb[1];
+                sb[k * 3 + 2] = wb[2];
+                this.sn = k + 1;
+                if (!this.reduce()) {
+                    this.sn = 4;
+                    return 0;
+                }
+                vv = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+                if (vv < 1e-12) {
+                    this.sn = 4;
+                    return 0;
+                }
+            }
+            const d = Math.sqrt(vv);
+            const pb = this.pb;
+            pb[0] = pb[1] = pb[2] = 0;
+            for (let k = 0; k < this.sn; ++k) {
+                const c = this.coef[k];
+                pb[0] += sb[k * 3] * c;
+                pb[1] += sb[k * 3 + 1] * c;
+                pb[2] += sb[k * 3 + 2] * c;
+            }
+            v[0] /= d;
+            v[1] /= d;
+            v[2] /= d;
+            return d;
+        }
+        reduce() {
+            const sn = this.sn, sw = this.sw, sa = this.sa, sb = this.sb, keep = this.keep, coef = this.coef;
+            if (sn === 1) {
+                keep[0] = 0;
+                coef[0] = 1;
+                this.keep_n = 1;
+            }
+            else if (sn === 2) {
+                this.segment(0, 1);
+            }
+            else if (sn === 3) {
+                this.triangle(0, 1, 2);
+            }
+            else {
+                if (!this.tetra())
+                    return false;
+            }
+            const n = this.keep_n;
+            for (let k = 0; k < n; ++k) {
+                const from = keep[k];
+                if (from === k)
+                    continue;
+                sw[k * 3] = sw[from * 3];
+                sw[k * 3 + 1] = sw[from * 3 + 1];
+                sw[k * 3 + 2] = sw[from * 3 + 2];
+                sa[k * 3] = sa[from * 3];
+                sa[k * 3 + 1] = sa[from * 3 + 1];
+                sa[k * 3 + 2] = sa[from * 3 + 2];
+                sb[k * 3] = sb[from * 3];
+                sb[k * 3 + 1] = sb[from * 3 + 1];
+                sb[k * 3 + 2] = sb[from * 3 + 2];
+            }
+            this.sn = n;
+            const v = this.v;
+            v[0] = v[1] = v[2] = 0;
+            for (let k = 0; k < n; ++k) {
+                const c = coef[k];
+                v[0] += sw[k * 3] * c;
+                v[1] += sw[k * 3 + 1] * c;
+                v[2] += sw[k * 3 + 2] * c;
+            }
+            return true;
+        }
+        segment(i, j) {
+            const sw = this.sw, keep = this.keep, coef = this.coef;
+            const ax = sw[i * 3], ay = sw[i * 3 + 1], az = sw[i * 3 + 2];
+            const bx = sw[j * 3] - ax, by = sw[j * 3 + 1] - ay, bz = sw[j * 3 + 2] - az;
+            const bb = bx * bx + by * by + bz * bz;
+            let t = bb > 0 ? -(ax * bx + ay * by + az * bz) / bb : 0;
+            if (t <= 0) {
+                keep[0] = i;
+                coef[0] = 1;
+                this.keep_n = 1;
+            }
+            else if (t >= 1) {
+                keep[0] = j;
+                coef[0] = 1;
+                this.keep_n = 1;
+            }
+            else {
+                keep[0] = i;
+                keep[1] = j;
+                coef[0] = 1 - t;
+                coef[1] = t;
+                this.keep_n = 2;
+            }
+            const px = ax + bx * t, py = ay + by * t, pz = az + bz * t;
+            return px * px + py * py + pz * pz;
+        }
+        triangle(i, j, k) {
+            const sw = this.sw, keep = this.keep, coef = this.coef;
+            const ax = sw[i * 3], ay = sw[i * 3 + 1], az = sw[i * 3 + 2];
+            const bx = sw[j * 3], by = sw[j * 3 + 1], bz = sw[j * 3 + 2];
+            const cx = sw[k * 3], cy = sw[k * 3 + 1], cz = sw[k * 3 + 2];
+            const abx = bx - ax, aby = by - ay, abz = bz - az;
+            const acx = cx - ax, acy = cy - ay, acz = cz - az;
+            const d1 = -(abx * ax + aby * ay + abz * az);
+            const d2 = -(acx * ax + acy * ay + acz * az);
+            if (d1 <= 0 && d2 <= 0) {
+                keep[0] = i;
+                coef[0] = 1;
+                this.keep_n = 1;
+                return ax * ax + ay * ay + az * az;
+            }
+            const d3 = -(abx * bx + aby * by + abz * bz);
+            const d4 = -(acx * bx + acy * by + acz * bz);
+            if (d3 >= 0 && d4 <= d3) {
+                keep[0] = j;
+                coef[0] = 1;
+                this.keep_n = 1;
+                return bx * bx + by * by + bz * bz;
+            }
+            const vc = d1 * d4 - d3 * d2;
+            if (vc <= 0 && d1 >= 0 && d3 <= 0)
+                return this.segment(i, j);
+            const d5 = -(abx * cx + aby * cy + abz * cz);
+            const d6 = -(acx * cx + acy * cy + acz * cz);
+            if (d6 >= 0 && d5 <= d6) {
+                keep[0] = k;
+                coef[0] = 1;
+                this.keep_n = 1;
+                return cx * cx + cy * cy + cz * cz;
+            }
+            const vb = d5 * d2 - d1 * d6;
+            if (vb <= 0 && d2 >= 0 && d6 <= 0)
+                return this.segment(i, k);
+            const va = d3 * d6 - d5 * d4;
+            if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0)
+                return this.segment(j, k);
+            const denom = 1 / (va + vb + vc);
+            const wb = vb * denom, wc = vc * denom;
+            keep[0] = i;
+            keep[1] = j;
+            keep[2] = k;
+            coef[0] = 1 - wb - wc;
+            coef[1] = wb;
+            coef[2] = wc;
+            this.keep_n = 3;
+            const px = ax + abx * wb + acx * wc, py = ay + aby * wb + acy * wc, pz = az + abz * wb + acz * wc;
+            return px * px + py * py + pz * pz;
+        }
+        outside(i, j, k, l) {
+            const sw = this.sw;
+            const ax = sw[i * 3], ay = sw[i * 3 + 1], az = sw[i * 3 + 2];
+            const abx = sw[j * 3] - ax, aby = sw[j * 3 + 1] - ay, abz = sw[j * 3 + 2] - az;
+            const acx = sw[k * 3] - ax, acy = sw[k * 3 + 1] - ay, acz = sw[k * 3 + 2] - az;
+            const nx = aby * acz - abz * acy, ny = abz * acx - abx * acz, nz = abx * acy - aby * acx;
+            const so = -(nx * ax + ny * ay + nz * az);
+            const sl = nx * (sw[l * 3] - ax) + ny * (sw[l * 3 + 1] - ay) + nz * (sw[l * 3 + 2] - az);
+            return so * sl <= 0;
+        }
+        tetra() {
+            let best = Infinity;
+            let any = false;
+            for (let f = 0; f < 4; ++f) {
+                const i = f === 0 ? 1 : 0;
+                const j = f <= 1 ? 2 : 1;
+                const k = f <= 2 ? 3 : 2;
+                if (!this.outside(i, j, k, f))
+                    continue;
+                any = true;
+                const d = this.triangle(i, j, k);
+                if (d < best) {
+                    best = d;
+                    this.best_n = this.keep_n;
+                    for (let m = 0; m < this.keep_n; ++m) {
+                        this.best_keep[m] = this.keep[m];
+                        this.best_coef[m] = this.coef[m];
+                    }
+                }
+            }
+            if (!any)
+                return false;
+            this.keep_n = this.best_n;
+            for (let m = 0; m < this.best_n; ++m) {
+                this.keep[m] = this.best_keep[m];
+                this.coef[m] = this.best_coef[m];
+            }
+            return true;
+        }
+    }
+    $.$bog_gamengine_phys3_cast = $bog_gamengine_phys3_cast;
+})($ || ($ = {}));
 
 ;
 "use strict";
@@ -22325,6 +23907,14 @@ var $;
         const door_x = 4;
         const door_lift = 0.05;
         const side_ahead = 3;
+        const plat_half = 1.2;
+        const plat_thick = 0.15;
+        const plat_y = 0.6;
+        const plat_ahead = 2;
+        const plat_x = -6;
+        const plat_load = 3;
+        const plat_load_half = 0.3;
+        const dig_reach = 60;
         function $bog_gamengine_demo_boxes_rand(seed) {
             let state = seed | 0;
             return () => {
@@ -22348,15 +23938,23 @@ var $;
                 this.thrown_count(0);
                 return next;
             }
+            platform_on() {
+                return this.count() > plat_load + 1;
+            }
+            pile_count() {
+                const count = this.count();
+                return this.platform_on() ? count - plat_load - 1 : count;
+            }
             pile_side() {
-                return Math.ceil(Math.sqrt(this.count() / pile_layers));
+                return Math.ceil(Math.sqrt(this.pile_count() / pile_layers));
             }
             Phys() {
-                const count = this.count();
+                const count = this.pile_count();
                 const rand = $bog_gamengine_demo_boxes_rand(this.seed());
                 const phys = new this.$.$bog_gamengine_demo_boxes_phys;
-                this.chain_first = -1;
-                phys.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3));
+                this.chain_head = 0;
+                this.chain_tail = 0;
+                this.floor_handle = phys.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3));
                 const side = this.pile_side();
                 const size = new Float32Array([box_half, box_half, box_half]);
                 const pos = new Float32Array(3);
@@ -22370,7 +23968,26 @@ var $;
                     $bog_gamengine_vec_quat_from_euler(rot, rand() * Math.PI * 2, rand() * Math.PI * 2, rand() * Math.PI * 2);
                     phys.add($bog_gamengine_phys3.shape_box, size, 1, pos, rot);
                 }
+                if (!this.platform_on())
+                    return phys;
+                const load_size = new Float32Array([plat_load_half, plat_load_half, plat_load_half]);
+                const load_pos = new Float32Array([plat_x, plat_y + plat_thick + plat_load_half, 0]);
+                const plat_z = this.side_z() + plat_ahead;
+                for (let n = 0; n < plat_load; ++n) {
+                    load_pos[2] = plat_z + (n - (plat_load - 1) / 2) * plat_load_half * 2.5;
+                    phys.add($bog_gamengine_phys3.shape_box, load_size, 1, load_pos);
+                }
                 return phys;
+            }
+            floor_handle = 0;
+            platform_size() {
+                return new Float32Array([plat_half, plat_thick, plat_half]);
+            }
+            platform() {
+                const node = this.Platform(`${this.seed()}`);
+                node.center(new Float32Array([plat_x, plat_y, this.side_z() + plat_ahead]));
+                node.pos(node.center());
+                return node;
             }
             floor_size() {
                 return new Float32Array([60, 1, 60]);
@@ -22392,7 +24009,7 @@ var $;
                 return list;
             }
             nodes() {
-                return [this.Floor(), this.Walker(), ...this.thrown()];
+                return [this.Floor(), this.Walker(), ...this.platform_on() ? [this.platform()] : [], ...this.thrown()];
             }
             batches() {
                 const list = [this.Crates(), ...this.Scene().auto_batches()];
@@ -22406,6 +24023,26 @@ var $;
             }
             throw_dir = new Float32Array([0, 0, -1, 0]);
             throw_out = new Float32Array(4);
+            dig_dir = new Float32Array(3);
+            dig_hit = new Float32Array(7);
+            dig_opts = { skip_ghost: true, skip: -1 };
+            dig_cast = new $bog_gamengine_phys3_cast;
+            dig(next) {
+                if (!next)
+                    return null;
+                next.preventDefault();
+                const phys = this.Phys();
+                const dir = $bog_gamengine_vec_mat4_apply(this.throw_out, this.Walker().world(), this.throw_dir);
+                const aim = this.dig_dir;
+                aim[0] = dir[0];
+                aim[1] = dir[1];
+                aim[2] = dir[2];
+                this.dig_opts.skip = phys.index_of(this.floor_handle);
+                const i = this.dig_cast.ray(phys, this.Walker().pos(), aim, dig_reach, this.dig_hit, this.dig_opts);
+                if (i >= 0)
+                    phys.remove(phys.handle_of(i));
+                return next;
+            }
             shoot(next) {
                 if (!next)
                     return null;
@@ -22430,7 +24067,8 @@ var $;
             side_z() {
                 return (this.pile_side() - 1) / 2 * pile_step + side_ahead;
             }
-            chain_first = -1;
+            chain_head = 0;
+            chain_tail = 0;
             chain(next) {
                 if (!next)
                     return null;
@@ -22444,9 +24082,11 @@ var $;
                 let prev = -1;
                 for (let n = 0; n < chain_links; ++n) {
                     pos[1] = chain_top - chain_link / 2 - n * chain_link;
-                    const i = phys.add($bog_gamengine_phys3.shape_box, size, 1, pos);
+                    const handle = phys.add($bog_gamengine_phys3.shape_box, size, 1, pos);
+                    const i = phys.index_of(handle);
+                    this.chain_tail = handle;
                     if (n === 0) {
-                        this.chain_first = i;
+                        this.chain_head = handle;
                         phys.joint.add($bog_gamengine_phys3_joint.type_point, i, 0, top, hook);
                     }
                     else {
@@ -22459,11 +24099,11 @@ var $;
             }
             chain_drop() {
                 const phys = this.Phys();
-                const first = this.chain_first;
-                const last = first + chain_links - 1;
-                if (first < 0 || last >= phys.count)
+                const head = phys.pos_of(this.chain_head);
+                const tail = phys.pos_of(this.chain_tail);
+                if (!head || !tail)
                     return 0;
-                return phys.pos[first * 3 + 1] - phys.pos[last * 3 + 1];
+                return head[1] - tail[1];
             }
             door(next) {
                 if (!next)
@@ -22471,9 +24111,9 @@ var $;
                 const phys = this.Phys();
                 const z = this.side_z();
                 const post_size = new Float32Array([0.15, 1.5, 0.15]);
-                const post = phys.add($bog_gamengine_phys3.shape_box, post_size, 0, new Float32Array([door_x, 1.5, z]));
+                const post = phys.index_of(phys.add($bog_gamengine_phys3.shape_box, post_size, 0, new Float32Array([door_x, 1.5, z])));
                 const leaf_size = new Float32Array([0.5, 1, 0.1]);
-                const leaf = phys.add($bog_gamengine_phys3.shape_box, leaf_size, 1, new Float32Array([door_x + 0.8, 1 + door_lift, z]));
+                const leaf = phys.index_of(phys.add($bog_gamengine_phys3.shape_box, leaf_size, 1, new Float32Array([door_x + 0.8, 1 + door_lift, z])));
                 phys.joint.add($bog_gamengine_phys3_joint.type_hinge, post, leaf, new Float32Array([0.3, door_lift - 0.5, 0]), new Float32Array([-0.5, 0, 0]), new Float32Array([0, 1, 0]), new Float32Array([-Math.PI / 2, Math.PI / 2]));
                 return next;
             }
@@ -22498,6 +24138,12 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_boxes.prototype, "Phys", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "platform_size", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "platform", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_boxes.prototype, "floor_size", null);
@@ -27680,7 +29326,7 @@ var $;
 var $;
 (function ($) {
     function box(world, mass, x, y, z) {
-        return world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), mass, new Float32Array([x, y, z]));
+        return world.index_of(world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), mass, new Float32Array([x, y, z])));
     }
     $mol_test({
         'add two bodies gives indices 0 and 1 and count 2'() {
@@ -27693,11 +29339,51 @@ var $;
             const world = new $bog_gamengine_phys3;
             box(world, 1, 1, 1, 1);
             box(world, 2, 5, 6, 7);
-            $mol_assert_equal(world.remove(0), 1);
+            $mol_assert_equal(world.remove(world.handle_of(0)), true);
             $mol_assert_equal(world.count, 1);
             $mol_assert_equal([...world.pos.subarray(0, 3)], [5, 6, 7]);
             $mol_assert_equal(world.mass[0], 2);
             $mol_assert_equal([...world.trans.subarray(12, 15)], [5, 6, 7]);
+        },
+        'handle of a neighbour survives removal of the body between them'() {
+            const world = new $bog_gamengine_phys3;
+            const a = world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 1, new Float32Array([1, 0, 0]));
+            const b = world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 1, new Float32Array([2, 0, 0]));
+            const c = world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 1, new Float32Array([3, 0, 0]));
+            $mol_assert_equal(world.remove(b), true);
+            $mol_assert_equal(world.count, 2);
+            $mol_assert_equal(world.index_of(b), -1);
+            $mol_assert_equal(world.pos_of(a)[0], 1);
+            $mol_assert_equal(world.pos_of(c)[0], 3);
+            $mol_assert_equal(world.handle_of(world.index_of(c)), c);
+        },
+        'removed handle is not answered twice'() {
+            const world = new $bog_gamengine_phys3;
+            const a = world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 1, new Float32Array(3));
+            $mol_assert_equal(world.remove(a), true);
+            $mol_assert_equal(world.remove(a), false);
+            $mol_assert_equal(world.pos_of(a), null);
+        },
+        'move updates bounds and trans within the same step'() {
+            const world = new $bog_gamengine_phys3;
+            const a = world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 0, new Float32Array(3));
+            world.move(a, new Float32Array([5, 0, 0]));
+            const i = world.index_of(a);
+            $mol_assert_equal([...world.aabb.subarray(i * 6, i * 6 + 6)], [4.5, -0.5, -0.5, 5.5, 0.5, 0.5]);
+            $mol_assert_equal([...world.trans.subarray(i * 16 + 12, i * 16 + 15)], [5, 0, 0]);
+        },
+        'kinematic body carries a box along and does not fall'() {
+            const world = new $bog_gamengine_phys3;
+            const plate = world.add($bog_gamengine_phys3.shape_box, new Float32Array([2, 0.25, 2]), 0, new Float32Array(3));
+            world.kinematic_of(plate, true);
+            const cargo = box(world, 1, 0, 0.76, 0);
+            world.vel[world.index_of(plate) * 3] = 1;
+            for (let k = 0; k < 60; ++k)
+                world.step(1 / 60);
+            const at = world.pos_of(plate);
+            $mol_assert_ok(Math.abs(at[0] - 1) < 0.05);
+            $mol_assert_equal(at[1], 0);
+            $mol_assert_ok(world.pos[cargo * 3] > 0.5);
         },
         'body with mass falls about 4.9 in one second'() {
             const world = new $bog_gamengine_phys3;
@@ -27721,7 +29407,7 @@ var $;
         },
         'trans scales unit box to full size'() {
             const world = new $bog_gamengine_phys3;
-            const i = world.add($bog_gamengine_phys3.shape_box, new Float32Array([1, 2, 3]), 1, new Float32Array(3));
+            const i = world.index_of(world.add($bog_gamengine_phys3.shape_box, new Float32Array([1, 2, 3]), 1, new Float32Array(3)));
             $mol_assert_equal(world.trans[i * 16], 2);
             $mol_assert_equal(world.trans[i * 16 + 5], 4);
             $mol_assert_equal(world.trans[i * 16 + 10], 6);
@@ -27755,15 +29441,15 @@ var $;
         },
         'sphere and box inverse inertia follow standard formulas'() {
             const world = new $bog_gamengine_phys3;
-            const s = world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([2, 0, 0]), 5, new Float32Array(3));
+            const s = world.index_of(world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([2, 0, 0]), 5, new Float32Array(3)));
             $mol_assert_ok(Math.abs(world.inv_inertia[s * 3] - 1 / (0.4 * 5 * 4)) < 1e-6);
-            const b = world.add($bog_gamengine_phys3.shape_box, new Float32Array([1, 2, 3]), 3, new Float32Array(3));
+            const b = world.index_of(world.add($bog_gamengine_phys3.shape_box, new Float32Array([1, 2, 3]), 3, new Float32Array(3)));
             $mol_assert_ok(Math.abs(world.inv_inertia[b * 3] - 1 / (3 / 12 * (16 + 36))) < 1e-6);
         },
         'hull_points stores points with offset and count per body'() {
             const world = new $bog_gamengine_phys3;
-            const a = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3));
-            const b = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3));
+            const a = world.index_of(world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3)));
+            const b = world.index_of(world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3)));
             world.hull_points(a, new Float32Array([0, 0, 0, 1, 0, 0]));
             world.hull_points(b, new Float32Array([0, 1, 0, 0, 0, 1, 1, 1, 1]));
             $mol_assert_equal(world.hull_off[b], 6);
@@ -27772,8 +29458,8 @@ var $;
         },
         'hull of four tetrahedron points gives aabb by these points'() {
             const world = new $bog_gamengine_phys3;
-            const a = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3));
-            const b = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array([10, 20, 30]));
+            const a = world.index_of(world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3)));
+            const b = world.index_of(world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array([10, 20, 30])));
             world.hull_points(a, new Float32Array([5, 5, 5, 6, 6, 6]));
             world.hull_points(b, new Float32Array([0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3]));
             $mol_assert_equal([...world.aabb.subarray(b * 6, b * 6 + 6)], [10, 20, 30, 11, 22, 33]);
@@ -27870,6 +29556,16 @@ var $;
             return { data: () => ({ width, height }) };
         }
     }
+    class $bog_gamengine_atlas_wait_mock extends $bog_gamengine_atlas {
+        image(uri) {
+            return { data: () => $mol_fail_hidden(new Promise(() => { })) };
+        }
+    }
+    class $bog_gamengine_atlas_blank_mock extends $bog_gamengine_atlas {
+        image(uri) {
+            return { data: () => ({ width: 512, height: 512, data: new Uint8ClampedArray(4) }) };
+        }
+    }
     function atlas_mock(uris, sizes = {}) {
         const atlas = new $bog_gamengine_atlas_mock;
         atlas.uris(uris);
@@ -27918,6 +29614,17 @@ var $;
         'ready is true when all images match size'() {
             const atlas = atlas_mock(['bog/gamengine/demo/atlas/hero.png']);
             $mol_assert_equal(atlas.ready(), true);
+        },
+        'ready is false while the image is still loading'() {
+            const atlas = new $bog_gamengine_atlas_wait_mock;
+            atlas.uris(['bog/gamengine/demo/atlas/hero.png']);
+            $mol_assert_equal(atlas.ready(), false);
+        },
+        'placeholder image gives no size error and keeps atlas not ready'() {
+            const atlas = new $bog_gamengine_atlas_blank_mock;
+            atlas.uris(['bog/gamengine/demo/atlas/hero.png']);
+            $mol_assert_equal(atlas.images().length, 1);
+            $mol_assert_equal(atlas.ready(), false);
         },
     });
 })($ || ($ = {}));
@@ -28551,10 +30258,10 @@ var $;
 var $;
 (function ($) {
     function box(world, mass, x, y, z, rot) {
-        return world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), mass, new Float32Array([x, y, z]), rot);
+        return world.index_of(world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), mass, new Float32Array([x, y, z]), rot));
     }
     function sphere(world, r, x) {
-        return world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([r, 0, 0]), 1, new Float32Array([x, 0, 0]));
+        return world.index_of(world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([r, 0, 0]), 1, new Float32Array([x, 0, 0])));
     }
     function pairs_of(broad) {
         return [...broad.pairs.subarray(0, broad.pair_count * 2)];
@@ -28632,13 +30339,13 @@ var $;
         },
         'bounds of capsule is sphere of radius plus half height'() {
             const world = new $bog_gamengine_phys3;
-            const i = world.add($bog_gamengine_phys3.shape_capsule, new Float32Array([0.5, 1, 0]), 1, new Float32Array([1, 2, 3]));
+            const i = world.index_of(world.add($bog_gamengine_phys3.shape_capsule, new Float32Array([0.5, 1, 0]), 1, new Float32Array([1, 2, 3])));
             $mol_assert_equal([...world.aabb.subarray(i * 6, i * 6 + 6)], [-0.5, 0.5, 1.5, 2.5, 3.5, 4.5]);
         },
         'bounds of hull follows rotated points'() {
             const world = new $bog_gamengine_phys3;
             const rot = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 0, 1]), Math.PI / 2);
-            const i = world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3), rot);
+            const i = world.index_of(world.add($bog_gamengine_phys3.shape_hull, new Float32Array(3), 1, new Float32Array(3), rot));
             world.hull_points(i, new Float32Array([0, 0, 0, 2, 0, 0, 0, 1, 0]));
             $mol_assert_ok(Math.abs(world.aabb[i * 6] + 1) < 1e-6);
             $mol_assert_ok(Math.abs(world.aabb[i * 6 + 4] - 2) < 1e-6);
@@ -28671,7 +30378,7 @@ var $;
             box(world, 1, 10, 0, 0);
             box(world, 1, 0.5, 0, 0);
             world.broad.find(world);
-            world.remove(1);
+            world.remove(world.handle_of(1));
             $mol_assert_equal(world.broad.find(world), 1);
             $mol_assert_equal(pairs_of(world.broad), [0, 1]);
         },
@@ -28688,19 +30395,19 @@ var $;
         $mol_fail(new Error(`${actual} ≠ ${expected}`));
     }
     function sphere(world, r, x, y, z) {
-        return world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([r, 0, 0]), 1, new Float32Array([x, y, z]));
+        return world.index_of(world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([r, 0, 0]), 1, new Float32Array([x, y, z])));
     }
     function box(world, h, x, y, z, rot) {
-        return world.add($bog_gamengine_phys3.shape_box, new Float32Array([h, h, h]), 1, new Float32Array([x, y, z]), rot);
+        return world.index_of(world.add($bog_gamengine_phys3.shape_box, new Float32Array([h, h, h]), 1, new Float32Array([x, y, z]), rot));
     }
     function capsule(world, r, h, x, y, z, rot) {
-        return world.add($bog_gamengine_phys3.shape_capsule, new Float32Array([r, h, 0]), 1, new Float32Array([x, y, z]), rot);
+        return world.index_of(world.add($bog_gamengine_phys3.shape_capsule, new Float32Array([r, h, 0]), 1, new Float32Array([x, y, z]), rot));
     }
     function floor(world) {
-        return world.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3));
+        return world.index_of(world.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3)));
     }
     function tetra(world, x, y, z) {
-        const i = world.add($bog_gamengine_phys3.shape_hull, new Float32Array([1, 1, 1]), 1, new Float32Array([x, y, z]));
+        const i = world.index_of(world.add($bog_gamengine_phys3.shape_hull, new Float32Array([1, 1, 1]), 1, new Float32Array([x, y, z])));
         world.hull_points(i, new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]));
         return i;
     }
@@ -28881,13 +30588,13 @@ var $;
 (function ($) {
     const dt = 1 / 60;
     function floor(world, nx = 0, ny = 1, nz = 0) {
-        return world.add($bog_gamengine_phys3.shape_plane, new Float32Array([nx, ny, nz]), 0, new Float32Array(3));
+        return world.index_of(world.add($bog_gamengine_phys3.shape_plane, new Float32Array([nx, ny, nz]), 0, new Float32Array(3)));
     }
     function box(world, x, y, z, rot) {
-        return world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 1, new Float32Array([x, y, z]), rot);
+        return world.index_of(world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 1, new Float32Array([x, y, z]), rot));
     }
     function sphere(world, x, y, z) {
-        return world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([0.5, 0, 0]), 1, new Float32Array([x, y, z]));
+        return world.index_of(world.add($bog_gamengine_phys3.shape_sphere, new Float32Array([0.5, 0, 0]), 1, new Float32Array([x, y, z])));
     }
     function run(world, seconds) {
         const steps = Math.round(seconds / dt);
@@ -29021,10 +30728,10 @@ var $;
 (function ($) {
     const dt = 1 / 60;
     function ground(world) {
-        return world.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array([0, -100, 0]));
+        return world.index_of(world.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array([0, -100, 0])));
     }
     function box(world, x, y, z, half = 0.5, mass = 1) {
-        return world.add($bog_gamengine_phys3.shape_box, new Float32Array([half, half, half]), mass, new Float32Array([x, y, z]));
+        return world.index_of(world.add($bog_gamengine_phys3.shape_box, new Float32Array([half, half, half]), mass, new Float32Array([x, y, z])));
     }
     function run(world, seconds) {
         const steps = Math.round(seconds / dt);
@@ -29180,7 +30887,7 @@ var $;
             const c = box(world, 4, 0, 0);
             world.joint.add($bog_gamengine_phys3_joint.type_point, a, b, new Float32Array(3), new Float32Array(3));
             world.joint.add($bog_gamengine_phys3_joint.type_point, b, c, new Float32Array(3), new Float32Array(3));
-            world.remove(a);
+            world.remove(world.handle_of(a));
             $mol_assert_equal(world.joint.count, 1);
             $mol_assert_equal(world.joint.a[0], b);
             $mol_assert_equal(world.joint.b[0], a);
@@ -29317,7 +31024,7 @@ var $;
             $.$mol_state_time = $bog_gamengine_scene_time_mock;
             const world = new $bog_gamengine_phys3;
             world.gravity(new Float32Array(3));
-            const i = world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 1, new Float32Array(3));
+            const i = world.index_of(world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 1, new Float32Array(3)));
             world.vel[i * 3] = 1;
             const scene = new $bog_gamengine_scene;
             scene.$ = $;
@@ -29541,6 +31248,355 @@ var $;
 "use strict";
 var $;
 (function ($_1) {
+    function $bog_gamengine_shape_gltf_test_glb(normals, indices) {
+        const pos = [0, 0, 0, 1, 0, 0, 0, 1, 0];
+        const norm = [0, 0, 1, 0, 0, 1, 0, 0, 1];
+        const tex = [0, 0, 1, 0, 0, 1];
+        const floats = [...pos, ...(normals ? norm : []), ...tex];
+        const bin_size = floats.length * 4 + (indices ? 8 : 0);
+        const bin = new ArrayBuffer(bin_size);
+        const view = new DataView(bin);
+        for (let i = 0; i < floats.length; ++i)
+            view.setFloat32(i * 4, floats[i], true);
+        if (indices)
+            for (let i = 0; i < 3; ++i)
+                view.setUint16(floats.length * 4 + i * 2, i, true);
+        const views = [];
+        const accessors = [];
+        const attributes = {};
+        let offset = 0;
+        const add = (name, count, type, size, componentType, unit) => {
+            views.push({ buffer: 0, byteOffset: offset, byteLength: count * size * unit });
+            accessors.push({ bufferView: views.length - 1, componentType, count, type });
+            attributes[name] = accessors.length - 1;
+            offset += count * size * unit;
+        };
+        add('POSITION', 3, 'VEC3', 3, 5126, 4);
+        if (normals)
+            add('NORMAL', 3, 'VEC3', 3, 5126, 4);
+        add('TEXCOORD_0', 3, 'VEC2', 2, 5126, 4);
+        if (indices)
+            add('indices', 3, 'SCALAR', 1, 5123, 2);
+        const primitive = { attributes: { ...attributes } };
+        if (indices) {
+            primitive.indices = attributes.indices;
+            delete primitive.attributes.indices;
+        }
+        const doc = { asset: { version: '2.0' }, meshes: [{ primitives: [primitive] }], accessors, bufferViews: views, buffers: [{ byteLength: bin_size }] };
+        return $bog_gamengine_shape_gltf_test_wrap(doc, bin);
+    }
+    function $bog_gamengine_shape_gltf_test_wrap(doc, bin) {
+        const bin_size = bin.byteLength;
+        let json = new TextEncoder().encode(JSON.stringify(doc));
+        while (json.length % 4)
+            json = new Uint8Array([...json, 0x20]);
+        const total = 12 + 8 + json.length + 8 + bin_size;
+        const glb = new ArrayBuffer(total);
+        const out = new DataView(glb);
+        out.setUint32(0, 0x46546C67, true);
+        out.setUint32(4, 2, true);
+        out.setUint32(8, total, true);
+        out.setUint32(12, json.length, true);
+        out.setUint32(16, 0x4E4F534A, true);
+        new Uint8Array(glb, 20, json.length).set(json);
+        out.setUint32(20 + json.length, bin_size, true);
+        out.setUint32(24 + json.length, 0x004E4942, true);
+        new Uint8Array(glb, 28 + json.length, bin_size).set(new Uint8Array(bin));
+        return glb;
+    }
+    function $bog_gamengine_shape_gltf_test_skin_glb() {
+        const parts = [
+            { data: [0, 0, 0, 1, 0, 0, 0, 1, 0], kind: 'f32', type: 'VEC3' },
+            { data: [0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0], kind: 'u8', type: 'VEC4' },
+            { data: [1, 0, 0, 0, 0.5, 0.5, 0, 0, 0.25, 0.75, 0, 0], kind: 'f32', type: 'VEC4' },
+            { data: [2, 1, 0], kind: 'u16', type: 'SCALAR' },
+            { data: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1, 0, 1], kind: 'f32', type: 'MAT4' },
+            { data: [0, 0.75], kind: 'f32', type: 'SCALAR' },
+            { data: [0, 0, 0, 1, 0, 0, 1, 0], kind: 'f32', type: 'VEC4' },
+        ];
+        const dims = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
+        const units = { f32: 4, u8: 1, u16: 2 };
+        const codes = { f32: 5126, u8: 5121, u16: 5123 };
+        const align = (size) => size + (4 - size % 4) % 4;
+        let bin_size = 0;
+        for (const part of parts)
+            bin_size += align(part.data.length * units[part.kind]);
+        const bin = new ArrayBuffer(bin_size);
+        const view = new DataView(bin);
+        const views = [];
+        const accessors = [];
+        let at = 0;
+        for (const part of parts) {
+            const unit = units[part.kind];
+            for (let i = 0; i < part.data.length; ++i) {
+                const to = at + i * unit;
+                if (part.kind === 'f32')
+                    view.setFloat32(to, part.data[i], true);
+                else if (part.kind === 'u16')
+                    view.setUint16(to, part.data[i], true);
+                else
+                    view.setUint8(to, part.data[i]);
+            }
+            views.push({ buffer: 0, byteOffset: at, byteLength: part.data.length * unit });
+            accessors.push({
+                bufferView: views.length - 1,
+                componentType: codes[part.kind],
+                count: part.data.length / dims[part.type],
+                type: part.type,
+            });
+            at += align(part.data.length * unit);
+        }
+        const doc = {
+            asset: { version: '2.0' },
+            nodes: [
+                { name: 'root', translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1], children: [1] },
+                { name: 'tip', translation: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+                { name: 'arm', mesh: 0, skin: 0 },
+            ],
+            meshes: [{ primitives: [{ attributes: { POSITION: 0, JOINTS_0: 1, WEIGHTS_0: 2 }, indices: 3 }] }],
+            skins: [{ joints: [0, 1], inverseBindMatrices: 4 }],
+            animations: [
+                {
+                    name: 'wave',
+                    channels: [{ sampler: 0, target: { node: 1, path: 'rotation' } }],
+                    samplers: [{ input: 5, output: 6, interpolation: 'LINEAR' }],
+                },
+                {
+                    name: 'hold',
+                    channels: [{ sampler: 0, target: { node: 1, path: 'rotation' } }],
+                    samplers: [{ input: 5, output: 6, interpolation: 'STEP' }],
+                },
+            ],
+            accessors,
+            bufferViews: views,
+            buffers: [{ byteLength: bin_size }],
+        };
+        return $bog_gamengine_shape_gltf_test_wrap(doc, bin);
+    }
+    $mol_test({
+        'glb triangle gives positions, normals and flipped uv'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_glb(true, true) });
+            $mol_assert_equal(shape.size(), 3);
+            $mol_assert_equal(shape.mode(), 'triangles');
+            $mol_assert_equal([...shape.geometry()], [0, 0, 0, 1, 0, 0, 0, 1, 0]);
+            $mol_assert_equal([...shape.normals()], [0, 0, 1, 0, 0, 1, 0, 0, 1]);
+            $mol_assert_equal([...shape.skin()], [0, 1, 1, 1, 0, 0]);
+        },
+        'glb without normals gets flat normal from ccw triangle'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_glb(false, true) });
+            $mol_assert_equal([...shape.normals()], [0, 0, 1, 0, 0, 1, 0, 0, 1]);
+        },
+        'glb without indices takes vertices in order'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_glb(true, false) });
+            $mol_assert_equal(shape.size(), 3);
+            $mol_assert_equal([...shape.geometry()], [0, 0, 0, 1, 0, 0, 0, 1, 0]);
+        },
+        'glb skin unrolls joints and weights by index'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_skin_glb() });
+            $mol_assert_equal(shape.size(), 3);
+            $mol_assert_equal([...shape.joints()], [1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0]);
+            $mol_assert_equal([...shape.weights()], [0.25, 0.75, 0, 0, 0.5, 0.5, 0, 0, 1, 0, 0, 0]);
+        },
+        'glb skeleton keeps parents, base pose and inverse binds'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_skin_glb() });
+            const skeleton = shape.skeleton();
+            $mol_assert_equal(skeleton.count, 2);
+            $mol_assert_equal([...skeleton.names], ['root', 'tip']);
+            $mol_assert_equal([...skeleton.parents], [-1, 0]);
+            $mol_assert_equal([...skeleton.order], [0, 1]);
+            $mol_assert_equal([...skeleton.base.subarray(10, 20)], [0, 1, 0, 0, 0, 0, 1, 1, 1, 1]);
+            $mol_assert_equal(skeleton.binds[16 + 13], -1);
+        },
+        'glb clip with two keys takes duration from the last key'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_skin_glb() });
+            const clip = shape.clips().get('wave');
+            $mol_assert_equal(clip.duration, 0.75);
+            $mol_assert_equal(clip.channels.length, 1);
+            $mol_assert_equal(clip.channels[0].joint, 1);
+            $mol_assert_equal(clip.channels[0].path, 'rotation');
+        },
+        'glb marks a step sampler as step and a linear one as not'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_skin_glb() });
+            $mol_assert_equal(shape.clips().get('hold').channels[0].step, true);
+            $mol_assert_equal(shape.clips().get('wave').channels[0].step, false);
+        },
+        'glb cubic spline animation fails with message'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, json: () => ({
+                    nodes: [{ name: 'root' }],
+                    skins: [{ joints: [0] }],
+                    animations: [{
+                            name: 'jump',
+                            channels: [{ sampler: 0, target: { node: 0, path: 'rotation' } }],
+                            samplers: [{ input: 0, output: 1, interpolation: 'CUBICSPLINE' }],
+                        }],
+                }) });
+            $mol_assert_fail(() => shape.clips(), 'glTF animation interpolation CUBICSPLINE is not supported');
+        },
+        'glb without skin gives no skeleton and no clips'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_glb(true, true) });
+            $mol_assert_equal(shape.skeleton(), null);
+            $mol_assert_equal(shape.clips().size, 0);
+            $mol_assert_equal(shape.joints().length, 0);
+        },
+        'glb without position fails with message'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, json: () => ({ meshes: [{ primitives: [{ attributes: {} }] }] }) });
+            $mol_assert_fail(() => shape.geometry(), 'glTF primitive has no POSITION');
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    function $bog_gamengine_skin_test_skeleton() {
+        return {
+            count: 2,
+            names: ['root', 'tip'],
+            parents: new Int32Array([-1, 0]),
+            order: new Int32Array([0, 1]),
+            base: new Float32Array([
+                0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
+                0, 1, 0, 0, 0, 0, 1, 1, 1, 1,
+            ]),
+            binds: new Float32Array([
+                1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
+                1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1, 0, 1,
+            ]),
+        };
+    }
+    function $bog_gamengine_skin_test_clips() {
+        const quarter = Math.PI / 2;
+        return new Map([
+            ['turn', {
+                    name: 'turn',
+                    duration: 1,
+                    channels: [{
+                            joint: 1,
+                            path: 'rotation',
+                            step: false,
+                            times: new Float32Array([0, 1]),
+                            values: new Float32Array([0, 0, 0, 1, 0, 0, Math.sin(quarter / 2), Math.cos(quarter / 2)]),
+                        }],
+                }],
+            ['here', {
+                    name: 'here',
+                    duration: 1,
+                    channels: [{
+                            joint: 0,
+                            path: 'translation',
+                            step: false,
+                            times: new Float32Array([0, 1]),
+                            values: new Float32Array([0, 0, 0, 0, 0, 0]),
+                        }],
+                }],
+            ['there', {
+                    name: 'there',
+                    duration: 1,
+                    channels: [{
+                            joint: 0,
+                            path: 'translation',
+                            step: false,
+                            times: new Float32Array([0, 1]),
+                            values: new Float32Array([2, 0, 0, 2, 0, 0]),
+                        }],
+                }],
+            ['jump', {
+                    name: 'jump',
+                    duration: 1,
+                    channels: [{
+                            joint: 0,
+                            path: 'translation',
+                            step: true,
+                            times: new Float32Array([0, 1]),
+                            values: new Float32Array([0, 0, 0, 4, 0, 0]),
+                        }],
+                }],
+        ]);
+    }
+    function $bog_gamengine_skin_test_make($, clip) {
+        const skeleton = $bog_gamengine_skin_test_skeleton();
+        const clips = $bog_gamengine_skin_test_clips();
+        const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: () => skeleton, clips: () => clips });
+        const skin = new $bog_gamengine_skin;
+        skin.shape(shape);
+        skin.clip(clip);
+        return skin;
+    }
+    $mol_test({
+        'pose at time zero keeps the bind pose'($) {
+            const skin = $bog_gamengine_skin_test_make($, 'turn');
+            const bones = skin.pose();
+            for (let i = 0; i < 2; ++i) {
+                for (let k = 0; k < 16; ++k) {
+                    $mol_assert_ok(Math.abs(bones[i * 16 + k] - (k % 5 ? 0 : 1)) < 1e-4);
+                }
+            }
+        },
+        'pose in the middle of a clip turns the bone'($) {
+            const skin = $bog_gamengine_skin_test_make($, 'turn');
+            skin.time(0.5);
+            const bones = skin.pose();
+            const cos = Math.cos(Math.PI / 4);
+            const sin = Math.sin(Math.PI / 4);
+            $mol_assert_ok(Math.abs(bones[16] - cos) < 1e-4);
+            $mol_assert_ok(Math.abs(bones[17] - sin) < 1e-4);
+            $mol_assert_ok(Math.abs(bones[20] + sin) < 1e-4);
+            $mol_assert_ok(Math.abs(bones[28] - sin) < 1e-4);
+            $mol_assert_ok(Math.abs(bones[29] - (1 - cos)) < 1e-4);
+            $mol_assert_ok(Math.abs(bones[0] - 1) < 1e-4);
+        },
+        'blend of two clips with half weight gives the middle'($) {
+            const skin = $bog_gamengine_skin_test_make($, 'here');
+            skin.blend('there', 0.5);
+            const bones = skin.pose();
+            $mol_assert_ok(Math.abs(bones[12] - 1) < 1e-4);
+            $mol_assert_ok(Math.abs(bones[13]) < 1e-4);
+        },
+        'step interpolation holds the previous key'($) {
+            const skin = $bog_gamengine_skin_test_make($, 'jump');
+            skin.time(0.9);
+            $mol_assert_ok(Math.abs(skin.pose()[12]) < 1e-4);
+            skin.time(1);
+            $mol_assert_ok(Math.abs(skin.pose()[12] - 4) < 1e-4);
+        },
+        'time runs by step and loops over the duration'($) {
+            const skin = $bog_gamengine_skin_test_make($, 'turn');
+            skin.step(0.6);
+            $mol_assert_ok(Math.abs(skin.time() - 0.6) < 1e-6);
+            skin.step(0.6);
+            $mol_assert_ok(Math.abs(skin.time() - 0.2) < 1e-6);
+        },
+        'time stops at the end without loop'($) {
+            const skin = $bog_gamengine_skin_test_make($, 'turn');
+            skin.loop(false);
+            skin.step(0.8);
+            skin.step(0.8);
+            $mol_assert_equal(skin.time(), 1);
+        },
+        'pose without a skeleton stays identity'($) {
+            const skin = new $bog_gamengine_skin;
+            const bones = skin.pose();
+            $mol_assert_equal(bones.length, $bog_gamengine_skin_max * 16);
+            $mol_assert_equal([...bones.subarray(0, 16)], [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+        },
+        'pose keeps the same buffer and bumps version only on change'($) {
+            const skin = $bog_gamengine_skin_test_make($, 'turn');
+            const first = skin.pose();
+            const was = skin.version;
+            $mol_assert_equal(skin.pose(), first);
+            $mol_assert_equal(skin.version, was);
+            skin.time(0.5);
+            $mol_assert_equal(skin.pose(), first);
+            $mol_assert_equal(skin.version, was + 1);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
     $mol_test({
         'both entries have main'($) {
             const shader = new $bog_gamengine_shader_post_bloom;
@@ -29661,6 +31717,12 @@ var $;
     ], $bog_gamengine_draw_time_mock, "stamp", null);
     class $bog_gamengine_draw_gl_mock extends Object {
         deleted = [];
+        createTexture() {
+            return 'bones';
+        }
+        bindTexture() { }
+        texStorage2D() { }
+        texParameteri() { }
         deleteVertexArray(vao) {
             this.deleted.push(vao);
         }
@@ -29709,6 +31771,42 @@ var $;
             draw.scene().batches([kept]);
             draw.slots();
             $mol_assert_equal(draw.gl.deleted, ['buffer gone', 'vao gone']);
+        },
+        'slot with bones frees its bone texture as well'($) {
+            const draw = new $bog_gamengine_draw_mock;
+            draw.$ = $;
+            const gone = new $bog_gamengine_batch;
+            gone[Symbol.toStringTag] = 'gone';
+            draw.scene().batches([gone]);
+            draw.slots()[0].bones_tex = $bog_gamengine_skin_gl_bones(draw.context());
+            draw.scene().batches([]);
+            draw.slots();
+            $mol_assert_equal(draw.gl.deleted, ['buffer gone', 'vao gone', 'bones']);
+        },
+        'clear colour is the dark default until it is set'($) {
+            const draw = new $$.$bog_gamengine_draw;
+            draw.$ = $;
+            $mol_assert_equal(draw.clear(), new Float32Array([0.08, 0.08, 0.1, 1]));
+            draw.clear([0.5, 0.7, 1, 1]);
+            $mol_assert_equal(draw.clear(), new Float32Array([0.5, 0.7, 1, 1]));
+        },
+        'report of a ready slot with bones counts its instance'($) {
+            $.$mol_state_time = $bog_gamengine_draw_time_mock;
+            const draw = new $bog_gamengine_draw_mock;
+            draw.$ = $;
+            const slot = new $$.$bog_gamengine_draw_slot;
+            slot.batch = new $bog_gamengine_batch;
+            slot.batch.count = 1;
+            slot.batch.cap = 1;
+            slot.ready = true;
+            slot.tris = 12;
+            slot.bytes = 512;
+            slot.bones_tex = $bog_gamengine_skin_gl_bones(draw.context());
+            draw.count_fill([slot]);
+            draw.measure(0, 1, 1, 2, 3, 4, 5);
+            $mol_assert_equal(draw.report().instances, 1);
+            $mol_assert_equal(draw.report().triangles, 12);
+            $mol_assert_equal(draw.report().bytes, 512);
         },
         'light matrix puts a point on the sphere border into ±1'($) {
             const mat = $$.$bog_gamengine_draw_shadow_mat(new Float32Array([0, -1, 0]), 0, new Float32Array([1, 2, 3]), 10, new Float32Array(16));
@@ -30589,199 +32687,53 @@ var $;
 "use strict";
 var $;
 (function ($_1) {
-    function $bog_gamengine_shape_gltf_test_glb(normals, indices) {
-        const pos = [0, 0, 0, 1, 0, 0, 0, 1, 0];
-        const norm = [0, 0, 1, 0, 0, 1, 0, 0, 1];
-        const tex = [0, 0, 1, 0, 0, 1];
-        const floats = [...pos, ...(normals ? norm : []), ...tex];
-        const bin_size = floats.length * 4 + (indices ? 8 : 0);
-        const bin = new ArrayBuffer(bin_size);
-        const view = new DataView(bin);
-        for (let i = 0; i < floats.length; ++i)
-            view.setFloat32(i * 4, floats[i], true);
-        if (indices)
-            for (let i = 0; i < 3; ++i)
-                view.setUint16(floats.length * 4 + i * 2, i, true);
-        const views = [];
-        const accessors = [];
-        const attributes = {};
-        let offset = 0;
-        const add = (name, count, type, size, componentType, unit) => {
-            views.push({ buffer: 0, byteOffset: offset, byteLength: count * size * unit });
-            accessors.push({ bufferView: views.length - 1, componentType, count, type });
-            attributes[name] = accessors.length - 1;
-            offset += count * size * unit;
-        };
-        add('POSITION', 3, 'VEC3', 3, 5126, 4);
-        if (normals)
-            add('NORMAL', 3, 'VEC3', 3, 5126, 4);
-        add('TEXCOORD_0', 3, 'VEC2', 2, 5126, 4);
-        if (indices)
-            add('indices', 3, 'SCALAR', 1, 5123, 2);
-        const primitive = { attributes: { ...attributes } };
-        if (indices) {
-            primitive.indices = attributes.indices;
-            delete primitive.attributes.indices;
-        }
-        const doc = { asset: { version: '2.0' }, meshes: [{ primitives: [primitive] }], accessors, bufferViews: views, buffers: [{ byteLength: bin_size }] };
-        return $bog_gamengine_shape_gltf_test_wrap(doc, bin);
-    }
-    function $bog_gamengine_shape_gltf_test_wrap(doc, bin) {
-        const bin_size = bin.byteLength;
-        let json = new TextEncoder().encode(JSON.stringify(doc));
-        while (json.length % 4)
-            json = new Uint8Array([...json, 0x20]);
-        const total = 12 + 8 + json.length + 8 + bin_size;
-        const glb = new ArrayBuffer(total);
-        const out = new DataView(glb);
-        out.setUint32(0, 0x46546C67, true);
-        out.setUint32(4, 2, true);
-        out.setUint32(8, total, true);
-        out.setUint32(12, json.length, true);
-        out.setUint32(16, 0x4E4F534A, true);
-        new Uint8Array(glb, 20, json.length).set(json);
-        out.setUint32(20 + json.length, bin_size, true);
-        out.setUint32(24 + json.length, 0x004E4942, true);
-        new Uint8Array(glb, 28 + json.length, bin_size).set(new Uint8Array(bin));
-        return glb;
-    }
-    function $bog_gamengine_shape_gltf_test_skin_glb() {
-        const parts = [
-            { data: [0, 0, 0, 1, 0, 0, 0, 1, 0], kind: 'f32', type: 'VEC3' },
-            { data: [0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0], kind: 'u8', type: 'VEC4' },
-            { data: [1, 0, 0, 0, 0.5, 0.5, 0, 0, 0.25, 0.75, 0, 0], kind: 'f32', type: 'VEC4' },
-            { data: [2, 1, 0], kind: 'u16', type: 'SCALAR' },
-            { data: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -1, 0, 1], kind: 'f32', type: 'MAT4' },
-            { data: [0, 0.75], kind: 'f32', type: 'SCALAR' },
-            { data: [0, 0, 0, 1, 0, 0, 1, 0], kind: 'f32', type: 'VEC4' },
-        ];
-        const dims = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
-        const units = { f32: 4, u8: 1, u16: 2 };
-        const codes = { f32: 5126, u8: 5121, u16: 5123 };
-        const align = (size) => size + (4 - size % 4) % 4;
-        let bin_size = 0;
-        for (const part of parts)
-            bin_size += align(part.data.length * units[part.kind]);
-        const bin = new ArrayBuffer(bin_size);
-        const view = new DataView(bin);
-        const views = [];
-        const accessors = [];
-        let at = 0;
-        for (const part of parts) {
-            const unit = units[part.kind];
-            for (let i = 0; i < part.data.length; ++i) {
-                const to = at + i * unit;
-                if (part.kind === 'f32')
-                    view.setFloat32(to, part.data[i], true);
-                else if (part.kind === 'u16')
-                    view.setUint16(to, part.data[i], true);
-                else
-                    view.setUint8(to, part.data[i]);
-            }
-            views.push({ buffer: 0, byteOffset: at, byteLength: part.data.length * unit });
-            accessors.push({
-                bufferView: views.length - 1,
-                componentType: codes[part.kind],
-                count: part.data.length / dims[part.type],
-                type: part.type,
-            });
-            at += align(part.data.length * unit);
-        }
-        const doc = {
-            asset: { version: '2.0' },
-            nodes: [
-                { name: 'root', translation: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1], children: [1] },
-                { name: 'tip', translation: [0, 1, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
-                { name: 'arm', mesh: 0, skin: 0 },
-            ],
-            meshes: [{ primitives: [{ attributes: { POSITION: 0, JOINTS_0: 1, WEIGHTS_0: 2 }, indices: 3 }] }],
-            skins: [{ joints: [0, 1], inverseBindMatrices: 4 }],
-            animations: [
-                {
-                    name: 'wave',
-                    channels: [{ sampler: 0, target: { node: 1, path: 'rotation' } }],
-                    samplers: [{ input: 5, output: 6, interpolation: 'LINEAR' }],
-                },
-                {
-                    name: 'hold',
-                    channels: [{ sampler: 0, target: { node: 1, path: 'rotation' } }],
-                    samplers: [{ input: 5, output: 6, interpolation: 'STEP' }],
-                },
-            ],
-            accessors,
-            bufferViews: views,
-            buffers: [{ byteLength: bin_size }],
-        };
-        return $bog_gamengine_shape_gltf_test_wrap(doc, bin);
-    }
     $mol_test({
-        'glb triangle gives positions, normals and flipped uv'($) {
-            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_glb(true, true) });
-            $mol_assert_equal(shape.size(), 3);
-            $mol_assert_equal(shape.mode(), 'triangles');
-            $mol_assert_equal([...shape.geometry()], [0, 0, 0, 1, 0, 0, 0, 1, 0]);
-            $mol_assert_equal([...shape.normals()], [0, 0, 1, 0, 0, 1, 0, 0, 1]);
-            $mol_assert_equal([...shape.skin()], [0, 1, 1, 1, 0, 0]);
+        'vert and frag have main'($) {
+            const shader = new $bog_gamengine_shader_skin;
+            $mol_assert_ok(shader.vert().includes('main'));
+            $mol_assert_ok(shader.frag().includes('main'));
         },
-        'glb without normals gets flat normal from ccw triangle'($) {
-            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_glb(false, true) });
-            $mol_assert_equal([...shape.normals()], [0, 0, 1, 0, 0, 1, 0, 0, 1]);
+        'bones come as a plain sampler and joints with weights as inputs'($) {
+            const face = new $bog_gamengine_shader_skin().face();
+            $mol_assert_equal(face.glob.bones, 'sampler2D');
+            $mol_assert_equal(face.input.joints, 'vec4');
+            $mol_assert_equal(face.input.weights, 'vec4');
         },
-        'glb without indices takes vertices in order'($) {
-            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_glb(true, false) });
-            $mol_assert_equal(shape.size(), 3);
-            $mol_assert_equal([...shape.geometry()], [0, 0, 0, 1, 0, 0, 0, 1, 0]);
+        'vert fetches four bone rows and mixes them by weights'($) {
+            const vert = new $bog_gamengine_shader_skin().vert();
+            $mol_assert_ok(vert.includes('texelFetch( bones, ivec2( 0, at ), 0 )'));
+            $mol_assert_ok(vert.includes('texelFetch( bones, ivec2( 3, at ), 0 )'));
+            $mol_assert_ok(vert.includes('bone( joints.w ) * weights.w'));
+            $mol_assert_not(vert.includes('break'));
         },
-        'glb skin unrolls joints and weights by index'($) {
-            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_skin_glb() });
-            $mol_assert_equal(shape.size(), 3);
-            $mol_assert_equal([...shape.joints()], [1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0]);
-            $mol_assert_equal([...shape.weights()], [0.25, 0.75, 0, 0, 0.5, 0.5, 0, 0, 1, 0, 0, 0]);
+        'skin keeps the solid input locations and puts its own after them'($) {
+            const skin = new $bog_gamengine_shader_skin();
+            const solid = new $bog_gamengine_shader_solid();
+            const source = $bog_gamengine_gl_source(skin.face(), skin.vert(), skin.frag()).vert;
+            const before = $bog_gamengine_gl_source(solid.face(), solid.vert(), solid.frag()).vert;
+            for (const name in solid.face().input) {
+                const line = before.split('\n').find(row => row.endsWith(` ${name};`));
+                $mol_assert_ok(source.includes(line));
+            }
+            $mol_assert_ok(source.includes('layout( location = 12 ) in vec4 joints;'));
+            $mol_assert_ok(source.includes('layout( location = 13 ) in vec4 weights;'));
+            $mol_assert_ok(source.includes('uniform sampler2D bones;'));
         },
-        'glb skeleton keeps parents, base pose and inverse binds'($) {
-            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_skin_glb() });
-            const skeleton = shape.skeleton();
-            $mol_assert_equal(skeleton.count, 2);
-            $mol_assert_equal([...skeleton.names], ['root', 'tip']);
-            $mol_assert_equal([...skeleton.parents], [-1, 0]);
-            $mol_assert_equal([...skeleton.order], [0, 1]);
-            $mol_assert_equal([...skeleton.base.subarray(10, 20)], [0, 1, 0, 0, 0, 0, 1, 1, 1, 1]);
-            $mol_assert_equal(skeleton.binds[16 + 13], -1);
+        'skin keeps the solid pipe, output and depth'($) {
+            const skin = new $bog_gamengine_shader_skin();
+            const solid = new $bog_gamengine_shader_solid();
+            $mol_assert_equal(Object.keys(skin.face().pipe), Object.keys(solid.face().pipe));
+            $mol_assert_equal(Object.keys(skin.face().output), Object.keys(solid.face().output));
+            $mol_assert_equal(skin.frag(), solid.frag());
+            $mol_assert_equal(skin.depth(), true);
         },
-        'glb clip with two keys takes duration from the last key'($) {
-            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_skin_glb() });
-            const clip = shape.clips().get('wave');
-            $mol_assert_equal(clip.duration, 0.75);
-            $mol_assert_equal(clip.channels.length, 1);
-            $mol_assert_equal(clip.channels[0].joint, 1);
-            $mol_assert_equal(clip.channels[0].path, 'rotation');
-        },
-        'glb marks a step sampler as step and a linear one as not'($) {
-            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_skin_glb() });
-            $mol_assert_equal(shape.clips().get('hold').channels[0].step, true);
-            $mol_assert_equal(shape.clips().get('wave').channels[0].step, false);
-        },
-        'glb cubic spline animation fails with message'($) {
-            const shape = $bog_gamengine_shape_gltf.make({ $, json: () => ({
-                    nodes: [{ name: 'root' }],
-                    skins: [{ joints: [0] }],
-                    animations: [{
-                            name: 'jump',
-                            channels: [{ sampler: 0, target: { node: 0, path: 'rotation' } }],
-                            samplers: [{ input: 0, output: 1, interpolation: 'CUBICSPLINE' }],
-                        }],
-                }) });
-            $mol_assert_fail(() => shape.clips(), 'glTF animation interpolation CUBICSPLINE is not supported');
-        },
-        'glb without skin gives no skeleton and no clips'($) {
-            const shape = $bog_gamengine_shape_gltf.make({ $, data: () => $bog_gamengine_shape_gltf_test_glb(true, true) });
-            $mol_assert_equal(shape.skeleton(), null);
-            $mol_assert_equal(shape.clips().size, 0);
-            $mol_assert_equal(shape.joints().length, 0);
-        },
-        'glb without position fails with message'($) {
-            const shape = $bog_gamengine_shape_gltf.make({ $, json: () => ({ meshes: [{ primitives: [{ attributes: {} }] }] }) });
-            $mol_assert_fail(() => shape.geometry(), 'glTF primitive has no POSITION');
+        'every pipe name is in both vert and frag'($) {
+            const shader = new $bog_gamengine_shader_skin;
+            const face = shader.face();
+            for (const name in face.pipe) {
+                $mol_assert_ok(shader.vert().includes(name));
+                $mol_assert_ok(shader.frag().includes(name));
+            }
         },
     });
 })($ || ($ = {}));
@@ -30804,6 +32756,49 @@ var $;
             const frag = new $bog_gamengine_shader_post_vignette().frag();
             $mol_assert_ok(frag.includes('vec2( 0.5 )'));
             $mol_assert_ok(frag.includes('smoothstep'));
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    $mol_test({
+        'skinned mesh takes its shape from the skin'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: () => null, geometry: () => new Float32Array(9) });
+            const skin = new $bog_gamengine_skin;
+            skin.shape(shape);
+            const mesh = new $bog_gamengine_mesh_skin;
+            mesh.skin(skin);
+            $mol_assert_equal(mesh.shape(), shape);
+        },
+        'every skinned mesh gets its own shader, so it gets its own batch'($) {
+            const one = new $bog_gamengine_mesh_skin;
+            const two = new $bog_gamengine_mesh_skin;
+            $mol_assert_ok(one.shader() instanceof $bog_gamengine_shader_skin);
+            $mol_assert_not(one.shader() === two.shader());
+        },
+        'batch of one skinned node gives its bones'($) {
+            const skin = new $bog_gamengine_skin;
+            const mesh = new $bog_gamengine_mesh_skin;
+            mesh.skin(skin);
+            $mol_assert_equal($bog_gamengine_skin_bones({ nodes: () => [mesh] }), skin.pose());
+            $mol_assert_equal($bog_gamengine_skin_bones({ nodes: () => [mesh, mesh] }), null);
+            $mol_assert_equal($bog_gamengine_skin_bones({ nodes: () => [new $bog_gamengine_mesh] }), null);
+        },
+        'step moves the skin time'($) {
+            const clips = new Map([
+                ['go', { name: 'go', duration: 2, channels: [] }],
+            ]);
+            const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: () => null, clips: () => clips });
+            const skin = new $bog_gamengine_skin;
+            skin.shape(shape);
+            skin.clip('go');
+            const mesh = new $bog_gamengine_mesh_skin;
+            mesh.skin(skin);
+            mesh.step(0.5);
+            $mol_assert_equal(skin.time(), 0.5);
         },
     });
 })($ || ($ = {}));
@@ -30964,6 +32959,180 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    function cast_test_world() {
+        return new $bog_gamengine_phys3;
+    }
+    function cast_test_add(world, shape, sx, sy, sz, x, y, z, rot) {
+        return world.index_of(world.add(shape, new Float32Array([sx, sy, sz]), 0, new Float32Array([x, y, z]), rot));
+    }
+    function cast_test_ray(world, ox, oy, oz, dx, dy, dz, opts) {
+        const out = new Float32Array(7);
+        const i = new $bog_gamengine_phys3_cast().ray(world, new Float32Array([ox, oy, oz]), new Float32Array([dx, dy, dz]), 100, out, opts);
+        return { i, out };
+    }
+    function cast_test_near(actual, expected) {
+        if (!(Math.abs(actual - expected) < 1e-3))
+            $mol_fail(new Error(`${actual} is not near ${expected}`));
+    }
+    function cast_test_hit(out, t, px, py, pz, nx, ny, nz) {
+        cast_test_near(out[0], t);
+        cast_test_near(out[1], px);
+        cast_test_near(out[2], py);
+        cast_test_near(out[3], pz);
+        cast_test_near(out[4], nx);
+        cast_test_near(out[5], ny);
+        cast_test_near(out[6], nz);
+    }
+    $mol_test({
+        'ray hits sphere at its near surface'() {
+            const world = cast_test_world();
+            cast_test_add(world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -5);
+            const { i, out } = cast_test_ray(world, 0, 0, 0, 0, 0, -1);
+            $mol_assert_equal(i, 0);
+            cast_test_hit(out, 4, 0, 0, -4, 0, 0, 1);
+        },
+        'ray hits box face with face normal'() {
+            const world = cast_test_world();
+            cast_test_add(world, $bog_gamengine_phys3.shape_box, 0.5, 0.5, 0.5, 3, 0, 0);
+            const { i, out } = cast_test_ray(world, 0, 0.2, 0.1, 1, 0, 0);
+            $mol_assert_equal(i, 0);
+            cast_test_hit(out, 2.5, 2.5, 0.2, 0.1, -1, 0, 0);
+        },
+        'ray past box misses'() {
+            const world = cast_test_world();
+            cast_test_add(world, $bog_gamengine_phys3.shape_box, 0.5, 0.5, 0.5, 3, 0, 0);
+            $mol_assert_equal(cast_test_ray(world, 0, 0.7, 0, 1, 0, 0).i, -1);
+            $mol_assert_equal(cast_test_ray(world, 0, 0, 0, -1, 0, 0).i, -1);
+        },
+        'ray hits rotated box on its tilted face'() {
+            const world = cast_test_world();
+            const rot = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 1, 0]), Math.PI / 4);
+            cast_test_add(world, $bog_gamengine_phys3.shape_box, 0.5, 0.5, 0.5, 3, 0, 0, rot);
+            const { i, out } = cast_test_ray(world, 0, 0, 0.1, 1, 0, 0);
+            $mol_assert_equal(i, 0);
+            cast_test_near(out[0], 3.1 - Math.SQRT1_2);
+            cast_test_near(out[4], -Math.SQRT1_2);
+            cast_test_near(out[5], 0);
+            cast_test_near(out[6], Math.SQRT1_2);
+        },
+        'ray hits capsule side'() {
+            const world = cast_test_world();
+            cast_test_add(world, $bog_gamengine_phys3.shape_capsule, 0.5, 1, 0, 0, 0.5, -4);
+            const { i, out } = cast_test_ray(world, 0, 0, 0, 0, 0, -1);
+            $mol_assert_equal(i, 0);
+            cast_test_hit(out, 3.5, 0, 0, -3.5, 0, 0, 1);
+        },
+        'ray hits capsule cap'() {
+            const world = cast_test_world();
+            cast_test_add(world, $bog_gamengine_phys3.shape_capsule, 0.5, 1, 0, 0, 0, -4);
+            const { i, out } = cast_test_ray(world, 0, 3, -4, 0, -1, 0);
+            $mol_assert_equal(i, 0);
+            cast_test_hit(out, 1.5, 0, 1.5, -4, 0, 1, 0);
+        },
+        'ray hits plane from above and misses from below'() {
+            const world = cast_test_world();
+            cast_test_add(world, $bog_gamengine_phys3.shape_plane, 0, 1, 0, 0, 0, 0);
+            const { i, out } = cast_test_ray(world, 1, 2, 3, 0, -1, 0);
+            $mol_assert_equal(i, 0);
+            cast_test_hit(out, 2, 1, 0, 3, 0, 1, 0);
+            $mol_assert_equal(cast_test_ray(world, 1, 2, 3, 0, 1, 0).i, -1);
+        },
+        'ray hits hull tetrahedron on its face'() {
+            const world = cast_test_world();
+            const i = cast_test_add(world, $bog_gamengine_phys3.shape_hull, 0, 0, 0, 0, 0, 0);
+            world.hull_points(i, new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]));
+            const hit = cast_test_ray(world, -2, 0.2, 0.2, 1, 0, 0);
+            $mol_assert_equal(hit.i, 0);
+            cast_test_hit(hit.out, 2, 0, 0.2, 0.2, -1, 0, 0);
+            $mol_assert_equal(cast_test_ray(world, -2, 0.6, 0.6, 1, 0, 0).i, -1);
+        },
+        'ray skips ghost when asked'() {
+            const world = cast_test_world();
+            const ghost = cast_test_add(world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -3);
+            world.flags[ghost] |= $bog_gamengine_phys3.flag_ghost;
+            cast_test_add(world, $bog_gamengine_phys3.shape_box, 0.5, 0.5, 0.5, 0, 0, -6);
+            $mol_assert_equal(cast_test_ray(world, 0, 0, 0, 0, 0, -1).i, 0);
+            const { i, out } = cast_test_ray(world, 0, 0, 0, 0, 0, -1, { skip_ghost: true });
+            $mol_assert_equal(i, 1);
+            cast_test_near(out[0], 5.5);
+        },
+        'ray returns nearest of two bodies'() {
+            const world = cast_test_world();
+            cast_test_add(world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -8);
+            cast_test_add(world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -4);
+            const { i, out } = cast_test_ray(world, 0, 0, 0, 0, 0, -1);
+            $mol_assert_equal(i, 1);
+            cast_test_near(out[0], 3);
+        },
+        'ray with skip index does not see that body'() {
+            const world = cast_test_world();
+            const near = cast_test_add(world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -3);
+            cast_test_add(world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -6);
+            $mol_assert_equal(cast_test_ray(world, 0, 0, 0, 0, 0, -1).i, near);
+            const { i, out } = cast_test_ray(world, 0, 0, 0, 0, 0, -1, { skip: near });
+            $mol_assert_equal(i, 1);
+            cast_test_near(out[0], 5);
+        },
+        'ray with skip list does not see any listed body'() {
+            const world = cast_test_world();
+            const a = cast_test_add(world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -3);
+            const b = cast_test_add(world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -6);
+            cast_test_add(world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -9);
+            const { i, out } = cast_test_ray(world, 0, 0, 0, 0, 0, -1, { skip: [a, b] });
+            $mol_assert_equal(i, 2);
+            cast_test_near(out[0], 8);
+        },
+        'ray hits a body at the place given by move in the same step'() {
+            const world = cast_test_world();
+            const handle = world.add($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), 0, new Float32Array([0, 0, -4]));
+            world.move(handle, new Float32Array([0, 0, -8]));
+            const { i, out } = cast_test_ray(world, 0, 0, 0, 0, 0, -1);
+            $mol_assert_equal(i, world.index_of(handle));
+            cast_test_near(out[0], 7.5);
+        },
+        'sweep sphere down to plane stops at distance minus radius'() {
+            const world = cast_test_world();
+            cast_test_add(world, $bog_gamengine_phys3.shape_plane, 0, 1, 0, 0, 0, 0);
+            const out = new Float32Array(7);
+            const i = new $bog_gamengine_phys3_cast().sweep(world, $bog_gamengine_phys3.shape_sphere, new Float32Array([0.5, 0, 0]), new Float32Array([0, 3, 0]), new Float32Array([0, 0, 0, 1]), new Float32Array([0, -1, 0]), 10, out);
+            $mol_assert_equal(i, 0);
+            cast_test_hit(out, 2.5, 0, 0, 0, 0, 1, 0);
+        },
+        'sweep box to box stops face to face'() {
+            const world = cast_test_world();
+            cast_test_add(world, $bog_gamengine_phys3.shape_box, 0.5, 0.5, 0.5, 4, 0, 0);
+            const out = new Float32Array(7);
+            const i = new $bog_gamengine_phys3_cast().sweep(world, $bog_gamengine_phys3.shape_box, new Float32Array([0.5, 0.5, 0.5]), new Float32Array([0, 0, 0]), new Float32Array([0, 0, 0, 1]), new Float32Array([1, 0, 0]), 10, out);
+            $mol_assert_equal(i, 0);
+            cast_test_near(out[0], 3);
+            cast_test_near(out[1], 3.5);
+            cast_test_near(out[4], -1);
+            cast_test_near(out[5], 0);
+            cast_test_near(out[6], 0);
+        },
+        'sweep capsule to box stops with box face normal'() {
+            const world = cast_test_world();
+            cast_test_add(world, $bog_gamengine_phys3.shape_box, 0.5, 1, 0.5, 0, 1, -4);
+            const out = new Float32Array(7);
+            const i = new $bog_gamengine_phys3_cast().sweep(world, $bog_gamengine_phys3.shape_capsule, new Float32Array([0.3, 0.6, 0]), new Float32Array([0, 0.9, 0]), new Float32Array([0, 0, 0, 1]), new Float32Array([0, 0, -1]), 10, out);
+            $mol_assert_equal(i, 0);
+            cast_test_near(out[0], 3.2);
+            cast_test_near(out[6], 1);
+        },
+        'sweep past a body misses'() {
+            const world = cast_test_world();
+            cast_test_add(world, $bog_gamengine_phys3.shape_box, 0.5, 0.5, 0.5, 4, 0, 0);
+            const out = new Float32Array(7);
+            const i = new $bog_gamengine_phys3_cast().sweep(world, $bog_gamengine_phys3.shape_sphere, new Float32Array([0.5, 0, 0]), new Float32Array([0, 2, 0]), new Float32Array([0, 0, 0, 1]), new Float32Array([1, 0, 0]), 10, out);
+            $mol_assert_equal(i, -1);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     $mol_test({
         'first index read adds body to world'() {
             const world = new $bog_gamengine_phys3;
@@ -31002,6 +33171,47 @@ var $;
             body.props().find(prop => prop.name === 'mass').set(4);
             $mol_assert_equal(body.phys3().mass[0], 4);
             $mol_assert_equal(body.phys3().inv_mass[0], 0.25);
+        },
+        'mass_set moves a body whose mass is fixed by the tree'() {
+            const world = new $bog_gamengine_phys3;
+            const body = new $bog_gamengine_phys3_body;
+            body.phys3(world);
+            body.mass = () => 0;
+            body.pos(new Float32Array([0, 5, 0]));
+            for (let k = 0; k < 30; ++k)
+                world.step(1 / 60);
+            $mol_assert_equal(body.pos()[1], 5);
+            body.mass_set(1);
+            $mol_assert_equal(world.mass[body.index()], 1);
+            for (let k = 0; k < 30; ++k)
+                world.step(1 / 60);
+            $mol_assert_ok(body.pos()[1] < 4.9);
+        },
+        'ghost_set marks the body invisible to a skipping ray'() {
+            const world = new $bog_gamengine_phys3;
+            const body = new $bog_gamengine_phys3_body;
+            body.phys3(world);
+            body.pos(new Float32Array([0, 0, -4]));
+            const out = new Float32Array(7);
+            const cast = new $bog_gamengine_phys3_cast;
+            const from = new Float32Array(3);
+            const dir = new Float32Array([0, 0, -1]);
+            $mol_assert_equal(cast.ray(world, from, dir, 20, out, { skip_ghost: true }), body.index());
+            body.ghost_set(true);
+            $mol_assert_equal(cast.ray(world, from, dir, 20, out, { skip_ghost: true }), -1);
+        },
+        'body keeps its world and handle when the world property changes'() {
+            const first = new $bog_gamengine_phys3;
+            const second = new $bog_gamengine_phys3;
+            const body = new $bog_gamengine_phys3_body;
+            body.phys3(first);
+            body.index();
+            body.phys3(second);
+            $mol_assert_equal(body.index(), 0);
+            $mol_assert_equal(first.count, 1);
+            $mol_assert_equal(second.count, 0);
+            body.destructor();
+            $mol_assert_equal(first.count, 0);
         },
     });
 })($ || ($ = {}));
