@@ -3857,6 +3857,29 @@ var $;
             $mol_assert_equal(node.input(), null);
             $mol_assert_equal(node.clock(), null);
         },
+        'billboard normal looks at the camera turned by half pi'() {
+            const scene = new $bog_gamengine_scene;
+            const cam = new $bog_gamengine_cam;
+            cam.rot(new Float32Array([0, Math.PI / 2, 0]));
+            scene.cam(cam);
+            const node = new $bog_gamengine_node;
+            node.billboard(true);
+            scene.kids([node]);
+            const trans = node.trans();
+            const to_cam = [-Math.sin(Math.PI / 2), 0, -Math.cos(Math.PI / 2)];
+            const normal = [trans[8], trans[9], trans[10]];
+            const dot = -(normal[0] * to_cam[0] + normal[1] * to_cam[1] + normal[2] * to_cam[2]);
+            $mol_assert_ok(Math.abs(dot - 1) < 1e-6);
+        },
+        'node without billboard keeps its own yaw'() {
+            const scene = new $bog_gamengine_scene;
+            const cam = new $bog_gamengine_cam;
+            cam.rot(new Float32Array([0, Math.PI / 2, 0]));
+            scene.cam(cam);
+            const node = new $bog_gamengine_node;
+            scene.kids([node]);
+            $mol_assert_ok(Math.abs(node.trans()[10] - 1) < 1e-6);
+        },
         'tint of bare node defaults to opaque white through props'() {
             const node = new $bog_gamengine_node;
             $mol_assert_equal([...node_test_prop(node, 'tint').get()], [1, 1, 1, 1]);
@@ -5354,8 +5377,17 @@ var $;
         'plane skin stretches by tile'($) {
             const plane = $bog_gamengine_shape_plane.make({ $ });
             $mol_assert_equal(Math.max(...plane.skin()), 1);
-            plane.tile(4);
+            plane.tile([4, 4]);
             $mol_assert_equal(Math.max(...plane.skin()), 4);
+        },
+        'plane skin tiles each axis on its own'($) {
+            const plane = $bog_gamengine_shape_plane.make({ $ });
+            plane.tile([4, 2]);
+            const skin = plane.skin();
+            $mol_assert_equal([skin[0], skin[1]], [0, 2]);
+            $mol_assert_equal([skin[2], skin[3]], [4, 2]);
+            $mol_assert_equal([skin[4], skin[5]], [0, 0]);
+            $mol_assert_equal([skin[6], skin[7]], [4, 0]);
         },
     });
 })($ || ($ = {}));
@@ -6472,7 +6504,7 @@ var $;
             scene.phys(phys);
             $bog_gamengine_scene_time_mock.stamp(0);
             scene.step();
-            scene.batches([]);
+            scene.aspect(2);
             scene.step();
             $bog_gamengine_scene_time_mock.stamp(16);
             scene.step();
@@ -6490,7 +6522,7 @@ var $;
             scene.step();
             $bog_gamengine_scene_time_mock.stamp(16);
             scene.step();
-            scene.batches([]);
+            scene.aspect(2);
             scene.step();
             $mol_assert_equal(input.polls, 2);
         },
@@ -6535,9 +6567,30 @@ var $;
             scene.step();
             $bog_gamengine_scene_time_mock.stamp(16);
             scene.step();
-            scene.batches([]);
+            scene.aspect(2);
             scene.step();
             $mol_assert_ok(Math.abs(mover.pos()[0] - 0.016) < 1e-9);
+        },
+        'gravity of phys set by code lives through two frames'($) {
+            $.$mol_state_time = $bog_gamengine_scene_time_mock;
+            const body = new $bog_gamengine_phys_body;
+            const phys = new $bog_gamengine_phys;
+            phys.bodies([body]);
+            phys.gravity(new Float32Array([0, -10]));
+            const scene = new $bog_gamengine_scene;
+            scene.$ = $;
+            scene.phys(phys);
+            $bog_gamengine_scene_time_mock.stamp(0);
+            scene.step();
+            scene.aspect(2);
+            scene.step();
+            $mol_wire_fiber.sync();
+            $bog_gamengine_scene_time_mock.stamp(16);
+            scene.step();
+            $bog_gamengine_scene_time_mock.stamp(32);
+            scene.step();
+            $mol_assert_equal([...phys.gravity()], [0, -10]);
+            $mol_assert_ok(body.vel()[1] < -0.3);
         },
         'scene steps phys3 body by its velocity'($) {
             $.$mol_state_time = $bog_gamengine_scene_time_mock;
@@ -8046,7 +8099,6 @@ var $;
         text.value(value);
         text.height(0.5);
         text.align(align);
-        text.emit();
         return text;
     }
     function $bog_gamengine_text_test_round(value) {
@@ -8078,6 +8130,21 @@ var $;
             const layer = text.pool().layer;
             $mol_assert_equal(layer[0], 1);
             $mol_assert_equal(layer[1], 0);
+        },
+        'pool follows the value without a manual emit'() {
+            const text = $bog_gamengine_text_test_make('ab');
+            $mol_assert_equal(text.pool().count, 2);
+            text.value('aba');
+            $mol_assert_equal(text.pool().count, 3);
+        },
+        'pool version grows only when the input changes'() {
+            const text = $bog_gamengine_text_test_make('ab');
+            const version = text.pool().version;
+            text.emit();
+            text.emit();
+            $mol_assert_equal(text.pool().version, version);
+            text.value('ba');
+            $mol_assert_equal(text.pool().version, version + 1);
         },
         'aabb covers the quad of every glyph'() {
             const text = $bog_gamengine_text_test_make('ab');

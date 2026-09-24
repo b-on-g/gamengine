@@ -10492,6 +10492,9 @@ var $;
         tint(next) {
             return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1, 1, 1]);
         }
+        billboard(next = false) {
+            return next;
+        }
         shader(next) {
             return next ?? null;
         }
@@ -10529,9 +10532,17 @@ var $;
         clock() {
             return this.scene()?.clock() ?? null;
         }
+        cam_yaw() {
+            const cam = this.scene()?.cam() ?? null;
+            if (!cam)
+                return this.rot()[1];
+            const world = cam.world();
+            return Math.atan2(world[8], world[10]);
+        }
         trans() {
             const rot = this.rot();
-            return $mol_3d_mat4.multiply($mol_3d_mat4.translation(this.pos()), $mol_3d_mat4.rotation([0, 0, 1], rot[2]), $mol_3d_mat4.rotation([0, 1, 0], rot[1]), $mol_3d_mat4.rotation([1, 0, 0], rot[0]), $mol_3d_mat4.scaling(this.scale()));
+            const yaw = this.billboard() ? this.cam_yaw() : rot[1];
+            return $mol_3d_mat4.multiply($mol_3d_mat4.translation(this.pos()), $mol_3d_mat4.rotation([0, 0, 1], rot[2]), $mol_3d_mat4.rotation([0, 1, 0], yaw), $mol_3d_mat4.rotation([1, 0, 0], rot[0]), $mol_3d_mat4.scaling(this.scale()));
         }
         world() {
             const parent = this.parent();
@@ -10554,6 +10565,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "tint", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_node.prototype, "billboard", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "shader", null);
@@ -10690,6 +10704,8 @@ var $;
                     light_color: 'vec4[8]',
                     ambient: 'vec3',
                     cam_pos: 'vec3',
+                    fog: 'vec2',
+                    fog_color: 'vec3',
                     wireframe: 'float',
                     shadow_mat: 'mat4',
                     shadow_map: 'sampler2DShadow',
@@ -10804,7 +10820,8 @@ var $;
 							}
 						}
 					}
-					color = vec4( sum, base.a );
+					float haze = fog.y > fog.x ? clamp( ( length( cam_pos - pipe_pos ) - fog.x ) / ( fog.y - fog.x ), 0.0, 1.0 ) : 0.0;
+					color = vec4( mix( sum, fog_color * base.a, haze ), base.a );
 				}
 			`;
         }
@@ -10835,6 +10852,8 @@ var $;
                     light_color: 'vec4[8]',
                     ambient: 'vec3',
                     cam_pos: 'vec3',
+                    fog: 'vec2',
+                    fog_color: 'vec3',
                     wireframe: 'float',
                 },
                 input: {
@@ -10902,7 +10921,8 @@ var $;
 							}
 						}
 					}
-					color = vec4( sum, pipe_tint.a );
+					float haze = fog.y > fog.x ? clamp( ( length( cam_pos - pipe_pos ) - fog.x ) / ( fog.y - fog.x ), 0.0, 1.0 ) : 0.0;
+					color = vec4( mix( sum, fog_color * pipe_tint.a, haze ), pipe_tint.a );
 				}
 			`;
         }
@@ -11762,6 +11782,11 @@ var $;
         }
         gravity(next) {
             return next ? $bog_gamengine_node_vec(next) : new Float32Array([0, 0]);
+        }
+        pull() {
+            this.bodies();
+            this.tile();
+            this.gravity();
         }
         eps = 1e-4;
         normal = new Float32Array(2);
@@ -14445,6 +14470,12 @@ var $;
         iterations(next) {
             return next ?? 8;
         }
+        pull() {
+            this.gravity();
+            this.friction();
+            this.restitution();
+            this.iterations();
+        }
         grow(need) {
             if (need <= this.cap)
                 return;
@@ -15090,6 +15121,8 @@ var $;
             const nodes = this.nodes();
             const phys = this.phys();
             const phys3 = this.phys3();
+            phys?.pull();
+            phys3?.pull();
             const cam = this.cam();
             const aspect = this.aspect();
             if (frame !== this.frame_done) {
@@ -15350,6 +15383,16 @@ var $;
 			const obj = new this.$.Float32Array();
 			return obj;
 		}
+		fog(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		fog_color(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
 		ambient(){
 			return 0.35;
 		}
@@ -15402,6 +15445,8 @@ var $;
 	($mol_mem(($.$bog_gamengine_draw.prototype), "cam"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "light_dir"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "clear"));
+	($mol_mem(($.$bog_gamengine_draw.prototype), "fog"));
+	($mol_mem(($.$bog_gamengine_draw.prototype), "fog_color"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "wireframe"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "shadows"));
 	($mol_mem(($.$bog_gamengine_draw.prototype), "shadow_size"));
@@ -16125,6 +16170,8 @@ var $;
             light_color = null;
             ambient = null;
             cam_pos = null;
+            fog = null;
+            fog_color = null;
             wireframe = null;
             shadow_mat = null;
             shadow_map = null;
@@ -16229,6 +16276,8 @@ var $;
             textures_last = [];
             ambient_vec = new Float32Array(3);
             cam_pos_vec = new Float32Array(3);
+            fog_vec = new Float32Array(2);
+            fog_color_vec = new Float32Array(3);
             lights_pos = new Float32Array(light_max * 4);
             lights_dir = new Float32Array(light_max * 4);
             lights_color = new Float32Array(light_max * 4);
@@ -16297,6 +16346,15 @@ var $;
             }
             clear(next) {
                 return next ? $bog_gamengine_node_vec(next) : new Float32Array([0.08, 0.08, 0.1, 1]);
+            }
+            fog(next) {
+                return next ? $bog_gamengine_node_vec(next) : new Float32Array([0, 0]);
+            }
+            fog_color(next) {
+                if (next)
+                    return $bog_gamengine_node_vec(next);
+                const clear = this.clear();
+                return new Float32Array([clear[0], clear[1], clear[2]]);
             }
             proj() {
                 const aspect = this.width() / this.height();
@@ -16461,6 +16519,8 @@ var $;
                     light_color: glob('light_color'),
                     ambient: glob('ambient'),
                     cam_pos: glob('cam_pos'),
+                    fog: glob('fog'),
+                    fog_color: glob('fog_color'),
                     wireframe,
                     shadow_mat: glob('shadow_mat'),
                     shadow_map: glob('shadow_map'),
@@ -16642,6 +16702,13 @@ var $;
                 this.ambient_vec[0] = ambient;
                 this.ambient_vec[1] = ambient;
                 this.ambient_vec[2] = ambient;
+                const fog = this.fog();
+                this.fog_vec[0] = fog[0];
+                this.fog_vec[1] = fog[1];
+                const fog_color = this.fog_color();
+                this.fog_color_vec[0] = fog_color[0];
+                this.fog_color_vec[1] = fog_color[1];
+                this.fog_color_vec[2] = fog_color[2];
                 const cam_world = this.cam().world();
                 this.cam_pos_vec[0] = cam_world[12];
                 this.cam_pos_vec[1] = cam_world[13];
@@ -16839,6 +16906,8 @@ var $;
                 $bog_gamengine_gl_uniform_vec4s(gl, slot.light_color, this.lights_color);
                 $bog_gamengine_gl_uniform_vector(gl, slot.ambient, this.ambient_vec);
                 $bog_gamengine_gl_uniform_vector(gl, slot.cam_pos, this.cam_pos_vec);
+                $bog_gamengine_gl_uniform_vector(gl, slot.fog, this.fog_vec);
+                $bog_gamengine_gl_uniform_vector(gl, slot.fog_color, this.fog_color_vec);
                 $bog_gamengine_gl_uniform_vector(gl, slot.wireframe, this.wire_off);
                 $bog_gamengine_gl_uniform_matrix(gl, slot.shadow_mat, this.shadow_mat_buf);
                 $bog_gamengine_gl_uniform_int(gl, slot.shadow_light, this.shadow_at);
@@ -16943,6 +17012,12 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_draw.prototype, "clear", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_draw.prototype, "fog", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_draw.prototype, "fog_color", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_draw.prototype, "proj", null);
@@ -18537,6 +18612,7 @@ var $;
                 { name: 'size', kind: 'vec2', get: () => this.size(), set: next => this.size(next) },
                 { name: 'clip', kind: 'text', get: () => this.clip(), set: next => this.clip(next) },
                 { name: 'fps', kind: 'number', get: () => this.fps(), set: next => this.fps(next) },
+                { name: 'billboard', kind: 'flag', get: () => this.billboard(), set: next => this.billboard(next) },
             ];
         }
         radius() {
@@ -19634,9 +19710,6 @@ var $;
         frames(next) {
             return next ?? [];
         }
-        billboard(next = false) {
-            return next;
-        }
         world_space(next = true) {
             return next;
         }
@@ -19935,9 +20008,6 @@ var $;
     ], $bog_gamengine_particle.prototype, "frames", null);
     __decorate([
         $mol_mem
-    ], $bog_gamengine_particle.prototype, "billboard", null);
-    __decorate([
-        $mol_mem
     ], $bog_gamengine_particle.prototype, "world_space", null);
     __decorate([
         $mol_mem
@@ -20097,6 +20167,7 @@ var $;
     class $bog_gamengine_text_pool extends $mol_object2 {
         cap = 0;
         count = 0;
+        version = 0;
         trans = new Float32Array(0);
         tint = new Float32Array(0);
         layer = new Float32Array(0);
@@ -20124,8 +20195,12 @@ var $;
     }
     $.$bog_gamengine_text_pool = $bog_gamengine_text_pool;
     class $bog_gamengine_text extends $bog_gamengine_node {
-        pool(next) {
+        pool_own(next) {
             return next ?? new $bog_gamengine_text_pool;
+        }
+        pool() {
+            this.emit();
+            return this.pool_own();
         }
         is_source() {
             return true;
@@ -20151,9 +20226,6 @@ var $;
         color(next) {
             return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1, 1, 1]);
         }
-        billboard(next = false) {
-            return next;
-        }
         props() {
             return [
                 ...super.props(),
@@ -20178,13 +20250,13 @@ var $;
         done_value = null;
         done_height = NaN;
         done_align = '';
-        fresh(value, world, height, align, color) {
+        fresh(value, axes, height, align, color) {
             let same = value === this.done_value && height === this.done_height && align === this.done_align;
             const done_world = this.done_world;
             for (let i = 0; i < 16; ++i) {
-                if (world[i] !== done_world[i])
+                if (axes[i] !== done_world[i])
                     same = false;
-                done_world[i] = world[i];
+                done_world[i] = axes[i];
             }
             const done_color = this.done_color;
             for (let i = 0; i < 4; ++i) {
@@ -20198,7 +20270,7 @@ var $;
             return same;
         }
         emit() {
-            const pool = this.pool();
+            const pool = this.pool_own();
             const value = this.value();
             const world = this.world();
             const height = this.height();
@@ -20206,8 +20278,6 @@ var $;
             const color = this.color();
             const billboard = this.billboard();
             const cam = billboard ? this.scene()?.cam() ?? null : null;
-            if (this.fresh(value, world, height, align, color) && !cam)
-                return pool.count;
             const axes = this.axes;
             if (cam) {
                 const view = cam.world();
@@ -20230,6 +20300,9 @@ var $;
                 for (let k = 0; k < 16; ++k)
                     axes[k] = world[k];
             }
+            if (this.fresh(value, axes, height, align, color))
+                return pool.count;
+            ++pool.version;
             pool.fit(value.length);
             const font = this.font();
             const names = this.atlas()?.names() ?? null;
@@ -20275,10 +20348,10 @@ var $;
             pool.count = count;
             return count;
         }
-        step(dt) {
-            this.emit();
-        }
     }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_text.prototype, "pool_own", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_text.prototype, "pool", null);
@@ -20300,9 +20373,6 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_text.prototype, "color", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_text.prototype, "billboard", null);
     $.$bog_gamengine_text = $bog_gamengine_text;
 })($ || ($ = {}));
 
@@ -21003,8 +21073,8 @@ var $;
 var $;
 (function ($) {
     class $bog_gamengine_shape_plane extends $bog_gamengine_shape {
-        tile(next = 1) {
-            return next;
+        tile(next) {
+            return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1]);
         }
         geometry() {
             return new Float32Array([
@@ -21016,11 +21086,13 @@ var $;
         }
         skin() {
             const tile = this.tile();
+            const u = tile[0];
+            const v = tile[1];
             return new Float32Array([
-                0, tile,
-                tile, tile,
+                0, v,
+                u, v,
                 0, 0,
-                tile, 0,
+                u, 0,
             ]);
         }
         normals() {
@@ -21244,6 +21316,7 @@ var $;
                 { name: 'normal_frame', kind: 'frame', get: () => this.normal_frame(), set: next => this.normal_frame(next) },
                 { name: 'size', kind: 'vec3', get: () => this.size(), set: next => this.size(next) },
                 { name: 'material', kind: 'vec4', get: () => this.material(), set: next => this.material(next) },
+                { name: 'billboard', kind: 'flag', get: () => this.billboard(), set: next => this.billboard(next) },
             ];
         }
         layer() {
@@ -21540,6 +21613,16 @@ var $;
 			(obj.checked) = (next) => ((this.shadows(next)));
 			return obj;
 		}
+		fogged(next){
+			if(next !== undefined) return next;
+			return false;
+		}
+		Fog_check(){
+			const obj = new this.$.$mol_check_box();
+			(obj.title) = () => ("Туман");
+			(obj.checked) = (next) => ((this.fogged(next)));
+			return obj;
+		}
 		arm_shown(next){
 			if(next !== undefined) return next;
 			return false;
@@ -21582,6 +21665,14 @@ var $;
 		shadows(next){
 			return (this.Draw().shadows(next));
 		}
+		fog(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		fog_color(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
 		passes(){
 			return [];
 		}
@@ -21595,6 +21686,8 @@ var $;
 			const obj = new this.$.$bog_gamengine_draw();
 			(obj.scene) = () => ((this.Scene()));
 			(obj.cam) = () => ((this.Walker()));
+			(obj.fog) = () => ((this.fog()));
+			(obj.fog_color) = () => ((this.fog_color()));
 			(obj.passes) = () => ((this.passes()));
 			return obj;
 		}
@@ -21772,9 +21865,13 @@ var $;
 			(obj.nodes) = () => ((this.walls()));
 			return obj;
 		}
+		floor_tile(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
 		Plane(){
 			const obj = new this.$.$bog_gamengine_shape_plane();
-			(obj.tile) = () => (12);
+			(obj.tile) = () => ((this.floor_tile()));
 			return obj;
 		}
 		Floor_batch(){
@@ -21899,6 +21996,7 @@ var $;
 				(this.Shine()), 
 				(this.Glow()), 
 				(this.Shadows()), 
+				(this.Fog_check()), 
 				(this.Arm_check()), 
 				(this.Pause()), 
 				(this.Screen_switch()), 
@@ -22072,6 +22170,8 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "glow"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Glow"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Shadows"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "fogged"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Fog_check"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "arm_shown"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Arm_check"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pause"));
@@ -22079,6 +22179,8 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Screen_switch"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "profile"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Profile"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "fog"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "fog_color"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Draw"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Screen"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Stat"));
@@ -22099,6 +22201,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Solid"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Box"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Wall_batch"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "floor_tile"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Plane"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Floor_batch"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "pillar_data"));
@@ -22182,6 +22285,15 @@ var $;
             profile(next = false) {
                 return next;
             }
+            fogged(next = false) {
+                return next;
+            }
+            fog() {
+                return this.fogged() ? new Float32Array([1, 9]) : new Float32Array([0, 0]);
+            }
+            fog_color() {
+                return new Float32Array([0.05, 0.06, 0.09]);
+            }
             passes() {
                 const tail = [this.Tone(), this.Vignette()];
                 return this.glow() ? [this.Bloom(), ...tail] : tail;
@@ -22234,6 +22346,9 @@ var $;
             }
             floor_size() {
                 return new Float32Array([this.Tile().width(), 1, this.Tile().height()]);
+            }
+            floor_tile() {
+                return new Float32Array([this.Tile().width(), this.Tile().height()]);
             }
             pillar_data() {
                 return $mol_fetch.buffer('bog/gamengine/demo/room/model/pillar.glb');
@@ -22333,6 +22448,15 @@ var $;
         ], $bog_gamengine_demo_room.prototype, "profile", null);
         __decorate([
             $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "fogged", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "fog", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "fog_color", null);
+        __decorate([
+            $mol_mem
         ], $bog_gamengine_demo_room.prototype, "passes", null);
         __decorate([
             $mol_mem
@@ -22346,6 +22470,9 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_room.prototype, "floor_size", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "floor_tile", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_room.prototype, "pillar_data", null);
@@ -23200,9 +23327,13 @@ var $;
 			(obj.count) = () => ((this.contact_count()));
 			return obj;
 		}
+		floor_tile(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
 		Plane(){
 			const obj = new this.$.$bog_gamengine_shape_plane();
-			(obj.tile) = () => (60);
+			(obj.tile) = () => ((this.floor_tile()));
 			return obj;
 		}
 		floor_size(){
@@ -23368,6 +23499,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Flat"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "contact_points"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Lines"));
+	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "floor_tile"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "Plane"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "floor_size"));
 	($mol_mem(($.$bog_gamengine_demo_boxes.prototype), "platform_size"));
@@ -24213,6 +24345,9 @@ var $;
             floor_size() {
                 return new Float32Array([60, 1, 60]);
             }
+            floor_tile() {
+                return new Float32Array([60, 60]);
+            }
             walker_pos(next) {
                 return next ?? new Float32Array([0, 1.5, (this.pile_side() - 1) / 2 * pile_step + 8]);
             }
@@ -24372,6 +24507,9 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_boxes.prototype, "floor_size", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_boxes.prototype, "floor_tile", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_boxes.prototype, "walker_pos", null);
@@ -28786,6 +28924,29 @@ var $;
             $mol_assert_equal(node.input(), null);
             $mol_assert_equal(node.clock(), null);
         },
+        'billboard normal looks at the camera turned by half pi'() {
+            const scene = new $bog_gamengine_scene;
+            const cam = new $bog_gamengine_cam;
+            cam.rot(new Float32Array([0, Math.PI / 2, 0]));
+            scene.cam(cam);
+            const node = new $bog_gamengine_node;
+            node.billboard(true);
+            scene.kids([node]);
+            const trans = node.trans();
+            const to_cam = [-Math.sin(Math.PI / 2), 0, -Math.cos(Math.PI / 2)];
+            const normal = [trans[8], trans[9], trans[10]];
+            const dot = -(normal[0] * to_cam[0] + normal[1] * to_cam[1] + normal[2] * to_cam[2]);
+            $mol_assert_ok(Math.abs(dot - 1) < 1e-6);
+        },
+        'node without billboard keeps its own yaw'() {
+            const scene = new $bog_gamengine_scene;
+            const cam = new $bog_gamengine_cam;
+            cam.rot(new Float32Array([0, Math.PI / 2, 0]));
+            scene.cam(cam);
+            const node = new $bog_gamengine_node;
+            scene.kids([node]);
+            $mol_assert_ok(Math.abs(node.trans()[10] - 1) < 1e-6);
+        },
         'tint of bare node defaults to opaque white through props'() {
             const node = new $bog_gamengine_node;
             $mol_assert_equal([...node_test_prop(node, 'tint').get()], [1, 1, 1, 1]);
@@ -30283,8 +30444,17 @@ var $;
         'plane skin stretches by tile'($) {
             const plane = $bog_gamengine_shape_plane.make({ $ });
             $mol_assert_equal(Math.max(...plane.skin()), 1);
-            plane.tile(4);
+            plane.tile([4, 4]);
             $mol_assert_equal(Math.max(...plane.skin()), 4);
+        },
+        'plane skin tiles each axis on its own'($) {
+            const plane = $bog_gamengine_shape_plane.make({ $ });
+            plane.tile([4, 2]);
+            const skin = plane.skin();
+            $mol_assert_equal([skin[0], skin[1]], [0, 2]);
+            $mol_assert_equal([skin[2], skin[3]], [4, 2]);
+            $mol_assert_equal([skin[4], skin[5]], [0, 0]);
+            $mol_assert_equal([skin[6], skin[7]], [4, 0]);
         },
     });
 })($ || ($ = {}));
@@ -31401,7 +31571,7 @@ var $;
             scene.phys(phys);
             $bog_gamengine_scene_time_mock.stamp(0);
             scene.step();
-            scene.batches([]);
+            scene.aspect(2);
             scene.step();
             $bog_gamengine_scene_time_mock.stamp(16);
             scene.step();
@@ -31419,7 +31589,7 @@ var $;
             scene.step();
             $bog_gamengine_scene_time_mock.stamp(16);
             scene.step();
-            scene.batches([]);
+            scene.aspect(2);
             scene.step();
             $mol_assert_equal(input.polls, 2);
         },
@@ -31464,9 +31634,30 @@ var $;
             scene.step();
             $bog_gamengine_scene_time_mock.stamp(16);
             scene.step();
-            scene.batches([]);
+            scene.aspect(2);
             scene.step();
             $mol_assert_ok(Math.abs(mover.pos()[0] - 0.016) < 1e-9);
+        },
+        'gravity of phys set by code lives through two frames'($) {
+            $.$mol_state_time = $bog_gamengine_scene_time_mock;
+            const body = new $bog_gamengine_phys_body;
+            const phys = new $bog_gamengine_phys;
+            phys.bodies([body]);
+            phys.gravity(new Float32Array([0, -10]));
+            const scene = new $bog_gamengine_scene;
+            scene.$ = $;
+            scene.phys(phys);
+            $bog_gamengine_scene_time_mock.stamp(0);
+            scene.step();
+            scene.aspect(2);
+            scene.step();
+            $mol_wire_fiber.sync();
+            $bog_gamengine_scene_time_mock.stamp(16);
+            scene.step();
+            $bog_gamengine_scene_time_mock.stamp(32);
+            scene.step();
+            $mol_assert_equal([...phys.gravity()], [0, -10]);
+            $mol_assert_ok(body.vel()[1] < -0.3);
         },
         'scene steps phys3 body by its velocity'($) {
             $.$mol_state_time = $bog_gamengine_scene_time_mock;
@@ -32989,7 +33180,6 @@ var $;
         text.value(value);
         text.height(0.5);
         text.align(align);
-        text.emit();
         return text;
     }
     function $bog_gamengine_text_test_round(value) {
@@ -33021,6 +33211,21 @@ var $;
             const layer = text.pool().layer;
             $mol_assert_equal(layer[0], 1);
             $mol_assert_equal(layer[1], 0);
+        },
+        'pool follows the value without a manual emit'() {
+            const text = $bog_gamengine_text_test_make('ab');
+            $mol_assert_equal(text.pool().count, 2);
+            text.value('aba');
+            $mol_assert_equal(text.pool().count, 3);
+        },
+        'pool version grows only when the input changes'() {
+            const text = $bog_gamengine_text_test_make('ab');
+            const version = text.pool().version;
+            text.emit();
+            text.emit();
+            $mol_assert_equal(text.pool().version, version);
+            text.value('ba');
+            $mol_assert_equal(text.pool().version, version + 1);
         },
         'aabb covers the quad of every glyph'() {
             const text = $bog_gamengine_text_test_make('ab');

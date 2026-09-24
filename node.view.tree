@@ -444,6 +444,8 @@ $bog_gamengine_draw $mol_view
 	cam $bog_gamengine_cam
 	light_dir Float32Array
 	clear? Float32Array
+	fog? Float32Array
+	fog_color? Float32Array
 	ambient 0.35
 	wireframe? false
 	shadows? true
@@ -659,6 +661,9 @@ $bog_gamengine_demo_room $mol_page
 		<= Shadows $mol_check_box
 			title \Тени
 			checked? <=> shadows?
+		<= Fog_check $mol_check_box
+			title \Туман
+			checked? <=> fogged? false
 		<= Arm_check $mol_check_box
 			title \Рука
 			checked? <=> arm_shown? false
@@ -677,6 +682,8 @@ $bog_gamengine_demo_room $mol_page
 			cam <= Walker
 			wireframe? => wireframe?
 			shadows? => shadows?
+			fog <= fog Float32Array
+			fog_color <= fog_color Float32Array
 			passes <= passes /
 			stat => stat
 			report => report
@@ -782,7 +789,7 @@ $bog_gamengine_demo_room $mol_page
 			<= Floor_batch $bog_gamengine_batch
 				shader <= Solid
 				shape <= Plane $bog_gamengine_shape_plane
-					tile 12
+					tile <= floor_tile Float32Array
 				atlas <= Atlas
 				nodes / <= Floor
 			<= Pillar_batch $bog_gamengine_batch
@@ -979,7 +986,7 @@ $bog_gamengine_demo_boxes $mol_page
 		phys3 <= Phys
 	Floor $bog_gamengine_mesh
 		shape <= Plane $bog_gamengine_shape_plane
-			tile 60
+			tile <= floor_tile Float32Array
 		atlas <= Atlas
 		frame \floor
 		size <= floor_size Float32Array
