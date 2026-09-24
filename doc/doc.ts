@@ -239,9 +239,16 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		map_owner() {
+			for( const klass of this.decls().values() ) {
+				if( klass.kids.some( kid => kid.type === 'map' ) ) return klass
+			}
+			return null
+		}
+
 		map_lines() {
-			const root = this.decls().get( '' )
-			return ( root?.kids.find( kid => kid.type === 'map' )?.kids[ 0 ]?.kids ?? [] ) as readonly $mol_tree2[]
+			const owner = this.map_owner()
+			return ( owner?.kids.find( kid => kid.type === 'map' )?.kids[ 0 ]?.kids ?? [] ) as readonly $mol_tree2[]
 		}
 
 		@ $mol_mem

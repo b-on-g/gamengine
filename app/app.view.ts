@@ -1134,14 +1134,21 @@ namespace $.$$ {
 			return event ?? null
 		}
 
-		tile_scene() {
-			const scene = this.Scene() as $bog_gamengine_scene
-			return scene instanceof $bog_gamestudio_sample_map ? scene : null
+		@ $mol_mem
+		tile_map() {
+			for( const node of this.Scene().nodes() ) {
+				if( node instanceof $bog_gamengine_tilemap && node.tile() ) return node
+			}
+			return null
+		}
+
+		tile_grid() {
+			return this.tile_map()?.tile() ?? null
 		}
 
 		@ $mol_mem
 		palette() {
-			return this.tile_scene()?.palette() ?? {}
+			return this.tile_map()?.palette() ?? {}
 		}
 
 		@ $mol_mem
@@ -1194,22 +1201,41 @@ namespace $.$$ {
 		brush_from = null as readonly [ number, number ] | null
 
 		brushing() {
-			return Boolean( this.tool() && this.tile_char() && this.tile_scene() && this.editing() )
+			return Boolean( this.tool() && this.tile_char() && this.tile_grid() && this.editing() )
 		}
+
+		brush_at = new Int32Array( 2 )
+		brush_base = ''
 
 		brush_cell( event: PointerEvent ) {
 			const at = this.Point().world( this.point_world, this.point_x( event ), this.point_y( event ) )
-			return this.tile_scene()!.cell_at( at[ 0 ], at[ 1 ] )
+			const cell = this.tile_grid()!.cell_at( at[ 0 ], at[ 1 ], this.brush_at )
+			return [ cell[ 0 ], cell[ 1 ] ] as readonly [ number, number ]
+		}
+
+		painted( text: string, cells: readonly ( readonly [ number, number ] )[], char: string ) {
+			const rows = text.split( '\n' ).map( row => [ ... row ] )
+			for( const [ x, y ] of cells ) {
+				const row = rows[ y ]
+				if( !row || x < 0 || x >= row.length ) continue
+				row[ x ] = char
+			}
+			return rows.map( row => row.join( '' ) ).join( '\n' )
+		}
+
+		brush_show( cells: readonly ( readonly [ number, number ] )[] ) {
+			const grid = this.tile_grid()!
+			grid.map( this.painted( this.brush_base, cells, this.tile_char() ) )
 		}
 
 		brush_down( cell: readonly [ number, number ] ) {
-			const scene = this.tile_scene()!
 			const char = this.tile_char()
 			if( this.tool() === 'fill' ) return this.Doc().fill( cell[ 0 ], cell[ 1 ], char )
 			this.brush_from = cell
 			this.brush_cells = [ cell ]
+			this.brush_base = this.tile_grid()!.map()
 			if( this.tool() === 'rect' ) return this.rect_preview( cell, cell )
-			scene.cell_char( scene.cell_id( cell[ 0 ], cell[ 1 ] ), char )
+			this.brush_show( this.brush_cells )
 		}
 
 		brush_move( cell: readonly [ number, number ] ) {
@@ -1218,8 +1244,7 @@ namespace $.$$ {
 			if( this.tool() === 'rect' ) return this.rect_preview( from, cell )
 			if( this.brush_cells.some( known => known[ 0 ] === cell[ 0 ] && known[ 1 ] === cell[ 1 ] ) ) return
 			this.brush_cells.push( cell )
-			const scene = this.tile_scene()!
-			scene.cell_char( scene.cell_id( cell[ 0 ], cell[ 1 ] ), this.tile_char() )
+			this.brush_show( this.brush_cells )
 		}
 
 		brush_up( cell: readonly [ number, number ] ) {
@@ -1297,7 +1322,7 @@ namespace $.$$ {
 
 		fit( event?: Event ) {
 			const bounds = $bog_gamestudio_app_bounds( this.Scene().nodes(), this.fit_box )
-			const rows = this.tile_scene()?.rows() ?? null
+			const rows = this.tile_grid()?.rows() ?? null
 			let wide = 0
 			if( rows ) for( let i = 0; i < rows.length; ++ i ) wide = Math.max( wide, rows[ i ].length )
 			const shown = wide ? $bog_gamestudio_app_wider( bounds, 0, - rows!.length, wide, 0, this.fit_box ) : bounds
