@@ -1,6 +1,17 @@
 namespace $ {
 
-	export class $bog_gamengine_combat extends $bog_gamengine_node {
+	export type $bog_gamengine_combat_owner = $bog_gamengine_node & {
+		die?( from?: $bog_gamengine_node | null ): void
+	}
+
+	export class $bog_gamengine_combat extends $mol_object2 {
+
+		owner_now = null as $bog_gamengine_node | null
+
+		owner( next?: $bog_gamengine_node | null ) {
+			if( next !== undefined ) this.owner_now = next
+			return this.owner_now
+		}
 
 		@ $mol_mem
 		health_max( next = 100 ) {
@@ -24,7 +35,6 @@ namespace $ {
 
 		props(): readonly $bog_gamengine_prop[] {
 			return [
-				... super.props(),
 				{ name: 'health', kind: 'number', get: ()=> this.health(), set: next => this.health( Number( next ) ) },
 				{ name: 'health_max', kind: 'number', get: ()=> this.health_max(), set: next => this.health_max( Number( next ) ) },
 				{ name: 'rate', kind: 'number', get: ()=> this.rate(), set: next => this.rate( Number( next ) ) },
@@ -39,7 +49,9 @@ namespace $ {
 		}
 
 		now() {
-			return this.clock()?.time() ?? 0
+			const clock = this.owner()?.clock()
+			if( clock ) return clock.time()
+			return this.$.$mol_state_time.now( 0 ) / 1000
 		}
 
 		hurt( amount: number, from?: $bog_gamengine_node | null ) {
@@ -60,7 +72,17 @@ namespace $ {
 			return full
 		}
 
-		die( from?: $bog_gamengine_node | null ) {}
+		die( from?: $bog_gamengine_node | null ) {
+			const owner = this.owner() as $bog_gamengine_combat_owner | null
+			owner?.die?.( from )
+		}
+
+		revive() {
+			this.dead_on = false
+			this.health( this.health_max() )
+			this.fired = - Infinity
+			return this.health()
+		}
 
 		ready( time = this.now() ) {
 			return time - this.fired >= 1 / this.rate()
