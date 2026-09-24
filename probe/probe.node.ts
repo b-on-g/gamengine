@@ -359,22 +359,45 @@ namespace $ {
 
 	export const $bog_gamengine_probe_menu_script = `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
-		const wait = async ( count )=> { for( let i = 0; i < count; ++ i ) await frame() }
-		await wait( 30 )
-		const book = document.querySelector( '[mol_book2_catalog]' )
+		const book_of = ()=> document.querySelector( '[mol_book2_catalog]' )
+		const shape = ()=> {
+			const book = book_of()
+			const canvas = document.querySelector( 'canvas' )
+			const link = [ ... document.querySelectorAll( '[mol_book2_catalog_menu_link]' ) ]
+				.find( item => item.textContent.trim() === ${ JSON.stringify( $bog_gamengine_probe_menu_title ) } )
+			const box = link && link.getBoundingClientRect()
+			return [
+				book ? Math.round( book.scrollWidth ) : -1,
+				book ? book.clientWidth : -1,
+				canvas ? canvas.width : 0,
+				box ? Math.round( box.left ) : null,
+			].join( ' ' )
+		}
+		const settle = async ( cap )=> {
+			let last = ''
+			let same = 0
+			for( let i = 0; i < cap && same < 3; ++ i ) {
+				await frame()
+				const now = shape()
+				if( now === last ) ++ same
+				else { same = 0; last = now }
+			}
+			return same >= 3
+		}
+		await settle( 60 )
+		const book = book_of()
 		if( !book ) return { dpr: devicePixelRatio, inner: innerWidth, pages: [] }
 		const pages = []
 		for( const spread of ${ JSON.stringify( $bog_gamengine_probe_menu_spreads ) } ) {
 			location.hash = '#!demo=' + spread
-			await wait( 90 )
-			await new Promise( done => setTimeout( done, 400 ) )
-			await wait( 10 )
+			const steady = await settle( 120 )
 			const link = [ ... document.querySelectorAll( '[mol_book2_catalog_menu_link]' ) ]
 				.find( item => item.textContent.trim() === ${ JSON.stringify( $bog_gamengine_probe_menu_title ) } )
 			const box = link && link.getBoundingClientRect()
 			const canvas = document.querySelector( 'canvas' )
 			pages.push({
 				spread,
+				steady,
 				link: box ? [ Math.round( box.left ), Math.round( box.right ) ] : null,
 				scroll: Math.round( book.scrollWidth ),
 				client: book.clientWidth,
@@ -556,6 +579,7 @@ namespace $ {
 
 	export type $bog_gamengine_probe_menu_page_result = {
 		readonly spread: string
+		readonly steady?: boolean
 		readonly link: readonly [ number, number ] | null
 		readonly scroll: number
 		readonly client: number
@@ -865,6 +889,7 @@ namespace $ {
 		if( got.pages.length !== $bog_gamengine_probe_menu_spreads.length ) return fail( 'обошлись не все страницы каталога' )
 
 		for( const page of got.pages ) {
+			if( page.steady === false ) return fail( `на странице ${ page.spread } раскладка не устаканилась` )
 			if( !page.link ) return fail( `на странице ${ page.spread } нет ссылки «${ $bog_gamengine_probe_menu_title }»` )
 			if( page.link[ 0 ] < 0 ) return fail( `на странице ${ page.spread } меню уехало за левый край` )
 			if( page.link[ 1 ] > got.inner ) return fail( `на странице ${ page.spread } меню не влезло по ширине` )
