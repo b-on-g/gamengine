@@ -477,6 +477,28 @@ namespace $ {
 			$mol_assert_ok( bounds[ 3 ] <= pos[ 1 ] + half )
 		},
 
+		'picked asset stays picked and puts a copy on every click'( $ ) {
+			const app = canvas_app( $ )
+			const before = app.node_rows().length
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			app.pointer_down( press_at( 200, 300 ) )
+			$mol_assert_ok( app.placing() )
+			app.pointer_down( press_at( 260, 360 ) )
+			app.pointer_down( press_at( 320, 420 ) )
+			$mol_assert_equal( app.node_rows().length, before + 3 )
+			$mol_assert_ok( app.placing() )
+		},
+
+		'escape drops both the tile tool and the picked asset'( $ ) {
+			const app = canvas_app( $ )
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			app.Tile( '#' ).checked( true )
+			app.tool( 'cell' )
+			app.tool_drop()
+			$mol_assert_equal( app.tool(), '' )
+			$mol_assert_not( app.placing() )
+		},
+
 		'fit of a wide map zooms out, fit of one sprite zooms in'( $ ) {
 			const wide = canvas_app( $ )
 			wide.fit()

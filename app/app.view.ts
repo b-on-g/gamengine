@@ -775,6 +775,7 @@ namespace $.$$ {
 
 		tool_drop( event?: Event | null ) {
 			this.tool( '' )
+			this.asset( null )
 			return event ?? null
 		}
 
@@ -947,7 +948,6 @@ namespace $.$$ {
 			}
 			if( asset && this.editing() ) {
 				this.place( asset, point.world( this.point_world, x, y ) )
-				this.asset( null )
 				return event
 			}
 			if( this.brushing() ) {
