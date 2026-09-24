@@ -133,6 +133,8 @@ $bog_gamestudio_app $mol_view
 				<= Editor $mol_textarea
 					value? <=> source?
 			foot /
+				<= Aim $mol_view
+					sub / \Документ это копия для редактора. Паку нужны оба вывезенных файла, дерево и спутник.
 				<= Kept $mol_view
 					sub / <= kept_stat \
 				<= Undo_stat $mol_view
