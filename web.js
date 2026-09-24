@@ -10130,7 +10130,35 @@ var $;
                 { name: 'rot', kind: 'euler', get: () => this.rot(), set: next => this.rot(next) },
                 { name: 'scale', kind: 'vec3', get: () => this.scale(), set: next => this.scale(next) },
                 { name: 'tint', kind: 'vec4', get: () => this.tint(), set: next => this.tint(next) },
+                ...this.part_props(),
             ];
+        }
+        parts(next) {
+            if (!next)
+                return [];
+            for (let i = 0; i < next.length; ++i) {
+                if (!next[i].owner())
+                    next[i].owner(this);
+            }
+            return next;
+        }
+        part_lead(part) {
+            const klass = part.constructor;
+            return this.$.$mol_func_name(klass).replace(/^\$bog_[a-z0-9]+_/, '');
+        }
+        part_props() {
+            const parts = this.parts();
+            const out = [];
+            for (let i = 0; i < parts.length; ++i) {
+                const part = parts[i];
+                const own = part.props?.() ?? [];
+                const lead = this.part_lead(part);
+                for (let k = 0; k < own.length; ++k) {
+                    const prop = own[k];
+                    out.push({ ...prop, name: `${lead}.${prop.name}` });
+                }
+            }
+            return out;
         }
         pos(next) {
             return next ? $bog_gamengine_node_vec(next) : new Float32Array([0, 0, 0]);
@@ -10214,6 +10242,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "name", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_node.prototype, "parts", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "pos", null);

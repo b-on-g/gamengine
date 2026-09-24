@@ -3942,11 +3942,18 @@ declare namespace $ {
         get: () => unknown;
         set: (next: unknown) => void;
     };
+    type $bog_gamengine_part = {
+        owner(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
+        props?(): readonly $bog_gamengine_prop[];
+    };
     function $bog_gamengine_node_vec(next: ArrayLike<number>): Float32Array<ArrayBufferLike>;
     class $bog_gamengine_node extends $mol_object2 {
         name(next?: string): string;
         title(): string;
         props(): readonly $bog_gamengine_prop[];
+        parts(next?: readonly $bog_gamengine_part[]): readonly $bog_gamengine_part[];
+        part_lead(part: $bog_gamengine_part): string;
+        part_props(): readonly $bog_gamengine_prop[];
         pos(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         rot(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         scale(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;

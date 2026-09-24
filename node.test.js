@@ -10487,7 +10487,35 @@ var $;
                 { name: 'rot', kind: 'euler', get: () => this.rot(), set: next => this.rot(next) },
                 { name: 'scale', kind: 'vec3', get: () => this.scale(), set: next => this.scale(next) },
                 { name: 'tint', kind: 'vec4', get: () => this.tint(), set: next => this.tint(next) },
+                ...this.part_props(),
             ];
+        }
+        parts(next) {
+            if (!next)
+                return [];
+            for (let i = 0; i < next.length; ++i) {
+                if (!next[i].owner())
+                    next[i].owner(this);
+            }
+            return next;
+        }
+        part_lead(part) {
+            const klass = part.constructor;
+            return this.$.$mol_func_name(klass).replace(/^\$bog_[a-z0-9]+_/, '');
+        }
+        part_props() {
+            const parts = this.parts();
+            const out = [];
+            for (let i = 0; i < parts.length; ++i) {
+                const part = parts[i];
+                const own = part.props?.() ?? [];
+                const lead = this.part_lead(part);
+                for (let k = 0; k < own.length; ++k) {
+                    const prop = own[k];
+                    out.push({ ...prop, name: `${lead}.${prop.name}` });
+                }
+            }
+            return out;
         }
         pos(next) {
             return next ? $bog_gamengine_node_vec(next) : new Float32Array([0, 0, 0]);
@@ -10571,6 +10599,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "name", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_node.prototype, "parts", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "pos", null);
@@ -29300,6 +29331,214 @@ var $;
             $mol_assert_equal([...node_test_prop(node, 'tint').get()], [1, 1, 1, 1]);
             node_test_prop(node, 'tint').set([1, 0, 0, 0.5]);
             $mol_assert_equal([...node.tint()], [1, 0, 0, 0.5]);
+        },
+        'attached part takes the node as its owner'() {
+            const node = new $bog_gamengine_node;
+            const part = new $bog_gamengine_combat;
+            $mol_assert_equal(part.owner(), null);
+            node.parts([part]);
+            $mol_assert_equal(part.owner(), node);
+            $mol_assert_equal(node.parts().length, 1);
+        },
+        'own owner of a part is not taken away'() {
+            const first = new $bog_gamengine_node;
+            const second = new $bog_gamengine_node;
+            const part = new $bog_gamengine_combat;
+            part.owner(first);
+            second.parts([part]);
+            $mol_assert_equal(part.owner(), first);
+        },
+        'props of a part come with the name of its kind'() {
+            const node = new $bog_gamengine_node;
+            const part = new $bog_gamengine_combat;
+            part.health_max(40);
+            node.parts([part]);
+            const names = node.props().map(prop => prop.name);
+            $mol_assert_ok(names.indexOf('combat.health') > 0);
+            $mol_assert_ok(names.indexOf('combat.health_max') > 0);
+            $mol_assert_ok(names.indexOf('pos') >= 0);
+            const prop = node_test_prop(node, 'combat.health_max');
+            $mol_assert_equal(prop.get(), 40);
+            prop.set(70);
+            $mol_assert_equal(part.health_max(), 70);
+        },
+        'node without parts shows the same props as before'() {
+            const node = new $bog_gamengine_node;
+            $mol_assert_equal(node.props().map(prop => prop.name), ['pos', 'rot', 'scale', 'tint']);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_combat extends $mol_object2 {
+        owner_now = null;
+        owner(next) {
+            if (next !== undefined)
+                this.owner_now = next;
+            return this.owner_now;
+        }
+        health_max(next = 100) {
+            return next;
+        }
+        armor(next = 0) {
+            return next;
+        }
+        rate(next = 1) {
+            return next;
+        }
+        health(next) {
+            return next ?? this.health_max();
+        }
+        props() {
+            return [
+                { name: 'health', kind: 'number', get: () => this.health(), set: next => this.health(Number(next)) },
+                { name: 'health_max', kind: 'number', get: () => this.health_max(), set: next => this.health_max(Number(next)) },
+                { name: 'rate', kind: 'number', get: () => this.rate(), set: next => this.rate(Number(next)) },
+            ];
+        }
+        dead_on = false;
+        fired = -Infinity;
+        dead() {
+            return this.dead_on || this.health() <= 0;
+        }
+        now() {
+            const clock = this.owner()?.clock();
+            if (clock)
+                return clock.time();
+            return this.$.$mol_state_time.now(0) / 1000;
+        }
+        hurt(amount, from) {
+            if (this.dead())
+                return this.health();
+            const taken = Math.max(0, amount - this.armor());
+            const left = Math.max(0, this.health() - taken);
+            this.health(left);
+            if (left > 0)
+                return left;
+            this.dead_on = true;
+            this.die(from ?? null);
+            return left;
+        }
+        heal(amount) {
+            if (this.dead())
+                return this.health();
+            const full = Math.min(this.health_max(), this.health() + Math.max(0, amount));
+            this.health(full);
+            return full;
+        }
+        die(from) {
+            const owner = this.owner();
+            owner?.die?.(from);
+        }
+        revive() {
+            this.dead_on = false;
+            this.health(this.health_max());
+            this.fired = -Infinity;
+            return this.health();
+        }
+        ready(time = this.now()) {
+            return time - this.fired >= 1 / this.rate();
+        }
+        fire(time = this.now()) {
+            this.fired = time;
+            return time;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_combat.prototype, "health_max", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_combat.prototype, "armor", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_combat.prototype, "rate", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_combat.prototype, "health", null);
+    $.$bog_gamengine_combat = $bog_gamengine_combat;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function owned() {
+        const owner = new class extends $bog_gamengine_node {
+            deaths = 0;
+            die() {
+                ++this.deaths;
+            }
+        };
+        const fight = new $bog_gamengine_combat;
+        fight.owner(owner);
+        return { owner, fight };
+    }
+    $mol_test({
+        'hurt cuts health by the damage left after armor'() {
+            const fight = new $bog_gamengine_combat;
+            fight.health_max(40);
+            fight.armor(3);
+            fight.hurt(10);
+            $mol_assert_equal(fight.health(), 33);
+            $mol_assert_equal(fight.dead(), false);
+        },
+        'hurt down to zero kills and calls die of the owner once'() {
+            const { owner, fight } = owned();
+            fight.health_max(10);
+            fight.hurt(4);
+            $mol_assert_equal(owner.deaths, 0);
+            fight.hurt(90);
+            $mol_assert_equal(fight.health(), 0);
+            $mol_assert_equal(fight.dead(), true);
+            $mol_assert_equal(owner.deaths, 1);
+            fight.hurt(5);
+            $mol_assert_equal(owner.deaths, 1);
+        },
+        'death of an owner without die changes nothing but the health'() {
+            const fight = new $bog_gamengine_combat;
+            fight.owner(new $bog_gamengine_node);
+            fight.health_max(5);
+            fight.hurt(5);
+            $mol_assert_equal(fight.dead(), true);
+        },
+        'heal never goes above the maximum and revive brings the full health back'() {
+            const fight = new $bog_gamengine_combat;
+            fight.health_max(10);
+            fight.hurt(6);
+            fight.heal(100);
+            $mol_assert_equal(fight.health(), 10);
+            fight.hurt(10);
+            fight.revive();
+            $mol_assert_equal(fight.dead(), false);
+            $mol_assert_equal(fight.health(), 10);
+        },
+        'timer holds the next shot until one rate has passed'() {
+            const fight = new $bog_gamengine_combat;
+            fight.rate(2);
+            $mol_assert_equal(fight.ready(0), true);
+            fight.fire(0);
+            $mol_assert_equal(fight.ready(0.4), false);
+            $mol_assert_equal(fight.ready(0.5), true);
+        },
+        'timer takes the time of the scene clock of the owner'() {
+            const scene = new $bog_gamengine_scene;
+            const clock = new $bog_gamengine_clock;
+            scene.clock(clock);
+            const owner = new $bog_gamengine_node;
+            scene.kids([owner]);
+            const fight = new $bog_gamengine_combat;
+            fight.owner(owner);
+            fight.rate(1);
+            clock.time(10);
+            fight.fire();
+            clock.time(10.5);
+            $mol_assert_equal(fight.ready(), false);
+            clock.time(11);
+            $mol_assert_equal(fight.ready(), true);
         },
     });
 })($ || ($ = {}));
