@@ -4287,6 +4287,10 @@ declare namespace $ {
         shape?(): $bog_gamengine_shape;
         shader?(): $bog_gamengine_shader | null;
     };
+    type $bog_gamengine_batch_source_node = $bog_gamengine_batch_node & {
+        is_source(): boolean;
+        source(): $bog_gamengine_batch_source | null;
+    };
     type $bog_gamengine_batch_source = {
         trans: Float32Array;
         count: number;
@@ -4303,6 +4307,7 @@ declare namespace $ {
         nodes(next?: readonly $bog_gamengine_batch_node[]): readonly $bog_gamengine_batch_node[];
         source(next?: $bog_gamengine_batch_source | null): $bog_gamengine_batch_source | null;
         skip(next?: number): number;
+        instances(next?: number): number;
         cull(next?: boolean): boolean;
         near(next?: number): number;
         far(next?: number): number;
@@ -4316,6 +4321,7 @@ declare namespace $ {
         material: Float32Array<ArrayBuffer>;
         normal_layer: Float32Array<ArrayBuffer>;
         grow(need: number): void;
+        fill_plain(count: number): number;
         fill(frustum?: Float32Array | null, eye?: Float32Array | null): number;
         fill_source(source: $bog_gamengine_batch_source, frustum?: Float32Array | null): number;
     }
@@ -4378,12 +4384,17 @@ declare namespace $ {
 
 declare namespace $ {
     class $bog_gamengine_phys extends $mol_object2 {
+        static stat_window: number;
         bodies(next?: readonly $bog_gamengine_phys_body[]): readonly $bog_gamengine_phys_body[];
         tile(next?: $bog_gamengine_phys_tile | null): $bog_gamengine_phys_tile | null;
         gravity(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         eps: number;
         normal: Float32Array<ArrayBuffer>;
+        times: Float32Array<ArrayBuffer>;
+        samples: number;
         step(dt: number): void;
+        step_ms(): number;
+        step_world(dt: number): void;
         fall(body: $bog_gamengine_phys_body, gx: number, gy: number): void;
         move(body: $bog_gamengine_phys_body, tile: $bog_gamengine_phys_tile | null, dt: number): void;
         col_solid(tile: $bog_gamengine_phys_tile, cx: number, cy0: number, cy1: number): boolean;
@@ -4722,6 +4733,7 @@ declare namespace $ {
         static flag_kinematic: number;
         static sleep_speed: number;
         static sleep_time: number;
+        static stat_window: number;
         cap: number;
         count: number;
         pos: Float32Array<ArrayBuffer>;
@@ -4787,7 +4799,11 @@ declare namespace $ {
         max_steps: number;
         pending: number;
         steps_done: number;
+        times: Float32Array<ArrayBuffer>;
+        samples: number;
         step(dt: number): void;
+        step_ms(): number;
+        step_world(dt: number): void;
         substep(dt: number): void;
         bounds(): void;
         bounds_of(i: number): void;
@@ -4806,6 +4822,7 @@ declare namespace $ {
         Shader_plain(next?: $bog_gamengine_shader): $bog_gamengine_shader | $bog_gamengine_shader_solid_plain;
         Shape_quad(next?: $bog_gamengine_shape): $bog_gamengine_shape;
         Batch(key: string): $bog_gamengine_batch;
+        node_source(node: $bog_gamengine_node): $bog_gamengine_batch_source | null;
         node_drawn(node: $bog_gamengine_node): boolean;
         node_shader(node: $bog_gamengine_batch_group_node): $bog_gamengine_shader | $bog_gamengine_shader_solid | $bog_gamengine_shader_sprite | $bog_gamengine_shader_solid_plain;
         node_shape(node: $bog_gamengine_batch_group_node): $bog_gamengine_shape;
@@ -5716,6 +5733,8 @@ declare namespace $ {
     }
     class $bog_gamengine_tilemap extends $bog_gamengine_node {
         pool(next?: $bog_gamengine_tilemap_pool): $bog_gamengine_tilemap_pool;
+        is_source(): boolean;
+        source(): $bog_gamengine_batch_source;
         tile(next?: $bog_gamengine_phys_tile | null): $bog_gamengine_phys_tile | null;
         palette(next?: Record<string, string>): Record<string, string>;
         atlas(next?: $bog_gamengine_atlas | null): $bog_gamengine_atlas | null;
@@ -5882,6 +5901,8 @@ declare namespace $ {
     class $bog_gamengine_particle extends $bog_gamengine_node {
         pool(next?: $bog_gamengine_particle_pool): $bog_gamengine_particle_pool;
         atlas(next?: $bog_gamengine_atlas | null): $bog_gamengine_atlas | null;
+        is_source(): boolean;
+        source(): $bog_gamengine_batch_source;
         rate(next?: number): number;
         life(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         speed(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
@@ -5961,6 +5982,8 @@ declare namespace $ {
     }
     class $bog_gamengine_text extends $bog_gamengine_node {
         pool(next?: $bog_gamengine_text_pool): $bog_gamengine_text_pool;
+        is_source(): boolean;
+        source(): $bog_gamengine_batch_source;
         font(next?: $bog_gamengine_text_font): $bog_gamengine_text_font;
         atlas(next?: $bog_gamengine_atlas | null): $bog_gamengine_atlas | null;
         value(next?: string): string;
@@ -6680,6 +6703,9 @@ declare namespace $ {
         fov(next?: number): number;
         near(next?: number): number;
         far(next?: number): number;
+        follow(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
+        lift(next?: number): number;
+        step(dt: number): void;
         props(): readonly $bog_gamengine_prop[];
         proj(aspect: number): $mol_3d_mat4;
     }
@@ -7675,7 +7701,9 @@ declare namespace $.$$ {
 declare namespace $ {
     class $bog_gamengine_shape_lines extends $bog_gamengine_shape {
         points(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
+        count(next?: number): number;
         geometry(): Float32Array<ArrayBuffer>;
+        size(): number;
         normals(): Float32Array<ArrayBuffer>;
         skin(): Float32Array<ArrayBuffer>;
         radius(): number;
@@ -7685,10 +7713,6 @@ declare namespace $ {
 
 declare namespace $ {
     class $bog_gamengine_demo_boxes_phys extends $bog_gamengine_phys3 {
-        times: Float32Array<ArrayBuffer>;
-        samples: number;
-        step(dt: number): void;
-        step_ms(): number;
         low(): number;
     }
 }
@@ -7942,17 +7966,22 @@ declare namespace $ {
 		,
 		ReturnType< $bog_gamengine_shape_lines['points'] >
 	>
-	type $bog_gamengine_shape_plane__tile_bog_gamengine_demo_boxes_24 = $mol_type_enforce<
+	type $bog_gamengine_shape_lines__count_bog_gamengine_demo_boxes_24 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_boxes['contact_count'] >
+		,
+		ReturnType< $bog_gamengine_shape_lines['count'] >
+	>
+	type $bog_gamengine_shape_plane__tile_bog_gamengine_demo_boxes_25 = $mol_type_enforce<
 		number
 		,
 		ReturnType< $bog_gamengine_shape_plane['tile'] >
 	>
-	type $bog_gamengine_input__key_bog_gamengine_demo_boxes_25 = $mol_type_enforce<
+	type $bog_gamengine_input__key_bog_gamengine_demo_boxes_26 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Key'] >
 		,
 		ReturnType< $bog_gamengine_input['key'] >
 	>
-	type $bog_gamengine_key__bind_bog_gamengine_demo_boxes_26 = $mol_type_enforce<
+	type $bog_gamengine_key__bind_bog_gamengine_demo_boxes_27 = $mol_type_enforce<
 		({ 
 			'forward': readonly(any)[],
 			'back': readonly(any)[],
@@ -7964,162 +7993,162 @@ declare namespace $ {
 		,
 		ReturnType< $bog_gamengine_key['bind'] >
 	>
-	type $bog_gamengine_atlas__uris_bog_gamengine_demo_boxes_27 = $mol_type_enforce<
+	type $bog_gamengine_atlas__uris_bog_gamengine_demo_boxes_28 = $mol_type_enforce<
 		readonly(any)[]
 		,
 		ReturnType< $bog_gamengine_atlas['uris'] >
 	>
-	type $bog_gamengine_atlas__size_bog_gamengine_demo_boxes_28 = $mol_type_enforce<
+	type $bog_gamengine_atlas__size_bog_gamengine_demo_boxes_29 = $mol_type_enforce<
 		number
 		,
 		ReturnType< $bog_gamengine_atlas['size'] >
 	>
-	type $bog_gamengine_scene__clock_bog_gamengine_demo_boxes_29 = $mol_type_enforce<
+	type $bog_gamengine_scene__clock_bog_gamengine_demo_boxes_30 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Clock'] >
 		,
 		ReturnType< $bog_gamengine_scene['clock'] >
 	>
-	type $bog_gamengine_scene__input_bog_gamengine_demo_boxes_30 = $mol_type_enforce<
+	type $bog_gamengine_scene__input_bog_gamengine_demo_boxes_31 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Input'] >
 		,
 		ReturnType< $bog_gamengine_scene['input'] >
 	>
-	type $bog_gamengine_scene__kids_bog_gamengine_demo_boxes_31 = $mol_type_enforce<
+	type $bog_gamengine_scene__kids_bog_gamengine_demo_boxes_32 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['nodes'] >
 		,
 		ReturnType< $bog_gamengine_scene['kids'] >
 	>
-	type $bog_gamengine_scene__phys3_bog_gamengine_demo_boxes_32 = $mol_type_enforce<
+	type $bog_gamengine_scene__phys3_bog_gamengine_demo_boxes_33 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Phys'] >
 		,
 		ReturnType< $bog_gamengine_scene['phys3'] >
 	>
-	type $bog_gamengine_scene__batches_bog_gamengine_demo_boxes_33 = $mol_type_enforce<
+	type $bog_gamengine_scene__batches_bog_gamengine_demo_boxes_34 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['batches'] >
 		,
 		ReturnType< $bog_gamengine_scene['batches'] >
 	>
-	type $bog_gamengine_scene__cam_bog_gamengine_demo_boxes_34 = $mol_type_enforce<
+	type $bog_gamengine_scene__cam_bog_gamengine_demo_boxes_35 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Walker'] >
 		,
 		ReturnType< $bog_gamengine_scene['cam'] >
 	>
-	type $bog_gamengine_scene__aspect_bog_gamengine_demo_boxes_35 = $mol_type_enforce<
+	type $bog_gamengine_scene__aspect_bog_gamengine_demo_boxes_36 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['aspect'] >
 		,
 		ReturnType< $bog_gamengine_scene['aspect'] >
 	>
-	type $bog_gamengine_scene__Shader_solid_bog_gamengine_demo_boxes_36 = $mol_type_enforce<
+	type $bog_gamengine_scene__Shader_solid_bog_gamengine_demo_boxes_37 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Solid'] >
 		,
 		ReturnType< $bog_gamengine_scene['Shader_solid'] >
 	>
-	type $bog_gamengine_batch__shader_bog_gamengine_demo_boxes_37 = $mol_type_enforce<
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_boxes_38 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Solid'] >
 		,
 		ReturnType< $bog_gamengine_batch['shader'] >
 	>
-	type $bog_gamengine_batch__shape_bog_gamengine_demo_boxes_38 = $mol_type_enforce<
+	type $bog_gamengine_batch__shape_bog_gamengine_demo_boxes_39 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Box'] >
 		,
 		ReturnType< $bog_gamengine_batch['shape'] >
 	>
-	type $bog_gamengine_batch__atlas_bog_gamengine_demo_boxes_39 = $mol_type_enforce<
+	type $bog_gamengine_batch__atlas_bog_gamengine_demo_boxes_40 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Atlas'] >
 		,
 		ReturnType< $bog_gamengine_batch['atlas'] >
 	>
-	type $bog_gamengine_batch__source_bog_gamengine_demo_boxes_40 = $mol_type_enforce<
+	type $bog_gamengine_batch__source_bog_gamengine_demo_boxes_41 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Phys'] >
 		,
 		ReturnType< $bog_gamengine_batch['source'] >
 	>
-	type $bog_gamengine_batch__skip_bog_gamengine_demo_boxes_41 = $mol_type_enforce<
+	type $bog_gamengine_batch__skip_bog_gamengine_demo_boxes_42 = $mol_type_enforce<
 		number
 		,
 		ReturnType< $bog_gamengine_batch['skip'] >
 	>
-	type $bog_gamengine_batch__shader_bog_gamengine_demo_boxes_42 = $mol_type_enforce<
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_boxes_43 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Flat'] >
 		,
 		ReturnType< $bog_gamengine_batch['shader'] >
 	>
-	type $bog_gamengine_batch__shape_bog_gamengine_demo_boxes_43 = $mol_type_enforce<
+	type $bog_gamengine_batch__shape_bog_gamengine_demo_boxes_44 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Lines'] >
 		,
 		ReturnType< $bog_gamengine_batch['shape'] >
 	>
-	type $bog_gamengine_batch__nodes_bog_gamengine_demo_boxes_44 = $mol_type_enforce<
-		readonly(any)[]
+	type $bog_gamengine_batch__instances_bog_gamengine_demo_boxes_45 = $mol_type_enforce<
+		number
 		,
-		ReturnType< $bog_gamengine_batch['nodes'] >
+		ReturnType< $bog_gamengine_batch['instances'] >
 	>
-	type $bog_gamengine_phys3_debug__phys3_bog_gamengine_demo_boxes_45 = $mol_type_enforce<
+	type $bog_gamengine_phys3_debug__phys3_bog_gamengine_demo_boxes_46 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Phys'] >
 		,
 		ReturnType< $bog_gamengine_phys3_debug['phys3'] >
 	>
-	type $bog_gamengine_mesh__shape_bog_gamengine_demo_boxes_46 = $mol_type_enforce<
+	type $bog_gamengine_mesh__shape_bog_gamengine_demo_boxes_47 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Plane'] >
 		,
 		ReturnType< $bog_gamengine_mesh['shape'] >
 	>
-	type $bog_gamengine_mesh__atlas_bog_gamengine_demo_boxes_47 = $mol_type_enforce<
+	type $bog_gamengine_mesh__atlas_bog_gamengine_demo_boxes_48 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Atlas'] >
 		,
 		ReturnType< $bog_gamengine_mesh['atlas'] >
 	>
-	type $bog_gamengine_mesh__frame_bog_gamengine_demo_boxes_48 = $mol_type_enforce<
+	type $bog_gamengine_mesh__frame_bog_gamengine_demo_boxes_49 = $mol_type_enforce<
 		string
 		,
 		ReturnType< $bog_gamengine_mesh['frame'] >
 	>
-	type $bog_gamengine_mesh__size_bog_gamengine_demo_boxes_49 = $mol_type_enforce<
+	type $bog_gamengine_mesh__size_bog_gamengine_demo_boxes_50 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['floor_size'] >
 		,
 		ReturnType< $bog_gamengine_mesh['size'] >
 	>
-	type $bog_gamengine_phys3_body__name_bog_gamengine_demo_boxes_50 = $mol_type_enforce<
+	type $bog_gamengine_phys3_body__name_bog_gamengine_demo_boxes_51 = $mol_type_enforce<
 		string
 		,
 		ReturnType< $bog_gamengine_phys3_body['name'] >
 	>
-	type $bog_gamengine_demo_boxes_platform__name_bog_gamengine_demo_boxes_51 = $mol_type_enforce<
+	type $bog_gamengine_demo_boxes_platform__name_bog_gamengine_demo_boxes_52 = $mol_type_enforce<
 		string
 		,
 		ReturnType< $bog_gamengine_demo_boxes_platform['name'] >
 	>
-	type $bog_gamengine_demo_boxes_platform__phys3_bog_gamengine_demo_boxes_52 = $mol_type_enforce<
+	type $bog_gamengine_demo_boxes_platform__phys3_bog_gamengine_demo_boxes_53 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Phys'] >
 		,
 		ReturnType< $bog_gamengine_demo_boxes_platform['phys3'] >
 	>
-	type $bog_gamengine_demo_boxes_platform__size_bog_gamengine_demo_boxes_53 = $mol_type_enforce<
+	type $bog_gamengine_demo_boxes_platform__size_bog_gamengine_demo_boxes_54 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['platform_size'] >
 		,
 		ReturnType< $bog_gamengine_demo_boxes_platform['size'] >
 	>
-	type $bog_gamengine_demo_boxes_platform__mass_bog_gamengine_demo_boxes_54 = $mol_type_enforce<
+	type $bog_gamengine_demo_boxes_platform__mass_bog_gamengine_demo_boxes_55 = $mol_type_enforce<
 		number
 		,
 		ReturnType< $bog_gamengine_demo_boxes_platform['mass'] >
 	>
-	type $bog_gamengine_demo_boxes_platform__kinematic_bog_gamengine_demo_boxes_55 = $mol_type_enforce<
+	type $bog_gamengine_demo_boxes_platform__kinematic_bog_gamengine_demo_boxes_56 = $mol_type_enforce<
 		boolean
 		,
 		ReturnType< $bog_gamengine_demo_boxes_platform['kinematic'] >
 	>
-	type $bog_gamengine_demo_room_walker__input_bog_gamengine_demo_boxes_56 = $mol_type_enforce<
+	type $bog_gamengine_demo_room_walker__input_bog_gamengine_demo_boxes_57 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['Input'] >
 		,
 		ReturnType< $bog_gamengine_demo_room_walker['input'] >
 	>
-	type $bog_gamengine_demo_room_walker__pos_bog_gamengine_demo_boxes_57 = $mol_type_enforce<
+	type $bog_gamengine_demo_room_walker__pos_bog_gamengine_demo_boxes_58 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['walker_pos'] >
 		,
 		ReturnType< $bog_gamengine_demo_room_walker['pos'] >
 	>
-	type $bog_gamengine_demo_room_walker__rot_bog_gamengine_demo_boxes_58 = $mol_type_enforce<
+	type $bog_gamengine_demo_room_walker__rot_bog_gamengine_demo_boxes_59 = $mol_type_enforce<
 		ReturnType< $bog_gamengine_demo_boxes['walker_rot'] >
 		,
 		ReturnType< $bog_gamengine_demo_room_walker['rot'] >
@@ -8155,6 +8184,7 @@ declare namespace $ {
 		Box( ): $bog_gamengine_shape_box
 		Flat( ): $bog_gamengine_shader_flat
 		contact_points( ): Float32Array
+		contact_count( ): number
 		Lines( ): $bog_gamengine_shape_lines
 		Plane( ): $bog_gamengine_shape_plane
 		floor_size( ): Float32Array
@@ -8204,6 +8234,7 @@ declare namespace $.$$ {
         nodes(): ($bog_gamengine_mesh | $bog_gamengine_demo_room_walker | $bog_gamengine_phys3_body)[];
         batches(): readonly $bog_gamengine_batch[];
         contact_points(): Float32Array<ArrayBuffer>;
+        contact_count(): number;
         throw_dir: Float32Array<ArrayBuffer>;
         throw_out: Float32Array<ArrayBuffer>;
         dig_dir: Float32Array<ArrayBuffer>;

@@ -11296,6 +11296,9 @@ var $;
         skip(next = 0) {
             return next;
         }
+        instances(next = 0) {
+            return next;
+        }
         cull(next = true) {
             return next;
         }
@@ -11328,10 +11331,46 @@ var $;
             this.material = new Float32Array(cap * 4);
             this.normal_layer = new Float32Array(cap);
         }
+        fill_plain(count) {
+            this.grow(count);
+            const trans = this.trans;
+            const tint = this.tint;
+            const layer = this.layer;
+            const uv = this.uv;
+            const material = this.material;
+            const normal_layer = this.normal_layer;
+            for (let i = 0; i < count; ++i) {
+                const at = i * 16;
+                for (let k = 0; k < 16; ++k)
+                    trans[at + k] = 0;
+                trans[at] = 1;
+                trans[at + 5] = 1;
+                trans[at + 10] = 1;
+                trans[at + 15] = 1;
+                for (let k = 0; k < 4; ++k)
+                    tint[i * 4 + k] = 1;
+                layer[i] = 0;
+                uv[i * 4] = 0;
+                uv[i * 4 + 1] = 0;
+                uv[i * 4 + 2] = 1;
+                uv[i * 4 + 3] = 1;
+                material[i * 4] = 0;
+                material[i * 4 + 1] = 0.6;
+                material[i * 4 + 2] = 0;
+                material[i * 4 + 3] = 0;
+                normal_layer[i] = -1;
+            }
+            this.count = count;
+            ++this.version;
+            return count;
+        }
         fill(frustum = null, eye = null) {
             const source = this.source();
             if (source)
                 return this.fill_source(source, frustum);
+            const instances = this.instances();
+            if (instances > 0)
+                return this.fill_plain(instances);
             const nodes = this.nodes();
             const cull = frustum && this.cull() ? frustum : null;
             const near = this.near();
@@ -11479,6 +11518,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_batch.prototype, "skip", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_batch.prototype, "instances", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_batch.prototype, "cull", null);
@@ -11711,6 +11753,7 @@ var $;
 var $;
 (function ($) {
     class $bog_gamengine_phys extends $mol_object2 {
+        static stat_window = 30;
         bodies(next) {
             return next ?? [];
         }
@@ -11722,7 +11765,23 @@ var $;
         }
         eps = 1e-4;
         normal = new Float32Array(2);
+        times = new Float32Array($bog_gamengine_phys.stat_window);
+        samples = 0;
         step(dt) {
+            const window = $bog_gamengine_phys.stat_window;
+            const start = performance.now();
+            this.step_world(dt);
+            this.times[this.samples % window] = performance.now() - start;
+            ++this.samples;
+        }
+        step_ms() {
+            const size = Math.min(this.samples, $bog_gamengine_phys.stat_window);
+            let sum = 0;
+            for (let i = 0; i < size; ++i)
+                sum += this.times[i];
+            return size ? sum / size : 0;
+        }
+        step_world(dt) {
             const bodies = this.bodies();
             const tile = this.tile();
             const gravity = this.gravity();
@@ -14335,6 +14394,7 @@ var $;
         static flag_kinematic = 4;
         static sleep_speed = 0.05;
         static sleep_time = 0.5;
+        static stat_window = 30;
         cap = 0;
         count = 0;
         pos = new Float32Array(0);
@@ -14666,7 +14726,23 @@ var $;
         max_steps = 4;
         pending = 0;
         steps_done = 0;
+        times = new Float32Array($bog_gamengine_phys3.stat_window);
+        samples = 0;
         step(dt) {
+            const window = $bog_gamengine_phys3.stat_window;
+            const start = performance.now();
+            this.step_world(dt);
+            this.times[this.samples % window] = performance.now() - start;
+            ++this.samples;
+        }
+        step_ms() {
+            const size = Math.min(this.samples, $bog_gamengine_phys3.stat_window);
+            let sum = 0;
+            for (let i = 0; i < size; ++i)
+                sum += this.times[i];
+            return size ? sum / size : 0;
+        }
+        step_world(dt) {
             this.steps_done = 0;
             const timestep = this.timestep;
             let pending = this.pending + dt;
@@ -14924,6 +15000,12 @@ var $;
         Batch(key) {
             return new this.$.$bog_gamengine_batch;
         }
+        node_source(node) {
+            const probe = node;
+            if (typeof probe.is_source !== 'function' || !probe.is_source())
+                return null;
+            return probe.source?.() ?? null;
+        }
         node_drawn(node) {
             const probe = node;
             return typeof probe.atlas === 'function'
@@ -14944,12 +15026,24 @@ var $;
         auto_batches() {
             const nodes = this.nodes();
             const drawn = [];
+            const sources = new Map();
             for (let i = 0; i < nodes.length; ++i) {
-                if (this.node_drawn(nodes[i]))
-                    drawn.push(nodes[i]);
+                const node = nodes[i];
+                const source = this.node_source(node);
+                if (source) {
+                    const batch = this.Batch('source ' + $bog_gamengine_batch_group_id(node));
+                    batch.shader(this.node_shader(node));
+                    batch.shape(this.node_shape(node));
+                    batch.atlas(node.atlas());
+                    batch.source(source);
+                    sources.set(node, batch);
+                    continue;
+                }
+                if (this.node_drawn(node))
+                    drawn.push(node);
             }
             const parts = $bog_gamengine_batch_group(drawn, node => this.node_shader(node), node => this.node_shape(node));
-            const batches = [];
+            const grouped = new Map();
             for (let i = 0; i < parts.length; ++i) {
                 const part = parts[i];
                 const batch = this.Batch(part.key);
@@ -14957,7 +15051,14 @@ var $;
                 batch.shape(part.shape);
                 batch.atlas(part.atlas);
                 batch.nodes(part.nodes);
-                batches.push(batch);
+                grouped.set(part.nodes[0], batch);
+            }
+            const batches = [];
+            for (let i = 0; i < nodes.length; ++i) {
+                const node = nodes[i];
+                const batch = sources.get(node) ?? grouped.get(node);
+                if (batch)
+                    batches.push(batch);
             }
             return batches;
         }
@@ -18171,6 +18272,12 @@ var $;
         pool(next) {
             return next ?? new $bog_gamengine_tilemap_pool;
         }
+        is_source() {
+            return true;
+        }
+        source() {
+            return this.pool();
+        }
         tile(next) {
             return next ?? null;
         }
@@ -19491,6 +19598,12 @@ var $;
         atlas(next) {
             return next ?? null;
         }
+        is_source() {
+            return true;
+        }
+        source() {
+            return this.pool();
+        }
         rate(next = 0) {
             return next;
         }
@@ -20013,6 +20126,12 @@ var $;
     class $bog_gamengine_text extends $bog_gamengine_node {
         pool(next) {
             return next ?? new $bog_gamengine_text_pool;
+        }
+        is_source() {
+            return true;
+        }
+        source() {
+            return this.pool();
         }
         font(next) {
             return next ?? new $bog_gamengine_text_font;
@@ -21230,9 +21349,40 @@ var $;
         far(next) {
             return next ?? 100;
         }
+        follow(next) {
+            return next ?? null;
+        }
+        lift(next) {
+            return next ?? 0;
+        }
+        step(dt) {
+            const node = this.follow();
+            if (!node)
+                return;
+            const at = node.pos();
+            const lift = this.lift();
+            const pos = this.pos();
+            if (pos[0] !== at[0] || pos[1] !== at[1] + lift || pos[2] !== at[2]) {
+                const next = new Float32Array(3);
+                next[0] = at[0];
+                next[1] = at[1] + lift;
+                next[2] = at[2];
+                this.pos(next);
+            }
+            const turn = node.rot();
+            const rot = this.rot();
+            if (rot[0] === turn[0] && rot[1] === turn[1] && rot[2] === turn[2])
+                return;
+            const next = new Float32Array(3);
+            next[0] = turn[0];
+            next[1] = turn[1];
+            next[2] = turn[2];
+            this.rot(next);
+        }
         props() {
             return [
                 ...super.props(),
+                { name: 'lift', kind: 'number', get: () => this.lift(), set: next => this.lift(next) },
                 { name: 'fov', kind: 'number', get: () => this.fov(), set: next => this.fov(next) },
                 { name: 'near', kind: 'number', get: () => this.near(), set: next => this.near(next) },
                 { name: 'far', kind: 'number', get: () => this.far(), set: next => this.far(next) },
@@ -21251,6 +21401,12 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_cam_deep.prototype, "far", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_cam_deep.prototype, "follow", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_cam_deep.prototype, "lift", null);
     __decorate([
         $mol_mem_key
     ], $bog_gamengine_cam_deep.prototype, "proj", null);
@@ -22627,14 +22783,22 @@ var $;
         points(next) {
             return next ? $bog_gamengine_node_vec(next) : new Float32Array(0);
         }
+        count(next) {
+            return next ?? this.points().length / 6;
+        }
         geometry() {
             return this.points();
         }
+        size() {
+            const all = this.points().length / 3;
+            const drawn = this.count() * 2;
+            return drawn < all ? drawn : all;
+        }
         normals() {
-            return new Float32Array(this.size() * 3);
+            return new Float32Array(this.points().length);
         }
         skin() {
-            return new Float32Array(this.size() * 2);
+            return new Float32Array(this.points().length / 3 * 2);
         }
         radius() {
             return Infinity;
@@ -22648,6 +22812,9 @@ var $;
     ], $bog_gamengine_shape_lines.prototype, "points", null);
     __decorate([
         $mol_mem
+    ], $bog_gamengine_shape_lines.prototype, "count", null);
+    __decorate([
+        $mol_mem
     ], $bog_gamengine_shape_lines.prototype, "normals", null);
     __decorate([
         $mol_mem
@@ -22659,23 +22826,7 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    const stat_window = 30;
     class $bog_gamengine_demo_boxes_phys extends $bog_gamengine_phys3 {
-        times = new Float32Array(stat_window);
-        samples = 0;
-        step(dt) {
-            const start = performance.now();
-            super.step(dt);
-            this.times[this.samples % stat_window] = performance.now() - start;
-            ++this.samples;
-        }
-        step_ms() {
-            const size = Math.min(this.samples, stat_window);
-            let sum = 0;
-            for (let i = 0; i < size; ++i)
-                sum += this.times[i];
-            return size ? sum / size : 0;
-        }
         low() {
             let low = Infinity;
             const pos = this.pos, inv_mass = this.inv_mass;
@@ -23040,9 +23191,13 @@ var $;
 			const obj = new this.$.Float32Array();
 			return obj;
 		}
+		contact_count(){
+			return 0;
+		}
 		Lines(){
 			const obj = new this.$.$bog_gamengine_shape_lines();
 			(obj.points) = () => ((this.contact_points()));
+			(obj.count) = () => ((this.contact_count()));
 			return obj;
 		}
 		Plane(){
@@ -23152,7 +23307,7 @@ var $;
 			const obj = new this.$.$bog_gamengine_batch();
 			(obj.shader) = () => ((this.Flat()));
 			(obj.shape) = () => ((this.Lines()));
-			(obj.nodes) = () => ([(this.Debug())]);
+			(obj.instances) = () => (1);
 			return obj;
 		}
 		Debug(){
@@ -24086,6 +24241,10 @@ var $;
             contact_points() {
                 this.Scene().step();
                 return this.Debug().points();
+            }
+            contact_count() {
+                this.Scene().step();
+                return this.Phys().narrow.contact_count;
             }
             throw_dir = new Float32Array([0, 0, -1, 0]);
             throw_out = new Float32Array(4);
@@ -29272,6 +29431,13 @@ var $;
             tile.map(map);
             $mol_assert_equal(tile.solid_at(0.5, -0.5), true);
         },
+        'step_ms is zero before the first step and a time after it'() {
+            const phys = new $bog_gamengine_phys;
+            $mol_assert_equal(phys.step_ms(), 0);
+            phys.step(1 / 60);
+            $mol_assert_equal(phys.samples, 1);
+            $mol_assert_ok(phys.step_ms() >= 0);
+        },
     });
 })($ || ($ = {}));
 
@@ -29556,6 +29722,14 @@ var $;
             $mol_assert_equal(world.steps_done, 1);
             world.step(0);
             $mol_assert_equal(world.steps_done, 0);
+        },
+        'step_ms is zero before the first step and a time after it'() {
+            const world = new $bog_gamengine_phys3;
+            box(world, 1, 0, 0, 0);
+            $mol_assert_equal(world.step_ms(), 0);
+            world.step(1 / 60);
+            $mol_assert_equal(world.samples, 1);
+            $mol_assert_ok(world.step_ms() >= 0);
         },
     });
 })($ || ($ = {}));
@@ -30064,6 +30238,13 @@ var $;
             $mol_assert_equal(batch.count, 1);
             $mol_assert_equal([...batch.trans.subarray(12, 15)], [4, 5, 6]);
         },
+        'instances draw without nodes at the world origin'() {
+            const batch = new $bog_gamengine_batch;
+            batch.instances(1);
+            $mol_assert_equal(batch.fill(), 1);
+            $mol_assert_equal([...batch.trans.subarray(0, 16)], [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+            $mol_assert_equal([...batch.tint.subarray(0, 4)], [1, 1, 1, 1]);
+        },
     });
 })($ || ($ = {}));
 
@@ -30315,6 +30496,207 @@ var $;
             const sprite = new $bog_gamengine_sprite;
             sprite.props().find(prop => prop.name === 'flip_x').set(true);
             $mol_assert_equal(sprite.flip_x(), true);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function $bog_gamengine_particle_test_emitter(rate, life) {
+        const emitter = new $bog_gamengine_particle;
+        emitter.rate(rate);
+        emitter.life(new Float32Array([life, life]));
+        return emitter;
+    }
+    function $bog_gamengine_particle_test_run(emitter, seconds, steps = 60) {
+        const dt = 1 / steps;
+        for (let i = 0; i < Math.round(seconds * steps); ++i)
+            emitter.step(dt);
+        return emitter.pool().count;
+    }
+    $mol_test({
+        'rate 100 for a second with life 2 keeps about 100 alive'() {
+            const count = $bog_gamengine_particle_test_run($bog_gamengine_particle_test_emitter(100, 2), 1);
+            $mol_assert_ok(count >= 95 && count <= 105);
+        },
+        'rate 100 for a second with life 0.5 keeps about 50 alive'() {
+            const count = $bog_gamengine_particle_test_run($bog_gamengine_particle_test_emitter(100, 0.5), 1);
+            $mol_assert_ok(count >= 45 && count <= 55);
+        },
+        'burst of 20 gives 20 at once'() {
+            const emitter = $bog_gamengine_particle_test_emitter(0, 1);
+            $mol_assert_equal(emitter.burst(20), 20);
+            $mol_assert_equal(emitter.pool().count, 20);
+        },
+        'particles die by age so after life count drops to zero'() {
+            const emitter = $bog_gamengine_particle_test_emitter(0, 0.5);
+            emitter.burst(10);
+            $bog_gamengine_particle_test_run(emitter, 0.6);
+            $mol_assert_equal(emitter.pool().count, 0);
+        },
+        'gravity lowers the mean position'() {
+            const emitter = $bog_gamengine_particle_test_emitter(0, 10);
+            emitter.speed(new Float32Array([0, 0]));
+            emitter.gravity(new Float32Array([0, -10, 0]));
+            emitter.burst(50);
+            $bog_gamengine_particle_test_run(emitter, 0.5);
+            const pool = emitter.pool();
+            let sum = 0;
+            for (let i = 0; i < pool.count; ++i)
+                sum += pool.pos[i * 3 + 1];
+            $mol_assert_ok(sum / pool.count < -1);
+        },
+        'color and size are halfway at half life'() {
+            const emitter = $bog_gamengine_particle_test_emitter(0, 1);
+            emitter.speed(new Float32Array([0, 0]));
+            emitter.color(new Float32Array([1, 0, 0, 1, 0, 0, 1, 0]));
+            emitter.size(new Float32Array([1, 0]));
+            emitter.burst(1);
+            emitter.step(0.5);
+            const pool = emitter.pool();
+            $mol_assert_equal([...pool.tint.subarray(0, 4)], [0.5, 0, 0.5, 0.5]);
+            $mol_assert_equal(pool.trans[0], 0.5);
+            $mol_assert_equal(pool.trans[5], 0.5);
+            $mol_assert_equal(pool.size[0], 0.5);
+        },
+        'aabb covers every particle'() {
+            const emitter = $bog_gamengine_particle_test_emitter(0, 10);
+            emitter.spread(Math.PI);
+            emitter.speed(new Float32Array([1, 3]));
+            emitter.burst(100);
+            $bog_gamengine_particle_test_run(emitter, 0.5);
+            const pool = emitter.pool();
+            for (let i = 0; i < pool.count; ++i) {
+                for (let k = 0; k < 3; ++k) {
+                    const at = pool.pos[i * 3 + k];
+                    $mol_assert_ok(at >= pool.aabb[i * 6 + k] && at <= pool.aabb[i * 6 + 3 + k]);
+                }
+            }
+        },
+        'count never exceeds cap'() {
+            const emitter = $bog_gamengine_particle_test_emitter(1000, 10);
+            emitter.pool().cap(10);
+            emitter.burst(50);
+            $mol_assert_equal(emitter.pool().count, 10);
+            $bog_gamengine_particle_test_run(emitter, 1);
+            $mol_assert_equal(emitter.pool().count, 10);
+        },
+        'frames switch layer by age through the atlas'() {
+            const atlas = new $bog_gamengine_atlas;
+            atlas.uris(['x/a.png', 'x/b.png']);
+            const emitter = $bog_gamengine_particle_test_emitter(0, 1);
+            emitter.atlas(atlas);
+            emitter.frames(['a', 'b']);
+            emitter.burst(1);
+            emitter.step(0.25);
+            $mol_assert_equal(emitter.pool().layer[0], 0);
+            emitter.step(0.5);
+            $mol_assert_equal(emitter.pool().layer[0], 1);
+        },
+        'local space particles follow the emitter, world space ones stay'() {
+            const local = $bog_gamengine_particle_test_emitter(0, 10);
+            local.world_space(false);
+            local.speed(new Float32Array([0, 0]));
+            local.pos(new Float32Array([5, 0, 0]));
+            local.burst(1);
+            local.pos(new Float32Array([7, 0, 0]));
+            local.step(0);
+            $mol_assert_equal(local.pool().trans[12], 7);
+            const world = $bog_gamengine_particle_test_emitter(0, 10);
+            world.speed(new Float32Array([0, 0]));
+            world.pos(new Float32Array([5, 0, 0]));
+            world.burst(1);
+            world.pos(new Float32Array([7, 0, 0]));
+            world.step(0);
+            $mol_assert_equal(world.pool().trans[12], 5);
+        },
+        'billboard takes rotation from the scene camera'() {
+            const scene = new $bog_gamengine_scene;
+            const cam = new $bog_gamengine_cam;
+            cam.rot(new Float32Array([0, Math.PI / 2, 0]));
+            scene.cam(cam);
+            const emitter = $bog_gamengine_particle_test_emitter(0, 10);
+            emitter.billboard(true);
+            emitter.speed(new Float32Array([0, 0]));
+            scene.kids([emitter]);
+            emitter.burst(1);
+            const trans = emitter.pool().trans;
+            $mol_assert_ok(Math.abs(trans[0]) < 1e-6);
+            $mol_assert_equal(Math.round(trans[2] * 1e6) / 1e6, -1);
+            $mol_assert_equal(Math.round(trans[5] * 1e6) / 1e6, 1);
+        },
+        'spread zero sends every particle along minus z of the emitter'() {
+            const emitter = $bog_gamengine_particle_test_emitter(0, 10);
+            emitter.speed(new Float32Array([2, 2]));
+            emitter.burst(5);
+            const vel = emitter.pool().vel;
+            for (let i = 0; i < 5; ++i) {
+                $mol_assert_ok(Math.abs(vel[i * 3]) < 1e-6);
+                $mol_assert_ok(Math.abs(vel[i * 3 + 1]) < 1e-6);
+                $mol_assert_ok(Math.abs(vel[i * 3 + 2] + 2) < 1e-6);
+            }
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function $bog_gamengine_tilemap_test_atlas() {
+        const atlas = new $bog_gamengine_atlas;
+        atlas.sources(['wall', 'floor'].map(name => ({ name, image: { width: 64, height: 64 } })));
+        return atlas;
+    }
+    function $bog_gamengine_tilemap_test_make(map = '#.#\n..#') {
+        const tile = new $bog_gamengine_phys_tile;
+        tile.map(map);
+        const node = new $bog_gamengine_tilemap;
+        node.tile(tile);
+        node.atlas($bog_gamengine_tilemap_test_atlas());
+        node.palette({ '#': 'wall', '.': 'floor' });
+        node.emit();
+        return node;
+    }
+    $mol_test({
+        'map of three by two gives an instance per cell'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            $mol_assert_equal(node.pool().count, 6);
+        },
+        'cell kinds take their layers from the atlas'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            const layer = node.pool().layer;
+            $mol_assert_equal(layer[0], 0);
+            $mol_assert_equal(layer[1], 1);
+        },
+        'char outside the palette is skipped'() {
+            const node = $bog_gamengine_tilemap_test_make('#x#\n..#');
+            $mol_assert_equal(node.pool().count, 5);
+        },
+        'first cell sits in the center the tile gives it'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            const pos = node.tile().cell_pos(0, 0, new Float32Array(3));
+            const trans = node.pool().trans;
+            $mol_assert_equal(trans[12], pos[0]);
+            $mol_assert_equal(trans[13], pos[1]);
+            $mol_assert_equal(trans[14], pos[2]);
+        },
+        'edit of the map refills the pool'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            node.tile().map('##\n##\n##\n##');
+            node.emit();
+            $mol_assert_equal(node.pool().count, 8);
+        },
+        'aabb covers the whole map'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            const tile = node.tile();
+            const box = node.aabb();
+            $mol_assert_equal(box[0], 0);
+            $mol_assert_equal(box[1], -tile.height());
+            $mol_assert_equal(box[3], tile.width());
+            $mol_assert_equal(box[4], 0);
         },
     });
 })($ || ($ = {}));
@@ -31180,6 +31562,37 @@ var $;
             $mol_assert_equal(batches.length, 2);
             $mol_assert_equal(batches[1].shader(), own.shader());
         },
+        'source node gets its own batch without uv'() {
+            const atlas = new $bog_gamengine_atlas;
+            atlas.uris(['bog/gamengine/demo/atlas/hero.png']);
+            const spark = new $bog_gamengine_particle;
+            spark.atlas(atlas);
+            const scene = new $bog_gamengine_scene;
+            scene.kids([spark]);
+            const batches = scene.auto_batches();
+            $mol_assert_equal(batches.length, 1);
+            $mol_assert_equal(batches[0].source(), spark.pool());
+            $mol_assert_equal(batches[0].nodes(), []);
+            $mol_assert_equal(batches[0].atlas(), atlas);
+            $mol_assert_ok(batches[0].shader() instanceof $bog_gamengine_shader_sprite);
+        },
+        'auto batches keep the order the nodes are listed in'() {
+            const atlas = new $bog_gamengine_atlas;
+            atlas.uris(['bog/gamengine/demo/atlas/hero.png']);
+            const map = new $bog_gamengine_tilemap;
+            map.atlas(atlas);
+            const hero = new $bog_gamengine_sprite;
+            hero.atlas(atlas);
+            const spark = new $bog_gamengine_particle;
+            spark.atlas(atlas);
+            const scene = new $bog_gamengine_scene;
+            scene.kids([map, hero, spark]);
+            const batches = scene.auto_batches();
+            $mol_assert_equal(batches.length, 3);
+            $mol_assert_equal(batches[0].source(), map.pool());
+            $mol_assert_equal(batches[1].nodes(), [hero]);
+            $mol_assert_equal(batches[2].source(), spark.pool());
+        },
         'nodes without layer and uv stay out of auto batches'() {
             const bare = new $bog_gamengine_node;
             const scene = new $bog_gamengine_scene;
@@ -32040,6 +32453,23 @@ var $;
             const out = project(cam.proj(1), [0, 0, -cam.far(), 1]);
             $mol_assert_ok(Math.abs(out[2] / out[3] - 1) < 1e-6);
         },
+        'follow puts the camera over the node with its turn'() {
+            const node = new $bog_gamengine_node;
+            node.pos(new Float32Array([2, 1, -3]));
+            node.rot(new Float32Array([0.25, 0.5, 0]));
+            const cam = new $bog_gamengine_cam_deep;
+            cam.follow(node);
+            cam.lift(0.5);
+            cam.step(1 / 60);
+            $mol_assert_equal(Array.from(cam.pos()), [2, 1.5, -3]);
+            $mol_assert_equal(Array.from(cam.rot()), [0.25, 0.5, 0]);
+        },
+        'follow of nothing leaves the camera alone'() {
+            const cam = new $bog_gamengine_cam_deep;
+            const pos = cam.pos();
+            cam.step(1 / 60);
+            $mol_assert_equal(cam.pos(), pos);
+        },
     });
 })($ || ($ = {}));
 
@@ -32336,66 +32766,6 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    function $bog_gamengine_tilemap_test_atlas() {
-        const atlas = new $bog_gamengine_atlas;
-        atlas.sources(['wall', 'floor'].map(name => ({ name, image: { width: 64, height: 64 } })));
-        return atlas;
-    }
-    function $bog_gamengine_tilemap_test_make(map = '#.#\n..#') {
-        const tile = new $bog_gamengine_phys_tile;
-        tile.map(map);
-        const node = new $bog_gamengine_tilemap;
-        node.tile(tile);
-        node.atlas($bog_gamengine_tilemap_test_atlas());
-        node.palette({ '#': 'wall', '.': 'floor' });
-        node.emit();
-        return node;
-    }
-    $mol_test({
-        'map of three by two gives an instance per cell'() {
-            const node = $bog_gamengine_tilemap_test_make();
-            $mol_assert_equal(node.pool().count, 6);
-        },
-        'cell kinds take their layers from the atlas'() {
-            const node = $bog_gamengine_tilemap_test_make();
-            const layer = node.pool().layer;
-            $mol_assert_equal(layer[0], 0);
-            $mol_assert_equal(layer[1], 1);
-        },
-        'char outside the palette is skipped'() {
-            const node = $bog_gamengine_tilemap_test_make('#x#\n..#');
-            $mol_assert_equal(node.pool().count, 5);
-        },
-        'first cell sits in the center the tile gives it'() {
-            const node = $bog_gamengine_tilemap_test_make();
-            const pos = node.tile().cell_pos(0, 0, new Float32Array(3));
-            const trans = node.pool().trans;
-            $mol_assert_equal(trans[12], pos[0]);
-            $mol_assert_equal(trans[13], pos[1]);
-            $mol_assert_equal(trans[14], pos[2]);
-        },
-        'edit of the map refills the pool'() {
-            const node = $bog_gamengine_tilemap_test_make();
-            node.tile().map('##\n##\n##\n##');
-            node.emit();
-            $mol_assert_equal(node.pool().count, 8);
-        },
-        'aabb covers the whole map'() {
-            const node = $bog_gamengine_tilemap_test_make();
-            const tile = node.tile();
-            const box = node.aabb();
-            $mol_assert_equal(box[0], 0);
-            $mol_assert_equal(box[1], -tile.height());
-            $mol_assert_equal(box[3], tile.width());
-            $mol_assert_equal(box[4], 0);
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
     function grid(map) {
         const tile = new $bog_gamengine_phys_tile;
         tile.map(map);
@@ -32583,147 +32953,6 @@ var $;
                 b.step(1 / 60);
             }
             $mol_assert_ok(b.pos()[0] - a.pos()[0] > 0.2);
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    function $bog_gamengine_particle_test_emitter(rate, life) {
-        const emitter = new $bog_gamengine_particle;
-        emitter.rate(rate);
-        emitter.life(new Float32Array([life, life]));
-        return emitter;
-    }
-    function $bog_gamengine_particle_test_run(emitter, seconds, steps = 60) {
-        const dt = 1 / steps;
-        for (let i = 0; i < Math.round(seconds * steps); ++i)
-            emitter.step(dt);
-        return emitter.pool().count;
-    }
-    $mol_test({
-        'rate 100 for a second with life 2 keeps about 100 alive'() {
-            const count = $bog_gamengine_particle_test_run($bog_gamengine_particle_test_emitter(100, 2), 1);
-            $mol_assert_ok(count >= 95 && count <= 105);
-        },
-        'rate 100 for a second with life 0.5 keeps about 50 alive'() {
-            const count = $bog_gamengine_particle_test_run($bog_gamengine_particle_test_emitter(100, 0.5), 1);
-            $mol_assert_ok(count >= 45 && count <= 55);
-        },
-        'burst of 20 gives 20 at once'() {
-            const emitter = $bog_gamengine_particle_test_emitter(0, 1);
-            $mol_assert_equal(emitter.burst(20), 20);
-            $mol_assert_equal(emitter.pool().count, 20);
-        },
-        'particles die by age so after life count drops to zero'() {
-            const emitter = $bog_gamengine_particle_test_emitter(0, 0.5);
-            emitter.burst(10);
-            $bog_gamengine_particle_test_run(emitter, 0.6);
-            $mol_assert_equal(emitter.pool().count, 0);
-        },
-        'gravity lowers the mean position'() {
-            const emitter = $bog_gamengine_particle_test_emitter(0, 10);
-            emitter.speed(new Float32Array([0, 0]));
-            emitter.gravity(new Float32Array([0, -10, 0]));
-            emitter.burst(50);
-            $bog_gamengine_particle_test_run(emitter, 0.5);
-            const pool = emitter.pool();
-            let sum = 0;
-            for (let i = 0; i < pool.count; ++i)
-                sum += pool.pos[i * 3 + 1];
-            $mol_assert_ok(sum / pool.count < -1);
-        },
-        'color and size are halfway at half life'() {
-            const emitter = $bog_gamengine_particle_test_emitter(0, 1);
-            emitter.speed(new Float32Array([0, 0]));
-            emitter.color(new Float32Array([1, 0, 0, 1, 0, 0, 1, 0]));
-            emitter.size(new Float32Array([1, 0]));
-            emitter.burst(1);
-            emitter.step(0.5);
-            const pool = emitter.pool();
-            $mol_assert_equal([...pool.tint.subarray(0, 4)], [0.5, 0, 0.5, 0.5]);
-            $mol_assert_equal(pool.trans[0], 0.5);
-            $mol_assert_equal(pool.trans[5], 0.5);
-            $mol_assert_equal(pool.size[0], 0.5);
-        },
-        'aabb covers every particle'() {
-            const emitter = $bog_gamengine_particle_test_emitter(0, 10);
-            emitter.spread(Math.PI);
-            emitter.speed(new Float32Array([1, 3]));
-            emitter.burst(100);
-            $bog_gamengine_particle_test_run(emitter, 0.5);
-            const pool = emitter.pool();
-            for (let i = 0; i < pool.count; ++i) {
-                for (let k = 0; k < 3; ++k) {
-                    const at = pool.pos[i * 3 + k];
-                    $mol_assert_ok(at >= pool.aabb[i * 6 + k] && at <= pool.aabb[i * 6 + 3 + k]);
-                }
-            }
-        },
-        'count never exceeds cap'() {
-            const emitter = $bog_gamengine_particle_test_emitter(1000, 10);
-            emitter.pool().cap(10);
-            emitter.burst(50);
-            $mol_assert_equal(emitter.pool().count, 10);
-            $bog_gamengine_particle_test_run(emitter, 1);
-            $mol_assert_equal(emitter.pool().count, 10);
-        },
-        'frames switch layer by age through the atlas'() {
-            const atlas = new $bog_gamengine_atlas;
-            atlas.uris(['x/a.png', 'x/b.png']);
-            const emitter = $bog_gamengine_particle_test_emitter(0, 1);
-            emitter.atlas(atlas);
-            emitter.frames(['a', 'b']);
-            emitter.burst(1);
-            emitter.step(0.25);
-            $mol_assert_equal(emitter.pool().layer[0], 0);
-            emitter.step(0.5);
-            $mol_assert_equal(emitter.pool().layer[0], 1);
-        },
-        'local space particles follow the emitter, world space ones stay'() {
-            const local = $bog_gamengine_particle_test_emitter(0, 10);
-            local.world_space(false);
-            local.speed(new Float32Array([0, 0]));
-            local.pos(new Float32Array([5, 0, 0]));
-            local.burst(1);
-            local.pos(new Float32Array([7, 0, 0]));
-            local.step(0);
-            $mol_assert_equal(local.pool().trans[12], 7);
-            const world = $bog_gamengine_particle_test_emitter(0, 10);
-            world.speed(new Float32Array([0, 0]));
-            world.pos(new Float32Array([5, 0, 0]));
-            world.burst(1);
-            world.pos(new Float32Array([7, 0, 0]));
-            world.step(0);
-            $mol_assert_equal(world.pool().trans[12], 5);
-        },
-        'billboard takes rotation from the scene camera'() {
-            const scene = new $bog_gamengine_scene;
-            const cam = new $bog_gamengine_cam;
-            cam.rot(new Float32Array([0, Math.PI / 2, 0]));
-            scene.cam(cam);
-            const emitter = $bog_gamengine_particle_test_emitter(0, 10);
-            emitter.billboard(true);
-            emitter.speed(new Float32Array([0, 0]));
-            scene.kids([emitter]);
-            emitter.burst(1);
-            const trans = emitter.pool().trans;
-            $mol_assert_ok(Math.abs(trans[0]) < 1e-6);
-            $mol_assert_equal(Math.round(trans[2] * 1e6) / 1e6, -1);
-            $mol_assert_equal(Math.round(trans[5] * 1e6) / 1e6, 1);
-        },
-        'spread zero sends every particle along minus z of the emitter'() {
-            const emitter = $bog_gamengine_particle_test_emitter(0, 10);
-            emitter.speed(new Float32Array([2, 2]));
-            emitter.burst(5);
-            const vel = emitter.pool().vel;
-            for (let i = 0; i < 5; ++i) {
-                $mol_assert_ok(Math.abs(vel[i * 3]) < 1e-6);
-                $mol_assert_ok(Math.abs(vel[i * 3 + 1]) < 1e-6);
-                $mol_assert_ok(Math.abs(vel[i * 3 + 2] + 2) < 1e-6);
-            }
         },
     });
 })($ || ($ = {}));
@@ -33021,9 +33250,23 @@ var $;
             lines.points(new Float32Array([0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0]));
             $mol_assert_equal(lines.geometry().length, 12);
             $mol_assert_equal(lines.size(), 4);
-            $mol_assert_equal(lines.count(), 4);
+            $mol_assert_equal(lines.count(), 2);
             $mol_assert_equal(lines.normals().length, 12);
             $mol_assert_equal(lines.skin().length, 8);
+        },
+        'count cuts the drawn vertices and keeps the buffers'($) {
+            const lines = $bog_gamengine_shape_lines.make({ $ });
+            lines.points(new Float32Array([0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0]));
+            lines.count(1);
+            $mol_assert_equal(lines.size(), 2);
+            $mol_assert_equal(lines.geometry().length, 12);
+            $mol_assert_equal(lines.normals().length, 12);
+        },
+        'count over the points draws no more than there are'($) {
+            const lines = $bog_gamengine_shape_lines.make({ $ });
+            lines.points(new Float32Array([0, 0, 0, 1, 0, 0]));
+            lines.count(5);
+            $mol_assert_equal(lines.size(), 2);
         },
         'lines normals and skin are zeros'($) {
             const lines = $bog_gamengine_shape_lines.make({ $ });
