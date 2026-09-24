@@ -253,6 +253,21 @@ namespace $ {
 			$mol_assert_equal( app.list_values( 'next' ), [ { to: 'Ждёт', when: '' } ] )
 		},
 
+		'inspector writes into the nested node, not into its neighbour'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.source( $bog_gamestudio_sample_nest )
+			const titles = app.Scene().nodes().map( node => node.title() )
+			$mol_assert_equal( titles, [ 'Сторож', 'Ходит', 'Ждёт', 'Метка' ] )
+			app.selected( titles.indexOf( 'Ходит' ) )
+			app.Vec_num( 'pos_0' ).value( 5 )
+			const nodes = app.Scene().nodes()
+			const walk = nodes.find( node => node.title() === 'Ходит' )!
+			$mol_assert_equal( walk.pos()[ 0 ], 5 )
+			$mol_assert_equal( nodes.find( node => node.title() === 'Метка' )!.pos()[ 0 ], 2 )
+			walk.pos([ 7, 0, 0 ])
+			$mol_assert_equal( walk.pos()[ 0 ], 7 )
+		},
+
 		'gizmo hit on the x arrow'( $ ) {
 			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
 		},

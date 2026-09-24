@@ -6,6 +6,7 @@ namespace $ {
 
 	export type $bog_gamestudio_doc_node = {
 		readonly name: string
+		readonly path: string
 		readonly title: string
 		readonly klass: string
 		readonly props: Readonly< Record< string, $mol_tree2 > >
@@ -51,25 +52,53 @@ namespace $ {
 			return map
 		}
 
+		refs( name: string ): readonly $mol_tree2[] {
+			const klass = this.decls().get( name )
+			if( !klass ) return []
+			return klass.select( 'kids', '/', '<=', null ).kids
+		}
+
 		@ $mol_mem
 		nodes(): readonly $bog_gamestudio_doc_node[] {
-			const root = this.decls().get( '' )
-			if( !root ) return []
-			return root.select( 'kids', '/', '<=', null ).kids.map( ref => this.node( ref.type ) )
+			const list = [] as $bog_gamestudio_doc_node[]
+			const seen = new Set< string >()
+			const walk = ( name: string, prefix: string )=> {
+				if( seen.has( name ) ) return
+				seen.add( name )
+				for( const ref of this.refs( name ) ) {
+					const path = prefix + ref.type
+					list.push( this.node( path ) )
+					walk( ref.type, path + '/' )
+				}
+			}
+			walk( '', '' )
+			return list
+		}
+
+		path_at( steps: readonly number[] ) {
+			let name = ''
+			let path = ''
+			for( let i = 0; i < steps.length; ++ i ) {
+				const ref = this.refs( name )[ steps[ i ] ]
+				if( !ref ) return ''
+				name = ref.type
+				path = path ? `${ path }/${ name }` : name
+			}
+			return path
 		}
 
 		@ $mol_mem_key
-		node( name: string ): $bog_gamestudio_doc_node {
+		node( path: string ): $bog_gamestudio_doc_node {
+			const name = path.slice( path.lastIndexOf( '/' ) + 1 )
 			const klass = this.decls().get( name )
-			if( !klass ) return $mol_fail( new Error( `Node ${ name } is not declared` ) )
+			if( !klass ) return $mol_fail( new Error( `Node ${ path } is not declared` ) )
 			const props = {} as Record< string, $mol_tree2 >
 			for( const line of klass.kids ) props[ line.type.replace( /\?$/, '' ) ] = line
-			return { name, title: props.name?.text() || name, klass: klass.type, props }
+			return { name, path, title: props.name?.text() || name, klass: klass.type, props }
 		}
 
-		set( title: string, prop: string, value: $bog_gamestudio_doc_value ) {
-			const node = this.nodes().find( node => node.title === title )
-			if( !node ) return $mol_fail( new Error( `Node ${ title } is not found` ) )
+		set( path: string, prop: string, value: $bog_gamestudio_doc_value ) {
+			const node = this.node( path )
 			const klass = this.decls().get( node.name )!
 			const tree = this.tree()
 			const line = this.line( tree, prop, value )
@@ -79,9 +108,8 @@ namespace $ {
 			this.source( this.print( swap( tree ) ) )
 		}
 
-		list_rows( title: string, prop: string ): readonly $bog_gamestudio_doc_row[] {
-			const node = this.nodes().find( node => node.title === title )
-			if( !node ) return $mol_fail( new Error( `Node ${ title } is not found` ) )
+		list_rows( path: string, prop: string ): readonly $bog_gamestudio_doc_row[] {
+			const node = this.node( path )
 			const items = node.props[ prop ]?.kids[ 0 ]?.kids ?? []
 			return items.map( item => {
 				const row = {} as Record< string, string >
@@ -90,8 +118,8 @@ namespace $ {
 			} )
 		}
 
-		list_write( title: string, prop: string, rows: readonly $bog_gamestudio_doc_row[] ) {
-			const node = this.nodes().find( node => node.title === title )!
+		list_write( path: string, prop: string, rows: readonly $bog_gamestudio_doc_row[] ) {
+			const node = this.node( path )
 			const klass = this.decls().get( node.name )!
 			const tree = this.tree()
 			const head = tree.span.span( 1, 1, 0 )
@@ -105,16 +133,16 @@ namespace $ {
 			this.source( this.print( swap( tree ) ) )
 		}
 
-		list_set( title: string, prop: string, index: number, field: string, value: string ) {
-			this.list_write( title, prop, this.list_rows( title, prop ).map( ( row, at )=> at === index ? { ... row, [ field ]: value } : row ) )
+		list_set( path: string, prop: string, index: number, field: string, value: string ) {
+			this.list_write( path, prop, this.list_rows( path, prop ).map( ( row, at )=> at === index ? { ... row, [ field ]: value } : row ) )
 		}
 
-		list_add( title: string, prop: string, row: $bog_gamestudio_doc_row ) {
-			this.list_write( title, prop, [ ... this.list_rows( title, prop ), row ] )
+		list_add( path: string, prop: string, row: $bog_gamestudio_doc_row ) {
+			this.list_write( path, prop, [ ... this.list_rows( path, prop ), row ] )
 		}
 
-		list_drop( title: string, prop: string, index: number ) {
-			this.list_write( title, prop, this.list_rows( title, prop ).filter( ( row, at )=> at !== index ) )
+		list_drop( path: string, prop: string, index: number ) {
+			this.list_write( path, prop, this.list_rows( path, prop ).filter( ( row, at )=> at !== index ) )
 		}
 
 		@ $mol_mem
@@ -302,12 +330,18 @@ namespace $ {
 			return tree.clone( items )
 		}
 
+		bound( tree: $mol_tree2 ): boolean {
+			if( /^(<=|=>)/.test( tree.type ) ) return true
+			for( const kid of tree.kids ) if( this.bound( kid ) ) return true
+			return false
+		}
+
 		unlock( tree: $mol_tree2 ): $mol_tree2 {
 			const klass = tree.kids[ 0 ]
 			if( !/^[A-Z]/.test( tree.type ) || !klass?.type.startsWith( '$' ) ) return tree.clone( tree.kids.map( kid => this.unlock( kid ) ) )
 			return tree.clone([ klass.clone( klass.kids.map( line => {
 				const value = line.kids[ 0 ]
-				if( line.kids.length !== 1 || /^[<=>^@*$]/.test( value.type ) ) return this.unlock( line )
+				if( line.kids.length !== 1 || /^[<=>^@*$]/.test( value.type ) || this.bound( value ) ) return this.unlock( line )
 				const prop = line.type.replace( /\?$/, '' )
 				return line.struct( prop + '?', [ line.struct( '<=>', [ line.struct( `${ tree.type }_${ prop }?`, [ value ] ) ] ) ] )
 			} ) ) ])

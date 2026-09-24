@@ -17,7 +17,7 @@ namespace $ {
 		'set changes exactly one line of the source'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
 			const before = doc.source().split( '\n' )
-			doc.set( 'Герой', 'pos', [ 3, 0, 0 ] )
+			doc.set( 'Hero', 'pos', [ 3, 0, 0 ] )
 			const after = doc.source().split( '\n' )
 			$mol_assert_equal( after.length, before.length )
 			const changed = before.filter( ( line, index )=> line !== after[ index ] )
@@ -27,14 +27,14 @@ namespace $ {
 
 		'set adds a missing line to the node'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
-			doc.set( 'Стена', 'flip_x', true )
+			doc.set( 'Wall', 'flip_x', true )
 			$mol_assert_ok( doc.source().includes( '\t\t\tpos / 0 0 0\n\t\t\tflip_x true\n' ) )
 		},
 
 		'scene follows the document'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
 			$mol_assert_equal( doc.scene().nodes()[ 0 ].pos()[ 0 ], -2 )
-			doc.set( 'Герой', 'pos', [ 3, 0, 0 ] )
+			doc.set( 'Hero', 'pos', [ 3, 0, 0 ] )
 			$mol_assert_equal( doc.scene().nodes()[ 0 ].pos()[ 0 ], 3 )
 			$mol_assert_equal( doc.scene().nodes()[ 0 ].title(), 'Герой' )
 		},
@@ -48,7 +48,7 @@ namespace $ {
 		'set gives a new scene with the new value'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
 			const before = doc.scene()
-			doc.set( 'Герой', 'pos', [ 3, 0, 0 ] )
+			doc.set( 'Hero', 'pos', [ 3, 0, 0 ] )
 			$mol_assert_not( doc.scene() === before )
 			$mol_assert_equal( doc.scene().nodes()[ 0 ].pos()[ 0 ], 3 )
 		},
@@ -61,7 +61,7 @@ namespace $ {
 			hero.frame( 'coin' )
 			$mol_assert_equal( hero.frame(), 'coin' )
 			$mol_assert_equal( doc.source(), $bog_gamestudio_sample )
-			doc.set( 'Герой', 'pos', [ 3, 0, 0 ] )
+			doc.set( 'Hero', 'pos', [ 3, 0, 0 ] )
 			$mol_assert_equal( doc.scene().nodes()[ 0 ].pos()[ 0 ], 3 )
 			$mol_assert_equal( ( doc.scene().nodes()[ 0 ] as $bog_gamengine_sprite ).frame(), 'hero' )
 		},
@@ -69,7 +69,7 @@ namespace $ {
 		'clock survives the recompilation'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
 			const clock = doc.scene().clock()
-			doc.set( 'Герой', 'pos', [ 3, 0, 0 ] )
+			doc.set( 'Hero', 'pos', [ 3, 0, 0 ] )
 			$mol_assert_ok( doc.scene().clock() === clock )
 		},
 
@@ -104,13 +104,13 @@ namespace $ {
 
 		'list rows are read from the document'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample_brain )
-			$mol_assert_equal( doc.list_rows( 'Ходит', 'next' ), [ { to: 'Ждёт', when: 'near' } ] )
+			$mol_assert_equal( doc.list_rows( 'Walk', 'next' ), [ { to: 'Ждёт', when: 'near' } ] )
 		},
 
 		'edit of a list row changes exactly one line of the source'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample_brain )
 			const before = doc.source().split( '\n' )
-			doc.list_set( 'Ходит', 'next', 0, 'when', 'far' )
+			doc.list_set( 'Walk', 'next', 0, 'when', 'far' )
 			const after = doc.source().split( '\n' )
 			$mol_assert_equal( after.length, before.length )
 			const changed = before.filter( ( line, index )=> line !== after[ index ] )
@@ -120,18 +120,18 @@ namespace $ {
 
 		'row added to a list becomes a record of the source'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample_brain )
-			doc.list_add( 'Ходит', 'next', { to: 'Спит', when: 'tired' } )
+			doc.list_add( 'Walk', 'next', { to: 'Спит', when: 'tired' } )
 			$mol_assert_ok( doc.source().includes( '\t\t\tnext /\n\t\t\t\t*\n\t\t\t\t\tto \\Ждёт\n\t\t\t\t\twhen \\near\n\t\t\t\t*\n\t\t\t\t\tto \\Спит\n\t\t\t\t\twhen \\tired\n\t\t<= Wait ' ) )
-			$mol_assert_equal( doc.list_rows( 'Ходит', 'next' ).length, 2 )
+			$mol_assert_equal( doc.list_rows( 'Walk', 'next' ).length, 2 )
 		},
 
 		'dropped row leaves the rest of the list'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample_brain )
-			doc.list_add( 'Ходит', 'next', { to: 'Спит', when: 'tired' } )
-			doc.list_drop( 'Ходит', 'next', 0 )
-			$mol_assert_equal( doc.list_rows( 'Ходит', 'next' ), [ { to: 'Спит', when: 'tired' } ] )
-			doc.list_drop( 'Ходит', 'next', 0 )
-			$mol_assert_equal( doc.list_rows( 'Ходит', 'next' ), [] )
+			doc.list_add( 'Walk', 'next', { to: 'Спит', when: 'tired' } )
+			doc.list_drop( 'Walk', 'next', 0 )
+			$mol_assert_equal( doc.list_rows( 'Walk', 'next' ), [ { to: 'Спит', when: 'tired' } ] )
+			doc.list_drop( 'Walk', 'next', 0 )
+			$mol_assert_equal( doc.list_rows( 'Walk', 'next' ), [] )
 			$mol_assert_ok( doc.source().includes( '\t\t\tnext /\n' ) )
 		},
 
@@ -140,7 +140,7 @@ namespace $ {
 			const state = ()=> doc.scene().nodes().find( node => node.title() === 'Ходит' ) as $bog_gamengine_brain_state
 			$mol_assert_equal( state().next().length, 1 )
 			$mol_assert_equal( state().next()[ 0 ].when, 'near' )
-			doc.list_set( 'Ходит', 'next', 0, 'when', 'far' )
+			doc.list_set( 'Walk', 'next', 0, 'when', 'far' )
 			$mol_assert_equal( state().next()[ 0 ].when, 'far' )
 		},
 

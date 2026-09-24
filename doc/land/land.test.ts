@@ -60,7 +60,7 @@ namespace $ {
 
 		'set of a document with a land rewrites the text of the land'( $ ) {
 			const { land, doc } = opened( $ )
-			doc.set( 'Герой', 'pos', [ 3, 0, 0 ] )
+			doc.set( 'Hero', 'pos', [ 3, 0, 0 ] )
 			$mol_assert_not( land.text().includes( 'pos / 3 0 0' ) )
 			$mol_after_mock_warp()
 			$mol_assert_ok( land.text().includes( 'pos / 3 0 0' ) )

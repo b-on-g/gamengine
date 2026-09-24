@@ -54,4 +54,21 @@ namespace $ {
 		'\t\t\tname \\Ждёт',
 	].join( '\n' ) + '\n'
 
+	export const $bog_gamestudio_sample_nest = [
+		'$bog_gamestudio_sample_nest $bog_gamengine_scene',
+		'\tkids /',
+		'\t\t<= Guard $bog_gamengine_brain_fsm',
+		'\t\t\tname \\Сторож',
+		'\t\t\tkids /',
+		'\t\t\t\t<= Walk $bog_gamengine_brain_state',
+		'\t\t\t\t\tname \\Ходит',
+		'\t\t\t\t\tpos / 1 0 0',
+		'\t\t\t\t<= Wait $bog_gamengine_brain_state',
+		'\t\t\t\t\tname \\Ждёт',
+		'\t\t\t\t\tpos / 0 1 0',
+		'\t\t<= Mark $bog_gamengine_node',
+		'\t\t\tname \\Метка',
+		'\t\t\tpos / 2 0 0',
+	].join( '\n' ) + '\n'
+
 }

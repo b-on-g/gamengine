@@ -472,16 +472,24 @@ namespace $.$$ {
 			return []
 		}
 
-		doc_title() {
-			const index = this.selected()
-			if( index === null ) return ''
-			return this.Doc().nodes()[ index ]?.title ?? ''
+		@ $mol_mem
+		doc_path() {
+			let node = this.node()
+			if( !node ) return ''
+			const steps = [] as number[]
+			for( let parent = node.parent(); parent; parent = node.parent() ) {
+				const at = parent.kids().indexOf( node )
+				if( at < 0 ) return ''
+				steps.unshift( at )
+				node = parent
+			}
+			return this.Doc().path_at( steps )
 		}
 
 		write( prop: string, value: $bog_gamestudio_doc_value ) {
-			const title = this.doc_title()
-			if( !title ) return
-			this.Doc().set( title, prop, value )
+			const path = this.doc_path()
+			if( !path ) return
+			this.Doc().set( path, prop, value )
 		}
 
 		list_fields( name: string ) {
@@ -510,24 +518,24 @@ namespace $.$$ {
 		list_value( key: string, next?: string ) {
 			const [ name, index, field ] = key.split( '/' )
 			if( next === undefined ) return String( this.list_values( name )[ Number( index ) ]?.[ field ] ?? '' )
-			const title = this.doc_title()
-			if( title ) this.Doc().list_set( title, name, Number( index ), field, next )
+			const path = this.doc_path()
+			if( path ) this.Doc().list_set( path, name, Number( index ), field, next )
 			return next
 		}
 
 		list_drop( key: string, event?: Event | null ) {
 			const [ name, index ] = key.split( '/' )
-			const title = this.doc_title()
-			if( title ) this.Doc().list_drop( title, name, Number( index ) )
+			const path = this.doc_path()
+			if( path ) this.Doc().list_drop( path, name, Number( index ) )
 			return event ?? null
 		}
 
 		list_add( name: string, event?: Event | null ) {
-			const title = this.doc_title()
-			if( !title ) return event ?? null
+			const path = this.doc_path()
+			if( !path ) return event ?? null
 			const row = {} as Record< string, string >
 			for( const field of this.list_fields( name ) ) row[ field ] = ''
-			this.Doc().list_add( title, name, row )
+			this.Doc().list_add( path, name, row )
 			return event ?? null
 		}
 
