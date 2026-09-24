@@ -18,7 +18,8 @@ namespace $ {
 
 	export type $bog_gamengine_look_scene = {
 		readonly name: string
-		readonly demo: string
+		readonly demo?: string
+		readonly mark?: string
 		readonly click?: string
 		readonly spots: $bog_gamengine_look_spots
 	}
@@ -195,7 +196,8 @@ namespace $ {
 		return out as readonly string[]
 	}
 
-	export const $bog_gamengine_look_script = `
+	export function $bog_gamengine_look_script( scenes: readonly $bog_gamengine_look_scene[] = $bog_gamengine_look_scenes ) {
+		return `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 		const stats = ${ $bog_gamengine_look_stats.toString() }
 		const holds = new WeakMap()
@@ -248,8 +250,13 @@ namespace $ {
 			return sorted[ sorted.length >> 1 ]
 		}
 		const scenes = {}
-		for( const scene of ${ JSON.stringify( $bog_gamengine_look_scenes ) } ) {
-			location.hash = '#!demo=' + scene.demo
+		for( const scene of ${ JSON.stringify( scenes ) } ) {
+			if( scene.demo ) location.hash = '#!demo=' + scene.demo
+			let marked = !scene.mark
+			for( let i = 0; i < 600 && !marked; ++ i ) {
+				await frame()
+				marked = new RegExp( scene.mark ).test( document.body.innerText )
+			}
 			await settle( 240 )
 			if( scene.click ) {
 				const button = document.querySelector( scene.click )
@@ -266,6 +273,7 @@ namespace $ {
 			if( !takes.length ) { scenes[ scene.name ] = { steady: false }; continue }
 			const last = takes[ takes.length - 1 ]
 			scenes[ scene.name ] = {
+				marked,
 				median: middle( takes.map( take => take.median ) ),
 				low: middle( takes.map( take => take.low ) ),
 				high: middle( takes.map( take => take.high ) ),
@@ -284,10 +292,16 @@ namespace $ {
 		}
 		return { renderer, scenes }
 	`
+	}
 
 	export type $bog_gamengine_look_result = {
 		readonly renderer: string
-		readonly scenes: { readonly [ name: string ]: $bog_gamengine_look_shot & { readonly steady?: boolean } }
+		readonly scenes: {
+			readonly [ name: string ]: $bog_gamengine_look_shot & {
+				readonly steady?: boolean
+				readonly marked?: boolean
+			}
+		}
 	}
 
 	export function $bog_gamengine_look_soft( renderer: string ) {
@@ -297,20 +311,26 @@ namespace $ {
 	export async function $bog_gamengine_look_take(
 		root = $node.process.cwd(),
 		flags: readonly string[] = $bog_gamengine_look_soft_flags,
+		page = $bog_gamengine_look_page,
+		scenes: readonly $bog_gamengine_look_scene[] = $bog_gamengine_look_scenes,
 	) {
 		return await $bog_probe_run({
 			root,
 			flags,
-			page: $bog_gamengine_look_page,
+			page,
 			ready: $bog_gamengine_look_ready,
-			script: $bog_gamengine_look_script,
+			script: $bog_gamengine_look_script( scenes ),
 			width: $bog_gamengine_look_width,
 			height: $bog_gamengine_look_height,
 			limit: 180000,
 		}) as $bog_gamengine_look_result | typeof $bog_probe_skip
 	}
 
-	export async function $bog_gamengine_look_take_gpu( root = $node.process.cwd() ) {
+	export async function $bog_gamengine_look_take_gpu(
+		root = $node.process.cwd(),
+		page = $bog_gamengine_look_page,
+		scenes: readonly $bog_gamengine_look_scene[] = $bog_gamengine_look_scenes,
+	) {
 
 		const bin = $bog_probe_chrome_bin()
 		if( !bin ) return $bog_probe_skip
@@ -332,7 +352,7 @@ namespace $ {
 				deviceScaleFactor: 1,
 				mobile: false,
 			}, chrome.page )
-			await chrome.open_page( site.uri( $bog_gamengine_look_page ) )
+			await chrome.open_page( site.uri( page ) )
 
 			for( let step = 0; step < 600; ++ step ) {
 				const ready = await chrome.evaluate( `return ( ${ $bog_gamengine_look_ready } )` )
@@ -340,7 +360,7 @@ namespace $ {
 				await $bog_probe_pause( 100 )
 			}
 
-			return await chrome.evaluate( $bog_gamengine_look_script ) as $bog_gamengine_look_result
+			return await chrome.evaluate( $bog_gamengine_look_script( scenes ) ) as $bog_gamengine_look_result
 
 		} finally {
 			chrome.close()
@@ -353,11 +373,13 @@ namespace $ {
 	export async function $bog_gamengine_look_say(
 		root = $node.process.cwd(),
 		flags: readonly string[] = $bog_gamengine_look_soft_flags,
+		page = $bog_gamengine_look_page,
+		scenes: readonly $bog_gamengine_look_scene[] = $bog_gamengine_look_scenes,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, line + '\n' ); return line }
 
-		const got = await $bog_gamengine_look_take( root, flags )
+		const got = await $bog_gamengine_look_take( root, flags, page, scenes )
 		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
 
 		say( `рендерер: ${ got.renderer }` )
@@ -369,34 +391,36 @@ namespace $ {
 	export async function $bog_gamengine_look_check(
 		root = $node.process.cwd(),
 		flags: readonly string[] = $bog_gamengine_look_soft_flags,
+		page = $bog_gamengine_look_page,
+		scenes: readonly $bog_gamengine_look_scene[] = $bog_gamengine_look_scenes,
+		base = $bog_gamengine_look_base,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, 'подпись: ' + line + '\n' ); return line }
 
 		const started = Date.now()
-		const got = await $bog_gamengine_look_take( root, flags )
+		const got = await $bog_gamengine_look_take( root, flags, page, scenes )
 		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
 
 		say( `${ got.renderer }, ${ Date.now() - started } мс, ${ JSON.stringify( got.scenes ) }` )
 
 		const fail = ( reason: string )=> $mol_fail( new Error( reason ) )
 
-		const kept = $bog_gamengine_look_soft( got.renderer )
-			? $bog_gamengine_look_base.soft
-			: $bog_gamengine_look_base.gpu
+		const kept = $bog_gamengine_look_soft( got.renderer ) ? base.soft : base.gpu
 
 		const drift = [] as string[]
 
-		for( const scene of $bog_gamengine_look_scenes ) {
+		for( const scene of scenes ) {
 			const now = got.scenes[ scene.name ]
 			if( !now ) return fail( `сцена ${ scene.name } не снялась` )
+			if( now.marked === false ) return fail( `сцена ${ scene.name } не дождалась своей отметки ${ scene.mark }` )
 			if( now.steady === false ) return fail( `сцена ${ scene.name } не устаканилась` )
 			const base = kept[ scene.name ]
 			if( !base ) return fail( `для сцены ${ scene.name } нет записанной подписи` )
 			drift.push( ... $bog_gamengine_look_drift( scene.name, now, base ) )
 		}
 
-		if( drift.length ) return fail( `подпись ушла от записанной ${ $bog_gamengine_look_base.at }:\n  ${ drift.join( '\n  ' ) }` )
+		if( drift.length ) return fail( `подпись ушла от записанной ${ base.at }:\n  ${ drift.join( '\n  ' ) }` )
 
 		return say( $bog_gamengine_look_ok )
 	}
