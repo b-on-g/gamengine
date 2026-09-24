@@ -4121,6 +4121,14 @@ var $;
             $mol_assert_ok(shader.frag().includes('pipe_material'));
             $mol_assert_ok(shader.frag().includes('pipe_normal_layer'));
         },
+        'bump comes from the data atlas and albedo from the color one'($) {
+            const shader = new $bog_gamengine_shader_solid;
+            $mol_assert_equal(shader.face().glob.atlas_data, 'sampler2DArray');
+            const frag = shader.frag();
+            $mol_assert_ok(frag.includes('texture( atlas_data, vec3( pipe_uv, pipe_normal_layer ) )'));
+            $mol_assert_ok(frag.includes('texture( atlas, vec3( pipe_uv, pipe_layer ) )'));
+            $mol_assert_not(frag.includes('texture( atlas, vec3( pipe_uv, pipe_normal_layer ) )'));
+        },
         'shadow uniforms are in face and frag has a pcf function over shadow_map'($) {
             const shader = new $bog_gamengine_shader_solid;
             const glob = shader.face().glob;
@@ -5018,6 +5026,16 @@ var $;
             atlas.uris(['bog/gamengine/demo/atlas/hero.png']);
             $mol_assert_equal(atlas.ready(), false);
         },
+        'atlas keeps colors by default and takes data atlas apart'() {
+            const albedo = atlas_mock(['bog/gamengine/demo/atlas/wall.png']);
+            const maps = atlas_mock(['bog/gamengine/demo/atlas/wall_normal.png']);
+            maps.kind('data');
+            albedo.data(maps);
+            $mol_assert_equal(albedo.kind(), 'color');
+            $mol_assert_equal(maps.kind(), 'data');
+            $mol_assert_equal(albedo.data(), maps);
+            $mol_assert_equal(maps.data(), null);
+        },
         'placeholder image gives no size error and keeps atlas not ready'() {
             const atlas = new $bog_gamengine_atlas_blank_mock;
             atlas.uris(['bog/gamengine/demo/atlas/hero.png']);
@@ -5117,6 +5135,28 @@ var $;
         },
         'radius of box mesh is half diagonal of unit cube'() {
             $mol_assert_ok(Math.abs(new $bog_gamengine_mesh().radius() - Math.sqrt(3) / 2) < 1e-6);
+        },
+        'normal frame takes its layer from the data atlas, not from the albedo one'() {
+            const albedo = new $bog_gamengine_atlas;
+            albedo.uris(['bog/gamengine/demo/atlas/wall.png', 'bog/gamengine/demo/atlas/floor.png']);
+            const maps = new $bog_gamengine_atlas;
+            maps.kind('data');
+            maps.uris(['bog/gamengine/demo/atlas/floor.png', 'bog/gamengine/demo/atlas/wall.png']);
+            albedo.data(maps);
+            const mesh = new $bog_gamengine_mesh;
+            mesh.atlas(albedo);
+            mesh.frame('wall');
+            mesh.normal_frame('wall');
+            $mol_assert_equal(mesh.layer(), 0);
+            $mol_assert_equal(mesh.normal_layer(), 1);
+        },
+        'mesh without data atlas has no normal layer'() {
+            const albedo = new $bog_gamengine_atlas;
+            albedo.uris(['bog/gamengine/demo/atlas/wall.png']);
+            const mesh = new $bog_gamengine_mesh;
+            mesh.atlas(albedo);
+            mesh.normal_frame('wall');
+            $mol_assert_equal(mesh.normal_layer(), -1);
         },
         'set through props changes size'() {
             const mesh = new $bog_gamengine_mesh;
@@ -7341,7 +7381,7 @@ var $;
         },
         'bright pass keeps only what is over the threshold'($) {
             const frag = new $bog_gamengine_shader_post_bloom_bright().frag();
-            $mol_assert_ok(frag.includes('power - 0.4'));
+            $mol_assert_ok(frag.includes('power - 0.13'));
         },
         'source of the mix declares both samplers'($) {
             const shader = new $bog_gamengine_shader_post_bloom;
@@ -7366,11 +7406,12 @@ var $;
             const shader = new $bog_gamengine_shader_post_tone;
             $mol_assert_equal(shader.face().glob.source, 'sampler2D');
         },
-        'frag rolls the tone off and keeps white white'($) {
+        'frag rolls the tone off and encodes gamma at the end'($) {
             const shader = new $bog_gamengine_shader_post_tone;
             const frag = shader.frag();
             $mol_assert_ok(frag.includes('aces'));
-            $mol_assert_ok(frag.includes('vec3 white = aces( vec3( 1.0 ) )'));
+            $mol_assert_not(frag.includes('white'));
+            $mol_assert_ok(frag.includes('pow( mapped, vec3( 1.0 / 2.2 ) )'));
         },
         'source declares the sampler and the color output'($) {
             const shader = new $bog_gamengine_shader_post_tone;
@@ -7503,7 +7544,7 @@ var $;
         'clear colour is the dark default until it is set'($) {
             const draw = new $$.$bog_gamengine_draw;
             draw.$ = $;
-            $mol_assert_equal(draw.clear(), new Float32Array([0.08, 0.08, 0.1, 1]));
+            $mol_assert_equal(draw.clear(), new Float32Array([0.004, 0.004, 0.007, 1]));
             draw.clear([0.5, 0.7, 1, 1]);
             $mol_assert_equal(draw.clear(), new Float32Array([0.5, 0.7, 1, 1]));
         },
@@ -8431,6 +8472,104 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    function screen_stub() {
+        const calls = [];
+        const handlers = {};
+        const target = {
+            requestPointerLock() {
+                calls.push('lock');
+                return Promise.resolve();
+            },
+        };
+        const doc = {
+            fullscreenElement: null,
+            pointerLockElement: null,
+            documentElement: {
+                requestFullscreen() {
+                    calls.push('request');
+                    return Promise.resolve();
+                },
+            },
+            exitFullscreen() {
+                calls.push('exit');
+                return Promise.resolve();
+            },
+            exitPointerLock() { },
+            addEventListener(name, handler) {
+                handlers[name] = handler;
+            },
+            removeEventListener() { },
+        };
+        const screen = new $bog_gamengine_screen;
+        screen.$ = $$.$mol_ambient({ $mol_dom_context: { document: doc } });
+        screen.target(target);
+        return { screen, doc, calls, handlers, target };
+    }
+    function settle() {
+        return new Promise(done => setTimeout(done));
+    }
+    $mol_test({
+        async 'fullscreen on requests document element after tick'() {
+            const { screen, calls } = screen_stub();
+            screen.fullscreen(true);
+            $mol_assert_equal(calls, []);
+            await settle();
+            $mol_assert_equal(calls, ['request']);
+        },
+        async 'fullscreen off exits after tick'() {
+            const { screen, doc, calls } = screen_stub();
+            doc.fullscreenElement = doc.documentElement;
+            screen.fullscreen(false);
+            await settle();
+            $mol_assert_equal(calls, ['exit']);
+        },
+        async 'lock on requests pointer lock of the target after tick'() {
+            const { screen, calls } = screen_stub();
+            screen.lock(true);
+            $mol_assert_equal(calls, []);
+            await settle();
+            $mol_assert_equal(calls, ['lock']);
+        },
+        'fullscreenchange syncs the flag'() {
+            const { screen, doc, handlers } = screen_stub();
+            $mol_assert_equal(screen.fullscreen(), false);
+            doc.fullscreenElement = doc.documentElement;
+            handlers.fullscreenchange({});
+            $mol_assert_equal(screen.fullscreen(), true);
+        },
+        'mousemove while locked accumulates movement'() {
+            const { screen, doc, handlers, target } = screen_stub();
+            screen.lock(true);
+            doc.pointerLockElement = target;
+            handlers.mousemove({ movementX: 3, movementY: -2 });
+            handlers.mousemove({ movementX: 4, movementY: 1 });
+            $mol_assert_equal(screen.dx, 7);
+            $mol_assert_equal(screen.dy, -1);
+        },
+        'mousemove without lock is ignored'() {
+            const { screen, handlers } = screen_stub();
+            screen.lock(true);
+            handlers.mousemove({ movementX: 3, movementY: 2 });
+            $mol_assert_equal(screen.dx, 0);
+            $mol_assert_equal(screen.dy, 0);
+        },
+        'take returns movement and zeroes it'() {
+            const { screen, doc, handlers, target } = screen_stub();
+            screen.lock(true);
+            doc.pointerLockElement = target;
+            handlers.mousemove({ movementX: 5, movementY: -3 });
+            const out = new Float32Array(2);
+            $mol_assert_equal(screen.take(out), out);
+            $mol_assert_equal(Array.from(out), [5, -3]);
+            $mol_assert_equal(Array.from(screen.take(out)), [0, 0]);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     function walker_test_key(...held) {
         const key = new $bog_gamengine_key;
         key.bind({
@@ -8452,6 +8591,18 @@ var $;
         walker.input(input);
         walker.tile(tile);
         return walker;
+    }
+    function walker_test_screen() {
+        const doc = {
+            fullscreenElement: null,
+            pointerLockElement: null,
+            documentElement: {},
+            addEventListener() { },
+            removeEventListener() { },
+        };
+        const screen = new $bog_gamengine_screen;
+        screen.$ = $$.$mol_ambient({ $mol_dom_context: { document: doc } });
+        return screen;
     }
     function walker_test_tile() {
         const tile = new $bog_gamengine_phys_tile;
@@ -8488,6 +8639,42 @@ var $;
             const pos = walker.pos();
             walker.step(1);
             $mol_assert_equal(walker.pos(), pos);
+        },
+        'mouse right turns right and mouse down looks down'() {
+            const walker = walker_test_walker(walker_test_key());
+            const screen = walker_test_screen();
+            walker.screen(screen);
+            walker.sense(0.01);
+            screen.dx = 10;
+            screen.dy = 4;
+            walker.step(1);
+            const rot = walker.rot();
+            $mol_assert_ok(Math.abs(rot[1] + 0.1) < 1e-6);
+            $mol_assert_ok(Math.abs(rot[0] + 0.04) < 1e-6);
+            walker.step(1);
+            $mol_assert_equal(walker.rot(), rot);
+        },
+        'mouse look forward follows the new yaw'() {
+            const walker = walker_test_walker(walker_test_key('W'));
+            const screen = walker_test_screen();
+            walker.screen(screen);
+            walker.sense(Math.PI / 2);
+            screen.dx = -1;
+            walker.step(1);
+            const pos = walker.pos();
+            $mol_assert_ok(Math.abs(walker.rot()[1] - Math.PI / 2) < 1e-6);
+            $mol_assert_ok(Math.abs(pos[0] + walker.speed()) < 1e-6);
+            $mol_assert_ok(Math.abs(pos[2]) < 1e-6);
+        },
+        'pitch stops just short of straight down'() {
+            const walker = walker_test_walker(walker_test_key());
+            const screen = walker_test_screen();
+            walker.screen(screen);
+            walker.sense(0.01);
+            screen.dy = 1000;
+            walker.step(1);
+            $mol_assert_ok(Math.abs(walker.rot()[0] + Math.PI / 2) < 1e-2);
+            $mol_assert_ok(walker.rot()[0] > -Math.PI / 2);
         },
         'wall ahead stops at its face with radius'() {
             const walker = walker_test_walker(walker_test_key('W'), walker_test_tile());

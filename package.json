@@ -278,6 +278,7 @@
     "$bog_gamengine_mesh",
     "$bog_gamengine_demo_room_walker",
     "$bog_gamengine_cam_deep",
+    "$bog_gamengine_screen",
     "$bog_gamengine_demo_boxes",
     "$mol_number",
     "$mol_icon_menu_down_outline",

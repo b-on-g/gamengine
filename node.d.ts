@@ -3768,7 +3768,8 @@ declare namespace $ {
         send(data: ArrayBufferView): ArrayBufferView<ArrayBufferLike>;
         reserve(bytes: number): number;
     }
-    function $bog_gamengine_gl_texture_array(gl: WebGL2RenderingContext, images: readonly TexImageSource[], size: number): WebGLTexture;
+    function $bog_gamengine_gl_texture_array(gl: WebGL2RenderingContext, images: readonly TexImageSource[], size: number, srgb?: boolean): WebGLTexture;
+    function $bog_gamengine_gl_texture_array_flat(gl: WebGL2RenderingContext): WebGLTexture;
     class $bog_gamengine_gl_depth_target extends Object {
         readonly gl: WebGL2RenderingContext;
         readonly size: number;
@@ -4103,6 +4104,7 @@ declare namespace $ {
                 readonly proj: "mat4";
                 readonly view: "mat4";
                 readonly atlas: "sampler2DArray";
+                readonly atlas_data: "sampler2DArray";
                 readonly light_count: "int";
                 readonly light_pos: "vec4[8]";
                 readonly light_dir: "vec4[8]";
@@ -4259,6 +4261,7 @@ declare namespace $ {
 }
 
 declare namespace $ {
+    type $bog_gamengine_atlas_kind = 'color' | 'data';
     type $bog_gamengine_atlas_source = {
         name: string;
         image: TexImageSource;
@@ -4270,6 +4273,8 @@ declare namespace $ {
     class $bog_gamengine_atlas extends $mol_object2 {
         uris(next?: readonly string[]): readonly string[];
         size(next?: number): number;
+        kind(next?: $bog_gamengine_atlas_kind): $bog_gamengine_atlas_kind;
+        data(next?: $bog_gamengine_atlas | null): $bog_gamengine_atlas | null;
         sources(next?: readonly $bog_gamengine_atlas_source[]): readonly $bog_gamengine_atlas_source[];
         origins(): readonly {
             name: string;
@@ -5134,6 +5139,7 @@ declare namespace $.$$ {
             proj: 'mat4';
             view: 'mat4';
             atlas: 'sampler2DArray';
+            atlas_data: 'sampler2DArray';
             light_count: 'int';
             light_pos: 'vec4[8]';
             light_dir: 'vec4[8]';
@@ -5202,6 +5208,8 @@ declare namespace $.$$ {
         atlas: $bog_gamengine_atlas | null;
         sampler: WebGLUniformLocation | null;
         tex: $bog_gamengine_draw_tex | null;
+        sampler_data: WebGLUniformLocation | null;
+        tex_data: $bog_gamengine_draw_tex | null;
         prim: GLenum;
         wire: GLenum | null;
         size: number;
@@ -5256,6 +5264,7 @@ declare namespace $.$$ {
         count_bytes: number;
         texel_vec: Float32Array<ArrayBuffer>;
         post_last: Map<string, $bog_gamengine_gl_color_target>;
+        blank_data_last: WebGLTexture | null;
         post_vao_last: WebGLVertexArrayObject | null;
         samples: number;
         paint_at: number;
@@ -5284,6 +5293,8 @@ declare namespace $.$$ {
         slot(batch: $bog_gamengine_batch): $bog_gamengine_draw_slot | null;
         shape_ready(shape: $bog_gamengine_shape): boolean;
         tex(atlas: $bog_gamengine_atlas): $bog_gamengine_draw_tex;
+        tex_fill(gl: WebGL2RenderingContext, textures: $bog_gamengine_draw_tex[], tex: $bog_gamengine_draw_tex | null): $bog_gamengine_draw_tex | null;
+        blank_data(): WebGLTexture;
         textures(): readonly $bog_gamengine_draw_tex[];
         lights_fill(): number;
         step(): number;
@@ -6628,6 +6639,7 @@ declare namespace $ {
                 readonly proj: "mat4";
                 readonly view: "mat4";
                 readonly atlas: "sampler2DArray";
+                readonly atlas_data: "sampler2DArray";
                 readonly light_count: "int";
                 readonly light_pos: "vec4[8]";
                 readonly light_dir: "vec4[8]";
@@ -6757,8 +6769,30 @@ declare namespace $ {
 }
 
 declare namespace $ {
+    /** Call fullscreen( true ) and lock( true ) from a click or key handler only, browsers refuse both outside a user gesture */
+    class $bog_gamengine_screen extends $mol_object2 {
+        target(next?: Element | null): Element | null;
+        dx: number;
+        dy: number;
+        listeners: null | $mol_dom_listener[];
+        doc(): Document;
+        listen(): $mol_dom_listener[];
+        fullscreen(next?: boolean): boolean;
+        fullscreen_apply(next: boolean): void;
+        locked(): boolean;
+        lock(next?: boolean): boolean;
+        lock_apply(next: boolean): void;
+        take(out: Float32Array): Float32Array<ArrayBufferLike>;
+        destructor(): void;
+    }
+}
+
+declare namespace $ {
     class $bog_gamengine_demo_room_walker extends $bog_gamengine_cam_deep {
         input(next?: $bog_gamengine_input | null): $bog_gamengine_input | null;
+        screen(next?: $bog_gamengine_screen | null): $bog_gamengine_screen | null;
+        sense(next?: number): number;
+        look: Float32Array<ArrayBuffer>;
         tile(next?: $bog_gamengine_phys_tile | null): $bog_gamengine_phys_tile | null;
         speed(next?: number): number;
         turn(next?: number): number;

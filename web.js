@@ -9145,11 +9145,11 @@ var $;
         }
     }
     $.$bog_gamengine_gl_buffer = $bog_gamengine_gl_buffer;
-    function $bog_gamengine_gl_texture_array(gl, images, size) {
+    function $bog_gamengine_gl_texture_array(gl, images, size, srgb = false) {
         const texture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-        gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA, size, size, images.length, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, srgb ? gl.SRGB8_ALPHA8 : gl.RGBA8, size, size, images.length, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         for (let i = 0; i < images.length; ++i) {
             gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, size, size, 1, gl.RGBA, gl.UNSIGNED_BYTE, images[i]);
         }
@@ -9165,6 +9165,15 @@ var $;
         return texture;
     }
     $.$bog_gamengine_gl_texture_array = $bog_gamengine_gl_texture_array;
+    function $bog_gamengine_gl_texture_array_flat(gl) {
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, texture);
+        gl.texImage3D(gl.TEXTURE_2D_ARRAY, 0, gl.RGBA8, 1, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([128, 128, 255, 255]));
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        return texture;
+    }
+    $.$bog_gamengine_gl_texture_array_flat = $bog_gamengine_gl_texture_array_flat;
     class $bog_gamengine_gl_depth_target extends Object {
         gl;
         size;
@@ -10349,6 +10358,7 @@ var $;
                     proj: 'mat4',
                     view: 'mat4',
                     atlas: 'sampler2DArray',
+                    atlas_data: 'sampler2DArray',
                     light_count: 'int',
                     light_pos: 'vec4[8]',
                     light_dir: 'vec4[8]',
@@ -10441,7 +10451,7 @@ var $;
 					vec4 base = texture( atlas, vec3( pipe_uv, pipe_layer ) ) * pipe_tint;
 					vec3 normal = normalize( pipe_normal );
 					if( pipe_normal_layer >= 0.0 ) {
-						vec3 bump = texture( atlas, vec3( pipe_uv, pipe_normal_layer ) ).xyz * 2.0 - 1.0;
+						vec3 bump = texture( atlas_data, vec3( pipe_uv, pipe_normal_layer ) ).xyz * 2.0 - 1.0;
 						normal = perturb( normal, bump, pipe_pos, pipe_uv );
 					}
 					vec3 eye = normalize( cam_pos - pipe_pos );
@@ -10837,6 +10847,12 @@ var $;
         size(next = 64) {
             return next;
         }
+        kind(next) {
+            return next ?? 'color';
+        }
+        data(next) {
+            return next ?? null;
+        }
         sources(next = []) {
             return next;
         }
@@ -10916,6 +10932,12 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_atlas.prototype, "size", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_atlas.prototype, "kind", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_atlas.prototype, "data", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_atlas.prototype, "sources", null);
@@ -15079,8 +15101,8 @@ var $;
 				}
 				void main() {
 					vec4 base = texture( source, pipe_uv );
-					vec3 white = aces( vec3( 1.0 ) );
-					color = vec4( clamp( aces( max( base.rgb, vec3( 0.0 ) ) ) / white, 0.0, 1.0 ), base.a );
+					vec3 mapped = clamp( aces( max( base.rgb, vec3( 0.0 ) ) ), 0.0, 1.0 );
+					color = vec4( pow( mapped, vec3( 1.0 / 2.2 ) ), base.a );
 				}
 			`;
         }
@@ -15936,6 +15958,8 @@ var $;
             atlas = null;
             sampler = null;
             tex = null;
+            sampler_data = null;
+            tex_data = null;
             prim = 0;
             wire = null;
             size = 0;
@@ -16050,6 +16074,7 @@ var $;
             count_bytes = 0;
             texel_vec = new Float32Array(2);
             post_last = new Map();
+            blank_data_last = null;
             post_vao_last = null;
             samples = 0;
             paint_at = 0;
@@ -16088,7 +16113,7 @@ var $;
                 return next ?? new Float32Array([0.4, 1, 0.6]);
             }
             clear(next) {
-                return next ? $bog_gamengine_node_vec(next) : new Float32Array([0.08, 0.08, 0.1, 1]);
+                return next ? $bog_gamengine_node_vec(next) : new Float32Array([0.004, 0.004, 0.007, 1]);
             }
             fog(next) {
                 return next ? $bog_gamengine_node_vec(next) : new Float32Array([0, 0]);
@@ -16222,6 +16247,9 @@ var $;
             }
             destructor() {
                 this.post_drop();
+                if (this.blank_data_last)
+                    this.context().deleteTexture(this.blank_data_last);
+                this.blank_data_last = null;
                 this.shadow_last?.dispose();
                 this.shadow_last = null;
                 const slots = this.slots_last;
@@ -16275,6 +16303,8 @@ var $;
                     atlas,
                     sampler: atlas ? program.uniform('atlas') : null,
                     tex: atlas ? this.tex(atlas) : null,
+                    sampler_data: glob('atlas_data'),
+                    tex_data: atlas?.data() ? this.tex(atlas.data()) : null,
                     prim: mode === 'lines' ? gl.LINES : mode === 'triangles' ? gl.TRIANGLES : gl.TRIANGLE_STRIP,
                     wire: depth && wireframe && mode !== 'lines' ? (mode === 'triangles' ? gl.LINES : gl.LINE_STRIP) : null,
                     size: shape.size(),
@@ -16345,19 +16375,29 @@ var $;
                 this.textures_all.set(atlas, tex);
                 return tex;
             }
+            tex_fill(gl, textures, tex) {
+                if (!tex || textures.includes(tex))
+                    return tex;
+                textures.push(tex);
+                const atlas = tex.atlas;
+                if (tex.native || !atlas.ready())
+                    return tex;
+                tex.native = $bog_gamengine_gl_texture_array(gl, atlas.images(), atlas.size(), atlas.kind() === 'color');
+                return tex;
+            }
+            blank_data() {
+                const texture = $bog_gamengine_gl_texture_array_flat(this.context());
+                this.blank_data_last = texture;
+                return texture;
+            }
             textures() {
                 const gl = this.context();
                 const slots = this.slots();
                 const textures = [];
                 for (let i = 0; i < slots.length; ++i) {
                     const slot = slots[i];
-                    const tex = slot.tex;
-                    if (!tex || textures.includes(tex))
-                        continue;
-                    textures.push(tex);
-                    if (tex.native || !slot.atlas.ready())
-                        continue;
-                    tex.native = $bog_gamengine_gl_texture_array(gl, slot.atlas.images(), slot.atlas.size());
+                    this.tex_fill(gl, textures, slot.tex);
+                    this.tex_fill(gl, textures, slot.tex_data);
                 }
                 const last = this.textures_last;
                 for (let i = 0; i < last.length; ++i) {
@@ -16529,6 +16569,8 @@ var $;
                     return false;
                 if (slot.tex && !slot.tex.native)
                     return false;
+                if (slot.tex_data && !slot.tex_data.native)
+                    return false;
                 if (slot.live) {
                     const shape = batch.shape();
                     slot.vertex.send(shape.geometry());
@@ -16664,6 +16706,11 @@ var $;
                     gl.bindTexture(gl.TEXTURE_2D_ARRAY, slot.tex.native);
                     $bog_gamengine_gl_uniform_int(gl, slot.sampler, 0);
                 }
+                if (slot.sampler_data) {
+                    gl.activeTexture(gl.TEXTURE5);
+                    gl.bindTexture(gl.TEXTURE_2D_ARRAY, slot.tex_data?.native ?? this.blank_data());
+                    $bog_gamengine_gl_uniform_int(gl, slot.sampler_data, 5);
+                }
                 if (slot.bones_tex) {
                     gl.activeTexture(gl.TEXTURE4);
                     const bones = $bog_gamengine_skin_bones(batch);
@@ -16782,6 +16829,9 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_draw.prototype, "post_vao", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_draw.prototype, "blank_data", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_draw.prototype, "textures", null);
@@ -20719,7 +20769,7 @@ var $;
 				void main() {
 					vec3 base = max( texture( source, pipe_uv ).rgb, vec3( 0.0 ) );
 					float power = max( max( base.r, base.g ), base.b );
-					float over = max( power - 0.4, 0.0 );
+					float over = max( power - 0.13, 0.0 );
 					color = vec4( base * ( over / max( power, 0.0001 ) ), 1.0 );
 				}
 			`;
@@ -20839,9 +20889,9 @@ var $;
             return atlas ? atlas.layer(this.frame()) : 0;
         }
         normal_layer() {
-            const atlas = this.atlas();
+            const data = this.atlas()?.data() ?? null;
             const frame = this.normal_frame();
-            return atlas && frame ? atlas.layer(frame) : -1;
+            return data && frame ? data.layer(frame) : -1;
         }
         uv() {
             return uv_plain;
@@ -21005,10 +21055,110 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    /** Call fullscreen( true ) and lock( true ) from a click or key handler only, browsers refuse both outside a user gesture */
+    class $bog_gamengine_screen extends $mol_object2 {
+        target(next) {
+            return next ?? null;
+        }
+        dx = 0;
+        dy = 0;
+        listeners = null;
+        doc() {
+            return this.$.$mol_dom_context.document;
+        }
+        listen() {
+            return this.listeners ??= [
+                new this.$.$mol_dom_listener(this.doc(), 'fullscreenchange', () => {
+                    this.fullscreen(Boolean(this.doc().fullscreenElement));
+                }),
+                new this.$.$mol_dom_listener(this.doc(), 'pointerlockchange', () => {
+                    this.lock(this.locked());
+                }),
+                new this.$.$mol_dom_listener(this.doc(), 'mousemove', (event) => {
+                    if (!this.locked())
+                        return;
+                    this.dx += event.movementX;
+                    this.dy += event.movementY;
+                }),
+            ];
+        }
+        fullscreen(next) {
+            this.listen();
+            if (next === undefined)
+                return Boolean(this.doc().fullscreenElement);
+            new this.$.$mol_after_tick(() => this.fullscreen_apply(next));
+            return next;
+        }
+        fullscreen_apply(next) {
+            const doc = this.doc();
+            if (next === Boolean(doc.fullscreenElement))
+                return;
+            if (next)
+                doc.documentElement.requestFullscreen().catch(() => this.fullscreen(false));
+            else
+                doc.exitFullscreen().catch(() => this.fullscreen(true));
+        }
+        locked() {
+            const target = this.target();
+            return target !== null && this.doc().pointerLockElement === target;
+        }
+        lock(next) {
+            this.listen();
+            if (next === undefined)
+                return this.locked();
+            new this.$.$mol_after_tick(() => this.lock_apply(next));
+            return next;
+        }
+        lock_apply(next) {
+            if (next === this.locked())
+                return;
+            if (next)
+                this.target()?.requestPointerLock().catch(() => this.lock(false));
+            else
+                this.doc().exitPointerLock();
+        }
+        take(out) {
+            this.listen();
+            out[0] = this.dx;
+            out[1] = this.dy;
+            this.dx = 0;
+            this.dy = 0;
+            return out;
+        }
+        destructor() {
+            for (const listener of this.listeners ?? [])
+                listener.destructor();
+            this.listeners = null;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_screen.prototype, "target", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_screen.prototype, "fullscreen", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_screen.prototype, "lock", null);
+    $.$bog_gamengine_screen = $bog_gamengine_screen;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    const pitch_limit = Math.PI / 2 - 1e-3;
     class $bog_gamengine_demo_room_walker extends $bog_gamengine_cam_deep {
         input(next) {
             return next ?? null;
         }
+        screen(next) {
+            return next ?? null;
+        }
+        sense(next = 0.003) {
+            return next;
+        }
+        look = new Float32Array(2);
         tile(next) {
             return next ?? null;
         }
@@ -21041,12 +21191,31 @@ var $;
             if (!input)
                 return;
             const rot = this.rot();
+            let pitch = rot[0];
             let yaw = rot[1];
+            let turned = false;
             const spin = input.axis('turn_right', 'turn_left');
             if (spin !== 0) {
                 yaw += spin * this.turn() * dt;
+                turned = true;
+            }
+            const screen = this.screen();
+            if (screen) {
+                const look = screen.take(this.look);
+                if (look[0] !== 0 || look[1] !== 0) {
+                    const sense = this.sense();
+                    yaw -= look[0] * sense;
+                    pitch -= look[1] * sense;
+                    if (pitch > pitch_limit)
+                        pitch = pitch_limit;
+                    if (pitch < -pitch_limit)
+                        pitch = -pitch_limit;
+                    turned = true;
+                }
+            }
+            if (turned) {
                 const next = new Float32Array(3);
-                next[0] = rot[0];
+                next[0] = pitch;
                 next[1] = yaw;
                 next[2] = rot[2];
                 this.rot(next);
@@ -21079,6 +21248,12 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_demo_room_walker.prototype, "input", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_room_walker.prototype, "screen", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_room_walker.prototype, "sense", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_demo_room_walker.prototype, "tile", null);
@@ -21807,7 +21982,7 @@ var $;
                 return this.fogged() ? new Float32Array([1, 9]) : new Float32Array([0, 0]);
             }
             fog_color() {
-                return new Float32Array([0.05, 0.06, 0.09]);
+                return new Float32Array([0.0014, 0.002, 0.005]);
             }
             passes() {
                 const tail = [this.Tone(), this.Vignette()];
