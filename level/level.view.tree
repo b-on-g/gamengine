@@ -1,0 +1,59 @@
+$bog_crumb2_level $bog_gamestudio_sample_map
+	atlas <= Atlas
+	map \
+		\############
+		\#....##....#
+		\#.##....##.#
+		\#.#......#.#
+		\#....##....#
+		\#.#......#.#
+		\#.##....##.#
+		\#.....#....#
+		\############
+	palette *
+		# \wall
+		. \floor
+	kids /
+		<= Walker_1 $bog_gamengine_phys_walker
+			name \Ходок
+			size <= Walker_1_size Float32Array
+			pos? <=> Walker_1_pos? Float32Array
+		<= Sprite_1 $bog_gamengine_sprite
+			name \coin
+			atlas <= Atlas
+			frame \coin
+			pos <= Sprite_1_pos Float32Array
+		<= Sprite_2 $bog_gamengine_sprite
+			name \coin
+			atlas <= Atlas
+			frame \coin
+			pos <= Sprite_2_pos Float32Array
+		<= Sprite_3 $bog_gamengine_sprite
+			name \coin
+			atlas <= Atlas
+			frame \coin
+			pos <= Sprite_3_pos Float32Array
+		<= Sprite_4 $bog_gamengine_sprite
+			name \coin
+			atlas <= Atlas
+			frame \coin
+			pos <= Sprite_4_pos Float32Array
+		<= Sprite_5 $bog_gamengine_sprite
+			name \coin
+			atlas <= Atlas
+			frame \coin
+			pos <= Sprite_5_pos Float32Array
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/atlas/hero.png
+			\bog/gamengine/demo/atlas/coin.png
+			\bog/gamengine/demo/atlas/wall.png
+			\bog/gamengine/demo/atlas/floor.png
+		size 64
+	Tile $bog_gamengine_phys_tile
+		map <= map
+	Phys $bog_gamengine_phys
+		tile <= Tile
+		bodies /
+			<= Walker_1
+	phys <= Phys
