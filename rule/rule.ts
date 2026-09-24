@@ -32,6 +32,15 @@ namespace $ {
 			return next
 		}
 
+		props(): readonly $bog_gamengine_prop[] {
+			return [
+				{ name: 'hero', kind: 'node', get: ()=> this.hero(), set: next => this.hero( next as $bog_gamengine_node | null ) },
+				{ name: 'crumbs', kind: 'nodes', get: ()=> this.crumbs(), set: next => this.crumbs( next as readonly $bog_gamengine_node[] ) },
+				{ name: 'reach', kind: 'number', get: ()=> this.reach(), set: next => this.reach( next as number ) },
+				{ name: 'limit', kind: 'number', get: ()=> this.limit(), set: next => this.limit( next as number ) },
+			]
+		}
+
 		left() {
 			return this.crumbs().length - this.taken()
 		}
