@@ -5,7 +5,7 @@ namespace $ {
 	export type $bog_gamestudio_app_mode = 'edit' | 'play' | 'pause'
 
 	export type $bog_gamestudio_app_snap = {
-		readonly node: $bog_gamengine_node
+		readonly path: string
 		readonly prop: string
 		readonly value: unknown
 	}
@@ -436,7 +436,7 @@ namespace $.$$ {
 		}
 
 		row_shared( index: number ) {
-			const title = this.Scene().nodes()[ index ]?.title() ?? ''
+			const title = this.Doc().nodes()[ index ]?.title ?? ''
 			return Boolean( title && this.picks()[ title ] )
 		}
 
@@ -730,10 +730,10 @@ namespace $.$$ {
 
 		snapshot() {
 			const snap = [] as $bog_gamestudio_app_snap[]
-			for( const node of this.Scene().nodes() ) {
-				for( const prop of node.props() ) {
+			for( const row of this.Doc().nodes() ) {
+				for( const prop of this.props_of( row.path ) ) {
 					const value = prop.get()
-					snap.push({ node, prop: prop.name, value: value instanceof Float32Array ? new Float32Array( value ) : value })
+					snap.push({ path: row.path, prop: prop.name, value: value instanceof Float32Array ? new Float32Array( value ) : value })
 				}
 			}
 			return snap
@@ -755,8 +755,8 @@ namespace $.$$ {
 
 		stop( event?: Event | null ) {
 			if( this.snap_scene === this.Scene() ) {
-				for( const { node, prop, value } of this.snap ) {
-					node.props().find( item => item.name === prop )?.set( value instanceof Float32Array ? new Float32Array( value ) : value )
+				for( const { path, prop, value } of this.snap ) {
+					this.props_of( path ).find( item => item.name === prop )?.set( value instanceof Float32Array ? new Float32Array( value ) : value )
 				}
 			}
 			this.snap = []
@@ -767,18 +767,18 @@ namespace $.$$ {
 
 		@ $mol_mem
 		node() {
-			const index = this.selected()
-			if( index === null ) return null
-			return this.Scene().nodes()[ index ] ?? null
+			const path = this.doc_path()
+			if( !path ) return null
+			return this.node_of().get( path ) ?? null
 		}
 
 		@ $mol_mem
 		node_rows() {
-			return this.Scene().nodes().map( ( node, index )=> this.Row( index ) )
+			return this.Doc().nodes().map( ( node, index )=> this.Row( index ) )
 		}
 
 		row_title( index: number ) {
-			return this.Scene().nodes()[ index ].title()
+			return this.Doc().nodes()[ index ]?.title ?? ''
 		}
 
 		row_selected( index: number, next?: boolean ) {
@@ -788,7 +788,7 @@ namespace $.$$ {
 
 		@ $mol_mem
 		props() {
-			return this.node()?.props() ?? []
+			return this.props_of( this.doc_path() )
 		}
 
 		prop( name: string ) {
@@ -900,16 +900,59 @@ namespace $.$$ {
 
 		@ $mol_mem
 		doc_path() {
-			let node = this.node()
-			if( !node ) return ''
-			const steps = [] as number[]
-			for( let parent = node.parent(); parent; parent = node.parent() ) {
-				const at = parent.kids().indexOf( node )
-				if( at < 0 ) return ''
-				steps.unshift( at )
-				node = parent
+			const index = this.selected()
+			if( index === null ) return ''
+			return this.Doc().nodes()[ index ]?.path ?? ''
+		}
+
+		@ $mol_mem
+		node_of() {
+			const doc = this.Doc()
+			const map = new Map< string, $bog_gamengine_node >()
+			const walk = ( name: string, prefix: string, host: $bog_gamengine_node )=> {
+				const refs = doc.refs( name )
+				const kids = host.kids()
+				for( let i = 0; i < refs.length; ++ i ) {
+					const kid = kids[ i ]
+					if( !kid ) continue
+					const path = prefix + refs[ i ].type
+					map.set( path, kid )
+					walk( refs[ i ].type, path + '/', kid )
+				}
 			}
-			return this.Doc().path_at( steps )
+			walk( '', '', this.Scene() )
+			return map
+		}
+
+		@ $mol_mem
+		part_of() {
+			const doc = this.Doc()
+			const map = new Map< string, $bog_gamengine_part >()
+			for( const [ path, node ] of this.node_of() ) {
+				const refs = doc.parts( path.slice( path.lastIndexOf( '/' ) + 1 ) )
+				const parts = node.parts()
+				for( let i = 0; i < refs.length; ++ i ) {
+					if( parts[ i ] ) map.set( `${ path }/${ refs[ i ].type }`, parts[ i ] )
+				}
+			}
+			return map
+		}
+
+		props_of( path: string ): readonly $bog_gamengine_prop[] {
+			if( !path ) return []
+			const node = this.node_of().get( path )
+			if( node ) return node.props()
+			const part = this.part_of().get( path )
+			return part?.props?.() ?? []
+		}
+
+		row_of( node: $bog_gamengine_node ) {
+			for( const [ path, item ] of this.node_of() ) {
+				if( item !== node ) continue
+				const at = this.Doc().nodes().findIndex( row => row.path === path )
+				if( at >= 0 ) return at
+			}
+			return null
 		}
 
 		write( prop: string, value: $bog_gamestudio_doc_value ) {
@@ -1298,7 +1341,7 @@ namespace $.$$ {
 					const nodes = this.Scene().nodes()
 					const host = point.pick( nodes, x, y )
 					if( host ) {
-						this.selected( nodes.indexOf( host ) )
+						this.selected( this.row_of( host ) )
 						this.kit_attach( kit )
 					}
 					return event
@@ -1327,7 +1370,7 @@ namespace $.$$ {
 			}
 			const nodes = this.Scene().nodes()
 			const picked = point.pick( nodes, x, y )
-			this.selected( picked ? nodes.indexOf( picked ) : null )
+			this.selected( picked ? this.row_of( picked ) : null )
 			if( !picked ) this.pan_down( event )
 			return event
 		}

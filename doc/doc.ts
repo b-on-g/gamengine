@@ -4,9 +4,12 @@ namespace $ {
 
 	export type $bog_gamestudio_doc_row = Readonly< Record< string, string > >
 
+	export type $bog_gamestudio_doc_kind = 'node' | 'part' | 'own'
+
 	export type $bog_gamestudio_doc_node = {
 		readonly name: string
 		readonly path: string
+		readonly kind: $bog_gamestudio_doc_kind
 		readonly title: string
 		readonly klass: string
 		readonly props: Readonly< Record< string, $mol_tree2 > >
@@ -102,18 +105,41 @@ namespace $ {
 			} )
 		}
 
+		parts( name: string ): readonly $mol_tree2[] {
+			const klass = this.decls().get( name )
+			if( !klass ) return []
+			return klass.select( 'parts', '/', '<=', null ).kids
+		}
+
 		@ $mol_mem
-		nodes(): readonly $bog_gamestudio_doc_node[] {
-			const list = [] as $bog_gamestudio_doc_node[]
+		kinds() {
+			const map = new Map< string, $bog_gamestudio_doc_kind >()
 			const walk = ( name: string, prefix: string, chain: readonly string[] )=> {
-				for( const ref of this.refs( name ) ) {
+				const kids = this.refs( name )
+				for( const ref of [ ... kids, ... this.parts( name ) ] ) {
 					if( chain.indexOf( ref.type ) >= 0 ) continue
 					const path = prefix + ref.type
-					list.push( this.node( path ) )
+					map.set( path, kids.indexOf( ref ) >= 0 ? 'node' : 'part' )
 					walk( ref.type, path + '/', [ ... chain, ref.type ] )
 				}
 			}
 			walk( '', '', [] )
+			return map
+		}
+
+		@ $mol_mem
+		nodes(): readonly $bog_gamestudio_doc_node[] {
+			const list = [] as $bog_gamestudio_doc_node[]
+			const kinds = this.kinds()
+			const named = new Set< string >()
+			for( const path of kinds.keys() ) {
+				named.add( path.slice( path.lastIndexOf( '/' ) + 1 ) )
+				list.push( this.node( path ) )
+			}
+			for( const name of this.decls().keys() ) {
+				if( !name || named.has( name ) || this.prefabs().has( name ) ) continue
+				list.push( this.node( name ) )
+			}
 			return list
 		}
 
@@ -141,6 +167,10 @@ namespace $ {
 
 		@ $mol_mem_key
 		node( path: string ): $bog_gamestudio_doc_node {
+			return { ... this.node_bare( path ), kind: this.kinds().get( path ) ?? 'own' }
+		}
+
+		node_bare( path: string ) {
 			const name = path.slice( path.lastIndexOf( '/' ) + 1 )
 			const klass = this.decls().get( name )
 			if( !klass ) return $mol_fail( new Error( `Node ${ path } is not declared` ) )
@@ -148,7 +178,7 @@ namespace $ {
 			for( const step of this.chain( name ) ) {
 				for( const line of step.kids ) props[ line.type.replace( /\?$/, '' ) ] = line
 			}
-			return { name, path, title: props.name?.text() || name, klass: klass.type, props }
+			return { name, path, kind: 'own' as $bog_gamestudio_doc_kind, title: props.name?.text() || name, klass: klass.type, props }
 		}
 
 		own( klass: $mol_tree2, line?: $mol_tree2 ) {

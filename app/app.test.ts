@@ -88,9 +88,63 @@ namespace $ {
 			$mol_assert_equal( app.Scene().nodes()[ 0 ].pos()[ 0 ], -2 )
 		},
 
-		'scene tree lists three rows'( $ ) {
+		'stop restores a number of a component, not only of a node'( $ ) {
+			$.$mol_state_time = $bog_gamestudio_app_time_mock
 			const app = $$.$bog_gamestudio_app.make({ $ })
-			$mol_assert_equal( app.node_rows().length, 3 )
+			app.selected( 0 )
+			const part = app.kit_attach( 'combat' )
+			const row = app.Doc().nodes().findIndex( one => one.path === `Hero/${ part }` )
+			app.selected( row )
+			const health = ()=> app.props_of( `Hero/${ part }` ).find( one => one.name === 'health_max' )!
+			const before = health().get()
+			$mol_assert_ok( Number( before ) > 0 )
+			$bog_gamestudio_app_time_mock.stamp( 0 )
+			app.play()
+			health().set( 7 )
+			$mol_assert_equal( health().get(), 7 )
+			app.stop()
+			$mol_assert_equal( health().get(), before )
+			$mol_assert_not( app.source().includes( 'health_max 7' ) )
+		},
+
+		'placed sound is selected by a row, renamed and dropped by the button'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.place( 'bog/gamengine/demo/sound/coin.wav', [ 0, 0, 0 ] )
+			const rows = app.Doc().nodes()
+			const at = rows.findIndex( one => one.name === 'Sound' )
+			$mol_assert_ok( at >= 0 )
+			$mol_assert_equal( rows[ at ].kind, 'own' )
+			app.selected( at )
+			$mol_assert_equal( app.doc_path(), 'Sound' )
+			$mol_assert_equal( app.props_of( 'Sound' ), [] )
+			app.node_name( 'Звуки' )
+			$mol_assert_equal( app.row_title( at ), 'Звуки' )
+			app.Node_drop().click( null )
+			$mol_assert_not( app.source().includes( 'coin.wav' ) )
+			$mol_assert_not( app.Doc().nodes().some( one => one.name === 'Sound' ) )
+			$mol_assert_equal( app.Scene().nodes().length, 3 )
+		},
+
+		'component attached to a node shows up in the tree under its owner'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.selected( 0 )
+			const part = app.kit_attach( 'combat' )
+			$mol_assert_ok( part.length > 0 )
+			const rows = app.Doc().nodes()
+			const at = rows.findIndex( row => row.path === `Hero/${ part }` )
+			$mol_assert_ok( at > 0 )
+			$mol_assert_equal( rows[ at ].kind, 'part' )
+			$mol_assert_equal( rows[ 0 ].kind, 'node' )
+			app.selected( at )
+			$mol_assert_equal( app.doc_path(), `Hero/${ part }` )
+			app.write( 'health_max', 70 )
+			$mol_assert_ok( app.source().includes( 'health_max 70' ) )
+		},
+
+		'scene tree lists every declaration of the document, not only the nodes'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			$mol_assert_equal( app.node_rows().length, 4 )
+			$mol_assert_equal( [ 0, 1, 2, 3 ].map( at => app.row_title( at ) ), [ 'Герой', 'Монета', 'Стена', 'Atlas' ] )
 		},
 
 		'tree row shows node name'( $ ) {
@@ -138,7 +192,7 @@ namespace $ {
 			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
 			$mol_assert_ok( app.placing() )
 			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 1, -2, 0 ] )
-			$mol_assert_equal( app.node_rows().length, 4 )
+			$mol_assert_equal( app.node_rows().length, 5 )
 			$mol_assert_equal( app.row_title( 3 ), 'floor' )
 			$mol_assert_equal( app.Scene().nodes()[ 3 ].pos()[ 1 ], -2 )
 			$mol_assert_ok( app.source().includes( '\t\t\t\\bog/gamengine/demo/atlas/floor.png\n' ) )
@@ -172,7 +226,10 @@ namespace $ {
 			$mol_assert_ok( app.source().endsWith( '\tSound $bog_gamengine_sound\n\t\turis *\n\t\t\tcoin \\bog/gamengine/demo/sound/coin.wav\n' ) )
 			app.place( 'bog/gamengine/demo/sound/coin.wav', [ 0, 0, 0 ] )
 			$mol_assert_equal( app.source().split( 'coin.wav' ).length, 2 )
-			$mol_assert_equal( app.node_rows().length, 3 )
+			$mol_assert_equal( app.node_rows().length, 5 )
+			$mol_assert_equal( app.row_title( 4 ), 'Sound' )
+			app.selected( 4 )
+			$mol_assert_equal( app.doc_path(), 'Sound' )
 		},
 
 		'assets tab survives the scene rebuild'( $ ) {
@@ -340,9 +397,9 @@ namespace $ {
 			try {
 				const first = make()
 				first.place( 'bog/gamengine/demo/atlas/floor.png', [ 1, -2, 0 ] )
-				$mol_assert_equal( first.node_rows().length, 4 )
+				$mol_assert_equal( first.node_rows().length, 5 )
 				const again = make()
-				$mol_assert_equal( again.node_rows().length, 4 )
+				$mol_assert_equal( again.node_rows().length, 5 )
 				$mol_assert_equal( again.row_title( 3 ), 'floor' )
 				$mol_assert_equal( again.Scene().nodes()[ 3 ].pos()[ 1 ], -2 )
 			} finally {
@@ -362,7 +419,7 @@ namespace $ {
 			const edited = app.source().replace( '\\Герой', '\\Крошка' )
 			app.source( edited )
 			$mol_assert_equal( app.source(), edited )
-			$mol_assert_equal( app.node_rows().length, 3 )
+			$mol_assert_equal( app.node_rows().length, 4 )
 			$mol_assert_ok( app.kept_stat().startsWith( 'Браузер не сохраняет, вынимайте файлом' ) )
 			$mol_assert_ok( app.source_uri().length > 0 )
 		},
@@ -423,7 +480,7 @@ namespace $ {
 			const app = $$.$bog_gamestudio_app.make({ $ })
 			app.selected( 1 )
 			app.Node_drop().click( null )
-			$mol_assert_equal( app.node_rows().length, 2 )
+			$mol_assert_equal( app.node_rows().length, 3 )
 			$mol_assert_equal( app.selected(), null )
 			$mol_assert_not( app.source().includes( 'Монета' ) )
 		},
@@ -432,7 +489,7 @@ namespace $ {
 			const app = $$.$bog_gamestudio_app.make({ $ })
 			app.selected( 1 )
 			app.Node_dup().click( null )
-			$mol_assert_equal( app.node_rows().length, 4 )
+			$mol_assert_equal( app.node_rows().length, 5 )
 			$mol_assert_equal( app.selected(), 2 )
 			$mol_assert_equal( app.row_title( 2 ), 'Монета' )
 		},
@@ -457,7 +514,7 @@ namespace $ {
 			const app = $$.$bog_gamestudio_app.make({ $ })
 			app.selected( 1 )
 			app.Delete_key().keydown({ keyCode: 46, target: { tagName: 'BUTTON' } } as unknown as KeyboardEvent )
-			$mol_assert_equal( app.node_rows().length, 2 )
+			$mol_assert_equal( app.node_rows().length, 3 )
 			$mol_assert_not( app.source().includes( 'Монета' ) )
 		},
 
@@ -467,7 +524,7 @@ namespace $ {
 			for( const tag of [ 'INPUT', 'TEXTAREA' ] ) {
 				app.Delete_key().keydown({ keyCode: 46, target: { tagName: tag } } as unknown as KeyboardEvent )
 			}
-			$mol_assert_equal( app.node_rows().length, 3 )
+			$mol_assert_equal( app.node_rows().length, 4 )
 			$mol_assert_ok( app.source().includes( 'Монета' ) )
 		},
 
@@ -476,7 +533,7 @@ namespace $ {
 			app.selected( 1 )
 			app.play()
 			app.Delete_key().keydown({ keyCode: 46, target: { tagName: 'BUTTON' } } as unknown as KeyboardEvent )
-			$mol_assert_equal( app.node_rows().length, 3 )
+			$mol_assert_equal( app.node_rows().length, 4 )
 		},
 
 		'undo returns the document to the state before the edit, redo brings it back'( $ ) {
@@ -487,7 +544,7 @@ namespace $ {
 			$mol_assert_ok( app.source().includes( 'pos / 7 0 0' ) )
 			app.undo()
 			$mol_assert_equal( app.source(), before )
-			$mol_assert_equal( app.node_rows().length, 3 )
+			$mol_assert_equal( app.node_rows().length, 4 )
 			app.redo()
 			$mol_assert_ok( app.source().includes( 'pos / 7 0 0' ) )
 		},
@@ -496,9 +553,9 @@ namespace $ {
 			const app = $$.$bog_gamestudio_app.make({ $ })
 			app.selected( 1 )
 			app.Node_drop().click( null )
-			$mol_assert_equal( app.node_rows().length, 2 )
-			app.undo()
 			$mol_assert_equal( app.node_rows().length, 3 )
+			app.undo()
+			$mol_assert_equal( app.node_rows().length, 4 )
 			$mol_assert_equal( app.row_title( 1 ), 'Монета' )
 		},
 

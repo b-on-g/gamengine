@@ -9,9 +9,9 @@ namespace $ {
 
 	$mol_test({
 
-		'sample parses into three titled nodes'( $ ) {
+		'sample lists its nodes and every other declaration'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
-			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Монета', 'Стена' ] )
+			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Монета', 'Стена', 'Atlas' ] )
 		},
 
 		'set changes exactly one line of the source'( $ ) {
@@ -78,7 +78,7 @@ namespace $ {
 			const before = doc.source()
 			const name = doc.add( '$bog_gamengine_sprite', { name: '\\Ключ', atlas: '<= Atlas', frame: '\\coin', pos: '/ 1 2 0' } )
 			$mol_assert_equal( name, 'Sprite_1' )
-			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Монета', 'Стена', 'Ключ' ] )
+			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Монета', 'Стена', 'Ключ', 'Atlas' ] )
 			const lines = '\t\t<= Sprite_1 $bog_gamengine_sprite\n\t\t\tname \\Ключ\n\t\t\tatlas <= Atlas\n\t\t\tframe \\coin\n\t\t\tpos / 1 2 0\n'
 			$mol_assert_ok( doc.source().includes( lines + '\tAtlas $bog_gamengine_atlas\n' ) )
 			$mol_assert_equal( doc.source().replace( lines, '' ), before )
@@ -89,7 +89,7 @@ namespace $ {
 			const doc = open( $, $bog_gamestudio_sample )
 			doc.add( '$bog_gamengine_sprite', { atlas: '<= Atlas', frame: '\\coin' } )
 			$mol_assert_equal( doc.add( '$bog_gamengine_sprite', { atlas: '<= Atlas', frame: '\\wall' } ), 'Sprite_2' )
-			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Монета', 'Стена', 'Sprite_1', 'Sprite_2' ] )
+			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Монета', 'Стена', 'Sprite_1', 'Sprite_2', 'Atlas' ] )
 		},
 
 		'add with a nested subview makes no batch of its own'( $ ) {
@@ -277,7 +277,7 @@ namespace $ {
 		'drop takes the node out of the scene and out of the source'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
 			doc.drop( 'Coin' )
-			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Стена' ] )
+			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Стена', 'Atlas' ] )
 			$mol_assert_not( doc.source().includes( 'Coin' ) )
 			$mol_assert_not( doc.source().includes( 'Монета' ) )
 			$mol_assert_equal( doc.scene().nodes().map( node => node.title() ), [ 'Герой', 'Стена' ] )
@@ -300,7 +300,7 @@ namespace $ {
 			const doc = open( $, $bog_gamestudio_sample )
 			const made = doc.dup( 'Coin' )
 			$mol_assert_equal( made, 'Sprite_1' )
-			$mol_assert_equal( doc.nodes().map( node => node.name ), [ 'Hero', 'Coin', 'Sprite_1', 'Wall' ] )
+			$mol_assert_equal( doc.nodes().map( node => node.name ), [ 'Hero', 'Coin', 'Sprite_1', 'Wall', 'Atlas' ] )
 			$mol_assert_equal( doc.scene().nodes().map( node => node.title() ), [ 'Герой', 'Монета', 'Монета', 'Стена' ] )
 		},
 
