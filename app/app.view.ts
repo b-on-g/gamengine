@@ -240,9 +240,7 @@ namespace $.$$ {
 
 		@ $mol_mem_key
 		mate_pool( id: string ) {
-			const text = this.Mate_text( id )
-			text.emit()
-			return text.pool()
+			return this.Mate_text( id ).pool()
 		}
 
 		@ $mol_mem
