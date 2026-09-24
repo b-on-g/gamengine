@@ -330,8 +330,9 @@ namespace $ {
 				'',
 			].join( '\n' ) )
 			doc.drop( 'Hero' )
-			$mol_assert_equal( doc.nodes().length, 0 )
+			$mol_assert_equal( doc.scene().nodes().length, 0 )
 			$mol_assert_ok( doc.source().includes( 'Hero $bog_gamengine_sprite' ) )
+			$mol_assert_equal( doc.nodes().map( node => node.name ), [ 'Hero' ] )
 		},
 
 		'copy keeps every property of the node and lives on its own'( $ ) {
