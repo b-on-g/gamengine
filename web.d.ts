@@ -4287,19 +4287,32 @@ declare namespace $ {
 }
 
 declare namespace $ {
-    class $bog_gamengine_phys_tile extends $mol_object2 {
+    type $bog_gamengine_map_plane = 'xy' | 'xz';
+    class $bog_gamengine_map extends $mol_object2 {
         map(next?: string): string;
-        solid(next?: string): string;
-        rows(): readonly (readonly string[])[];
+        plane(next?: $bog_gamengine_map_plane): $bog_gamengine_map_plane;
+        rows(): readonly string[];
         width(): number;
         height(): number;
-        cell(x: number, y: number): boolean;
         char(x: number, y: number): string;
         spots(char: string): readonly (readonly [number, number])[];
         chars(): ReadonlySet<string>;
+        ids(char: string): readonly string[];
+        at: Int32Array<ArrayBuffer>;
+        xy(id: string, out: Int32Array): Int32Array<ArrayBufferLike>;
+        place(cx: number, cy: number, lift: number, out: Float32Array): Float32Array<ArrayBufferLike>;
+        pos(x: number, y: number, lift: number, out: Float32Array): Float32Array<ArrayBufferLike>;
+        spot_pos(id: string, lift: number, out: Float32Array): Float32Array<ArrayBufferLike>;
+        center(lift: number, out: Float32Array): Float32Array<ArrayBufferLike>;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_phys_tile extends $bog_gamengine_map {
+        solid(next?: string): string;
+        cell(x: number, y: number): boolean;
         cell_pos(x: number, y: number, out: Float32Array): Float32Array<ArrayBufferLike>;
         cell_at(wx: number, wy: number, out: Int32Array): Int32Array<ArrayBufferLike>;
-        at: Int32Array<ArrayBuffer>;
         solid_at(wx: number, wy: number): boolean;
         ahead(wx: number, wy: number, dx: number, dy: number, dist: number): string;
         edge(wx: number, wy: number, dx: number, dy: number): boolean;

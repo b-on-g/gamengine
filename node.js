@@ -11676,15 +11676,15 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    class $bog_gamengine_phys_tile extends $mol_object2 {
+    class $bog_gamengine_map extends $mol_object2 {
         map(next) {
             return next ?? '';
         }
-        solid(next) {
-            return next ?? '#';
+        plane(next) {
+            return next ?? 'xy';
         }
         rows() {
-            return this.map().split('\n').map(row => [...row]);
+            return this.map().split('\n');
         }
         width() {
             const rows = this.rows();
@@ -11695,15 +11695,6 @@ var $;
         }
         height() {
             return this.rows().length;
-        }
-        cell(x, y) {
-            const rows = this.rows();
-            if (y < 0 || y >= rows.length)
-                return true;
-            const row = rows[y];
-            if (x < 0 || x >= row.length)
-                return true;
-            return this.solid().includes(row[x]);
         }
         char(x, y) {
             const rows = this.rows();
@@ -11736,18 +11727,96 @@ var $;
             }
             return chars;
         }
-        cell_pos(x, y, out) {
-            out[0] = x + 0.5;
-            out[1] = -y - 0.5;
-            out[2] = 0;
+        ids(char) {
+            const spots = this.spots(char);
+            const ids = [];
+            for (let i = 0; i < spots.length; ++i)
+                ids.push(`${spots[i][0]}_${spots[i][1]}`);
+            return ids;
+        }
+        at = new Int32Array(2);
+        xy(id, out) {
+            const split = id.indexOf('_');
+            out[0] = Number(id.slice(0, split));
+            out[1] = Number(id.slice(split + 1));
             return out;
+        }
+        place(cx, cy, lift, out) {
+            if (this.plane() === 'xz') {
+                out[0] = cx;
+                out[1] = lift;
+                out[2] = cy;
+            }
+            else {
+                out[0] = cx;
+                out[1] = -cy;
+                out[2] = lift;
+            }
+            return out;
+        }
+        pos(x, y, lift, out) {
+            return this.place(x + 0.5, y + 0.5, lift, out);
+        }
+        spot_pos(id, lift, out) {
+            const at = this.xy(id, this.at);
+            return this.pos(at[0], at[1], lift, out);
+        }
+        center(lift, out) {
+            return this.place(this.width() / 2, this.height() / 2, lift, out);
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_map.prototype, "map", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_map.prototype, "plane", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_map.prototype, "rows", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_map.prototype, "width", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_map.prototype, "height", null);
+    __decorate([
+        $mol_mem_key
+    ], $bog_gamengine_map.prototype, "spots", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_map.prototype, "chars", null);
+    __decorate([
+        $mol_mem_key
+    ], $bog_gamengine_map.prototype, "ids", null);
+    $.$bog_gamengine_map = $bog_gamengine_map;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_phys_tile extends $bog_gamengine_map {
+        solid(next) {
+            return next ?? '#';
+        }
+        cell(x, y) {
+            const rows = this.rows();
+            if (y < 0 || y >= rows.length)
+                return true;
+            const row = rows[y];
+            if (x < 0 || x >= row.length)
+                return true;
+            return this.solid().includes(row[x]);
+        }
+        cell_pos(x, y, out) {
+            return this.pos(x, y, 0, out);
         }
         cell_at(wx, wy, out) {
             out[0] = Math.floor(wx);
             out[1] = Math.floor(-wy);
             return out;
         }
-        at = new Int32Array(2);
         solid_at(wx, wy) {
             const at = this.cell_at(wx, wy, this.at);
             return this.cell(at[0], at[1]);
@@ -11765,25 +11834,7 @@ var $;
     }
     __decorate([
         $mol_mem
-    ], $bog_gamengine_phys_tile.prototype, "map", null);
-    __decorate([
-        $mol_mem
     ], $bog_gamengine_phys_tile.prototype, "solid", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_phys_tile.prototype, "rows", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_phys_tile.prototype, "width", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_phys_tile.prototype, "height", null);
-    __decorate([
-        $mol_mem_key
-    ], $bog_gamengine_phys_tile.prototype, "spots", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_phys_tile.prototype, "chars", null);
     $.$bog_gamengine_phys_tile = $bog_gamengine_phys_tile;
 })($ || ($ = {}));
 

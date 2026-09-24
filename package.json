@@ -219,6 +219,7 @@
     "$bog_gamengine_phys",
     "$bog_gamengine_phys_body",
     "$bog_gamengine_phys_tile",
+    "$bog_gamengine_map",
     "$bog_gamengine_phys3",
     "$bog_gamengine_phys3_broad",
     "$bog_gamengine_phys3_narrow",
