@@ -159,7 +159,7 @@ namespace $ {
 			let count = 0
 			for( let i = 0; i < nodes.length; ++ i ) {
 				const node = nodes[ i ]
-				if( !node.shown() ) continue
+				if( node.hidden || !node.shown_now ) continue
 				const world = node.world()
 				if( ranged ) {
 					const dx = world[ 12 ] - ranged[ 0 ]

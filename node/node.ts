@@ -82,6 +82,7 @@ namespace $ {
 		}
 
 		hidden = false
+		shown_now = true
 
 		shown(): boolean {
 			for( let node: $bog_gamengine_node | null = this; node; node = node.parent() ) {

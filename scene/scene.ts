@@ -191,17 +191,53 @@ namespace $ {
 		snap = new Float32Array( 0 )
 		snap_count = 0
 
+		snap_frame = -1
+
+		@ $mol_mem
+		kin() {
+			const nodes = this.nodes()
+			const at = new Map< $bog_gamengine_node, number >()
+			for( let i = 0; i < nodes.length; ++i ) at.set( nodes[ i ], i )
+			const owner = new Int32Array( nodes.length )
+			for( let i = 0; i < nodes.length; ++i ) {
+				const parent = nodes[ i ].parent()
+				const found = parent ? at.get( parent ) : undefined
+				owner[ i ] = found === undefined ? -1 : found
+			}
+			return owner
+		}
+
+		shown_fill( nodes: readonly $bog_gamengine_node[], owner: Int32Array ) {
+			for( let i = 0; i < nodes.length; ++i ) {
+				let shown = true
+				for( let at = i, step = 0; at >= 0 && step < 64; at = owner[ at ], ++step ) {
+					if( !nodes[ at ].hidden ) continue
+					shown = false
+					break
+				}
+				nodes[ i ].shown_now = shown
+			}
+		}
+
+		@ $mol_mem
 		snapshot(): Float32Array {
+			const frame = this.step()
+			if( frame === this.snap_frame ) return this.snap
+			this.snap_frame = frame
+			this.snap_fill( this.nodes() )
 			return this.snap
 		}
 
 		snapshot_count() {
+			this.snapshot()
 			return this.snap_count
 		}
 
 		@ $mol_mem
-		snapshot_version( next = 0 ) {
-			return next
+		snapshot_version() {
+			this.step()
+			this.snapshot()
+			return this.snap_frame
 		}
 
 		snap_fill( nodes: readonly $bog_gamengine_node[] ) {
@@ -210,7 +246,7 @@ namespace $ {
 			for( let i = 0; i < nodes.length; ++i ) {
 				const node = nodes[ i ]
 				const at = i * 3
-				if( !node.shown() ) {
+				if( node.hidden || !node.shown_now ) {
 					snap[ at ] = 0
 					snap[ at + 1 ] = 0
 					snap[ at + 2 ] = 0
@@ -230,6 +266,7 @@ namespace $ {
 			const dt = this.clock().dt()
 			const input = this.input()
 			const nodes = this.nodes()
+			const owner = this.kin()
 			const phys = this.phys()
 			const phys3 = this.phys3()
 			phys?.pull()
@@ -239,9 +276,10 @@ namespace $ {
 			if( frame !== this.frame_done ) {
 				this.frame_done = frame
 				input?.poll()
+				this.shown_fill( nodes, owner )
 				for( let i = 0; i < nodes.length; ++i ) {
 					const node = nodes[ i ]
-					if( node.shown() ) node.step( dt )
+					if( node.shown_now ) node.step( dt )
 				}
 				phys?.step( dt )
 				phys3?.step( dt )
@@ -249,8 +287,6 @@ namespace $ {
 					if( !cam.parent() ) cam.parent( this )
 					cam.step( dt )
 				}
-				this.snap_fill( nodes )
-				this.snapshot_version( frame )
 			}
 			if( cam ) {
 				cam.frustum( aspect, this.frustum )
