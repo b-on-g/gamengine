@@ -28,13 +28,34 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		target( next?: Float32Array | null ) {
-			return next ?? null
-		}
-
-		@ $mol_mem
 		others( next?: readonly $bog_gamengine_nav_agent[] ) {
 			return next ?? []
+		}
+
+		goal = new Float32Array( 3 )
+		goal_on = false
+
+		target( next?: Float32Array | null ): Float32Array | null {
+			if( next !== undefined ) {
+				if( next ) this.aim( next[ 0 ], next[ 1 ], next.length > 2 ? next[ 2 ] : 0 )
+				else this.stop()
+			}
+			return this.goal_on ? this.goal : null
+		}
+
+		aim( x: number, y: number, z = 0 ) {
+			this.goal[ 0 ] = x
+			this.goal[ 1 ] = y
+			this.goal[ 2 ] = z
+			this.goal_on = true
+			this.since = Infinity
+			return this.goal
+		}
+
+		stop() {
+			this.goal_on = false
+			this.count = 0
+			this.index = 0
 		}
 
 		route = new Float32Array( 0 )

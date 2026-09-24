@@ -21,6 +21,31 @@ namespace $ {
 			$mol_assert_ok( Math.hypot( pos[ 0 ] - target[ 0 ], pos[ 1 ] - target[ 1 ] ) < agent.radius() )
 		},
 
+		'goal set once keeps moving the agent on the next frame'() {
+			const tile = new $bog_gamengine_phys_tile
+			tile.map( '#####\n#...#\n#...#\n#...#\n#####' )
+			const grid = new $bog_gamengine_nav_grid
+			grid.tile( tile )
+			const agent = new $bog_gamengine_nav_agent
+			agent.grid( grid )
+			agent.pos( new Float32Array([ 1.5, -1.5, 0 ]) )
+			agent.aim( 3.5, -1.5 )
+			agent.step( 1 / 60 )
+			const first = agent.pos()[ 0 ]
+			agent.step( 1 / 60 )
+			$mol_assert_ok( first > 1.5 )
+			$mol_assert_ok( agent.pos()[ 0 ] > first )
+			$mol_assert_equal( agent.target(), agent.goal )
+		},
+
+		'stop drops the goal and the route'() {
+			const agent = new $bog_gamengine_nav_agent
+			agent.aim( 3.5, -1.5 )
+			agent.stop()
+			$mol_assert_equal( agent.target(), null )
+			$mol_assert_equal( agent.path_count(), 0 )
+		},
+
 		'agents push each other apart'() {
 			const tile = new $bog_gamengine_phys_tile
 			tile.map( '#####\n#...#\n#...#\n#...#\n#####' )

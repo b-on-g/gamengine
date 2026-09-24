@@ -186,14 +186,18 @@ namespace $.$$ {
 			return canvas.getContext( 'webgl2', { preserveDrawingBuffer: true } )!
 		}
 
+		dpr() {
+			return this.$.$mol_dom_context.devicePixelRatio
+		}
+
 		@ $mol_mem
 		width() {
-			return Math.ceil( ( this.view_rect()?.width ?? 0 ) * this.$.$mol_dom_context.devicePixelRatio )
+			return Math.ceil( ( this.view_rect()?.width ?? 0 ) * this.dpr() )
 		}
 
 		@ $mol_mem
 		height() {
-			return Math.ceil( ( this.view_rect()?.height ?? 0 ) * this.$.$mol_dom_context.devicePixelRatio )
+			return Math.ceil( ( this.view_rect()?.height ?? 0 ) * this.dpr() )
 		}
 
 		@ $mol_mem
@@ -655,9 +659,9 @@ namespace $.$$ {
 			if( !count ) return false
 			if( slot.tex && !slot.tex.native ) return false
 			if( slot.live ) {
-				const geometry = batch.shape().geometry()
-				slot.vertex.send( geometry )
-				slot.size = geometry.length / 3
+				const shape = batch.shape()
+				slot.vertex.send( shape.geometry() )
+				slot.size = shape.size()
 			}
 			if( !slot.size ) return false
 			const grown = batch.cap > slot.cap

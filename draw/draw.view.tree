@@ -4,6 +4,7 @@ $bog_gamengine_draw $mol_view
 		^
 		width <= width 0
 		height <= height 0
+	dpr 1
 	scene $bog_gamengine_scene
 	cam $bog_gamengine_cam
 	light_dir Float32Array

@@ -21,6 +21,11 @@ namespace $ {
 			return next ?? 0
 		}
 
+		@ $mol_mem
+		scale( next?: number ) {
+			return next ?? 1
+		}
+
 		screen_pos = new Float32Array( 2 )
 		down = false
 
@@ -49,8 +54,9 @@ namespace $ {
 		ray_dir = new Float32Array( 3 )
 
 		ndc( out: Float32Array, x: number, y: number ) {
-			out[ 0 ] = x / this.width() * 2 - 1
-			out[ 1 ] = 1 - y / this.height() * 2
+			const scale = this.scale()
+			out[ 0 ] = x * scale / this.width() * 2 - 1
+			out[ 1 ] = 1 - y * scale / this.height() * 2
 			return out
 		}
 
@@ -107,10 +113,50 @@ namespace $ {
 			clip[ 3 ] = 1
 			$bog_gamengine_vec_mat4_apply( clip, this.proj_view(), clip )
 			const w = clip[ 3 ]
-			out[ 0 ] = ( clip[ 0 ] / w + 1 ) / 2 * this.width()
-			out[ 1 ] = ( 1 - clip[ 1 ] / w ) / 2 * this.height()
+			const scale = this.scale()
+			out[ 0 ] = ( clip[ 0 ] / w + 1 ) / 2 * this.width() / scale
+			out[ 1 ] = ( 1 - clip[ 1 ] / w ) / 2 * this.height() / scale
 			out[ 2 ] = w
 			return out
+		}
+
+		box_from = new Float32Array( 3 )
+		box_to = new Float32Array( 3 )
+		box_hits = [] as $bog_gamengine_node[]
+
+		pick_box( nodes: readonly $bog_gamengine_node[], x0: number, y0: number, x1: number, y1: number, out?: number[] ) {
+
+			const from = this.world( this.box_from, Math.min( x0, x1 ), Math.min( y0, y1 ) )
+			const to = this.world( this.box_to, Math.max( x0, x1 ), Math.max( y0, y1 ) )
+
+			const lo_x = Math.min( from[ 0 ], to[ 0 ] )
+			const hi_x = Math.max( from[ 0 ], to[ 0 ] )
+			const lo_y = Math.min( from[ 1 ], to[ 1 ] )
+			const hi_y = Math.max( from[ 1 ], to[ 1 ] )
+
+			const hits = this.box_hits
+			hits.length = 0
+			if( out ) out.length = 0
+
+			for( let n = 0; n < nodes.length; ++ n ) {
+
+				const node = nodes[ n ] as $bog_gamengine_point_node
+				const world = node.world()
+				const size = typeof node.size === 'function' ? node.size() : null
+				const half_x = size && size.length > 0 ? size[ 0 ] / 2 : 0
+				const half_y = size && size.length > 1 ? size[ 1 ] / 2 : 0
+				const x = world[ 12 ]
+				const y = world[ 13 ]
+
+				if( x + half_x < lo_x || x - half_x > hi_x ) continue
+				if( y + half_y < lo_y || y - half_y > hi_y ) continue
+
+				hits.push( nodes[ n ] )
+				if( out ) out.push( n )
+
+			}
+
+			return hits as readonly $bog_gamengine_node[]
 		}
 
 		pick( nodes: readonly $bog_gamengine_node[], x: number, y: number ) {

@@ -117,9 +117,8 @@ namespace $.$$ {
 
 		pointer_down( event?: PointerEvent ) {
 			if( !event ) return null
-			const dpr = this.$.$mol_dom_context.devicePixelRatio
-			const x = event.offsetX * dpr
-			const y = event.offsetY * dpr
+			const x = event.offsetX
+			const y = event.offsetY
 			const point = this.Point()
 			point.move( x, y )
 			const coin = point.pick( this.coins(), x, y )
@@ -139,13 +138,12 @@ namespace $.$$ {
 			world[ 1 ] = pos[ 1 ] + 0.5
 			world[ 2 ] = pos[ 2 ]
 			const screen = this.Point().screen( this.label_screen, world )
-			const dpr = this.$.$mol_dom_context.devicePixelRatio
 			const draw = this.Draw().view_rect()
 			const node = this.Hero_label().dom_node() as HTMLElement
 			const page = node.offsetParent?.getBoundingClientRect()
 			const dx = ( draw?.left ?? 0 ) - ( page?.left ?? 0 )
 			const dy = ( draw?.top ?? 0 ) - ( page?.top ?? 0 )
-			return [ screen[ 0 ] / dpr + dx, screen[ 1 ] / dpr + dy ] as const
+			return [ screen[ 0 ] + dx, screen[ 1 ] + dy ] as const
 		}
 
 		label_left() {
