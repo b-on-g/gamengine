@@ -163,6 +163,7 @@ namespace $.$$ {
 		future = [] as string[]
 		history_at = 0
 		history_gesture = false
+		history_session = false
 		history_taken = false
 		history_back = false
 
@@ -174,18 +175,29 @@ namespace $.$$ {
 			return 600
 		}
 
+		history_held() {
+			return this.history_gesture || this.history_session
+		}
+
+		history_hold( on: boolean ) {
+			if( on === this.history_session ) return on
+			if( on && !this.history_held() ) this.history_taken = false
+			this.history_session = on
+			return on
+		}
+
 		history_push( next: string ) {
 			if( this.history_back ) return
-			if( this.history_gesture && this.history_taken ) return
+			if( this.history_held() && this.history_taken ) return
 			const now = Date.now()
-			if( !this.history_gesture && now - this.history_at < this.history_gap() ) return
+			if( !this.history_held() && now - this.history_at < this.history_gap() ) return
 			const before = $mol_wire_probe( ()=> this.source_own() )
 			if( before === undefined || before === next ) return
 			this.history.push( before )
 			while( this.history.length > this.history_depth() ) this.history.shift()
 			this.future = []
 			this.history_at = now
-			if( this.history_gesture ) this.history_taken = true
+			if( this.history_held() ) this.history_taken = true
 		}
 
 		@ $mol_mem
@@ -1250,8 +1262,8 @@ namespace $.$$ {
 
 		pointer_down( event?: PointerEvent ) {
 			if( !event ) return null
+			if( !this.history_held() ) this.history_taken = false
 			this.history_gesture = true
-			this.history_taken = false
 			const x = this.point_x( event )
 			const y = this.point_y( event )
 			const point = this.Point()

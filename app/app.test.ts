@@ -534,6 +534,24 @@ namespace $ {
 			$mol_assert_equal( app.source(), before )
 		},
 
+		'a held session of many clicks gives one step of history'( $ ) {
+			const app = canvas_app( $ )
+			app.selected( 0 )
+			const before = app.source()
+			app.history_hold( true )
+			for( const x of [ 3, 4, 5 ] ) {
+				app.pointer_down( press_at( 5, 5 ) )
+				app.pointer_up( press_at( 5, 5 ) )
+				app.selected( 0 )
+				app.write( 'pos', [ x, 0, 0 ] )
+			}
+			app.history_hold( false )
+			$mol_assert_ok( app.source().includes( 'pos / 5 0 0' ) )
+			$mol_assert_equal( app.history.length, 1 )
+			app.undo()
+			$mol_assert_equal( app.source(), before )
+		},
+
 		'undo button is dark while there is nothing to undo'( $ ) {
 			const app = $$.$bog_gamestudio_app.make({ $ })
 			$mol_assert_equal( app.can_undo(), false )
