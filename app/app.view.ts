@@ -76,6 +76,28 @@ namespace $ {
 		return found ? out : null
 	}
 
+	export function $bog_gamestudio_app_wider(
+		bounds: Float32Array | null,
+		left: number,
+		bottom: number,
+		right: number,
+		top: number,
+		out: Float32Array,
+	) {
+		if( bounds ) {
+			out[ 0 ] = Math.min( bounds[ 0 ], left )
+			out[ 1 ] = Math.min( bounds[ 1 ], bottom )
+			out[ 2 ] = Math.max( bounds[ 2 ], right )
+			out[ 3 ] = Math.max( bounds[ 3 ], top )
+		} else {
+			out[ 0 ] = left
+			out[ 1 ] = bottom
+			out[ 2 ] = right
+			out[ 3 ] = top
+		}
+		return out
+	}
+
 	export const $bog_gamestudio_app_gizmo_box = 0.15
 
 	export const $bog_gamestudio_app_gizmo_near = 0.1
@@ -448,7 +470,10 @@ namespace $.$$ {
 		}
 
 		asset_selected( uri: string, next?: boolean ) {
-			if( next !== undefined ) this.asset( next ? uri : null )
+			if( next !== undefined ) {
+				this.asset( next ? uri : null )
+				if( next ) this.kit( null )
+			}
 			return this.asset() === uri
 		}
 
@@ -1031,14 +1056,18 @@ namespace $.$$ {
 
 		fit( event?: Event ) {
 			const bounds = $bog_gamestudio_app_bounds( this.Scene().nodes(), this.fit_box )
-			if( !bounds ) return event ?? null
+			const rows = this.tile_scene()?.rows() ?? null
+			let wide = 0
+			if( rows ) for( let i = 0; i < rows.length; ++ i ) wide = Math.max( wide, rows[ i ].length )
+			const shown = wide ? $bog_gamestudio_app_wider( bounds, 0, - rows!.length, wide, 0, this.fit_box ) : bounds
+			if( !shown ) return event ?? null
 			const cam = this.Cam()
 			const aspect = this.draw_width() / this.draw_height() || cam.aspect()
-			const width = Math.max( ( bounds[ 2 ] - bounds[ 0 ] ) * $bog_gamestudio_app_fit_gap, 1 )
-			const height = Math.max( ( bounds[ 3 ] - bounds[ 1 ] ) * $bog_gamestudio_app_fit_gap, 1 )
+			const width = Math.max( ( shown[ 2 ] - shown[ 0 ] ) * $bog_gamestudio_app_fit_gap, 1 )
+			const height = Math.max( ( shown[ 3 ] - shown[ 1 ] ) * $bog_gamestudio_app_fit_gap, 1 )
 			const zoom = Math.min( cam.height() / height, cam.height() * aspect / width )
 			cam.zoom( Math.min( cam.zoom_max(), Math.max( cam.zoom_min(), zoom ) ) )
-			cam.place( ( bounds[ 0 ] + bounds[ 2 ] ) / 2, ( bounds[ 1 ] + bounds[ 3 ] ) / 2 )
+			cam.place( ( shown[ 0 ] + shown[ 2 ] ) / 2, ( shown[ 1 ] + shown[ 3 ] ) / 2 )
 			return event ?? null
 		}
 

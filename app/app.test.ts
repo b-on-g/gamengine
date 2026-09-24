@@ -637,6 +637,30 @@ namespace $ {
 			}
 		},
 
+		'fit takes the tile map in even when the scene has no nodes of its own'( $ ) {
+			const app = canvas_app( $ )
+			app.source( $bog_gamestudio_sample.split( '\tkids /' )[ 0 ] )
+			$mol_assert_equal( $bog_gamestudio_app_bounds( app.Scene().nodes(), new Float32Array( 4 ) ), null )
+			app.fit()
+			const rows = app.tile_scene()!.rows()
+			const cam = app.Cam()
+			const half = cam.height() / cam.zoom() / 2
+			const aspect = app.draw_width() / app.draw_height()
+			const pos = cam.pos()
+			$mol_assert_ok( cam.zoom() !== 1 )
+			$mol_assert_ok( pos[ 0 ] - half * aspect <= 0 && pos[ 0 ] + half * aspect >= rows[ 0 ].length )
+			$mol_assert_ok( pos[ 1 ] - half <= - rows.length && pos[ 1 ] + half >= 0 )
+		},
+
+		'picked asset drops the picked class of the palette'( $ ) {
+			const app = canvas_app( $ )
+			app.Kit_row( 'walker' ).checked( true )
+			$mol_assert_equal( app.kit(), 'walker' )
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			$mol_assert_equal( app.kit(), null )
+			$mol_assert_ok( app.placing() )
+		},
+
 		'fit of a wide map zooms out, fit of one sprite zooms in'( $ ) {
 			const wide = canvas_app( $ )
 			wide.fit()
