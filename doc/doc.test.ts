@@ -304,6 +304,36 @@ namespace $ {
 			$mol_assert_equal( doc.scene().nodes().map( node => node.title() ), [ 'Герой', 'Монета', 'Монета', 'Стена' ] )
 		},
 
+		'dup of a plain reference sends the user to the declaration'( $ ) {
+			const doc = open( $, [
+				'$bog_gamestudio_sample_ref $bog_gamengine_scene',
+				'\tkids /',
+				'\t\t<= Hero',
+				'\tHero $bog_gamengine_sprite',
+				'\t\tname \\Герой',
+				'',
+			].join( '\n' ) )
+			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой' ] )
+			$mol_assert_fail(
+				()=> doc.dup( 'Hero' ),
+				'Node Hero is a reference to a declaration, duplicate the declaration itself',
+			)
+		},
+
+		'drop of a plain reference keeps the declaration for other users'( $ ) {
+			const doc = open( $, [
+				'$bog_gamestudio_sample_ref $bog_gamengine_scene',
+				'\tkids /',
+				'\t\t<= Hero',
+				'\tHero $bog_gamengine_sprite',
+				'\t\tname \\Герой',
+				'',
+			].join( '\n' ) )
+			doc.drop( 'Hero' )
+			$mol_assert_equal( doc.nodes().length, 0 )
+			$mol_assert_ok( doc.source().includes( 'Hero $bog_gamengine_sprite' ) )
+		},
+
 		'copy keeps every property of the node and lives on its own'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
 			const made = doc.dup( 'Coin' )

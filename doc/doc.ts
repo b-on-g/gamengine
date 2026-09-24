@@ -382,7 +382,7 @@ namespace $ {
 			const ref = list.kids[ at ]
 			const decl = ref.kids[ 0 ]
 			const klass = decl.kids[ 0 ]?.type ?? ''
-			if( !klass.startsWith( '$' ) ) return $mol_fail( new Error( `Node ${ path } is a reference without a class of its own` ) )
+			if( !klass.startsWith( '$' ) ) return $mol_fail( new Error( `Node ${ path } is a reference to a declaration, duplicate the declaration itself` ) )
 			const made = this.free_name( klass )
 			const copy = ref.clone([ decl.struct( made, decl.kids ) ])
 			const kids = [ ... list.kids.slice( 0, at + 1 ), copy, ... list.kids.slice( at + 1 ) ]
