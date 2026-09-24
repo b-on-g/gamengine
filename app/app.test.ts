@@ -575,6 +575,18 @@ namespace $ {
 			$mol_assert_not( app.placing() )
 		},
 
+		'after fit every node can be reached by the mouse inside the canvas'( $ ) {
+			const app = canvas_app( $ )
+			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 40, -30, 0 ] )
+			app.fit()
+			const seen = new Float32Array( 3 )
+			for( const node of app.Scene().nodes() ) {
+				app.Point().screen( seen, node.pos() )
+				$mol_assert_ok( seen[ 0 ] >= 0 && seen[ 0 ] <= app.draw_width() )
+				$mol_assert_ok( seen[ 1 ] >= 0 && seen[ 1 ] <= app.draw_height() )
+			}
+		},
+
 		'fit of a wide map zooms out, fit of one sprite zooms in'( $ ) {
 			const wide = canvas_app( $ )
 			wide.fit()
