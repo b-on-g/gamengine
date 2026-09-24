@@ -19738,6 +19738,14 @@ var $;
         others(next) {
             return next ?? [];
         }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'speed', kind: 'number', get: () => this.speed(), set: next => this.speed(next) },
+                { name: 'radius', kind: 'number', get: () => this.radius(), set: next => this.radius(next) },
+                { name: 'replan', kind: 'number', get: () => this.replan(), set: next => this.replan(next) },
+            ];
+        }
         goal = new Float32Array(3);
         goal_on = false;
         target(next) {

@@ -5729,6 +5729,7 @@ declare namespace $ {
         radius(next?: number): number;
         replan(next?: number): number;
         others(next?: readonly $bog_gamengine_nav_agent[]): readonly $bog_gamengine_nav_agent[];
+        props(): readonly $bog_gamengine_prop[];
         goal: Float32Array<ArrayBuffer>;
         goal_on: boolean;
         target(next?: Float32Array | null): Float32Array | null;
