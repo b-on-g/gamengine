@@ -417,6 +417,14 @@ namespace $.$$ {
 			return $bog_gamestudio_kit_apply( doc, item, `/ ${ doc.token( at[ 0 ] ) } ${ doc.token( at[ 1 ] ) } 0` )
 		}
 
+		kit_attach( id: string ) {
+			const item = this.Kit().item( id )
+			const path = this.doc_path()
+			if( !item || !path ) return ''
+			const doc = this.Doc()
+			return $bog_gamestudio_kit_attach( doc, item, doc.node( path ).name )
+		}
+
 		@ $mol_mem
 		asset_rows() {
 			return this.Assets().list().map( item => this.Asset( item.uri ) )
@@ -1050,6 +1058,16 @@ namespace $.$$ {
 			}
 			const kit = this.kit()
 			if( kit && this.editing() ) {
+				const item = this.Kit().item( kit )
+				if( item?.part ) {
+					const nodes = this.Scene().nodes()
+					const host = point.pick( nodes, x, y )
+					if( host ) {
+						this.selected( nodes.indexOf( host ) )
+						this.kit_attach( kit )
+					}
+					return event
+				}
 				this.kit_place( kit, this.grid_at( point.world( this.point_world, x, y ) ) )
 				return event
 			}

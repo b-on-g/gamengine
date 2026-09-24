@@ -1,14 +1,55 @@
 namespace $ {
 	$mol_test({
 
-		'every palette item names a class and a known world'() {
+		'every palette item names a class and either a known world or none'() {
 			const kit = new $bog_gamestudio_kit
 			$mol_assert_ok( kit.list().length > 0 )
 			for( const item of kit.list() ) {
 				$mol_assert_ok( item.klass.startsWith( '$' ) )
 				$mol_assert_ok( item.title.length > 0 )
-				$mol_assert_ok( Boolean( $bog_gamestudio_kit_worlds[ item.world ] ) )
+				$mol_assert_ok( !item.world || Boolean( $bog_gamestudio_kit_worlds[ item.world ] ) )
+				$mol_assert_ok( !item.part || !item.world )
 			}
+		},
+
+		'part attaches to a node and its props show up under the host'( $ ) {
+
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( [
+				'$bog_gamestudio_sample $bog_gamengine_scene',
+				'\tkids /',
+				'\t\t<= Hero $bog_gamengine_node',
+				'\t\t\tname \\Герой',
+				'',
+			].join( '\n' ) )
+
+			const kit = new $bog_gamestudio_kit
+			const name = $bog_gamestudio_kit_attach( doc, kit.item( 'combat' )!, 'Hero' )
+			const source = doc.source()
+
+			$mol_assert_ok( name.length > 0 )
+			$mol_assert_ok( source.includes( '$bog_gamengine_combat' ) )
+			$mol_assert_ok( source.includes( 'health_max 40' ) )
+			$mol_assert_ok( source.includes( 'parts /' ) )
+			$mol_assert_ok( source.includes( `<= ${ name }` ) )
+
+			const scene = doc.scene()
+			const hero = scene.nodes().find( one => one.name() === 'Герой' )!
+			const names = hero.props().map( prop => prop.name )
+			$mol_assert_ok( names.indexOf( 'combat.health_max' ) > 0 )
+			$mol_assert_equal( hero.props().find( prop => prop.name === 'combat.health_max' )!.get(), 40 )
+
+		},
+
+		'part of a missing host is not written at all'( $ ) {
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( '$bog_gamestudio_sample $bog_gamengine_scene\n\tkids /\n' )
+			const before = doc.source()
+			const kit = new $bog_gamestudio_kit
+			$mol_assert_equal( $bog_gamestudio_kit_attach( doc, kit.item( 'combat' )!, 'Ghost' ), '' )
+			$mol_assert_equal( doc.source(), before )
 		},
 
 		'item is found by id and missing one is null'() {

@@ -21,6 +21,7 @@ namespace $ {
 		readonly klass: string
 		readonly props: Readonly< Record< string, string > >
 		readonly world: string
+		readonly part?: boolean
 	}
 
 	export const $bog_gamestudio_kit_worlds: Readonly< Record< string, $bog_gamestudio_kit_world > > = {
@@ -50,6 +51,14 @@ namespace $ {
 			klass: '$bog_gamengine_phys_body',
 			props: { name: '\\Тело', size: '/ 0.8 0.8' },
 			world: 'phys',
+		},
+		{
+			id: 'combat',
+			title: 'Бой на узел',
+			klass: '$bog_gamengine_combat',
+			props: { health_max: '40', rate: '0.7' },
+			world: '',
+			part: true,
 		},
 	]
 
@@ -119,6 +128,14 @@ namespace $ {
 		if( known ) return true
 		doc.insert( doc.end_row( list ), doc.indent( list.span.row ) + 1, [ item ] )
 		return true
+	}
+
+	export function $bog_gamestudio_kit_attach( doc: $bog_gamestudio_doc, item: $bog_gamestudio_kit_item, host: string ) {
+		if( !doc.decls().get( host ) ) return ''
+		const name = doc.free_name( item.klass )
+		doc.declare( name, item.klass, item.props )
+		$bog_gamestudio_kit_join( doc, host, 'parts', name )
+		return name
 	}
 
 	export function $bog_gamestudio_kit_apply( doc: $bog_gamestudio_doc, item: $bog_gamestudio_kit_item, pos: string ) {
