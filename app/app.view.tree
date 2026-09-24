@@ -2,6 +2,7 @@ $bog_gamestudio_app $mol_view
 	selected? null
 	source? \
 	source_own? \
+	klass? \
 	land_link? \
 	plugins /
 		<= Control $mol_keyboard_state
@@ -101,7 +102,18 @@ $bog_gamestudio_app $mol_view
 				<= Save $mol_link
 					uri <= source_uri \
 					file_name \scene.view.tree
-					title \Скачать файлом
+					title \Скачать документ
+				<= Klass $mol_string
+					hint \$bog_myapp_level
+					value? <=> klass?
+				<= Export_tree $mol_link
+					uri <= module_tree_uri \
+					file_name <= module_tree_name \
+					title \Вывезти дерево
+				<= Export_ts $mol_link
+					uri <= module_ts_uri \
+					file_name <= module_ts_name \
+					title \Вывезти спутник
 			body /
 				<= Editor $mol_textarea
 					value? <=> source?

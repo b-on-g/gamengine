@@ -180,6 +180,45 @@ namespace $.$$ {
 			return 'data:text/plain;charset=utf-8,' + encodeURIComponent( this.source() )
 		}
 
+		@ $mol_mem
+		klass( next?: string ) {
+			return next ?? this.Doc().tree().kids[ 0 ]?.type ?? ''
+		}
+
+		@ $mol_mem
+		module() {
+			const klass = this.klass()
+			if( !/^\$\w+$/.test( klass ) ) return null
+			try {
+				return this.Doc().module( klass )
+			} catch( error ) {
+				if( $mol_promise_like( error ) ) return $mol_fail_hidden( error )
+				return null
+			}
+		}
+
+		module_name() {
+			return this.klass().replace( /^.*_/, '' )
+		}
+
+		module_tree_name() {
+			return `${ this.module_name() }.view.tree`
+		}
+
+		module_ts_name() {
+			return `${ this.module_name() }.view.ts`
+		}
+
+		module_tree_uri() {
+			const made = this.module()
+			return made ? 'data:text/plain;charset=utf-8,' + encodeURIComponent( made.tree ) : ''
+		}
+
+		module_ts_uri() {
+			const made = this.module()
+			return made ? 'data:text/plain;charset=utf-8,' + encodeURIComponent( made.ts ) : ''
+		}
+
 		kept_stat() {
 			if( this.doc_land() ) return 'Ленд Базы, правки уходят сразу'
 			const size = this.source().length

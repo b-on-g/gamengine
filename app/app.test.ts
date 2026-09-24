@@ -661,6 +661,30 @@ namespace $ {
 			$mol_assert_ok( app.placing() )
 		},
 
+		'export links hand out the module the document turns into'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			$mol_assert_equal( app.klass(), '$bog_gamestudio_sample' )
+			$mol_assert_equal( app.module_tree_name(), 'sample.view.tree' )
+			$mol_assert_equal( app.module_ts_name(), 'sample.view.ts' )
+			const made = app.module()!
+			$mol_assert_ok( made.tree.includes( 'pos <= Hero_pos Float32Array' ) )
+			$mol_assert_ok( made.ts.includes( 'Hero_pos() {' ) )
+			$mol_assert_not( /^\t+pos \/ /m.test( made.tree ) )
+			$mol_assert_equal( decodeURIComponent( app.module_tree_uri().replace( /^data:[^,]*,/, '' ) ), made.tree )
+			$mol_assert_equal( decodeURIComponent( app.module_ts_uri().replace( /^data:[^,]*,/, '' ) ), made.ts )
+		},
+
+		'export names follow the class typed by hand and stop on a bad one'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			app.Klass().value( '$bog_myapp_level' )
+			$mol_assert_equal( app.module_tree_name(), 'level.view.tree' )
+			$mol_assert_ok( app.module()!.tree.startsWith( '$bog_myapp_level $bog_gamestudio_sample_map\n' ) )
+			$mol_assert_ok( app.module()!.ts.includes( 'export class $bog_myapp_level extends $.$bog_myapp_level {' ) )
+			app.Klass().value( 'level' )
+			$mol_assert_equal( app.module(), null )
+			$mol_assert_equal( app.module_tree_uri(), '' )
+		},
+
 		'fit of a wide map zooms out, fit of one sprite zooms in'( $ ) {
 			const wide = canvas_app( $ )
 			wide.fit()
