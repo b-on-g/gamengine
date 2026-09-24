@@ -673,6 +673,9 @@ $bog_gamengine_demo_room $mol_page
 		<= Screen_switch $mol_check_box
 			title \Кнопки
 			checked? <=> screen_shown? false
+		<= Full $mol_check_box
+			title \Во весь экран
+			checked? <=> fullscreen? false
 		<= Profile $mol_check_box
 			title \Профиль
 			checked? <=> profile? false
@@ -687,6 +690,8 @@ $bog_gamengine_demo_room $mol_page
 			passes <= passes /
 			stat => stat
 			report => report
+			event *
+				pointerdown? <=> canvas_down? null
 		<= Screen $bog_gamengine_input_screen
 			shown? <=> screen_shown? false
 			bind *
@@ -746,6 +751,8 @@ $bog_gamengine_demo_room $mol_page
 			<= Report_bytes $mol_labeler
 				title \Память
 				content / <= report_bytes \
+	Screen_api $bog_gamengine_screen
+		target <= screen_target Element
 	Input $bog_gamengine_input
 		key <= Key
 		screen <= Screen
@@ -830,6 +837,7 @@ $bog_gamengine_demo_room $mol_page
 		pos <= pillar_pos Float32Array
 	Walker $bog_gamengine_demo_room_walker
 		input <= Input
+		screen <= Screen_api
 		tile <= Tile
 		pos? <=> walker_pos? Float32Array
 		rot? <=> walker_rot? Float32Array

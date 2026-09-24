@@ -21460,6 +21460,98 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    /** Call fullscreen( true ) and lock( true ) from a click or key handler only, browsers refuse both outside a user gesture */
+    class $bog_gamengine_screen extends $mol_object2 {
+        target(next) {
+            return next ?? null;
+        }
+        dx = 0;
+        dy = 0;
+        listeners = null;
+        doc() {
+            return this.$.$mol_dom_context.document;
+        }
+        listen() {
+            return this.listeners ??= [
+                new this.$.$mol_dom_listener(this.doc(), 'fullscreenchange', () => {
+                    this.fullscreen(Boolean(this.doc().fullscreenElement));
+                }),
+                new this.$.$mol_dom_listener(this.doc(), 'pointerlockchange', () => {
+                    this.lock(this.locked());
+                }),
+                new this.$.$mol_dom_listener(this.doc(), 'mousemove', (event) => {
+                    if (!this.locked())
+                        return;
+                    this.dx += event.movementX;
+                    this.dy += event.movementY;
+                }),
+            ];
+        }
+        fullscreen(next) {
+            this.listen();
+            if (next === undefined)
+                return Boolean(this.doc().fullscreenElement);
+            new this.$.$mol_after_tick(() => this.fullscreen_apply(next));
+            return next;
+        }
+        fullscreen_apply(next) {
+            const doc = this.doc();
+            if (next === Boolean(doc.fullscreenElement))
+                return;
+            if (next)
+                doc.documentElement.requestFullscreen().catch(() => this.fullscreen(false));
+            else
+                doc.exitFullscreen().catch(() => this.fullscreen(true));
+        }
+        locked() {
+            const target = this.target();
+            return target !== null && this.doc().pointerLockElement === target;
+        }
+        lock(next) {
+            this.listen();
+            if (next === undefined)
+                return this.locked();
+            new this.$.$mol_after_tick(() => this.lock_apply(next));
+            return next;
+        }
+        lock_apply(next) {
+            if (next === this.locked())
+                return;
+            if (next)
+                this.target()?.requestPointerLock().catch(() => this.lock(false));
+            else
+                this.doc().exitPointerLock();
+        }
+        take(out) {
+            this.listen();
+            out[0] = this.dx;
+            out[1] = this.dy;
+            this.dx = 0;
+            this.dy = 0;
+            return out;
+        }
+        destructor() {
+            for (const listener of this.listeners ?? [])
+                listener.destructor();
+            this.listeners = null;
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_screen.prototype, "target", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_screen.prototype, "fullscreen", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_screen.prototype, "lock", null);
+    $.$bog_gamengine_screen = $bog_gamengine_screen;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     const uv_plain = new Float32Array([0, 0, 1, 1]);
     class $bog_gamengine_mesh extends $bog_gamengine_node {
         lods(next) {
@@ -21674,98 +21766,6 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    /** Call fullscreen( true ) and lock( true ) from a click or key handler only, browsers refuse both outside a user gesture */
-    class $bog_gamengine_screen extends $mol_object2 {
-        target(next) {
-            return next ?? null;
-        }
-        dx = 0;
-        dy = 0;
-        listeners = null;
-        doc() {
-            return this.$.$mol_dom_context.document;
-        }
-        listen() {
-            return this.listeners ??= [
-                new this.$.$mol_dom_listener(this.doc(), 'fullscreenchange', () => {
-                    this.fullscreen(Boolean(this.doc().fullscreenElement));
-                }),
-                new this.$.$mol_dom_listener(this.doc(), 'pointerlockchange', () => {
-                    this.lock(this.locked());
-                }),
-                new this.$.$mol_dom_listener(this.doc(), 'mousemove', (event) => {
-                    if (!this.locked())
-                        return;
-                    this.dx += event.movementX;
-                    this.dy += event.movementY;
-                }),
-            ];
-        }
-        fullscreen(next) {
-            this.listen();
-            if (next === undefined)
-                return Boolean(this.doc().fullscreenElement);
-            new this.$.$mol_after_tick(() => this.fullscreen_apply(next));
-            return next;
-        }
-        fullscreen_apply(next) {
-            const doc = this.doc();
-            if (next === Boolean(doc.fullscreenElement))
-                return;
-            if (next)
-                doc.documentElement.requestFullscreen().catch(() => this.fullscreen(false));
-            else
-                doc.exitFullscreen().catch(() => this.fullscreen(true));
-        }
-        locked() {
-            const target = this.target();
-            return target !== null && this.doc().pointerLockElement === target;
-        }
-        lock(next) {
-            this.listen();
-            if (next === undefined)
-                return this.locked();
-            new this.$.$mol_after_tick(() => this.lock_apply(next));
-            return next;
-        }
-        lock_apply(next) {
-            if (next === this.locked())
-                return;
-            if (next)
-                this.target()?.requestPointerLock().catch(() => this.lock(false));
-            else
-                this.doc().exitPointerLock();
-        }
-        take(out) {
-            this.listen();
-            out[0] = this.dx;
-            out[1] = this.dy;
-            this.dx = 0;
-            this.dy = 0;
-            return out;
-        }
-        destructor() {
-            for (const listener of this.listeners ?? [])
-                listener.destructor();
-            this.listeners = null;
-        }
-    }
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_screen.prototype, "target", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_screen.prototype, "fullscreen", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_screen.prototype, "lock", null);
-    $.$bog_gamengine_screen = $bog_gamengine_screen;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
     const pitch_limit = Math.PI / 2 - 1e-3;
     class $bog_gamengine_demo_room_walker extends $bog_gamengine_cam_deep {
         input(next) {
@@ -21958,6 +21958,16 @@ var $;
 			(obj.checked) = (next) => ((this.screen_shown(next)));
 			return obj;
 		}
+		fullscreen(next){
+			if(next !== undefined) return next;
+			return false;
+		}
+		Full(){
+			const obj = new this.$.$mol_check_box();
+			(obj.title) = () => ("Во весь экран");
+			(obj.checked) = (next) => ((this.fullscreen(next)));
+			return obj;
+		}
 		profile(next){
 			if(next !== undefined) return next;
 			return false;
@@ -21991,6 +22001,10 @@ var $;
 		report(){
 			return (this.Draw().report());
 		}
+		canvas_down(next){
+			if(next !== undefined) return next;
+			return null;
+		}
 		Draw(){
 			const obj = new this.$.$bog_gamengine_draw();
 			(obj.scene) = () => ((this.Scene()));
@@ -21998,6 +22012,7 @@ var $;
 			(obj.fog) = () => ((this.fog()));
 			(obj.fog_color) = () => ((this.fog_color()));
 			(obj.passes) = () => ((this.passes()));
+			(obj.event) = () => ({"pointerdown": (next) => (this.canvas_down(next))});
 			return obj;
 		}
 		Screen(){
@@ -22147,6 +22162,10 @@ var $;
 			const obj = new this.$.$mol_labeler();
 			(obj.title) = () => ("Память");
 			(obj.content) = () => ([(this.report_bytes())]);
+			return obj;
+		}
+		screen_target(){
+			const obj = new this.$.Element();
 			return obj;
 		}
 		paused(next){
@@ -22309,6 +22328,7 @@ var $;
 				(this.Arm_check()), 
 				(this.Pause()), 
 				(this.Screen_switch()), 
+				(this.Full()), 
 				(this.Profile())
 			];
 		}
@@ -22344,6 +22364,11 @@ var $;
 				(this.Report_triangles()), 
 				(this.Report_bytes())
 			]);
+			return obj;
+		}
+		Screen_api(){
+			const obj = new this.$.$bog_gamengine_screen();
+			(obj.target) = () => ((this.screen_target()));
 			return obj;
 		}
 		Input(){
@@ -22432,6 +22457,7 @@ var $;
 		Walker(){
 			const obj = new this.$.$bog_gamengine_demo_room_walker();
 			(obj.input) = () => ((this.Input()));
+			(obj.screen) = () => ((this.Screen_api()));
 			(obj.tile) = () => ((this.Tile()));
 			(obj.pos) = (next) => ((this.walker_pos(next)));
 			(obj.rot) = (next) => ((this.walker_rot(next)));
@@ -22486,10 +22512,13 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Pause"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "screen_shown"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Screen_switch"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "fullscreen"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Full"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "profile"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Profile"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "fog"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "fog_color"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "canvas_down"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Draw"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Screen"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Stat"));
@@ -22507,6 +22536,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Report_draws"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Report_triangles"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Report_bytes"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "screen_target"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Solid"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Box"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Wall_batch"));
@@ -22539,6 +22569,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Vignette"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Bloom"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Report"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Screen_api"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Input"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Key"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Tile"));
@@ -22593,6 +22624,16 @@ var $;
             }
             profile(next = false) {
                 return next;
+            }
+            screen_target() {
+                return this.Draw().dom_node();
+            }
+            fullscreen(next) {
+                return this.Screen_api().fullscreen(next);
+            }
+            canvas_down(event) {
+                this.Screen_api().lock(true);
+                return event ?? null;
             }
             fogged(next = false) {
                 return next;
@@ -22755,6 +22796,9 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_room.prototype, "profile", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_room.prototype, "screen_target", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_room.prototype, "fogged", null);
@@ -33818,49 +33862,6 @@ var $;
 ;
 "use strict";
 var $;
-(function ($_1) {
-    $mol_test({
-        'skinned mesh takes its shape from the skin'($) {
-            const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: () => null, geometry: () => new Float32Array(9) });
-            const skin = new $bog_gamengine_skin;
-            skin.shape(shape);
-            const mesh = new $bog_gamengine_mesh_skin;
-            mesh.skin(skin);
-            $mol_assert_equal(mesh.shape(), shape);
-        },
-        'every skinned mesh gets its own shader, so it gets its own batch'($) {
-            const one = new $bog_gamengine_mesh_skin;
-            const two = new $bog_gamengine_mesh_skin;
-            $mol_assert_ok(one.shader() instanceof $bog_gamengine_shader_skin);
-            $mol_assert_not(one.shader() === two.shader());
-        },
-        'batch of one skinned node gives its bones'($) {
-            const skin = new $bog_gamengine_skin;
-            const mesh = new $bog_gamengine_mesh_skin;
-            mesh.skin(skin);
-            $mol_assert_equal($bog_gamengine_skin_bones({ nodes: () => [mesh] }), skin.pose());
-            $mol_assert_equal($bog_gamengine_skin_bones({ nodes: () => [mesh, mesh] }), null);
-            $mol_assert_equal($bog_gamengine_skin_bones({ nodes: () => [new $bog_gamengine_mesh] }), null);
-        },
-        'step moves the skin time'($) {
-            const clips = new Map([
-                ['go', { name: 'go', duration: 2, channels: [] }],
-            ]);
-            const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: () => null, clips: () => clips });
-            const skin = new $bog_gamengine_skin;
-            skin.shape(shape);
-            skin.clip('go');
-            const mesh = new $bog_gamengine_mesh_skin;
-            mesh.skin(skin);
-            mesh.step(0.5);
-            $mol_assert_equal(skin.time(), 0.5);
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
 (function ($) {
     function screen_stub() {
         const calls = [];
@@ -33952,6 +33953,49 @@ var $;
             $mol_assert_equal(screen.take(out), out);
             $mol_assert_equal(Array.from(out), [5, -3]);
             $mol_assert_equal(Array.from(screen.take(out)), [0, 0]);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    $mol_test({
+        'skinned mesh takes its shape from the skin'($) {
+            const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: () => null, geometry: () => new Float32Array(9) });
+            const skin = new $bog_gamengine_skin;
+            skin.shape(shape);
+            const mesh = new $bog_gamengine_mesh_skin;
+            mesh.skin(skin);
+            $mol_assert_equal(mesh.shape(), shape);
+        },
+        'every skinned mesh gets its own shader, so it gets its own batch'($) {
+            const one = new $bog_gamengine_mesh_skin;
+            const two = new $bog_gamengine_mesh_skin;
+            $mol_assert_ok(one.shader() instanceof $bog_gamengine_shader_skin);
+            $mol_assert_not(one.shader() === two.shader());
+        },
+        'batch of one skinned node gives its bones'($) {
+            const skin = new $bog_gamengine_skin;
+            const mesh = new $bog_gamengine_mesh_skin;
+            mesh.skin(skin);
+            $mol_assert_equal($bog_gamengine_skin_bones({ nodes: () => [mesh] }), skin.pose());
+            $mol_assert_equal($bog_gamengine_skin_bones({ nodes: () => [mesh, mesh] }), null);
+            $mol_assert_equal($bog_gamengine_skin_bones({ nodes: () => [new $bog_gamengine_mesh] }), null);
+        },
+        'step moves the skin time'($) {
+            const clips = new Map([
+                ['go', { name: 'go', duration: 2, channels: [] }],
+            ]);
+            const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: () => null, clips: () => clips });
+            const skin = new $bog_gamengine_skin;
+            skin.shape(shape);
+            skin.clip('go');
+            const mesh = new $bog_gamengine_mesh_skin;
+            mesh.skin(skin);
+            mesh.step(0.5);
+            $mol_assert_equal(skin.time(), 0.5);
         },
     });
 })($ || ($ = {}));
