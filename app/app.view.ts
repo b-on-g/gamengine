@@ -91,7 +91,7 @@ namespace $.$$ {
 
 		@ $mol_mem
 		floor_pos() {
-			return this.Arena().center()
+			return this.Arena().center( 0, new Float32Array( 3 ) )
 		}
 
 		@ $mol_mem

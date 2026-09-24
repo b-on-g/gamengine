@@ -28,7 +28,7 @@ namespace $ {
 			const arena = new $bog_shooter_arena
 			arena.map( map )
 			$mol_assert_equal( arena.target_ids(), [ '2_1' ] )
-			$mol_assert_equal( arena.xy( '2_1' ), [ 2, 1 ] )
+			$mol_assert_equal( [ ... arena.xy( '2_1', new Int32Array( 2 ) ) ], [ 2, 1 ] )
 		},
 
 		'cell position lands in the middle of the cell at the asked height'() {
