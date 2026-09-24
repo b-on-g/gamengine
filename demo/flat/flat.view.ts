@@ -12,10 +12,6 @@ namespace $.$$ {
 			return { '#': 'wall', '.': 'floor' }
 		}
 
-		tilemap_pool() {
-			return this.Tilemap().pool()
-		}
-
 		@ $mol_mem
 		hero_pos( next?: Float32Array ) {
 			return next ?? new Float32Array([ 1.5, -1.5, 0 ])
@@ -76,18 +72,9 @@ namespace $.$$ {
 			return new Float32Array([ 1, 0.92, 0.35, 1 ])
 		}
 
-		coin_text_pool( id: string ) {
-			return this.Coin_text( id ).pool()
-		}
-
 		@ $mol_mem
 		coin_texts() {
 			return this.coins_left().map( id => this.Coin_text( id ) )
-		}
-
-		@ $mol_mem
-		batches() {
-			return [ this.Tilemap_batch(), this.Batch(), ... this.coins_left().map( id => this.Coin_text_batch( id ) ) ]
 		}
 
 		@ $mol_mem
