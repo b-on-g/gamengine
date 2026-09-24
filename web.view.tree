@@ -573,11 +573,6 @@ $bog_gamengine_demo_flat $mol_page
 		phys <= Phys $bog_gamengine_phys
 			bodies <= bodies /
 			tile <= Tile
-		batches <= batches /
-	Batch $bog_gamengine_batch
-		shader <= Sprite_shader $bog_gamengine_shader_sprite
-		atlas <= Atlas
-		nodes <= sprites /
 	Cam $bog_gamengine_cam_flat
 		height 15
 		pos <= cam_pos Float32Array
@@ -585,10 +580,6 @@ $bog_gamengine_demo_flat $mol_page
 		tile <= Tile
 		atlas <= Atlas
 		palette <= palette *
-	Tilemap_batch $bog_gamengine_batch
-		shader <= Sprite_shader
-		atlas <= Atlas
-		source <= tilemap_pool null
 	Hero $bog_gamengine_demo_flat_hero
 		input <= Input
 		pos? <=> hero_pos? Float32Array
@@ -641,10 +632,6 @@ $bog_gamengine_demo_flat $mol_page
 		align \center
 		color <= coin_text_color Float32Array
 		pos <= coin_text_pos* Float32Array
-	Coin_text_batch* $bog_gamengine_batch
-		shader <= Sprite_shader
-		atlas <= Font_atlas
-		source <= coin_text_pool* null
 
 $bog_gamengine_demo_room $mol_page
 	title \Комната
@@ -776,6 +763,7 @@ $bog_gamengine_demo_room $mol_page
 		\############
 	Tile $bog_gamengine_phys_tile
 		map <= map
+		plane <= tile_plane $bog_gamengine_map_plane
 	Atlas $bog_gamengine_atlas
 		uris /
 			\bog/gamengine/demo/atlas/wall.png

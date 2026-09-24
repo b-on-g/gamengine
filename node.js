@@ -20671,25 +20671,12 @@ var $;
 			(obj.tile) = () => ((this.Tile()));
 			return obj;
 		}
-		batches(){
-			return [];
-		}
-		Sprite_shader(){
-			const obj = new this.$.$bog_gamengine_shader_sprite();
-			return obj;
-		}
-		sprites(){
-			return [];
-		}
 		cam_pos(){
 			const obj = new this.$.Float32Array();
 			return obj;
 		}
 		palette(){
 			return {};
-		}
-		tilemap_pool(){
-			return null;
 		}
 		hero_pos(next){
 			if(next !== undefined) return next;
@@ -20728,9 +20715,6 @@ var $;
 		coin_text_pos(id){
 			const obj = new this.$.Float32Array();
 			return obj;
-		}
-		coin_text_pool(id){
-			return null;
 		}
 		title(){
 			return "Плоский мир";
@@ -20813,14 +20797,6 @@ var $;
 			(obj.input) = () => ((this.Input()));
 			(obj.kids) = () => ((this.nodes()));
 			(obj.phys) = () => ((this.Phys()));
-			(obj.batches) = () => ((this.batches()));
-			return obj;
-		}
-		Batch(){
-			const obj = new this.$.$bog_gamengine_batch();
-			(obj.shader) = () => ((this.Sprite_shader()));
-			(obj.atlas) = () => ((this.Atlas()));
-			(obj.nodes) = () => ((this.sprites()));
 			return obj;
 		}
 		Cam(){
@@ -20834,13 +20810,6 @@ var $;
 			(obj.tile) = () => ((this.Tile()));
 			(obj.atlas) = () => ((this.Atlas()));
 			(obj.palette) = () => ((this.palette()));
-			return obj;
-		}
-		Tilemap_batch(){
-			const obj = new this.$.$bog_gamengine_batch();
-			(obj.shader) = () => ((this.Sprite_shader()));
-			(obj.atlas) = () => ((this.Atlas()));
-			(obj.source) = () => ((this.tilemap_pool()));
 			return obj;
 		}
 		Hero(){
@@ -20922,13 +20891,6 @@ var $;
 			(obj.pos) = () => ((this.coin_text_pos(id)));
 			return obj;
 		}
-		Coin_text_batch(id){
-			const obj = new this.$.$bog_gamengine_batch();
-			(obj.shader) = () => ((this.Sprite_shader()));
-			(obj.atlas) = () => ((this.Font_atlas()));
-			(obj.source) = () => ((this.coin_text_pool(id)));
-			return obj;
-		}
 	};
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Coins"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "screen_shown"));
@@ -20942,7 +20904,6 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Ghost_stat"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Nodes_stat"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Phys"));
-	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Sprite_shader"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "cam_pos"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "hero_pos"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "ghost_pos"));
@@ -20958,10 +20919,8 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Sound"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Clock"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Scene"));
-	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Batch"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Cam"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Tilemap"));
-	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Tilemap_batch"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Hero"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Hero_sprite"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Grid"));
@@ -20972,7 +20931,6 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Font"));
 	($mol_mem(($.$bog_gamengine_demo_flat.prototype), "Font_atlas"));
 	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "Coin_text"));
-	($mol_mem_key(($.$bog_gamengine_demo_flat.prototype), "Coin_text_batch"));
 
 
 ;
@@ -20991,9 +20949,6 @@ var $;
             }
             palette() {
                 return { '#': 'wall', '.': 'floor' };
-            }
-            tilemap_pool() {
-                return this.Tilemap().pool();
             }
             hero_pos(next) {
                 return next ?? new Float32Array([1.5, -1.5, 0]);
@@ -21033,14 +20988,8 @@ var $;
             coin_text_color() {
                 return new Float32Array([1, 0.92, 0.35, 1]);
             }
-            coin_text_pool(id) {
-                return this.Coin_text(id).pool();
-            }
             coin_texts() {
                 return this.coins_left().map(id => this.Coin_text(id));
-            }
-            batches() {
-                return [this.Tilemap_batch(), this.Batch(), ...this.coins_left().map(id => this.Coin_text_batch(id))];
             }
             nodes() {
                 return [this.Tilemap(), ...this.bodies(), this.Ghost(), ...this.sprites(), ...this.coin_texts()];
@@ -21145,9 +21094,6 @@ var $;
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_flat.prototype, "coin_texts", null);
-        __decorate([
-            $mol_mem
-        ], $bog_gamengine_demo_flat.prototype, "batches", null);
         __decorate([
             $mol_mem
         ], $bog_gamengine_demo_flat.prototype, "nodes", null);
@@ -22177,6 +22123,10 @@ var $;
 			const obj = new this.$.Element();
 			return obj;
 		}
+		tile_plane(){
+			const obj = new this.$.$bog_gamengine_map_plane();
+			return obj;
+		}
 		paused(next){
 			return (this.Clock().paused(next));
 		}
@@ -22404,6 +22354,7 @@ var $;
 		Tile(){
 			const obj = new this.$.$bog_gamengine_phys_tile();
 			(obj.map) = () => ((this.map()));
+			(obj.plane) = () => ((this.tile_plane()));
 			return obj;
 		}
 		Atlas(){
@@ -22546,6 +22497,7 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Report_triangles"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Report_bytes"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "screen_target"));
+	($mol_mem(($.$bog_gamengine_demo_room.prototype), "tile_plane"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Solid"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Box"));
 	($mol_mem(($.$bog_gamengine_demo_room.prototype), "Wall_batch"));
@@ -22607,20 +22559,14 @@ var $;
     var $$;
     (function ($$) {
         class $bog_gamengine_demo_room extends $.$bog_gamengine_demo_room {
+            tile_plane() {
+                return 'xz';
+            }
             wall_ids() {
-                const rows = this.Tile().rows();
-                const ids = [];
-                for (let y = 0; y < rows.length; ++y) {
-                    for (let x = 0; x < rows[y].length; ++x) {
-                        if (this.Tile().cell(x, y))
-                            ids.push(`${x}_${y}`);
-                    }
-                }
-                return ids;
+                return this.Tile().ids('#');
             }
             wall_pos(id) {
-                const [x, y] = id.split('_').map(Number);
-                return new Float32Array([x + 0.5, 0.5, y + 0.5]);
+                return this.Tile().spot_pos(id, 0.5, new Float32Array(3));
             }
             walls() {
                 return this.wall_ids().map(id => this.Wall(id));
@@ -22787,9 +22733,6 @@ var $;
                 return `lights ${this.Scene().lights().length}`;
             }
         }
-        __decorate([
-            $mol_mem
-        ], $bog_gamengine_demo_room.prototype, "wall_ids", null);
         __decorate([
             $mol_mem_key
         ], $bog_gamengine_demo_room.prototype, "wall_pos", null);
