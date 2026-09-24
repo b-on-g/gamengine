@@ -25,6 +25,7 @@ $bog_legion_app $mol_page
 					stat => stat
 					width => draw_width
 					height => draw_height
+					dpr => draw_dpr
 					event *
 						pointerdown? <=> pointer_down? null
 						pointermove? <=> pointer_move? null
@@ -114,6 +115,7 @@ $bog_legion_app $mol_page
 		cam <= Cam
 		width <= draw_width
 		height <= draw_height
+		scale <= draw_dpr
 	Clock $bog_gamengine_clock
 	Scene $bog_gamengine_scene
 		clock <= Clock

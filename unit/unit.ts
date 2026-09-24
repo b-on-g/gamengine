@@ -85,8 +85,6 @@ namespace $ {
 		}
 
 		health = NaN
-		goal = new Float32Array( 3 )
-		goal_on = false
 		order_on = false
 		mode_now = ''
 		foe_now = null as $bog_legion_unit | null
@@ -96,14 +94,6 @@ namespace $ {
 		roam_left = 0
 		seed = 1
 		here = new Float32Array( 2 )
-
-		target( next?: Float32Array | null ) {
-			if( next !== undefined ) {
-				this.goal_on = Boolean( next )
-				if( next ) this.goal.set( next.subarray( 0, 3 ) )
-			}
-			return this.goal_on ? this.goal : null
-		}
 
 		hp() {
 			if( Number.isNaN( this.health ) ) this.health = this.health_max()
@@ -146,12 +136,8 @@ namespace $ {
 		}
 
 		order_to( x: number, y: number ) {
-			this.goal[ 0 ] = x
-			this.goal[ 1 ] = y
-			this.goal[ 2 ] = 0
-			this.goal_on = true
+			this.aim( x, y )
 			this.order_on = true
-			this.since = Infinity
 		}
 
 		wound( hurt: number ) {
@@ -164,23 +150,20 @@ namespace $ {
 		die() {
 			if( this.dead() ) return
 			this.dead( true )
-			this.goal_on = false
+			this.stop()
 			this.order_on = false
-			this.count = 0
 			this.flash()?.burst( 12, this.pos() )
 		}
 
 		reset( at: Float32Array ) {
 			this.dead( false )
 			this.health = NaN
-			this.goal_on = false
+			this.stop()
 			this.order_on = false
 			this.mode_now = ''
 			this.foe_now = null
 			this.foe_dist = Infinity
 			this.cool = 0
-			this.count = 0
-			this.index = 0
 			this.since = Infinity
 			this.pos( at )
 			this.here[ 0 ] = at[ 0 ]

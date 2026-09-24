@@ -259,10 +259,6 @@ namespace $.$$ {
 			return [ this.Tilemap_batch(), ... this.Scene().auto_batches(), this.Flash_batch() ]
 		}
 
-		dpr() {
-			return this.$.$mol_dom_context.devicePixelRatio
-		}
-
 		@ $mol_mem
 		drag( next?: readonly number[] | null ): readonly number[] | null {
 			return next ?? null
@@ -307,7 +303,7 @@ namespace $.$$ {
 
 		pointer_move( event?: PointerEvent ) {
 			if( !event ) return null
-			const dpr = this.dpr()
+			const dpr = this.Draw().dpr()
 			this.Cam().aim( event.offsetX * dpr, event.offsetY * dpr )
 			const drag = this.drag()
 			if( drag ) this.drag([ drag[ 0 ], drag[ 1 ], event.offsetX, event.offsetY ])
@@ -341,9 +337,10 @@ namespace $.$$ {
 		}
 
 		spot( x: number, y: number ) {
-			const dpr = this.dpr()
-			return this.Point().world( new Float32Array( 3 ), x * dpr, y * dpr )
+			return this.Point().world( new Float32Array( 3 ), x, y )
 		}
+
+		box_ids = [] as number[]
 
 		choose() {
 			const drag = this.drag()
@@ -351,19 +348,14 @@ namespace $.$$ {
 			this.drag( null )
 			const live = this.mine_live_ids()
 			if( Math.abs( drag[ 2 ] - drag[ 0 ] ) < 5 && Math.abs( drag[ 3 ] - drag[ 1 ] ) < 5 ) {
-				const dpr = this.dpr()
-				const hit = this.Point().pick( this.mine_alive(), drag[ 0 ] * dpr, drag[ 1 ] * dpr )
+				const hit = this.Point().pick( this.mine_alive(), drag[ 0 ], drag[ 1 ] )
 				const found = live.filter( id => this.Mine( id ) === hit )
 				this.sel( found )
 				return
 			}
-			const from = this.spot( Math.min( drag[ 0 ], drag[ 2 ] ), Math.min( drag[ 1 ], drag[ 3 ] ) )
-			const to = this.spot( Math.max( drag[ 0 ], drag[ 2 ] ), Math.max( drag[ 1 ], drag[ 3 ] ) )
-			const found = live.filter( id => {
-				const at = this.Mine( id ).pos()
-				return at[ 0 ] >= from[ 0 ] && at[ 0 ] <= to[ 0 ] && at[ 1 ] <= from[ 1 ] && at[ 1 ] >= to[ 1 ]
-			} )
-			this.sel( found )
+			const at = this.box_ids
+			this.Point().pick_box( this.mine_alive(), drag[ 0 ], drag[ 1 ], drag[ 2 ], drag[ 3 ], at )
+			this.sel( at.map( index => live[ index ] ) )
 		}
 
 		command( x: number, y: number ) {
