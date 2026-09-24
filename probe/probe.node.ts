@@ -360,9 +360,7 @@ namespace $ {
 	export const $bog_gamengine_probe_menu_script = `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 		const wait = async ( count )=> { for( let i = 0; i < count; ++ i ) await frame() }
-		Object.defineProperty( window, 'devicePixelRatio', { value: ${ $bog_gamengine_probe_menu_dpr }, configurable: true } )
-		dispatchEvent( new Event( 'resize' ) )
-		await wait( 60 )
+		await wait( 30 )
 		const book = document.querySelector( '[mol_book2_catalog]' )
 		if( !book ) return { dpr: devicePixelRatio, inner: innerWidth, pages: [] }
 		const pages = []
@@ -853,6 +851,7 @@ namespace $ {
 			script: $bog_gamengine_probe_menu_script,
 			width: 1440,
 			height: 900,
+			scale: $bog_gamengine_probe_menu_dpr,
 			limit: 120000,
 		}) as $bog_gamengine_probe_menu_result | typeof $bog_probe_skip
 
@@ -862,7 +861,7 @@ namespace $ {
 
 		const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( got ) }` ) )
 
-		if( got.dpr !== $bog_gamengine_probe_menu_dpr ) return fail( 'плотность пикселей не подменилась' )
+		if( got.dpr !== $bog_gamengine_probe_menu_dpr ) return fail( 'вьюпорт не встал на плотность ретины' )
 		if( got.pages.length !== $bog_gamengine_probe_menu_spreads.length ) return fail( 'обошлись не все страницы каталога' )
 
 		for( const page of got.pages ) {
