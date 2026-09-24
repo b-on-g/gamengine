@@ -72,9 +72,9 @@ namespace $ {
 
 		@ $mol_mem
 		normal_layer() {
-			const atlas = this.atlas()
+			const data = this.atlas()?.data() ?? null
 			const frame = this.normal_frame()
-			return atlas && frame ? atlas.layer( frame ) : -1
+			return data && frame ? data.layer( frame ) : -1
 		}
 
 		uv() {

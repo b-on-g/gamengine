@@ -8,6 +8,7 @@ namespace $ {
 					proj: 'mat4',
 					view: 'mat4',
 					atlas: 'sampler2DArray',
+					atlas_data: 'sampler2DArray',
 					light_count: 'int',
 					light_pos: 'vec4[8]',
 					light_dir: 'vec4[8]',
@@ -103,7 +104,7 @@ namespace $ {
 					vec4 base = texture( atlas, vec3( pipe_uv, pipe_layer ) ) * pipe_tint;
 					vec3 normal = normalize( pipe_normal );
 					if( pipe_normal_layer >= 0.0 ) {
-						vec3 bump = texture( atlas, vec3( pipe_uv, pipe_normal_layer ) ).xyz * 2.0 - 1.0;
+						vec3 bump = texture( atlas_data, vec3( pipe_uv, pipe_normal_layer ) ).xyz * 2.0 - 1.0;
 						normal = perturb( normal, bump, pipe_pos, pipe_uv );
 					}
 					vec3 eye = normalize( cam_pos - pipe_pos );

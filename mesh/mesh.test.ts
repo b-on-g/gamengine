@@ -109,6 +109,30 @@ namespace $ {
 			$mol_assert_ok( Math.abs( new $bog_gamengine_mesh().radius() - Math.sqrt( 3 ) / 2 ) < 1e-6 )
 		},
 
+		'normal frame takes its layer from the data atlas, not from the albedo one'() {
+			const albedo = new $bog_gamengine_atlas
+			albedo.uris([ 'bog/gamengine/demo/atlas/wall.png', 'bog/gamengine/demo/atlas/floor.png' ])
+			const maps = new $bog_gamengine_atlas
+			maps.kind( 'data' )
+			maps.uris([ 'bog/gamengine/demo/atlas/floor.png', 'bog/gamengine/demo/atlas/wall.png' ])
+			albedo.data( maps )
+			const mesh = new $bog_gamengine_mesh
+			mesh.atlas( albedo )
+			mesh.frame( 'wall' )
+			mesh.normal_frame( 'wall' )
+			$mol_assert_equal( mesh.layer(), 0 )
+			$mol_assert_equal( mesh.normal_layer(), 1 )
+		},
+
+		'mesh without data atlas has no normal layer'() {
+			const albedo = new $bog_gamengine_atlas
+			albedo.uris([ 'bog/gamengine/demo/atlas/wall.png' ])
+			const mesh = new $bog_gamengine_mesh
+			mesh.atlas( albedo )
+			mesh.normal_frame( 'wall' )
+			$mol_assert_equal( mesh.normal_layer(), -1 )
+		},
+
 		'set through props changes size'() {
 			const mesh = new $bog_gamengine_mesh
 			mesh.props().find( prop => prop.name === 'size' )!.set( new Float32Array([ 2, 3, 4 ]) )

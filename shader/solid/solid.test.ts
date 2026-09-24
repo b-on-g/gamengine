@@ -65,6 +65,15 @@ namespace $ {
 			$mol_assert_ok( shader.frag().includes( 'pipe_normal_layer' ) )
 		},
 
+		'bump comes from the data atlas and albedo from the color one'( $ ) {
+			const shader = new $bog_gamengine_shader_solid
+			$mol_assert_equal( shader.face().glob.atlas_data, 'sampler2DArray' )
+			const frag = shader.frag()
+			$mol_assert_ok( frag.includes( 'texture( atlas_data, vec3( pipe_uv, pipe_normal_layer ) )' ) )
+			$mol_assert_ok( frag.includes( 'texture( atlas, vec3( pipe_uv, pipe_layer ) )' ) )
+			$mol_assert_not( frag.includes( 'texture( atlas, vec3( pipe_uv, pipe_normal_layer ) )' ) )
+		},
+
 		'shadow uniforms are in face and frag has a pcf function over shadow_map'( $ ) {
 			const shader = new $bog_gamengine_shader_solid
 			const glob = shader.face().glob

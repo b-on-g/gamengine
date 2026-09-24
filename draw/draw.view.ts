@@ -2,7 +2,7 @@ namespace $.$$ {
 
 	type $bog_gamengine_draw_face = {
 		glob: {
-			proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray',
+			proj: 'mat4', view: 'mat4', atlas: 'sampler2DArray', atlas_data: 'sampler2DArray',
 			light_count: 'int', light_pos: 'vec4[8]', light_dir: 'vec4[8]', light_color: 'vec4[8]',
 			ambient: 'vec3', cam_pos: 'vec3', wireframe: 'float',
 			fog: 'vec2', fog_color: 'vec3',
@@ -64,6 +64,8 @@ namespace $.$$ {
 		atlas = null as $bog_gamengine_atlas | null
 		sampler = null as WebGLUniformLocation | null
 		tex = null as $bog_gamengine_draw_tex | null
+		sampler_data = null as WebGLUniformLocation | null
+		tex_data = null as $bog_gamengine_draw_tex | null
 		prim = 0 as GLenum
 		wire = null as GLenum | null
 		size = 0
@@ -181,6 +183,7 @@ namespace $.$$ {
 		count_bytes = 0
 		texel_vec = new Float32Array( 2 )
 		post_last = new Map< string, $bog_gamengine_gl_color_target >()
+		blank_data_last = null as WebGLTexture | null
 		post_vao_last = null as WebGLVertexArrayObject | null
 		samples = 0
 		paint_at = 0
@@ -235,7 +238,7 @@ namespace $.$$ {
 
 		@ $mol_mem
 		clear( next?: ArrayLike< number > ) {
-			return next ? $bog_gamengine_node_vec( next ) : new Float32Array([ 0.08, 0.08, 0.1, 1 ])
+			return next ? $bog_gamengine_node_vec( next ) : new Float32Array([ 0.004, 0.004, 0.007, 1 ])
 		}
 
 		@ $mol_mem
@@ -380,6 +383,8 @@ namespace $.$$ {
 
 		destructor() {
 			this.post_drop()
+			if( this.blank_data_last ) this.context().deleteTexture( this.blank_data_last )
+			this.blank_data_last = null
 			this.shadow_last?.dispose()
 			this.shadow_last = null
 			const slots = this.slots_last
@@ -433,6 +438,8 @@ namespace $.$$ {
 				atlas,
 				sampler: atlas ? program.uniform( 'atlas' ) : null,
 				tex: atlas ? this.tex( atlas ) : null,
+				sampler_data: glob( 'atlas_data' ),
+				tex_data: atlas?.data() ? this.tex( atlas.data()! ) : null,
 				prim: mode === 'lines' ? gl.LINES : mode === 'triangles' ? gl.TRIANGLES : gl.TRIANGLE_STRIP,
 				wire: depth && wireframe && mode !== 'lines' ? ( mode === 'triangles' ? gl.LINES : gl.LINE_STRIP ) : null,
 				size: shape.size(),
@@ -506,6 +513,22 @@ namespace $.$$ {
 			return tex
 		}
 
+		tex_fill( gl: WebGL2RenderingContext, textures: $bog_gamengine_draw_tex[], tex: $bog_gamengine_draw_tex | null ) {
+			if( !tex || textures.includes( tex ) ) return tex
+			textures.push( tex )
+			const atlas = tex.atlas
+			if( tex.native || !atlas.ready() ) return tex
+			tex.native = $bog_gamengine_gl_texture_array( gl, atlas.images(), atlas.size(), atlas.kind() === 'color' )
+			return tex
+		}
+
+		@ $mol_mem
+		blank_data() {
+			const texture = $bog_gamengine_gl_texture_array_flat( this.context() )
+			this.blank_data_last = texture
+			return texture
+		}
+
 		@ $mol_mem
 		textures() {
 			const gl = this.context()
@@ -513,11 +536,8 @@ namespace $.$$ {
 			const textures = [] as $bog_gamengine_draw_tex[]
 			for( let i = 0; i < slots.length; ++ i ) {
 				const slot = slots[ i ]
-				const tex = slot.tex
-				if( !tex || textures.includes( tex ) ) continue
-				textures.push( tex )
-				if( tex.native || !slot.atlas!.ready() ) continue
-				tex.native = $bog_gamengine_gl_texture_array( gl, slot.atlas!.images(), slot.atlas!.size() )
+				this.tex_fill( gl, textures, slot.tex )
+				this.tex_fill( gl, textures, slot.tex_data )
 			}
 			const last = this.textures_last
 			for( let i = 0; i < last.length; ++ i ) {
@@ -684,6 +704,7 @@ namespace $.$$ {
 			const count = batch.count
 			if( !count ) return false
 			if( slot.tex && !slot.tex.native ) return false
+			if( slot.tex_data && !slot.tex_data.native ) return false
 			if( slot.live ) {
 				const shape = batch.shape()
 				slot.vertex.send( shape.geometry() )
@@ -810,6 +831,11 @@ namespace $.$$ {
 				gl.activeTexture( gl.TEXTURE0 )
 				gl.bindTexture( gl.TEXTURE_2D_ARRAY, slot.tex.native )
 				$bog_gamengine_gl_uniform_int( gl, slot.sampler, 0 )
+			}
+			if( slot.sampler_data ) {
+				gl.activeTexture( gl.TEXTURE5 )
+				gl.bindTexture( gl.TEXTURE_2D_ARRAY, slot.tex_data?.native ?? this.blank_data() )
+				$bog_gamengine_gl_uniform_int( gl, slot.sampler_data, 5 )
 			}
 			if( slot.bones_tex ) {
 				gl.activeTexture( gl.TEXTURE4 )

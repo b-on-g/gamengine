@@ -1,5 +1,7 @@
 namespace $ {
 
+	export type $bog_gamengine_atlas_kind = 'color' | 'data'
+
 	export type $bog_gamengine_atlas_source = {
 		name: string
 		image: TexImageSource
@@ -29,6 +31,16 @@ namespace $ {
 		@ $mol_mem
 		size( next = 64 ) {
 			return next
+		}
+
+		@ $mol_mem
+		kind( next?: $bog_gamengine_atlas_kind ) {
+			return next ?? 'color'
+		}
+
+		@ $mol_mem
+		data( next?: $bog_gamengine_atlas | null ) {
+			return next ?? null
 		}
 
 		@ $mol_mem

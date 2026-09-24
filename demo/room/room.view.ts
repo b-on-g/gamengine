@@ -52,7 +52,7 @@ namespace $.$$ {
 
 		@ $mol_mem
 		fog_color() {
-			return new Float32Array([ 0.05, 0.06, 0.09 ])
+			return new Float32Array([ 0.0014, 0.002, 0.005 ])
 		}
 
 		@ $mol_mem

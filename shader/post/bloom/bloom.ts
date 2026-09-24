@@ -7,7 +7,7 @@ namespace $ {
 				void main() {
 					vec3 base = max( texture( source, pipe_uv ).rgb, vec3( 0.0 ) );
 					float power = max( max( base.r, base.g ), base.b );
-					float over = max( power - 0.4, 0.0 );
+					float over = max( power - 0.13, 0.0 );
 					color = vec4( base * ( over / max( power, 0.0001 ) ), 1.0 );
 				}
 			`

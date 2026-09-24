@@ -103,7 +103,7 @@ namespace $ {
 		'clear colour is the dark default until it is set'( $ ) {
 			const draw = new $$.$bog_gamengine_draw
 			draw.$ = $
-			$mol_assert_equal( draw.clear(), new Float32Array([ 0.08, 0.08, 0.1, 1 ]) )
+			$mol_assert_equal( draw.clear(), new Float32Array([ 0.004, 0.004, 0.007, 1 ]) )
 			draw.clear([ 0.5, 0.7, 1, 1 ])
 			$mol_assert_equal( draw.clear(), new Float32Array([ 0.5, 0.7, 1, 1 ]) )
 		},

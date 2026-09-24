@@ -91,6 +91,17 @@ namespace $ {
 			$mol_assert_equal( atlas.ready(), false )
 		},
 
+		'atlas keeps colors by default and takes data atlas apart'() {
+			const albedo = atlas_mock([ 'bog/gamengine/demo/atlas/wall.png' ])
+			const maps = atlas_mock([ 'bog/gamengine/demo/atlas/wall_normal.png' ])
+			maps.kind( 'data' )
+			albedo.data( maps )
+			$mol_assert_equal( albedo.kind(), 'color' )
+			$mol_assert_equal( maps.kind(), 'data' )
+			$mol_assert_equal( albedo.data(), maps )
+			$mol_assert_equal( maps.data(), null )
+		},
+
 		'placeholder image gives no size error and keeps atlas not ready'() {
 			const atlas = new $bog_gamengine_atlas_blank_mock
 			atlas.uris([ 'bog/gamengine/demo/atlas/hero.png' ])

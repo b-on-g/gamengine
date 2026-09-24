@@ -31,7 +31,7 @@ namespace $ {
 
 		'bright pass keeps only what is over the threshold'( $ ) {
 			const frag = new $bog_gamengine_shader_post_bloom_bright().frag()
-			$mol_assert_ok( frag.includes( 'power - 0.4' ) )
+			$mol_assert_ok( frag.includes( 'power - 0.13' ) )
 		},
 
 		'source of the mix declares both samplers'( $ ) {

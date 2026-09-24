@@ -165,12 +165,12 @@ namespace $ {
 
 	}
 
-	export function $bog_gamengine_gl_texture_array( gl: WebGL2RenderingContext, images: readonly TexImageSource[], size: number ) {
+	export function $bog_gamengine_gl_texture_array( gl: WebGL2RenderingContext, images: readonly TexImageSource[], size: number, srgb = false ) {
 
 		const texture = gl.createTexture()!
 		gl.bindTexture( gl.TEXTURE_2D_ARRAY, texture )
 		gl.pixelStorei( gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true )
-		gl.texImage3D( gl.TEXTURE_2D_ARRAY, 0, gl.RGBA, size, size, images.length, 0, gl.RGBA, gl.UNSIGNED_BYTE, null )
+		gl.texImage3D( gl.TEXTURE_2D_ARRAY, 0, srgb ? gl.SRGB8_ALPHA8 : gl.RGBA8, size, size, images.length, 0, gl.RGBA, gl.UNSIGNED_BYTE, null )
 
 		for( let i = 0; i < images.length; ++ i ) {
 			gl.texSubImage3D( gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, size, size, 1, gl.RGBA, gl.UNSIGNED_BYTE, images[ i ] )
@@ -187,6 +187,15 @@ namespace $ {
 		gl.generateMipmap( gl.TEXTURE_2D_ARRAY )
 		gl.pixelStorei( gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false )
 
+		return texture
+	}
+
+	export function $bog_gamengine_gl_texture_array_flat( gl: WebGL2RenderingContext ) {
+		const texture = gl.createTexture()!
+		gl.bindTexture( gl.TEXTURE_2D_ARRAY, texture )
+		gl.texImage3D( gl.TEXTURE_2D_ARRAY, 0, gl.RGBA8, 1, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([ 128, 128, 255, 255 ]) )
+		gl.texParameteri( gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST )
+		gl.texParameteri( gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST )
 		return texture
 	}
 

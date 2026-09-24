@@ -11,8 +11,8 @@ namespace $ {
 				}
 				void main() {
 					vec4 base = texture( source, pipe_uv );
-					vec3 white = aces( vec3( 1.0 ) );
-					color = vec4( clamp( aces( max( base.rgb, vec3( 0.0 ) ) ) / white, 0.0, 1.0 ), base.a );
+					vec3 mapped = clamp( aces( max( base.rgb, vec3( 0.0 ) ) ), 0.0, 1.0 );
+					color = vec4( pow( mapped, vec3( 1.0 / 2.2 ) ), base.a );
 				}
 			`
 		}
