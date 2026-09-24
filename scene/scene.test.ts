@@ -70,7 +70,7 @@ namespace $ {
 			scene.phys( phys )
 			$bog_gamengine_scene_time_mock.stamp( 0 )
 			scene.step()
-			scene.batches([])
+			scene.aspect( 2 )
 			scene.step()
 			$bog_gamengine_scene_time_mock.stamp( 16 )
 			scene.step()
@@ -89,7 +89,7 @@ namespace $ {
 			scene.step()
 			$bog_gamengine_scene_time_mock.stamp( 16 )
 			scene.step()
-			scene.batches([])
+			scene.aspect( 2 )
 			scene.step()
 			$mol_assert_equal( input.polls, 2 )
 		},
@@ -137,9 +137,31 @@ namespace $ {
 			scene.step()
 			$bog_gamengine_scene_time_mock.stamp( 16 )
 			scene.step()
-			scene.batches([])
+			scene.aspect( 2 )
 			scene.step()
 			$mol_assert_ok( Math.abs( mover.pos()[ 0 ] - 0.016 ) < 1e-9 )
+		},
+
+		'gravity of phys set by code lives through two frames'( $ ) {
+			$.$mol_state_time = $bog_gamengine_scene_time_mock
+			const body = new $bog_gamengine_phys_body
+			const phys = new $bog_gamengine_phys
+			phys.bodies([ body ])
+			phys.gravity( new Float32Array([ 0, -10 ]) )
+			const scene = new $bog_gamengine_scene
+			scene.$ = $
+			scene.phys( phys )
+			$bog_gamengine_scene_time_mock.stamp( 0 )
+			scene.step()
+			scene.aspect( 2 )
+			scene.step()
+			$mol_wire_fiber.sync()
+			$bog_gamengine_scene_time_mock.stamp( 16 )
+			scene.step()
+			$bog_gamengine_scene_time_mock.stamp( 32 )
+			scene.step()
+			$mol_assert_equal( [ ... phys.gravity() ], [ 0, -10 ] )
+			$mol_assert_ok( body.vel()[ 1 ] < -0.3 )
 		},
 
 		'scene steps phys3 body by its velocity'( $ ) {

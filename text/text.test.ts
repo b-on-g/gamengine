@@ -12,7 +12,6 @@ namespace $ {
 		text.value( value )
 		text.height( 0.5 )
 		text.align( align )
-		text.emit()
 		return text
 	}
 
@@ -51,6 +50,23 @@ namespace $ {
 			const layer = text.pool().layer
 			$mol_assert_equal( layer[ 0 ], 1 )
 			$mol_assert_equal( layer[ 1 ], 0 )
+		},
+
+		'pool follows the value without a manual emit'() {
+			const text = $bog_gamengine_text_test_make( 'ab' )
+			$mol_assert_equal( text.pool().count, 2 )
+			text.value( 'aba' )
+			$mol_assert_equal( text.pool().count, 3 )
+		},
+
+		'pool version grows only when the input changes'() {
+			const text = $bog_gamengine_text_test_make( 'ab' )
+			const version = text.pool().version
+			text.emit()
+			text.emit()
+			$mol_assert_equal( text.pool().version, version )
+			text.value( 'ba' )
+			$mol_assert_equal( text.pool().version, version + 1 )
 		},
 
 		'aabb covers the quad of every glyph'() {

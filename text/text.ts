@@ -6,6 +6,7 @@ namespace $ {
 
 		cap = 0
 		count = 0
+		version = 0
 		trans = new Float32Array( 0 )
 		tint = new Float32Array( 0 )
 		layer = new Float32Array( 0 )
@@ -35,16 +36,22 @@ namespace $ {
 	export class $bog_gamengine_text extends $bog_gamengine_node {
 
 		@ $mol_mem
-		pool( next?: $bog_gamengine_text_pool ) {
+		pool_own( next?: $bog_gamengine_text_pool ) {
 			return next ?? new $bog_gamengine_text_pool
+		}
+
+		@ $mol_mem
+		pool(): $bog_gamengine_text_pool {
+			this.emit()
+			return this.pool_own()
 		}
 
 		is_source() {
 			return true
 		}
 
-		source() {
-			return this.pool() as $bog_gamengine_batch_source
+		source(): $bog_gamengine_batch_source {
+			return this.pool()
 		}
 
 		@ $mol_mem
@@ -77,11 +84,6 @@ namespace $ {
 			return next ? $bog_gamengine_node_vec( next ) : new Float32Array([ 1, 1, 1, 1 ])
 		}
 
-		@ $mol_mem
-		billboard( next = false ) {
-			return next
-		}
-
 		props(): readonly $bog_gamengine_prop[] {
 			return [
 				... super.props(),
@@ -108,12 +110,12 @@ namespace $ {
 		done_height = NaN
 		done_align = ''
 
-		fresh( value: string, world: Float32Array, height: number, align: string, color: Float32Array ) {
+		fresh( value: string, axes: Float32Array, height: number, align: string, color: Float32Array ) {
 			let same = value === this.done_value && height === this.done_height && align === this.done_align
 			const done_world = this.done_world
 			for( let i = 0; i < 16; ++i ) {
-				if( world[ i ] !== done_world[ i ] ) same = false
-				done_world[ i ] = world[ i ]
+				if( axes[ i ] !== done_world[ i ] ) same = false
+				done_world[ i ] = axes[ i ]
 			}
 			const done_color = this.done_color
 			for( let i = 0; i < 4; ++i ) {
@@ -127,7 +129,7 @@ namespace $ {
 		}
 
 		emit() {
-			const pool = this.pool()
+			const pool = this.pool_own()
 			const value = this.value()
 			const world = this.world()
 			const height = this.height()
@@ -135,7 +137,6 @@ namespace $ {
 			const color = this.color()
 			const billboard = this.billboard()
 			const cam = billboard ? this.scene()?.cam() ?? null : null
-			if( this.fresh( value, world, height, align, color ) && !cam ) return pool.count
 
 			const axes = this.axes
 			if( cam ) {
@@ -157,6 +158,9 @@ namespace $ {
 			} else {
 				for( let k = 0; k < 16; ++k ) axes[ k ] = world[ k ]
 			}
+
+			if( this.fresh( value, axes, height, align, color ) ) return pool.count
+			++ pool.version
 
 			pool.fit( value.length )
 			const font = this.font()
@@ -202,10 +206,6 @@ namespace $ {
 
 			pool.count = count
 			return count
-		}
-
-		step( dt: number ) {
-			this.emit()
 		}
 
 	}

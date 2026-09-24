@@ -197,6 +197,8 @@ namespace $ {
 			const nodes = this.nodes()
 			const phys = this.phys()
 			const phys3 = this.phys3()
+			phys?.pull()
+			phys3?.pull()
 			const cam = this.cam()
 			const aspect = this.aspect()
 			if( frame !== this.frame_done ) {

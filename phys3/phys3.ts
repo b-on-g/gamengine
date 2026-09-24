@@ -77,6 +77,13 @@ namespace $ {
 			return next ?? 8
 		}
 
+		pull() {
+			this.gravity()
+			this.friction()
+			this.restitution()
+			this.iterations()
+		}
+
 		grow( need: number ) {
 			if( need <= this.cap ) return
 			let cap = Math.max( this.cap, 16 )

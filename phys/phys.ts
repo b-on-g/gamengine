@@ -19,6 +19,12 @@ namespace $ {
 			return next ? $bog_gamengine_node_vec( next ) : new Float32Array([ 0, 0 ])
 		}
 
+		pull() {
+			this.bodies()
+			this.tile()
+			this.gravity()
+		}
+
 		eps = 1e-4
 
 		normal = new Float32Array( 2 )
