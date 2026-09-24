@@ -2,10 +2,6 @@ namespace $.$$ {
 
 	export class $bog_gamengine_demo_room extends $.$bog_gamengine_demo_room {
 
-		tile_plane(): $bog_gamengine_map_plane {
-			return 'xz'
-		}
-
 		wall_ids() {
 			return this.Tile().ids( '#' )
 		}

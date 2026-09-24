@@ -10,8 +10,8 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		plane( next?: $bog_gamengine_map_plane ) {
-			return next ?? 'xy'
+		plane( next = 'xy' ) {
+			return next
 		}
 
 		@ $mol_mem
@@ -82,16 +82,20 @@ namespace $ {
 		}
 
 		place( cx: number, cy: number, lift: number, out: Float32Array ) {
-			if( this.plane() === 'xz' ) {
+			const plane = this.plane()
+			if( plane === 'xz' ) {
 				out[ 0 ] = cx
 				out[ 1 ] = lift
 				out[ 2 ] = cy
-			} else {
+				return out
+			}
+			if( plane === 'xy' ) {
 				out[ 0 ] = cx
 				out[ 1 ] = - cy
 				out[ 2 ] = lift
+				return out
 			}
-			return out
+			return $mol_fail( new Error( `Map plane ${ plane } is unknown, known: xy, xz` ) )
 		}
 
 		pos( x: number, y: number, lift: number, out: Float32Array ) {
