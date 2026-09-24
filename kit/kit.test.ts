@@ -42,6 +42,53 @@ namespace $ {
 
 		},
 
+		'edit of a part prop lands in the part, not on the host'( $ ) {
+
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( [
+				'$bog_gamestudio_sample $bog_gamengine_scene',
+				'\tkids /',
+				'\t\t<= Hero $bog_gamengine_node',
+				'\t\t\tname \\Герой',
+				'',
+			].join( '\n' ) )
+
+			const kit = new $bog_gamestudio_kit
+			const part = $bog_gamestudio_kit_attach( doc, kit.item( 'combat' )!, 'Hero' )
+
+			const route = $bog_gamestudio_kit_route_of( doc, 'Hero', 'combat.health_max' )
+			$mol_assert_equal( route.path, part )
+			$mol_assert_equal( route.prop, 'health_max' )
+
+			doc.set( route.path, route.prop, 70 )
+			const source = doc.source()
+			$mol_assert_ok( source.includes( 'health_max 70' ) )
+			$mol_assert_equal( source.includes( 'combat.health_max' ), false )
+
+			const hero = doc.scene().nodes().find( one => one.name() === 'Герой' )!
+			$mol_assert_equal( hero.props().find( one => one.name === 'combat.health_max' )!.get(), 70 )
+
+		},
+
+		'plain prop of the node itself is routed to the node'( $ ) {
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( '$bog_gamestudio_sample $bog_gamengine_scene\n\tkids /\n\t\t<= Hero $bog_gamengine_node\n' )
+			const route = $bog_gamestudio_kit_route_of( doc, 'Hero', 'pos' )
+			$mol_assert_equal( route.path, 'Hero' )
+			$mol_assert_equal( route.prop, 'pos' )
+		},
+
+		'dotted prop without a matching part stays on the host'( $ ) {
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( '$bog_gamestudio_sample $bog_gamengine_scene\n\tkids /\n\t\t<= Hero $bog_gamengine_node\n' )
+			const route = $bog_gamestudio_kit_route_of( doc, 'Hero', 'brain.speed' )
+			$mol_assert_equal( route.path, 'Hero' )
+			$mol_assert_equal( route.prop, 'brain.speed' )
+		},
+
 		'part of a missing host is not written at all'( $ ) {
 			const doc = new $bog_gamestudio_doc
 			doc.$ = $
