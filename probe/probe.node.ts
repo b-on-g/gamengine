@@ -62,6 +62,7 @@ namespace $ {
 		readonly cursor: string
 		readonly tab_after: string
 		readonly rows_assets: number
+		readonly tree_assets: string
 		readonly sprite_line: string
 		readonly mesh_line: string
 		readonly sound_line: string
@@ -286,6 +287,7 @@ namespace $ {
 			await frame()
 			await frame()
 			const rows_assets = document.querySelectorAll( '[bog_gamestudio_app_row]' ).length
+			const tree_assets = ( document.querySelector( '[bog_gamestudio_app_tree]' ) || { innerText: '' } ).innerText
 			const line = re => ( editor.value.match( re ) || [ '' ] )[ 0 ]
 			const sprite_line = line( /<= Sprite_1[^]*?frame \\\\[^\\n]*/ )
 			const mesh_line = line( /<= Mesh_1_shape[^]*?uri \\\\[^\\n]*/ )
@@ -294,7 +296,7 @@ namespace $ {
 			const status_node = document.querySelector( '[bog_gamestudio_app_status]' )
 			const status = status_node ? status_node.innerText.trim() : ''
 			const mesh_pixel = at( drop_x + 2 * ppu, drop_y )
-			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after, ppu, fields_coin, row_coin, arrow, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after, textures, buffers, images: images.count, moves, tiles, asset_files, drop_before, drop_after, cursor, tab_after, rows_assets, sprite_line, mesh_line, sound_line, status, mesh_pixel }
+			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after, ppu, fields_coin, row_coin, arrow, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after, textures, buffers, images: images.count, moves, tiles, asset_files, drop_before, drop_after, cursor, tab_after, rows_assets, tree_assets, sprite_line, mesh_line, sound_line, status, mesh_pixel }
 		`
 	}
 
@@ -454,8 +456,8 @@ namespace $ {
 		if( !( holst.height > 300 ) ) return fail( 'холст ниже 300 px' )
 		if( got.center[ 0 ] < 40 && got.center[ 1 ] < 40 && got.center[ 2 ] < 40 ) return fail( 'центр холста чёрный' )
 		if( got.hero_before.every( ( value, index )=> Math.abs( value - got.hero_after[ index ] ) < 8 ) ) return fail( 'замена кадра в исходнике не перерисовала героя' )
-		if( got.rows !== 3 ) return fail( 'в дереве не три строки' )
-		if( !got.tree_text.includes( 'Герой' ) ) return fail( 'в дереве нет имени «Герой»' )
+		if( !got.tree_text.startsWith( 'Герой\nМонета\nСтена' ) ) return fail( 'в дереве нет трёх узлов сцены подряд' )
+		if( !( got.rows >= 3 ) ) return fail( 'в дереве меньше трёх строк' )
 		if( got.fields_before.includes( 'pos' ) ) return fail( 'инспектор показал pos до выбора' )
 		if( !got.fields_after.includes( 'pos' ) ) return fail( 'клик по строке «Герой» не показал pos' )
 		if( !got.source_after.includes( 'pos / 5 0 0' ) ) return fail( 'число из инспектора не попало в исходник' )
@@ -492,7 +494,9 @@ namespace $ {
 		if( got.drop_before.every( ( value, index )=> Math.abs( value - got.drop_after[ index ] ) < 8 ) ) return fail( 'клик по холсту с выбранной монетой не нарисовал её в точке клика' )
 		if( !got.hero_after.every( ( value, index )=> Math.abs( value - got.drop_after[ index ] ) < 8 ) ) return fail( 'пиксель в точке клика не цвета монеты' )
 		if( got.tab_after !== 'Ассеты' ) return fail( 'вкладка «Ассеты» сбросилась после пересборки сцены' )
-		if( got.rows_assets !== 5 ) return fail( 'после монеты и модели в дереве не пять строк' )
+		if( !( got.rows_assets > got.rows ) ) return fail( 'монета и модель не добавили строк в дерево' )
+		if( !got.tree_assets.includes( 'coin' ) ) return fail( 'поставленной монеты нет в дереве' )
+		if( !got.tree_assets.includes( 'pillar' ) ) return fail( 'поставленной модели нет в дереве' )
 		if( !got.sprite_line.endsWith( 'frame \\coin' ) ) return fail( 'у нового спрайта в исходнике нет frame \\coin' )
 		if( !got.mesh_line.endsWith( 'uri \\bog/gamengine/demo/room/model/pillar.glb' ) ) return fail( 'у новой модели в исходнике нет uri столба' )
 		if( !got.sound_line.endsWith( 'coin \\bog/gamengine/demo/sound/coin.wav' ) ) return fail( 'звук не записался в Sound uris' )
