@@ -41,14 +41,14 @@ namespace $ {
 			id: 'walker',
 			title: 'Ходок',
 			klass: '$bog_gamengine_phys_walker',
-			props: { size: '/ 0.8 0.8' },
+			props: { name: '\\Ходок', size: '/ 0.8 0.8' },
 			world: 'phys',
 		},
 		{
 			id: 'body',
 			title: 'Тело',
 			klass: '$bog_gamengine_phys_body',
-			props: { size: '/ 0.8 0.8' },
+			props: { name: '\\Тело', size: '/ 0.8 0.8' },
 			world: 'phys',
 		},
 	]

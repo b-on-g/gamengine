@@ -45,6 +45,13 @@ namespace $ {
 			$mol_assert_equal( new $bog_gamengine_phys_walker().speed(), 3 )
 		},
 
+		'placed node comes with a readable name of its own'() {
+			const kit = new $bog_gamestudio_kit
+			const plan = $bog_gamestudio_kit_plan_of( kit.item( 'walker' )!, [ 'Tile', 'Phys' ], [ 'phys' ], '/ 1.5 -1.5 0' )
+			$mol_assert_equal( plan.props.name, '\\Ходок' )
+			$mol_assert_equal( kit.item( 'body' )!.props.name, '\\Тело' )
+		},
+
 		'empty scene gets the tile, the world and a line on the root'() {
 			const kit = new $bog_gamestudio_kit
 			const plan = $bog_gamestudio_kit_plan_of( kit.item( 'walker' )!, [], [ 'map', 'palette' ], '/ 1.5 -1.5 0' )
