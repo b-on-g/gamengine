@@ -7,7 +7,7 @@ namespace $ {
 	}
 
 	function walker_test_box( world: $bog_gamengine_phys3, sx: number, sy: number, sz: number, x: number, y: number, z: number, rot?: Float32Array ) {
-		return world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ sx, sy, sz ]), 0, new Float32Array([ x, y, z ]), rot )
+		return world.index_of( world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ sx, sy, sz ]), 0, new Float32Array([ x, y, z ]), rot ) )
 	}
 
 	function walker_test_key( ... held: string[] ) {
@@ -47,6 +47,28 @@ namespace $ {
 	}
 
 	$mol_test({
+
+		'stands as a capsule body a ray can see'() {
+			const world = walker_test_world()
+			const walker = walker_test_walker( world, walker_test_key(), 3 )
+			walker_test_run( walker, 120 )
+			const out = new Float32Array( 7 )
+			const i = new $bog_gamengine_phys3_cast().ray(
+				world, new Float32Array([ 0, 0.9, 6 ]), new Float32Array([ 0, 0, -1 ]), 20, out,
+			)
+			$mol_assert_equal( i, world.index_of( walker.handle_last ) )
+			walker_test_near( out[ 0 ], 5.7, 0.05 )
+		},
+
+		'own body neither blocks nor is pushed by its walk'() {
+			const world = walker_test_world()
+			const walker = walker_test_walker( world, walker_test_key( 'W' ) )
+			const pos = walker_test_run( walker, 60 )
+			walker_test_near( pos[ 2 ], -4, 1e-3 )
+			const body = world.pos_of( walker.handle_last )!
+			walker_test_near( body[ 2 ], pos[ 2 ], 1e-6 )
+			walker_test_near( body[ 1 ], pos[ 1 ], 1e-6 )
+		},
 
 		'falls and stands on the floor with center at half height'() {
 			const walker = walker_test_walker( walker_test_world(), walker_test_key(), 3 )

@@ -5,12 +5,12 @@ namespace $ {
 	}
 
 	function cast_test_add( world: $bog_gamengine_phys3, shape: number, sx: number, sy: number, sz: number, x: number, y: number, z: number, rot?: Float32Array ) {
-		return world.add( shape, new Float32Array([ sx, sy, sz ]), 0, new Float32Array([ x, y, z ]), rot )
+		return world.index_of( world.add( shape, new Float32Array([ sx, sy, sz ]), 0, new Float32Array([ x, y, z ]), rot ) )
 	}
 
-	function cast_test_ray( world: $bog_gamengine_phys3, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, skip_ghost = false ) {
+	function cast_test_ray( world: $bog_gamengine_phys3, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, opts?: $bog_gamengine_phys3_cast_opts ) {
 		const out = new Float32Array( 7 )
-		const i = new $bog_gamengine_phys3_cast().ray( world, new Float32Array([ ox, oy, oz ]), new Float32Array([ dx, dy, dz ]), 100, out, skip_ghost )
+		const i = new $bog_gamengine_phys3_cast().ray( world, new Float32Array([ ox, oy, oz ]), new Float32Array([ dx, dy, dz ]), 100, out, opts )
 		return { i, out }
 	}
 
@@ -106,7 +106,7 @@ namespace $ {
 			world.flags[ ghost ] |= $bog_gamengine_phys3.flag_ghost
 			cast_test_add( world, $bog_gamengine_phys3.shape_box, 0.5, 0.5, 0.5, 0, 0, -6 )
 			$mol_assert_equal( cast_test_ray( world, 0, 0, 0, 0, 0, -1 ).i, 0 )
-			const { i, out } = cast_test_ray( world, 0, 0, 0, 0, 0, -1, true )
+			const { i, out } = cast_test_ray( world, 0, 0, 0, 0, 0, -1, { skip_ghost: true } )
 			$mol_assert_equal( i, 1 )
 			cast_test_near( out[ 0 ], 5.5 )
 		},
@@ -118,6 +118,35 @@ namespace $ {
 			const { i, out } = cast_test_ray( world, 0, 0, 0, 0, 0, -1 )
 			$mol_assert_equal( i, 1 )
 			cast_test_near( out[ 0 ], 3 )
+		},
+
+		'ray with skip index does not see that body'() {
+			const world = cast_test_world()
+			const near = cast_test_add( world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -3 )
+			cast_test_add( world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -6 )
+			$mol_assert_equal( cast_test_ray( world, 0, 0, 0, 0, 0, -1 ).i, near )
+			const { i, out } = cast_test_ray( world, 0, 0, 0, 0, 0, -1, { skip: near } )
+			$mol_assert_equal( i, 1 )
+			cast_test_near( out[ 0 ], 5 )
+		},
+
+		'ray with skip list does not see any listed body'() {
+			const world = cast_test_world()
+			const a = cast_test_add( world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -3 )
+			const b = cast_test_add( world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -6 )
+			cast_test_add( world, $bog_gamengine_phys3.shape_sphere, 1, 0, 0, 0, 0, -9 )
+			const { i, out } = cast_test_ray( world, 0, 0, 0, 0, 0, -1, { skip: [ a, b ] } )
+			$mol_assert_equal( i, 2 )
+			cast_test_near( out[ 0 ], 8 )
+		},
+
+		'ray hits a body at the place given by move in the same step'() {
+			const world = cast_test_world()
+			const handle = world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ 0.5, 0.5, 0.5 ]), 0, new Float32Array([ 0, 0, -4 ]) )
+			world.move( handle, new Float32Array([ 0, 0, -8 ]) )
+			const { i, out } = cast_test_ray( world, 0, 0, 0, 0, 0, -1 )
+			$mol_assert_equal( i, world.index_of( handle ) )
+			cast_test_near( out[ 0 ], 7.5 )
 		},
 
 		'sweep sphere down to plane stops at distance minus radius'() {

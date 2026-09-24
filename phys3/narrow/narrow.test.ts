@@ -6,23 +6,23 @@ namespace $ {
 	}
 
 	function sphere( world: $bog_gamengine_phys3, r: number, x: number, y: number, z: number ) {
-		return world.add( $bog_gamengine_phys3.shape_sphere, new Float32Array([ r, 0, 0 ]), 1, new Float32Array([ x, y, z ]) )
+		return world.index_of( world.add( $bog_gamengine_phys3.shape_sphere, new Float32Array([ r, 0, 0 ]), 1, new Float32Array([ x, y, z ]) ) )
 	}
 
 	function box( world: $bog_gamengine_phys3, h: number, x: number, y: number, z: number, rot?: Float32Array ) {
-		return world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ h, h, h ]), 1, new Float32Array([ x, y, z ]), rot )
+		return world.index_of( world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ h, h, h ]), 1, new Float32Array([ x, y, z ]), rot ) )
 	}
 
 	function capsule( world: $bog_gamengine_phys3, r: number, h: number, x: number, y: number, z: number, rot?: Float32Array ) {
-		return world.add( $bog_gamengine_phys3.shape_capsule, new Float32Array([ r, h, 0 ]), 1, new Float32Array([ x, y, z ]), rot )
+		return world.index_of( world.add( $bog_gamengine_phys3.shape_capsule, new Float32Array([ r, h, 0 ]), 1, new Float32Array([ x, y, z ]), rot ) )
 	}
 
 	function floor( world: $bog_gamengine_phys3 ) {
-		return world.add( $bog_gamengine_phys3.shape_plane, new Float32Array([ 0, 1, 0 ]), 0, new Float32Array( 3 ) )
+		return world.index_of( world.add( $bog_gamengine_phys3.shape_plane, new Float32Array([ 0, 1, 0 ]), 0, new Float32Array( 3 ) ) )
 	}
 
 	function tetra( world: $bog_gamengine_phys3, x: number, y: number, z: number ) {
-		const i = world.add( $bog_gamengine_phys3.shape_hull, new Float32Array([ 1, 1, 1 ]), 1, new Float32Array([ x, y, z ]) )
+		const i = world.index_of( world.add( $bog_gamengine_phys3.shape_hull, new Float32Array([ 1, 1, 1 ]), 1, new Float32Array([ x, y, z ]) ) )
 		world.hull_points( i, new Float32Array([ 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1 ]) )
 		return i
 	}

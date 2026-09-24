@@ -3,15 +3,15 @@ namespace $ {
 	const dt = 1 / 60
 
 	function floor( world: $bog_gamengine_phys3, nx = 0, ny = 1, nz = 0 ) {
-		return world.add( $bog_gamengine_phys3.shape_plane, new Float32Array([ nx, ny, nz ]), 0, new Float32Array( 3 ) )
+		return world.index_of( world.add( $bog_gamengine_phys3.shape_plane, new Float32Array([ nx, ny, nz ]), 0, new Float32Array( 3 ) ) )
 	}
 
 	function box( world: $bog_gamengine_phys3, x: number, y: number, z: number, rot?: Float32Array ) {
-		return world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ 0.5, 0.5, 0.5 ]), 1, new Float32Array([ x, y, z ]), rot )
+		return world.index_of( world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ 0.5, 0.5, 0.5 ]), 1, new Float32Array([ x, y, z ]), rot ) )
 	}
 
 	function sphere( world: $bog_gamengine_phys3, x: number, y: number, z: number ) {
-		return world.add( $bog_gamengine_phys3.shape_sphere, new Float32Array([ 0.5, 0, 0 ]), 1, new Float32Array([ x, y, z ]) )
+		return world.index_of( world.add( $bog_gamengine_phys3.shape_sphere, new Float32Array([ 0.5, 0, 0 ]), 1, new Float32Array([ x, y, z ]) ) )
 	}
 
 	function run( world: $bog_gamengine_phys3, seconds: number ) {

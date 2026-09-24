@@ -30,6 +30,7 @@ $bog_gamengine_demo_boxes $mol_page
 			stat => stat
 			event *
 				pointerdown? <=> shoot? null
+				contextmenu? <=> dig? null
 	foot /
 		<= Stat $mol_view
 			sub / <= stat
@@ -86,6 +87,12 @@ $bog_gamengine_demo_boxes $mol_page
 		size <= floor_size Float32Array
 	Thrown* $bog_gamengine_phys3_body
 		name \Брошенный
+	Platform* $bog_gamengine_demo_boxes_platform
+		name \Платформа
+		phys3 <= Phys
+		size <= platform_size Float32Array
+		mass 0
+		kinematic true
 	Walker $bog_gamengine_demo_room_walker
 		input <= Input
 		pos? <=> walker_pos? Float32Array

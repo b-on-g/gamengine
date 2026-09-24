@@ -13,6 +13,11 @@ namespace $ {
 		hull: Float32Array
 	}
 
+	export type $bog_gamengine_phys3_cast_opts = {
+		skip_ghost?: boolean
+		skip?: number | readonly number[]
+	}
+
 	export class $bog_gamengine_phys3_cast extends $mol_object2 {
 
 		static tolerance = 1e-3
@@ -26,6 +31,10 @@ namespace $ {
 		rot = new Float32Array( 8 )
 		hoff = new Uint32Array( 2 )
 		hcnt = new Uint32Array( 2 )
+
+		skip_ghost = false
+		skip_one = -1
+		skip_list = null as readonly number[] | null
 
 		ud = new Float32Array( 3 )
 		origin = new Float32Array( 3 )
@@ -54,8 +63,30 @@ namespace $ {
 		best_coef = new Float64Array( 4 )
 		best_n = 0
 
-		ray( world: $bog_gamengine_phys3_cast_world, origin: Float32Array, dir: Float32Array, max: number, out: Float32Array, skip_ghost = false ) {
+		opts_read( opts?: $bog_gamengine_phys3_cast_opts ) {
+			this.skip_ghost = opts?.skip_ghost ?? false
+			const skip = opts?.skip
+			if( typeof skip === 'number' ) {
+				this.skip_one = skip
+				this.skip_list = null
+			} else {
+				this.skip_one = -1
+				this.skip_list = skip ?? null
+			}
+		}
+
+		skipped( i: number ) {
+			if( i === this.skip_one ) return true
+			if( this.skip_ghost && this.world.flags[ i ] & $bog_gamengine_phys3.flag_ghost ) return true
+			const list = this.skip_list
+			if( !list ) return false
+			for( let k = 0; k < list.length; ++ k ) if( list[ k ] === i ) return true
+			return false
+		}
+
+		ray( world: $bog_gamengine_phys3_cast_world, origin: Float32Array, dir: Float32Array, max: number, out: Float32Array, opts?: $bog_gamengine_phys3_cast_opts ) {
 			this.world = world
+			this.opts_read( opts )
 			const ud = this.ud
 			const len = Math.sqrt( dir[ 0 ] * dir[ 0 ] + dir[ 1 ] * dir[ 1 ] + dir[ 2 ] * dir[ 2 ] )
 			if( !( len > 0 ) || !( max > 0 ) ) return -1
@@ -73,13 +104,12 @@ namespace $ {
 			this.pos[ 2 ] = o[ 2 ]
 			this.rot[ 0 ] = this.rot[ 1 ] = this.rot[ 2 ] = 0
 			this.rot[ 3 ] = 1
-			const ghost = $bog_gamengine_phys3.flag_ghost
-			const flags = world.flags, shape = world.shape
+			const shape = world.shape
 			const hit = this.hit
 			let best = -1
 			let limit = max
 			for( let i = 0; i < world.count; ++ i ) {
-				if( skip_ghost && flags[ i ] & ghost ) continue
+				if( this.skipped( i ) ) continue
 				if( shape[ i ] !== $bog_gamengine_phys3.shape_plane && !this.slab( i, limit ) ) continue
 				this.load( 1, i )
 				let t = -1
@@ -98,8 +128,9 @@ namespace $ {
 			return best
 		}
 
-		sweep( world: $bog_gamengine_phys3_cast_world, shape: number, size: Float32Array, origin: Float32Array, rot: Float32Array, dir: Float32Array, max: number, out: Float32Array, skip_ghost = false ) {
+		sweep( world: $bog_gamengine_phys3_cast_world, shape: number, size: Float32Array, origin: Float32Array, rot: Float32Array, dir: Float32Array, max: number, out: Float32Array, opts?: $bog_gamengine_phys3_cast_opts ) {
 			this.world = world
+			this.opts_read( opts )
 			const ud = this.ud
 			const len = Math.sqrt( dir[ 0 ] * dir[ 0 ] + dir[ 1 ] * dir[ 1 ] + dir[ 2 ] * dir[ 2 ] )
 			if( !( len > 0 ) || !( max > 0 ) ) return -1
@@ -122,14 +153,13 @@ namespace $ {
 			this.pos[ 1 ] = o[ 1 ]
 			this.pos[ 2 ] = o[ 2 ]
 			this.bounds( max )
-			const ghost = $bog_gamengine_phys3.flag_ghost
-			const flags = world.flags, shapes = world.shape, aabb = world.aabb
+			const shapes = world.shape, aabb = world.aabb
 			const lo = this.box_lo, hi = this.box_hi
 			const hit = this.hit
 			let best = -1
 			let limit = max
 			for( let i = 0; i < world.count; ++ i ) {
-				if( skip_ghost && flags[ i ] & ghost ) continue
+				if( this.skipped( i ) ) continue
 				const a = i * 6
 				if( aabb[ a ] > hi[ 0 ] || aabb[ a + 3 ] < lo[ 0 ] ) continue
 				if( aabb[ a + 1 ] > hi[ 1 ] || aabb[ a + 4 ] < lo[ 1 ] ) continue

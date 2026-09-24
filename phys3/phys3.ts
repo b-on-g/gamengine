@@ -10,6 +10,7 @@ namespace $ {
 
 		static flag_sleep = 1
 		static flag_ghost = 2
+		static flag_kinematic = 4
 
 		static sleep_speed = 0.05
 		static sleep_time = 0.5
@@ -33,6 +34,11 @@ namespace $ {
 		hull_count = new Uint32Array( 0 )
 		hull = new Float32Array( 0 )
 		hull_len = 0
+		handle_at = new Int32Array( 0 )
+		index_at = new Int32Array( 0 )
+		handle_seq = 0
+		free = new Int32Array( 0 )
+		free_count = 0
 		pos_view = [] as Float32Array[]
 		rot_view = [] as Float32Array[]
 		ang_view = [] as Float32Array[]
@@ -98,6 +104,9 @@ namespace $ {
 			const hull_count = new Uint32Array( cap )
 			hull_count.set( this.hull_count )
 			this.hull_count = hull_count
+			const handle_at = new Int32Array( cap )
+			handle_at.set( this.handle_at )
+			this.handle_at = handle_at
 			this.pos_view = this.views( this.pos, 3 )
 			this.rot_view = this.views( this.rot, 4 )
 			this.ang_view = this.views( this.ang, 3 )
@@ -134,7 +143,90 @@ namespace $ {
 			this.mass_set( i, mass )
 			this.trans_write( i )
 			this.bounds_of( i )
-			return i
+			return this.handle_new( i )
+		}
+
+		handle_grow( need: number ) {
+			if( need <= this.index_at.length ) return
+			let len = Math.max( this.index_at.length, 16 )
+			while( len < need ) len *= 2
+			const index_at = new Int32Array( len )
+			index_at.set( this.index_at )
+			this.index_at = index_at
+			const free = new Int32Array( len )
+			free.set( this.free )
+			this.free = free
+		}
+
+		handle_new( index: number ) {
+			let handle = 0
+			if( this.free_count > 0 ) handle = this.free[ -- this.free_count ]
+			else {
+				handle = ++ this.handle_seq
+				this.handle_grow( handle )
+			}
+			this.index_at[ handle - 1 ] = index
+			this.handle_at[ index ] = handle
+			return handle
+		}
+
+		index_of( handle: number ) {
+			if( handle < 1 || handle > this.handle_seq ) return -1
+			return this.index_at[ handle - 1 ]
+		}
+
+		handle_of( index: number ) {
+			return index >= 0 && index < this.count ? this.handle_at[ index ] : 0
+		}
+
+		pos_of( handle: number ) {
+			const i = this.index_of( handle )
+			return i < 0 ? null : this.pos_view[ i ]
+		}
+
+		rot_of( handle: number ) {
+			const i = this.index_of( handle )
+			return i < 0 ? null : this.rot_view[ i ]
+		}
+
+		mass_of( handle: number, next?: number ) {
+			const i = this.index_of( handle )
+			if( i < 0 ) return 0
+			if( next !== undefined ) this.mass_set( i, next )
+			return this.mass[ i ]
+		}
+
+		flag_set( i: number, flag: number, on: boolean ) {
+			if( on ) this.flags[ i ] |= flag
+			else this.flags[ i ] &= ~ flag
+		}
+
+		ghost_of( handle: number, next?: boolean ) {
+			const i = this.index_of( handle )
+			if( i < 0 ) return false
+			const flag = $bog_gamengine_phys3.flag_ghost
+			if( next !== undefined ) this.flag_set( i, flag, next )
+			return ( this.flags[ i ] & flag ) !== 0
+		}
+
+		kinematic_of( handle: number, next?: boolean ) {
+			const i = this.index_of( handle )
+			if( i < 0 ) return false
+			const flag = $bog_gamengine_phys3.flag_kinematic
+			if( next !== undefined ) this.flag_set( i, flag, next )
+			return ( this.flags[ i ] & flag ) !== 0
+		}
+
+		move( handle: number, pos: ArrayLike< number >, rot?: ArrayLike< number > ) {
+			const i = this.index_of( handle )
+			if( i < 0 ) return false
+			this.pos.set( pos, i * 3 )
+			if( rot ) this.rot.set( rot, i * 4 )
+			this.flags[ i ] &= ~ $bog_gamengine_phys3.flag_sleep
+			this.sleep_timer[ i ] = 0
+			this.bounds_of( i )
+			this.trans_write( i )
+			return true
 		}
 
 		mass_set( i: number, mass: number ) {
@@ -175,28 +267,48 @@ namespace $ {
 			}
 		}
 
-		remove( index: number ) {
+		remove( handle: number ) {
+			const index = this.index_of( handle )
+			if( index < 0 ) return false
+			this.drop( index )
+			return true
+		}
+
+		drop( index: number ) {
 			const last = this.count - 1
+			const handle = this.handle_at[ index ]
 			if( index !== last ) {
-				this.pos.copyWithin( index * 3, last * 3, last * 3 + 3 )
-				this.rot.copyWithin( index * 4, last * 4, last * 4 + 4 )
-				this.vel.copyWithin( index * 3, last * 3, last * 3 + 3 )
-				this.ang.copyWithin( index * 3, last * 3, last * 3 + 3 )
-				this.mass[ index ] = this.mass[ last ]
-				this.inv_mass[ index ] = this.inv_mass[ last ]
-				this.inv_inertia.copyWithin( index * 3, last * 3, last * 3 + 3 )
-				this.shape[ index ] = this.shape[ last ]
-				this.size.copyWithin( index * 3, last * 3, last * 3 + 3 )
-				this.flags[ index ] = this.flags[ last ]
-				this.trans.copyWithin( index * 16, last * 16, last * 16 + 16 )
-				this.aabb.copyWithin( index * 6, last * 6, last * 6 + 6 )
-				this.sleep_timer[ index ] = this.sleep_timer[ last ]
-				this.hull_off[ index ] = this.hull_off[ last ]
-				this.hull_count[ index ] = this.hull_count[ last ]
+				this.swap( index, last )
+				const moved = this.handle_at[ last ]
+				this.handle_at[ index ] = moved
+				this.index_at[ moved - 1 ] = index
+			}
+			this.handle_at[ last ] = 0
+			if( handle > 0 ) {
+				this.index_at[ handle - 1 ] = -1
+				this.free[ this.free_count ++ ] = handle
 			}
 			this.count = last
 			this.joint.body_remove( index, last )
 			return last
+		}
+
+		swap( index: number, last: number ) {
+			this.pos.copyWithin( index * 3, last * 3, last * 3 + 3 )
+			this.rot.copyWithin( index * 4, last * 4, last * 4 + 4 )
+			this.vel.copyWithin( index * 3, last * 3, last * 3 + 3 )
+			this.ang.copyWithin( index * 3, last * 3, last * 3 + 3 )
+			this.mass[ index ] = this.mass[ last ]
+			this.inv_mass[ index ] = this.inv_mass[ last ]
+			this.inv_inertia.copyWithin( index * 3, last * 3, last * 3 + 3 )
+			this.shape[ index ] = this.shape[ last ]
+			this.size.copyWithin( index * 3, last * 3, last * 3 + 3 )
+			this.flags[ index ] = this.flags[ last ]
+			this.trans.copyWithin( index * 16, last * 16, last * 16 + 16 )
+			this.aabb.copyWithin( index * 6, last * 6, last * 6 + 6 )
+			this.sleep_timer[ index ] = this.sleep_timer[ last ]
+			this.hull_off[ index ] = this.hull_off[ last ]
+			this.hull_count[ index ] = this.hull_count[ last ]
 		}
 
 		hull_points( index: number, points: Float32Array ) {
@@ -274,8 +386,9 @@ namespace $ {
 			const inv_mass = this.inv_mass, flags = this.flags, timer = this.sleep_timer
 			const rot_view = this.rot_view, ang_view = this.ang_view
 			const sleep = $bog_gamengine_phys3.flag_sleep
+			const kind = $bog_gamengine_phys3.flag_kinematic
 			for( let i = 0; i < count; ++ i ) {
-				if( flags[ i ] & sleep || !( inv_mass[ i ] > 0 ) ) continue
+				if( flags[ i ] & ( sleep | kind ) || !( inv_mass[ i ] > 0 ) ) continue
 				const p = i * 3
 				vel[ p ] += gx
 				vel[ p + 1 ] += gy
@@ -288,10 +401,16 @@ namespace $ {
 			this.solve.solve( this, this.narrow, dt, this.joint )
 			const speed2 = $bog_gamengine_phys3.sleep_speed * $bog_gamengine_phys3.sleep_speed
 			const sleep_time = $bog_gamengine_phys3.sleep_time
+			const kinematic = $bog_gamengine_phys3.flag_kinematic
 			for( let i = 0; i < count; ++ i ) {
 				if( flags[ i ] & sleep ) continue
 				const p = i * 3
-				if( inv_mass[ i ] > 0 ) {
+				if( flags[ i ] & kinematic ) {
+					pos[ p ] += vel[ p ] * dt
+					pos[ p + 1 ] += vel[ p + 1 ] * dt
+					pos[ p + 2 ] += vel[ p + 2 ] * dt
+					$bog_gamengine_vec_quat_integrate( rot_view[ i ], rot_view[ i ], ang_view[ i ], dt )
+				} else if( inv_mass[ i ] > 0 ) {
 					const v2 = vel[ p ] * vel[ p ] + vel[ p + 1 ] * vel[ p + 1 ] + vel[ p + 2 ] * vel[ p + 2 ]
 					const w2 = ang[ p ] * ang[ p ] + ang[ p + 1 ] * ang[ p + 1 ] + ang[ p + 2 ] * ang[ p + 2 ]
 					if( v2 < speed2 && w2 < speed2 ) {

@@ -15,6 +15,14 @@ namespace $.$$ {
 	const door_x = 4
 	const door_lift = 0.05
 	const side_ahead = 3
+	const plat_half = 1.2
+	const plat_thick = 0.15
+	const plat_y = 0.6
+	const plat_ahead = 2
+	const plat_x = -6
+	const plat_load = 3
+	const plat_load_half = 0.3
+	const dig_reach = 60
 
 	export function $bog_gamengine_demo_boxes_rand( seed: number ) {
 		let state = seed | 0
@@ -41,17 +49,27 @@ namespace $.$$ {
 			return next
 		}
 
+		platform_on() {
+			return this.count() > plat_load + 1
+		}
+
+		pile_count() {
+			const count = this.count()
+			return this.platform_on() ? count - plat_load - 1 : count
+		}
+
 		pile_side() {
-			return Math.ceil( Math.sqrt( this.count() / pile_layers ) )
+			return Math.ceil( Math.sqrt( this.pile_count() / pile_layers ) )
 		}
 
 		@ $mol_mem
 		Phys() {
-			const count = this.count()
+			const count = this.pile_count()
 			const rand = $bog_gamengine_demo_boxes_rand( this.seed() )
 			const phys = new this.$.$bog_gamengine_demo_boxes_phys
-			this.chain_first = -1
-			phys.add( $bog_gamengine_phys3.shape_plane, new Float32Array([ 0, 1, 0 ]), 0, new Float32Array( 3 ) )
+			this.chain_head = 0
+			this.chain_tail = 0
+			this.floor_handle = phys.add( $bog_gamengine_phys3.shape_plane, new Float32Array([ 0, 1, 0 ]), 0, new Float32Array( 3 ) )
 			const side = this.pile_side()
 			const size = new Float32Array([ box_half, box_half, box_half ])
 			const pos = new Float32Array( 3 )
@@ -65,7 +83,30 @@ namespace $.$$ {
 				$bog_gamengine_vec_quat_from_euler( rot, rand() * Math.PI * 2, rand() * Math.PI * 2, rand() * Math.PI * 2 )
 				phys.add( $bog_gamengine_phys3.shape_box, size, 1, pos, rot )
 			}
+			if( !this.platform_on() ) return phys
+			const load_size = new Float32Array([ plat_load_half, plat_load_half, plat_load_half ])
+			const load_pos = new Float32Array([ plat_x, plat_y + plat_thick + plat_load_half, 0 ])
+			const plat_z = this.side_z() + plat_ahead
+			for( let n = 0; n < plat_load; ++ n ) {
+				load_pos[ 2 ] = plat_z + ( n - ( plat_load - 1 ) / 2 ) * plat_load_half * 2.5
+				phys.add( $bog_gamengine_phys3.shape_box, load_size, 1, load_pos )
+			}
 			return phys
+		}
+
+		floor_handle = 0
+
+		@ $mol_mem
+		platform_size() {
+			return new Float32Array([ plat_half, plat_thick, plat_half ])
+		}
+
+		@ $mol_mem
+		platform() {
+			const node = this.Platform( `${ this.seed() }` )
+			node.center( new Float32Array([ plat_x, plat_y, this.side_z() + plat_ahead ]) )
+			node.pos( node.center() )
+			return node
 		}
 
 		@ $mol_mem
@@ -98,7 +139,7 @@ namespace $.$$ {
 
 		@ $mol_mem
 		nodes() {
-			return [ this.Floor(), this.Walker(), ... this.thrown() ]
+			return [ this.Floor(), this.Walker(), ... this.platform_on() ? [ this.platform() ] : [], ... this.thrown() ]
 		}
 
 		@ $mol_mem
@@ -115,6 +156,25 @@ namespace $.$$ {
 
 		throw_dir = new Float32Array([ 0, 0, -1, 0 ])
 		throw_out = new Float32Array( 4 )
+		dig_dir = new Float32Array( 3 )
+		dig_hit = new Float32Array( 7 )
+		dig_opts = { skip_ghost: true, skip: -1 }
+		dig_cast = new $bog_gamengine_phys3_cast
+
+		dig( next?: MouseEvent | null ) {
+			if( !next ) return null
+			next.preventDefault()
+			const phys = this.Phys()
+			const dir = $bog_gamengine_vec_mat4_apply( this.throw_out, this.Walker().world(), this.throw_dir )
+			const aim = this.dig_dir
+			aim[ 0 ] = dir[ 0 ]
+			aim[ 1 ] = dir[ 1 ]
+			aim[ 2 ] = dir[ 2 ]
+			this.dig_opts.skip = phys.index_of( this.floor_handle )
+			const i = this.dig_cast.ray( phys, this.Walker().pos(), aim, dig_reach, this.dig_hit, this.dig_opts )
+			if( i >= 0 ) phys.remove( phys.handle_of( i ) )
+			return next
+		}
 
 		shoot( next?: PointerEvent | null ) {
 			if( !next ) return null
@@ -141,7 +201,8 @@ namespace $.$$ {
 			return ( this.pile_side() - 1 ) / 2 * pile_step + side_ahead
 		}
 
-		chain_first = -1
+		chain_head = 0
+		chain_tail = 0
 
 		chain( next?: Event | null ) {
 			if( !next ) return null
@@ -155,9 +216,11 @@ namespace $.$$ {
 			let prev = -1
 			for( let n = 0; n < chain_links; ++ n ) {
 				pos[ 1 ] = chain_top - chain_link / 2 - n * chain_link
-				const i = phys.add( $bog_gamengine_phys3.shape_box, size, 1, pos )
+				const handle = phys.add( $bog_gamengine_phys3.shape_box, size, 1, pos )
+				const i = phys.index_of( handle )
+				this.chain_tail = handle
 				if( n === 0 ) {
-					this.chain_first = i
+					this.chain_head = handle
 					phys.joint.add( $bog_gamengine_phys3_joint.type_point, i, 0, top, hook )
 				} else {
 					phys.joint.add( $bog_gamengine_phys3_joint.type_hinge, i, prev, top, bottom, axis )
@@ -170,10 +233,10 @@ namespace $.$$ {
 
 		chain_drop() {
 			const phys = this.Phys()
-			const first = this.chain_first
-			const last = first + chain_links - 1
-			if( first < 0 || last >= phys.count ) return 0
-			return phys.pos[ first * 3 + 1 ] - phys.pos[ last * 3 + 1 ]
+			const head = phys.pos_of( this.chain_head )
+			const tail = phys.pos_of( this.chain_tail )
+			if( !head || !tail ) return 0
+			return head[ 1 ] - tail[ 1 ]
 		}
 
 		door( next?: Event | null ) {
@@ -181,9 +244,9 @@ namespace $.$$ {
 			const phys = this.Phys()
 			const z = this.side_z()
 			const post_size = new Float32Array([ 0.15, 1.5, 0.15 ])
-			const post = phys.add( $bog_gamengine_phys3.shape_box, post_size, 0, new Float32Array([ door_x, 1.5, z ]) )
+			const post = phys.index_of( phys.add( $bog_gamengine_phys3.shape_box, post_size, 0, new Float32Array([ door_x, 1.5, z ]) ) )
 			const leaf_size = new Float32Array([ 0.5, 1, 0.1 ])
-			const leaf = phys.add( $bog_gamengine_phys3.shape_box, leaf_size, 1, new Float32Array([ door_x + 0.8, 1 + door_lift, z ]) )
+			const leaf = phys.index_of( phys.add( $bog_gamengine_phys3.shape_box, leaf_size, 1, new Float32Array([ door_x + 0.8, 1 + door_lift, z ]) ) )
 			phys.joint.add(
 				$bog_gamengine_phys3_joint.type_hinge, post, leaf,
 				new Float32Array([ 0.3, door_lift - 0.5, 0 ]), new Float32Array([ -0.5, 0, 0 ]),

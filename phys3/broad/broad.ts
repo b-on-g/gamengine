@@ -12,6 +12,7 @@ namespace $ {
 
 		static shape_plane = 3
 		static flag_sleep = 1
+		static flag_kinematic = 4
 
 		pairs = new Uint32Array( 0 )
 		pair_count = 0
@@ -72,6 +73,7 @@ namespace $ {
 			const aabb = world.aabb, inv_mass = world.inv_mass, flags = world.flags, shape = world.shape
 			const plane = $bog_gamengine_phys3_broad.shape_plane
 			const sleep = $bog_gamengine_phys3_broad.flag_sleep
+			const kind = $bog_gamengine_phys3_broad.flag_kinematic
 			for( let a = 0; a < len; ++ a ) {
 				const i = order[ a ]
 				if( shape[ i ] === plane ) continue
@@ -79,13 +81,13 @@ namespace $ {
 				const max_x = aabb[ i6 + 3 ]
 				const min_y = aabb[ i6 + 1 ], max_y = aabb[ i6 + 4 ]
 				const min_z = aabb[ i6 + 2 ], max_z = aabb[ i6 + 5 ]
-				const active_i = inv_mass[ i ] > 0 && !( flags[ i ] & sleep )
+				const active_i = ( inv_mass[ i ] > 0 || ( flags[ i ] & kind ) !== 0 ) && !( flags[ i ] & sleep )
 				for( let b = a + 1; b < len; ++ b ) {
 					const j = order[ b ]
 					const j6 = j * 6
 					if( aabb[ j6 ] > max_x ) break
 					if( shape[ j ] === plane ) continue
-					if( !active_i && !( inv_mass[ j ] > 0 && !( flags[ j ] & sleep ) ) ) continue
+					if( !active_i && !( ( inv_mass[ j ] > 0 || ( flags[ j ] & kind ) !== 0 ) && !( flags[ j ] & sleep ) ) ) continue
 					if( aabb[ j6 + 1 ] > max_y || aabb[ j6 + 4 ] < min_y ) continue
 					if( aabb[ j6 + 2 ] > max_z || aabb[ j6 + 5 ] < min_z ) continue
 					this.push( i, j )

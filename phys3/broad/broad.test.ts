@@ -1,11 +1,11 @@
 namespace $ {
 
 	function box( world: $bog_gamengine_phys3, mass: number, x: number, y: number, z: number, rot?: Float32Array ) {
-		return world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ 0.5, 0.5, 0.5 ]), mass, new Float32Array([ x, y, z ]), rot )
+		return world.index_of( world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ 0.5, 0.5, 0.5 ]), mass, new Float32Array([ x, y, z ]), rot ) )
 	}
 
 	function sphere( world: $bog_gamengine_phys3, r: number, x: number ) {
-		return world.add( $bog_gamengine_phys3.shape_sphere, new Float32Array([ r, 0, 0 ]), 1, new Float32Array([ x, 0, 0 ]) )
+		return world.index_of( world.add( $bog_gamengine_phys3.shape_sphere, new Float32Array([ r, 0, 0 ]), 1, new Float32Array([ x, 0, 0 ]) ) )
 	}
 
 	function pairs_of( broad: $bog_gamengine_phys3_broad ) {
@@ -94,14 +94,14 @@ namespace $ {
 
 		'bounds of capsule is sphere of radius plus half height'() {
 			const world = new $bog_gamengine_phys3
-			const i = world.add( $bog_gamengine_phys3.shape_capsule, new Float32Array([ 0.5, 1, 0 ]), 1, new Float32Array([ 1, 2, 3 ]) )
+			const i = world.index_of( world.add( $bog_gamengine_phys3.shape_capsule, new Float32Array([ 0.5, 1, 0 ]), 1, new Float32Array([ 1, 2, 3 ]) ) )
 			$mol_assert_equal( [ ...world.aabb.subarray( i * 6, i * 6 + 6 ) ], [ -0.5, 0.5, 1.5, 2.5, 3.5, 4.5 ] )
 		},
 
 		'bounds of hull follows rotated points'() {
 			const world = new $bog_gamengine_phys3
 			const rot = $bog_gamengine_vec_quat_from_axis( new Float32Array( 4 ), new Float32Array([ 0, 0, 1 ]), Math.PI / 2 )
-			const i = world.add( $bog_gamengine_phys3.shape_hull, new Float32Array( 3 ), 1, new Float32Array( 3 ), rot )
+			const i = world.index_of( world.add( $bog_gamengine_phys3.shape_hull, new Float32Array( 3 ), 1, new Float32Array( 3 ), rot ) )
 			world.hull_points( i, new Float32Array([ 0, 0, 0, 2, 0, 0, 0, 1, 0 ]) )
 			$mol_assert_ok( Math.abs( world.aabb[ i * 6 ] + 1 ) < 1e-6 )
 			$mol_assert_ok( Math.abs( world.aabb[ i * 6 + 4 ] - 2 ) < 1e-6 )
@@ -136,7 +136,7 @@ namespace $ {
 			box( world, 1, 10, 0, 0 )
 			box( world, 1, 0.5, 0, 0 )
 			world.broad.find( world )
-			world.remove( 1 )
+			world.remove( world.handle_of( 1 ) )
 			$mol_assert_equal( world.broad.find( world ), 1 )
 			$mol_assert_equal( pairs_of( world.broad ), [ 0, 1 ] )
 		},

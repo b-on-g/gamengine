@@ -56,6 +56,9 @@ namespace $ {
 
 		grounded = false
 		vel_y = 0
+		handle_last = 0
+		world_last = null as $bog_gamengine_phys3 | null
+		opts = { skip_ghost: true, skip: -1 }
 
 		cast = new $bog_gamengine_phys3_cast
 		size = new Float32Array( 3 )
@@ -67,15 +70,43 @@ namespace $ {
 		probe = new Float32Array( 3 )
 		cos_slope = 0
 
-		step( dt: number ) {
-			const world = this.phys3()
-			if( !world ) return
-			const input = this.input()
+		size_write() {
 			const radius = this.radius()
 			const size = this.size
 			size[ 0 ] = radius
 			size[ 1 ] = Math.max( this.height() / 2 - radius, 0 )
 			size[ 2 ] = 0
+			return size
+		}
+
+		body() {
+			const world = this.phys3()
+			if( !world ) return 0
+			if( this.world_last !== world ) {
+				this.body_drop()
+				this.world_last = world
+				this.handle_last = world.add( $bog_gamengine_phys3.shape_capsule, this.size_write(), 0, this.pos() )
+				world.kinematic_of( this.handle_last, true )
+			}
+			const i = world.index_of( this.handle_last )
+			if( i >= 0 ) world.size.set( this.size, i * 3 )
+			this.opts.skip = i
+			return this.handle_last
+		}
+
+		body_drop() {
+			if( this.handle_last ) this.world_last?.remove( this.handle_last )
+			this.handle_last = 0
+			this.world_last = null
+			this.opts.skip = -1
+		}
+
+		step( dt: number ) {
+			const world = this.phys3()
+			if( !world ) return
+			const input = this.input()
+			this.size_write()
+			const handle = this.body()
 			this.cos_slope = Math.cos( this.slope() )
 			const pos = this.pos()
 			const at = this.at
@@ -89,8 +120,14 @@ namespace $ {
 			}
 			this.vertical( world, dt )
 			if( input ) this.horizontal( world, input, dt )
+			world.move( handle, at )
 			if( Math.abs( at[ 0 ] - pos[ 0 ] ) < 1e-6 && Math.abs( at[ 1 ] - pos[ 1 ] ) < 1e-6 && Math.abs( at[ 2 ] - pos[ 2 ] ) < 1e-6 ) return
 			this.pos( new Float32Array( at ) )
+		}
+
+		destructor() {
+			this.body_drop()
+			super.destructor()
 		}
 
 		vertical( world: $bog_gamengine_phys3, dt: number ) {
@@ -108,7 +145,7 @@ namespace $ {
 			dir[ 0 ] = 0
 			dir[ 1 ] = -1
 			dir[ 2 ] = 0
-			const i = this.cast.sweep( world, $bog_gamengine_phys3.shape_capsule, this.size, at, this.rot_id, dir, this.step_height(), hit, true )
+			const i = this.cast.sweep( world, $bog_gamengine_phys3.shape_capsule, this.size, at, this.rot_id, dir, this.step_height(), hit, this.opts )
 			if( i < 0 || hit[ 5 ] <= this.cos_slope ) return
 			at[ 0 ] += hit[ 4 ] * skin
 			at[ 1 ] += hit[ 5 ] * skin - hit[ 0 ]
@@ -140,7 +177,7 @@ namespace $ {
 			for( let iter = 0; iter < iterations; ++ iter ) {
 				const len = Math.sqrt( move[ 0 ] * move[ 0 ] + move[ 1 ] * move[ 1 ] + move[ 2 ] * move[ 2 ] )
 				if( len < 1e-6 ) return
-				const i = this.cast.sweep( world, $bog_gamengine_phys3.shape_capsule, this.size, at, this.rot_id, move, len, hit, true )
+				const i = this.cast.sweep( world, $bog_gamengine_phys3.shape_capsule, this.size, at, this.rot_id, move, len, hit, this.opts )
 				if( i < 0 ) {
 					at[ 0 ] += move[ 0 ]
 					at[ 1 ] += move[ 1 ]
@@ -198,12 +235,12 @@ namespace $ {
 			dir[ 1 ] = 1
 			dir[ 2 ] = 0
 			let up = step
-			if( cast.sweep( world, shape, size, probe, rot, dir, step, hit, true ) >= 0 ) up = Math.max( hit[ 0 ] - skin, 0 )
+			if( cast.sweep( world, shape, size, probe, rot, dir, step, hit, this.opts ) >= 0 ) up = Math.max( hit[ 0 ] - skin, 0 )
 			if( up < skin ) return false
 			probe[ 1 ] += up
 			const len = Math.sqrt( move[ 0 ] * move[ 0 ] + move[ 1 ] * move[ 1 ] + move[ 2 ] * move[ 2 ] )
 			let fwd = len
-			if( cast.sweep( world, shape, size, probe, rot, move, len, hit, true ) >= 0 ) fwd = Math.max( hit[ 0 ] - skin, 0 )
+			if( cast.sweep( world, shape, size, probe, rot, move, len, hit, this.opts ) >= 0 ) fwd = Math.max( hit[ 0 ] - skin, 0 )
 			if( fwd < 1e-3 ) return false
 			probe[ 0 ] += move[ 0 ] * fwd / len
 			probe[ 1 ] += move[ 1 ] * fwd / len
@@ -213,7 +250,7 @@ namespace $ {
 				dir[ 0 ] = 0
 				dir[ 1 ] = -1
 				dir[ 2 ] = 0
-				if( cast.sweep( world, shape, size, probe, rot, dir, up + skin, hit, true ) < 0 ) return false
+				if( cast.sweep( world, shape, size, probe, rot, dir, up + skin, hit, this.opts ) < 0 ) return false
 				if( hit[ 5 ] > this.cos_slope ) {
 					if( probe[ 1 ] - hit[ 0 ] < at[ 1 ] + skin ) return false
 					at[ 0 ] = probe[ 0 ] + hit[ 4 ] * skin
@@ -225,7 +262,7 @@ namespace $ {
 				dir[ 1 ] = move[ 1 ] / len
 				dir[ 2 ] = move[ 2 ] / len
 				let extra = nudge
-				if( cast.sweep( world, shape, size, probe, rot, dir, nudge, hit, true ) >= 0 ) extra = Math.max( hit[ 0 ] - skin, 0 )
+				if( cast.sweep( world, shape, size, probe, rot, dir, nudge, hit, this.opts ) >= 0 ) extra = Math.max( hit[ 0 ] - skin, 0 )
 				if( extra < 1e-3 ) return false
 				probe[ 0 ] += dir[ 0 ] * extra
 				probe[ 1 ] += dir[ 1 ] * extra

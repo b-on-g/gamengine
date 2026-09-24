@@ -3,11 +3,11 @@ namespace $ {
 	const dt = 1 / 60
 
 	function ground( world: $bog_gamengine_phys3 ) {
-		return world.add( $bog_gamengine_phys3.shape_plane, new Float32Array([ 0, 1, 0 ]), 0, new Float32Array([ 0, -100, 0 ]) )
+		return world.index_of( world.add( $bog_gamengine_phys3.shape_plane, new Float32Array([ 0, 1, 0 ]), 0, new Float32Array([ 0, -100, 0 ]) ) )
 	}
 
 	function box( world: $bog_gamengine_phys3, x: number, y: number, z: number, half = 0.5, mass = 1 ) {
-		return world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ half, half, half ]), mass, new Float32Array([ x, y, z ]) )
+		return world.index_of( world.add( $bog_gamengine_phys3.shape_box, new Float32Array([ half, half, half ]), mass, new Float32Array([ x, y, z ]) ) )
 	}
 
 	function run( world: $bog_gamengine_phys3, seconds: number ) {
@@ -184,7 +184,7 @@ namespace $ {
 			const c = box( world, 4, 0, 0 )
 			world.joint.add( $bog_gamengine_phys3_joint.type_point, a, b, new Float32Array( 3 ), new Float32Array( 3 ) )
 			world.joint.add( $bog_gamengine_phys3_joint.type_point, b, c, new Float32Array( 3 ), new Float32Array( 3 ) )
-			world.remove( a )
+			world.remove( world.handle_of( a ) )
 			$mol_assert_equal( world.joint.count, 1 )
 			$mol_assert_equal( world.joint.a[ 0 ], b )
 			$mol_assert_equal( world.joint.b[ 0 ], a )
