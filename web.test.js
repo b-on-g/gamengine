@@ -3902,19 +3902,13 @@ var $;
             second.parts([part]);
             $mol_assert_equal(part.owner(), first);
         },
-        'props of a part come with the name of its kind'() {
+        'part keeps its own props and the node does not borrow them'() {
             const node = new $bog_gamengine_node;
             const part = new $bog_gamengine_combat;
             part.health_max(40);
             node.parts([part]);
-            const names = node.props().map(prop => prop.name);
-            $mol_assert_ok(names.indexOf('combat.health') > 0);
-            $mol_assert_ok(names.indexOf('combat.health_max') > 0);
-            $mol_assert_ok(names.indexOf('pos') >= 0);
-            const prop = node_test_prop(node, 'combat.health_max');
-            $mol_assert_equal(prop.get(), 40);
-            prop.set(70);
-            $mol_assert_equal(part.health_max(), 70);
+            $mol_assert_equal(node.props().map(prop => prop.name), ['pos', 'rot', 'scale', 'tint']);
+            $mol_assert_equal(part.props().find(prop => prop.name === 'health_max').get(), 40);
         },
         'node without parts shows the same props as before'() {
             const node = new $bog_gamengine_node;
@@ -6790,6 +6784,12 @@ var $;
             this.pos(new Float32Array([pos[0] + dt, pos[1], pos[2]]));
         }
     }
+    class $bog_gamengine_scene_parted extends $bog_gamengine_node {
+        own = [];
+        parts() {
+            return this.own;
+        }
+    }
     class $bog_gamengine_scene_named extends $bog_gamengine_node {
         kids(next = []) {
             return next;
@@ -7163,6 +7163,27 @@ var $;
             scene.step();
             $mol_assert_equal(scene.snapshot_version(), version + 1);
             $mol_assert_equal(scene.snapshot(), snap);
+        },
+        'part declared by a tree gets its owner on the nodes walk'() {
+            const part = new $bog_gamengine_combat;
+            const node = new $bog_gamengine_scene_parted;
+            node.own = [part];
+            const scene = new $bog_gamengine_scene;
+            scene.kids([node]);
+            $mol_assert_equal(part.owner(), null);
+            scene.nodes();
+            $mol_assert_equal(part.owner(), node);
+        },
+        'own owner of a part is kept by the nodes walk'() {
+            const part = new $bog_gamengine_combat;
+            const mate = new $bog_gamengine_node;
+            part.owner(mate);
+            const node = new $bog_gamengine_scene_parted;
+            node.own = [part];
+            const scene = new $bog_gamengine_scene;
+            scene.kids([node]);
+            scene.nodes();
+            $mol_assert_equal(part.owner(), mate);
         },
         'grandchild of overridden kids sees scene after nodes walk'() {
             const a = new $bog_gamengine_scene_named;
@@ -8472,7 +8493,7 @@ var $;
         'goal of an agent is set through props and survives a snapshot'() {
             const agent = new $bog_gamengine_nav_agent;
             const prop = (name) => agent.props().find(one => one.name === name);
-            $mol_assert_equal(prop('target').kind, 'vec3');
+            $mol_assert_equal(prop('target').kind, 'point');
             $mol_assert_equal(prop('aimed').kind, 'flag');
             $mol_assert_equal(prop('aimed').get(), false);
             prop('target').set(new Float32Array([4.5, -2.5, 0]));

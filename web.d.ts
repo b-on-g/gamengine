@@ -3934,7 +3934,7 @@ declare namespace $ {
 declare namespace $ { }
 
 declare namespace $ {
-    type $bog_gamengine_prop_kind = 'vec2' | 'vec3' | 'vec4' | 'number' | 'flag' | 'text' | 'frame' | 'euler' | 'list' | 'nodes';
+    type $bog_gamengine_prop_kind = 'vec2' | 'vec3' | 'vec4' | 'number' | 'flag' | 'text' | 'frame' | 'euler' | 'list' | 'nodes' | 'point';
     type $bog_gamengine_prop = {
         name: string;
         kind: $bog_gamengine_prop_kind;
@@ -3952,8 +3952,6 @@ declare namespace $ {
         title(): string;
         props(): readonly $bog_gamengine_prop[];
         parts(next?: readonly $bog_gamengine_part[]): readonly $bog_gamengine_part[];
-        part_lead(part: $bog_gamengine_part): string;
-        part_props(): readonly $bog_gamengine_prop[];
         pos(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         rot(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         scale(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
