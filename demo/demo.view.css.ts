@@ -36,6 +36,8 @@ namespace $.$$ {
 
 		Jumper: spread,
 
+		Shooter: spread,
+
 	} )
 
 }
