@@ -4475,6 +4475,48 @@ var $;
             $mol_assert_equal(tile.solid_at(wall[0], wall[1]), true);
             $mol_assert_equal(tile.solid_at(1.5, -1.5), true);
         },
+        'shifted grid on the vertical plane reads back the very cell it drew'() {
+            const tile = new $bog_gamengine_phys_tile;
+            tile.map('####\n#..#\n#..#\n####');
+            tile.plane('xz');
+            tile.origin([6, -5]);
+            const spot = tile.cell_pos(1, 2, new Float32Array(3));
+            $mol_assert_equal([spot[0], spot[2]], [7.5, -2.5]);
+            $mol_assert_equal(tile.solid_at(spot[0], spot[2]), false);
+            const pos = new Float32Array(3);
+            const at = new Int32Array(2);
+            for (let y = 0; y < tile.height(); ++y) {
+                for (let x = 0; x < tile.width(); ++x) {
+                    tile.cell_pos(x, y, pos);
+                    tile.cell_at(pos[0], pos[2], at);
+                    $mol_assert_equal([at[0], at[1]], [x, y]);
+                    $mol_assert_equal(tile.solid_at(pos[0], pos[2]), tile.cell(x, y));
+                }
+            }
+        },
+        'cell spot is the packed pair that cell at consumes, on both planes'() {
+            for (const plane of ['xy', 'xz']) {
+                const tile = new $bog_gamengine_phys_tile;
+                tile.map('####\n#..#\n####');
+                tile.plane(plane);
+                tile.origin([3, -2]);
+                const spot = new Float32Array(2);
+                const at = new Int32Array(2);
+                for (let y = 0; y < tile.height(); ++y) {
+                    for (let x = 0; x < tile.width(); ++x) {
+                        tile.cell_spot(x, y, spot);
+                        tile.cell_at(spot[0], spot[1], at);
+                        $mol_assert_equal([at[0], at[1]], [x, y]);
+                    }
+                }
+            }
+        },
+        'unknown plane falls at cell at, not into xy silently'() {
+            const tile = new $bog_gamengine_phys_tile;
+            tile.map('####\n#..#\n####');
+            tile.plane('zx');
+            $mol_assert_fail(() => tile.cell_at(1.5, -1.5, new Int32Array(2)), 'Map plane zx is unknown, known: xy, xz');
+        },
         'solid at a point uses the same cell as cell at'() {
             const tile = $bog_gamengine_phys_tile_test_make();
             const pos = tile.cell_pos(1, 1, new Float32Array(3));
@@ -4612,6 +4654,22 @@ var $;
         },
         'gravity drops the body onto the tile floor'() {
             $mol_assert_equal(falling(8).pos()[1], -3.5);
+        },
+        'gravity drops the body onto the floor of a shifted map'() {
+            const body = new Probe;
+            body.pos(new Float32Array([32.5, -21.5, 0]));
+            const tile = new $bog_gamengine_phys_tile;
+            tile.map(room);
+            tile.origin([30, -20]);
+            const phys = new $bog_gamengine_phys;
+            phys.tile(tile);
+            phys.gravity(new Float32Array([0, -10]));
+            phys.bodies([body]);
+            for (let i = 0; i < 8; ++i)
+                phys.step(0.1);
+            $mol_assert_equal(body.pos()[1], -23.5);
+            $mol_assert_equal(body.pos()[0], 32.5);
+            $mol_assert_equal(body.on_ground(), true);
         },
         'landed body stands on ground'() {
             const body = falling(8);
@@ -8285,6 +8343,27 @@ var $;
             for (let i = 0; i < count; ++i)
                 $mol_assert_not(nav.solid_at(out[i * 2], out[i * 2 + 1]));
         },
+        'shifted grid takes and gives world points of the shifted map'() {
+            const nav = grid('#######\n#..#..#\n#..#..#\n#.....#\n#######');
+            nav.tile().origin([10, -20]);
+            $mol_assert_equal(nav.solid_at(11.5, -21.5), false);
+            $mol_assert_equal(nav.solid_at(13.5, -21.5), true);
+            $mol_assert_equal(nav.solid_at(1.5, -1.5), true);
+            const out = new Float32Array(64);
+            const count = nav.path(new Float32Array([11.5, -21.5, 0]), new Float32Array([15.5, -21.5, 0]), out);
+            $mol_assert_ok(count > 2);
+            $mol_assert_ok(length(out, count) > 4);
+            for (let i = 0; i < count; ++i)
+                $mol_assert_not(nav.solid_at(out[i * 2], out[i * 2 + 1]));
+            $mol_assert_equal([out[0], out[1]], [11.5, -21.5]);
+            $mol_assert_equal([out[count * 2 - 2], out[count * 2 - 1]], [15.5, -21.5]);
+        },
+        'path off the shifted map gives zero'() {
+            const nav = grid('#######\n#..#..#\n#..#..#\n#.....#\n#######');
+            nav.tile().origin([10, -20]);
+            const out = new Float32Array(64);
+            $mol_assert_equal(nav.path(new Float32Array([1.5, -1.5, 0]), new Float32Array([15.5, -21.5, 0]), out), 0);
+        },
         'unreachable target gives zero'() {
             const nav = grid('#######\n#..#..#\n#..#..#\n#..#..#\n#######');
             const out = new Float32Array(64);
@@ -8849,6 +8928,7 @@ var $;
             '#...#',
             '#####',
         ].join('\n'));
+        tile.plane('xz');
         return tile;
     }
     $mol_test({
@@ -8921,6 +9001,17 @@ var $;
             for (let i = 0; i < 8; ++i)
                 walker.step(0.125);
             $mol_assert_equal([...walker.pos()], [2.5, 0.5, 1.25]);
+        },
+        'wall of a shifted room stops the walker at its face'() {
+            const tile = walker_test_tile();
+            tile.origin([40, 60]);
+            const walker = walker_test_walker(walker_test_key('W'), tile);
+            walker.radius(0.25);
+            walker.speed(2);
+            walker.pos(new Float32Array([42.5, 0.5, 62.75]));
+            for (let i = 0; i < 8; ++i)
+                walker.step(0.125);
+            $mol_assert_equal([...walker.pos()], [42.5, 0.5, 61.25]);
         },
         'wall aside slides along it'() {
             const walker = walker_test_walker(walker_test_key('W', 'A'), walker_test_tile());
@@ -17442,6 +17533,46 @@ var $;
             app.brush_move([2, 1]);
             app.brush_up([2, 1]);
             $mol_assert_equal(app.Doc().map()[1].join(''), '###..#');
+        },
+        'brush past the right edge shows the new cells while the stroke is held'($) {
+            const app = $$.$bog_gamengine_studio.make({ $ });
+            app.Tile('#').checked(true);
+            app.Tools().value('cell');
+            const wide = app.tile_grid().width();
+            app.brush_down([1, 1]);
+            app.brush_move([wide + 1, 1]);
+            $mol_assert_equal(app.tile_grid().width(), wide + 2);
+            $mol_assert_equal(app.tile_grid().char(wide + 1, 1), '#');
+            app.brush_up([wide + 1, 1]);
+            $mol_assert_equal(app.Doc().map()[1].length, wide + 2);
+            $mol_assert_equal(app.Doc().map()[1][wide + 1], '#');
+        },
+        'brush past the top left corner shifts the previewed grid, not its cells'($) {
+            const app = $$.$bog_gamengine_studio.make({ $ });
+            app.Tile('#').checked(true);
+            app.Tools().value('cell');
+            const grid = () => app.tile_grid();
+            const before = grid().cell_pos(1, 1, new Float32Array(3));
+            app.brush_down([1, 1]);
+            app.brush_move([-2, -1]);
+            $mol_assert_equal([...grid().origin()], [-2, 1]);
+            $mol_assert_equal(grid().char(0, 0), '#');
+            const after = grid().cell_pos(3, 2, new Float32Array(3));
+            $mol_assert_equal([after[0], after[1]], [before[0], before[1]]);
+            app.brush_up([-2, -1]);
+            $mol_assert_equal(app.Doc().map_origin(), [-2, 1]);
+        },
+        'rect preview frame sits on the shifted grid'($) {
+            const app = $$.$bog_gamengine_studio.make({ $ });
+            app.source($bog_gamengine_studio_sample_shift);
+            app.Tile('#').checked(true);
+            app.Tools().value('rect');
+            app.brush_down([1, 1]);
+            app.brush_move([2, 1]);
+            const points = app.Rect_shape().points();
+            $mol_assert_equal([points[0], points[1]], [5, -4]);
+            $mol_assert_equal([points[3], points[4]], [7, -4]);
+            app.brush_up([2, 1]);
         },
         'rect tool paints a rectangle and shows a preview frame'($) {
             const app = $$.$bog_gamengine_studio.make({ $ });

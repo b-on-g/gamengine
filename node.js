@@ -11866,10 +11866,25 @@ var $;
         cell_pos(x, y, out) {
             return this.pos(x, y, 0, out);
         }
-        cell_at(wx, wy, out) {
+        cell_at(wx, wv, out) {
+            const plane = this.plane();
             const origin = this.origin();
             out[0] = Math.floor(wx - origin[0]);
-            out[1] = Math.floor(origin[1] - wy);
+            if (plane === 'xz') {
+                out[1] = Math.floor(wv - origin[1]);
+                return out;
+            }
+            if (plane === 'xy') {
+                out[1] = Math.floor(origin[1] - wv);
+                return out;
+            }
+            return $mol_fail(new Error(`Map plane ${plane} is unknown, known: xy, xz`));
+        }
+        spot = new Float32Array(3);
+        cell_spot(x, y, out) {
+            const pos = this.cell_pos(x, y, this.spot);
+            out[0] = pos[0];
+            out[1] = pos[this.plane() === 'xz' ? 2 : 1];
             return out;
         }
         solid_at(wx, wy) {
@@ -11970,8 +11985,11 @@ var $;
             const hh = body.kind() === 'circle' ? hw : size[1] / 2;
             const eps = this.eps;
             const side = $bog_gamengine_phys_body;
-            let x = pos[0] + vel[0] * dt;
-            let y = pos[1];
+            const origin = tile?.origin();
+            const ox = origin ? origin[0] : 0;
+            const oy = origin ? origin[1] : 0;
+            let x = pos[0] - ox + vel[0] * dt;
+            let y = pos[1] - oy;
             let vx = vel[0];
             let vy = vel[1];
             let hit = false;
@@ -12007,7 +12025,7 @@ var $;
                     }
                 }
             }
-            y = pos[1] + vy * dt;
+            y = pos[1] - oy + vy * dt;
             if (tile) {
                 const cx0 = Math.floor(x - hw + eps);
                 const cx1 = Math.floor(x + hw - eps);
@@ -12039,8 +12057,8 @@ var $;
                 }
             }
             const next = new Float32Array(3);
-            next[0] = x;
-            next[1] = y;
+            next[0] = x + ox;
+            next[1] = y + oy;
             next[2] = pos[2];
             body.pos(next);
             const back = body.pos();
@@ -19024,8 +19042,14 @@ var $;
                 return true;
             return this.solid()[y * width + x] === 1;
         }
-        solid_at(wx, wy) {
-            return this.cell(Math.floor(wx), Math.floor(-wy));
+        cell_out = new Int32Array(2);
+        spot = new Float32Array(2);
+        solid_at(wx, wv) {
+            const tile = this.tile();
+            if (!tile)
+                return true;
+            const at = tile.cell_at(wx, wv, this.cell_out);
+            return this.cell(at[0], at[1]);
         }
         block(x, y, solid) {
             const width = this.width();
@@ -19121,10 +19145,13 @@ var $;
                 return 0;
             this.grow();
             const solid = this.solid();
-            const x0 = Math.floor(from[0]);
-            const y0 = Math.floor(-from[1]);
-            const x1 = Math.floor(to[0]);
-            const y1 = Math.floor(-to[1]);
+            const tile = this.tile();
+            const at = tile.cell_at(from[0], from[1], this.cell_out);
+            const x0 = at[0];
+            const y0 = at[1];
+            tile.cell_at(to[0], to[1], at);
+            const x1 = at[0];
+            const y1 = at[1];
             if (x0 < 0 || y0 < 0 || x0 >= width || y0 >= height)
                 return 0;
             if (x1 < 0 || y1 < 0 || x1 >= width || y1 >= height)
@@ -19208,8 +19235,9 @@ var $;
                 const node = trace[i];
                 const x = node % width;
                 const y = (node - x) / width;
-                out[count * 2] = x + 0.5;
-                out[count * 2 + 1] = -y - 0.5;
+                tile.cell_spot(x, y, this.spot);
+                out[count * 2] = this.spot[0];
+                out[count * 2 + 1] = this.spot[1];
                 ++count;
             }
             out[0] = from[0];
@@ -21904,13 +21932,13 @@ var $;
             if (!tile)
                 return true;
             const r = this.radius();
-            if (tile.solid_at(x - r, -(z - r)))
+            if (tile.solid_at(x - r, z - r))
                 return false;
-            if (tile.solid_at(x + r, -(z - r)))
+            if (tile.solid_at(x + r, z - r))
                 return false;
-            if (tile.solid_at(x - r, -(z + r)))
+            if (tile.solid_at(x - r, z + r))
                 return false;
-            if (tile.solid_at(x + r, -(z + r)))
+            if (tile.solid_at(x + r, z + r))
                 return false;
             return true;
         }
@@ -42160,9 +42188,9 @@ var $;
             const nums = line?.kids[0] ? this.numbers(this.flat(line.kids[0])) : null;
             return [Number(nums?.[0] ?? 0), Number(nums?.[1] ?? 0)];
         }
-        map_fill() {
+        fill_of(base) {
             const count = new Map();
-            for (const row of this.map())
+            for (const row of base)
                 for (const char of row)
                     count.set(char, (count.get(char) ?? 0) + 1);
             let fill = ' ';
@@ -42175,12 +42203,12 @@ var $;
             }
             return fill;
         }
-        paint_all(cells, char) {
-            const lines = this.map_lines();
-            if (!lines.length)
-                return;
-            const rows = this.map().map(row => [...row]);
-            const fill = this.map_fill();
+        map_fill() {
+            return this.fill_of(this.map());
+        }
+        grown(base, cells, char) {
+            const rows = base.map(row => [...row]);
+            const fill = this.fill_of(base);
             const grow = $.$bog_gamengine_studio_doc_grow_max;
             let width = 0;
             for (const row of rows)
@@ -42221,6 +42249,13 @@ var $;
                 row[at] = char;
                 changed = true;
             }
+            return { rows: rows, left, top, changed };
+        }
+        paint_all(cells, char) {
+            const lines = this.map_lines();
+            if (!lines.length)
+                return;
+            const { rows, left, top, changed } = this.grown(this.map(), cells, char);
             if (!changed)
                 return;
             const source = this.source().split('\n');
@@ -46098,10 +46133,11 @@ var $;
                 return this.Rect_shape().points().length ? [this.Rect_node()] : [];
             }
             rect_preview(from, to) {
-                const x0 = Math.min(from[0], to[0]);
-                const x1 = Math.max(from[0], to[0]) + 1;
-                const y0 = -Math.min(from[1], to[1]);
-                const y1 = -Math.max(from[1], to[1]) - 1;
+                const origin = this.brush_origin;
+                const x0 = origin[0] + Math.min(from[0], to[0]);
+                const x1 = origin[0] + Math.max(from[0], to[0]) + 1;
+                const y0 = origin[1] - Math.min(from[1], to[1]);
+                const y1 = origin[1] - Math.max(from[1], to[1]) - 1;
                 this.Rect_shape().points(new Float32Array([
                     x0, y0, 0, x1, y0, 0,
                     x1, y0, 0, x1, y1, 0,
@@ -46116,24 +46152,24 @@ var $;
             }
             brush_at = new Int32Array(2);
             brush_base = '';
+            brush_origin = [0, 0];
             brush_cell(event) {
                 const at = this.Point().world(this.point_world, this.point_x(event), this.point_y(event));
                 const cell = this.tile_grid().cell_at(at[0], at[1], this.brush_at);
                 return [cell[0], cell[1]];
             }
             painted(text, cells, char) {
-                const rows = text.split('\n').map(row => [...row]);
-                for (const [x, y] of cells) {
-                    const row = rows[y];
-                    if (!row || x < 0 || x >= row.length)
-                        continue;
-                    row[x] = char;
-                }
-                return rows.map(row => row.join('')).join('\n');
+                const base = text.split('\n').map(row => [...row]);
+                const grown = this.Doc().grown(base, cells, char);
+                return grown.rows.map(row => row.join('')).join('\n');
             }
             brush_show(cells) {
                 const grid = this.tile_grid();
-                grid.map(this.painted(this.brush_base, cells, this.tile_char()));
+                const base = this.brush_base.split('\n').map(row => [...row]);
+                const grown = this.Doc().grown(base, cells, this.tile_char());
+                const origin = this.brush_origin;
+                grid.map(grown.rows.map(row => row.join('')).join('\n'));
+                grid.origin([origin[0] - grown.left, origin[1] + grown.top]);
             }
             brush_down(cell) {
                 const char = this.tile_char();
@@ -46141,7 +46177,9 @@ var $;
                     return this.Doc().fill(cell[0], cell[1], char);
                 this.brush_from = cell;
                 this.brush_cells = [cell];
-                this.brush_base = this.tile_grid().map();
+                const grid = this.tile_grid();
+                this.brush_base = grid.map();
+                this.brush_origin = [grid.origin()[0], grid.origin()[1]];
                 if (this.tool() === 'rect')
                     return this.rect_preview(cell, cell);
                 this.brush_show(this.brush_cells);

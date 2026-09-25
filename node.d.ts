@@ -4410,7 +4410,9 @@ declare namespace $ {
         solid(next?: string): string;
         cell(x: number, y: number): boolean;
         cell_pos(x: number, y: number, out: Float32Array): Float32Array<ArrayBufferLike>;
-        cell_at(wx: number, wy: number, out: Int32Array): Int32Array<ArrayBufferLike>;
+        cell_at(wx: number, wv: number, out: Int32Array): Int32Array<ArrayBufferLike>;
+        spot: Float32Array<ArrayBuffer>;
+        cell_spot(x: number, y: number, out: Float32Array): Float32Array<ArrayBufferLike>;
         solid_at(wx: number, wy: number): boolean;
         ahead(wx: number, wy: number, dx: number, dy: number, dist: number): string;
         edge(wx: number, wy: number, dx: number, dy: number): boolean;
@@ -5863,7 +5865,9 @@ declare namespace $ {
         height(): number;
         solid(): Uint8Array<ArrayBuffer>;
         cell(x: number, y: number): boolean;
-        solid_at(wx: number, wy: number): boolean;
+        cell_out: Int32Array<ArrayBuffer>;
+        spot: Float32Array<ArrayBuffer>;
+        solid_at(wx: number, wv: number): boolean;
         block(x: number, y: number, solid: boolean): void;
         size: number;
         gen: number;
@@ -47144,7 +47148,14 @@ declare namespace $ {
         map_lines(): readonly $mol_tree2[];
         map(): readonly (readonly string[])[];
         map_origin(): readonly [number, number];
+        fill_of(base: readonly (readonly string[])[]): string;
         map_fill(): string;
+        grown(base: readonly (readonly string[])[], cells: readonly (readonly [number, number])[], char: string): {
+            rows: readonly (readonly string[])[];
+            left: number;
+            top: number;
+            changed: boolean;
+        };
         paint_all(cells: readonly (readonly [number, number])[], char: string): void;
         paint(x: number, y: number, char: string): void;
         rect(x0: number, y0: number, x1: number, y1: number, char: string): void;
@@ -49087,6 +49098,7 @@ declare namespace $.$$ {
         brushing(): boolean;
         brush_at: Int32Array<ArrayBuffer>;
         brush_base: string;
+        brush_origin: readonly [number, number];
         brush_cell(event: PointerEvent): readonly [number, number];
         painted(text: string, cells: readonly (readonly [number, number])[], char: string): string;
         brush_show(cells: readonly (readonly [number, number])[]): void;
