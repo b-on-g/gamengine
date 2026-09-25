@@ -119,6 +119,12 @@ namespace $ {
 			$mol_assert_equal( world.pool().trans[ 12 ], 5 )
 		},
 
+		'unknown billboard kind on an emitter falls instead of dropping the billboard'() {
+			const emitter = $bog_gamengine_particle_test_emitter( 0, 10 )
+			Object.assign( emitter, { billboard: ()=> 'sphre' } )
+			$mol_assert_fail( ()=> emitter.burst( 1 ), 'Billboard kind sphre is unknown, known: cylinder, sphere' )
+		},
+
 		'cylinder emitter keeps the plain basis, sphere takes the camera one'() {
 			const build = ( kind: $bog_gamengine_billboard )=> {
 				const scene = new $bog_gamengine_scene

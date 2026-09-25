@@ -132,7 +132,7 @@ namespace $ {
 			const height = watch.of( this.height() )
 			const align = watch.of( this.align() )
 			const color = watch.of( this.color() )
-			const billboard = watch.of( this.billboard() )
+			const billboard = watch.of( this.billboard_kind() )
 			const cam = billboard === 'sphere' ? this.scene()?.cam() ?? null : null
 			watch.of( cam?.world() ?? null )
 			const font = this.font()

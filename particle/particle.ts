@@ -315,7 +315,7 @@ namespace $ {
 			const color = this.color()
 			const layers = this.layers()
 			const basis = this.basis
-			const cam = this.billboard() === 'sphere' ? this.scene()?.cam() ?? null : null
+			const cam = this.billboard_kind() === 'sphere' ? this.scene()?.cam() ?? null : null
 			if( cam ) {
 				$bog_gamengine_vec_mat4_basis( basis, cam.world(), 3 )
 			} else {

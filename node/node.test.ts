@@ -139,6 +139,24 @@ namespace $ {
 			}
 		},
 
+		'unknown billboard kind falls at the place that reads it, not silently off'() {
+			const node = new $bog_gamengine_node
+			node.billboard( 'sphre' as $bog_gamengine_billboard )
+			$mol_assert_fail( ()=> node.trans(), 'Billboard kind sphre is unknown, known: cylinder, sphere' )
+		},
+
+		'billboard kind set by a tree literal is checked too, the accessor is overridden there'() {
+			const node = new $bog_gamengine_node
+			Object.assign( node, { billboard: ()=> 'sphre' } )
+			$mol_assert_fail( ()=> node.trans(), 'Billboard kind sphre is unknown, known: cylinder, sphere' )
+		},
+
+		'empty billboard stays a plain node without falling'() {
+			const node = new $bog_gamengine_node
+			$mol_assert_equal( node.billboard_kind(), '' )
+			$mol_assert_ok( node.trans().length === 16 )
+		},
+
 		'sphere does not order the cylindrical turn, so the camera leaves its trans alone'() {
 			const scene = new $bog_gamengine_scene
 			const cam = new $bog_gamengine_cam

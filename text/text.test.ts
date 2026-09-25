@@ -19,7 +19,8 @@ namespace $ {
 		return Math.round( value * 1e6 ) / 1e6
 	}
 
-	function $bog_gamengine_text_test_other( kind: string, was: unknown ) {
+	function $bog_gamengine_text_test_other( name: string, kind: string, was: unknown ) {
+		if( name === 'billboard' ) return was === 'sphere' ? 'cylinder' : 'sphere'
 		if( kind === 'vec3' || kind === 'euler' ) return [ 1, 2, 3 ]
 		if( kind === 'vec4' ) return [ 0.25, 0.5, 0.75, 1 ]
 		if( kind === 'number' ) return Number( was ) + 1
@@ -77,11 +78,17 @@ namespace $ {
 				const text = $bog_gamengine_text_test_make( 'ab' )
 				const prop = text.props().find( one => one.name === name )!
 				const version = text.pool().version
-				prop.set( $bog_gamengine_text_test_other( prop.kind, prop.get() ) as never )
+				prop.set( $bog_gamengine_text_test_other( name, prop.kind, prop.get() ) as never )
 				text.emit()
 				if( idle.includes( name ) ) $mol_assert_equal( text.pool().version, version )
 				else $mol_assert_equal( text.pool().version > version, true )
 			}
+		},
+
+		'unknown billboard kind on a text falls instead of drawing it flat'() {
+			const text = $bog_gamengine_text_test_make( 'a' )
+			Object.assign( text, { billboard: ()=> 'sphre' } )
+			$mol_assert_fail( ()=> text.pool(), 'Billboard kind sphre is unknown, known: cylinder, sphere' )
 		},
 
 		'cylinder text keeps world up under a pitched camera, sphere does not'() {

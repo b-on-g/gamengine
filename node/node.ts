@@ -122,6 +122,12 @@ namespace $ {
 			return next ?? ''
 		}
 
+		billboard_kind(): $bog_gamengine_billboard {
+			const kind = this.billboard()
+			if( kind === '' || kind === 'cylinder' || kind === 'sphere' ) return kind
+			return $mol_fail( new Error( `Billboard kind ${ kind } is unknown, known: cylinder, sphere` ) )
+		}
+
 		@ $mol_mem
 		shader( next?: $bog_gamengine_shader | null ) {
 			return next ?? null
@@ -188,7 +194,7 @@ namespace $ {
 		@ $mol_mem
 		trans() {
 			const rot = this.rot()
-			const yaw = this.billboard() === 'cylinder' ? this.cam_yaw() : rot[ 1 ]
+			const yaw = this.billboard_kind() === 'cylinder' ? this.cam_yaw() : rot[ 1 ]
 			return $mol_3d_mat4.multiply(
 				$mol_3d_mat4.translation( this.pos() ),
 				$mol_3d_mat4.rotation( [ 0, 0, 1 ], rot[ 2 ] ),
