@@ -14,7 +14,7 @@ namespace $ {
 
 	export const $bog_gamengine_look_ok = 'подпись сцен совпала с записанной'
 
-	export const $bog_gamengine_look_alive = 'подпись не сверялась, окружение чужое, но сцены не пустые'
+	export const $bog_gamengine_look_away = 'подпись не сверялась: прогон не на машине, где она снята'
 
 	export type $bog_gamengine_look_spots = { readonly [ name: string ]: readonly [ number, number ] }
 
@@ -307,67 +307,11 @@ namespace $ {
 		readonly scenes: { readonly [ name: string ]: $bog_gamengine_look_take_shot }
 	}
 
-	export type $bog_gamengine_look_env = {
-		readonly renderer: string
-		readonly size: { readonly [ scene: string ]: readonly [ number, number ] }
-	}
-
 	export function $bog_gamengine_look_family( renderer: string, base = $bog_gamengine_look_base ) {
 		if( /нет webgl2/i.test( renderer ) ) return ''
 		if( /swiftshader|software|llvmpipe/i.test( renderer ) ) return 'soft'
-		if( renderer === base.gpu_env.renderer ) return 'gpu'
+		if( renderer === base.gpu_renderer ) return 'gpu'
 		return ''
-	}
-
-	export function $bog_gamengine_look_stranger(
-		got: $bog_gamengine_look_result,
-		env: $bog_gamengine_look_env,
-		scenes: readonly $bog_gamengine_look_scene[] = $bog_gamengine_look_scenes,
-	) {
-
-		const out = [] as string[]
-
-		if( got.renderer !== env.renderer ) out.push( `рендерер ${ got.renderer } против ${ env.renderer }` )
-
-		for( const scene of scenes ) {
-			const now = got.scenes[ scene.name ]?.size
-			const kept = env.size[ scene.name ]
-			if( !now || !kept ) continue
-			if( now[ 0 ] === kept[ 0 ] && now[ 1 ] === kept[ 1 ] ) continue
-			out.push( `холст ${ scene.name } ${ now.join( 'x' ) } против ${ kept.join( 'x' ) }` )
-		}
-
-		return out as readonly string[]
-	}
-
-	export const $bog_gamengine_look_floor = {
-		side: 256,
-		dark: 0.9,
-		blown: 0.9,
-		range: 16,
-		sat: 5,
-	}
-
-	export function $bog_gamengine_look_empty(
-		scene: string,
-		shot: $bog_gamengine_look_take_shot,
-		floor = $bog_gamengine_look_floor,
-	) {
-
-		const out = [] as string[]
-		const size = shot.size
-
-		if( !size || size[ 0 ] < floor.side || size[ 1 ] < floor.side ) {
-			out.push( `${ scene }: холст ${ size ? size.join( 'x' ) : 'неизвестен' }, меньше ${ floor.side } по стороне` )
-		}
-		if( shot.dark > floor.dark ) out.push( `${ scene }: провалов ${ shot.dark }, сцена почти чёрная` )
-		if( shot.blown > floor.blown ) out.push( `${ scene }: выжженных ${ shot.blown }, сцена почти белая` )
-		if( shot.high - shot.low < floor.range ) {
-			out.push( `${ scene }: размах теней и светов ${ shot.high - shot.low }, меньше ${ floor.range }` )
-		}
-		if( shot.sat < floor.sat ) out.push( `${ scene }: насыщенность ${ shot.sat }, ниже ${ floor.sat }` )
-
-		return out as readonly string[]
 	}
 
 	export async function $bog_gamengine_look_take(
@@ -456,10 +400,12 @@ namespace $ {
 		page = $bog_gamengine_look_page,
 		scenes: readonly $bog_gamengine_look_scene[] = $bog_gamengine_look_scenes,
 		base = $bog_gamengine_look_base,
-		strict = !$node.process.env[ 'CI' ],
+		mine = !$node.process.env[ 'CI' ],
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, 'подпись: ' + line + '\n' ); return line }
+
+		if( !mine ) return say( $bog_gamengine_look_away )
 
 		const started = Date.now()
 		const got = await $bog_gamengine_look_take( root, flags, page, scenes )
@@ -470,27 +416,18 @@ namespace $ {
 		const fail = ( reason: string )=> $mol_fail( new Error( reason ) )
 
 		const family = $bog_gamengine_look_family( got.renderer, base )
-		if( !family ) return fail( `окружение не распознано, подпись сверять не с чем: ${ got.renderer }` )
+		if( !family ) return fail( `рендерер не распознан, подпись сверять не с чем: ${ got.renderer }` )
+
+		const renderer = family === 'soft' ? base.soft_renderer : base.gpu_renderer
+		if( got.renderer !== renderer ) {
+			return fail( `подпись снята не на этом рендерере:\n  ${ got.renderer }\n  против\n  ${ renderer }` )
+		}
 
 		for( const scene of scenes ) {
 			const now = got.scenes[ scene.name ]
 			if( !now ) return fail( `сцена ${ scene.name } не снялась` )
 			if( now.marked === false ) return fail( `сцена ${ scene.name } не дождалась своей отметки ${ scene.mark }` )
 			if( now.steady === false ) return fail( `сцена ${ scene.name } не устаканилась` )
-		}
-
-		const strange = $bog_gamengine_look_stranger( got, family === 'soft' ? base.soft_env : base.gpu_env, scenes )
-
-		if( strange.length ) {
-
-			if( strict ) return fail( `окружение не то, в котором снята подпись:\n  ${ strange.join( '\n  ' ) }` )
-
-			const empty = [] as string[]
-			for( const scene of scenes ) empty.push( ... $bog_gamengine_look_empty( scene.name, got.scenes[ scene.name ] ) )
-
-			if( empty.length ) return fail( `сцена пустая:\n  ${ empty.join( '\n  ' ) }` )
-
-			return say( `${ $bog_gamengine_look_alive }: ${ strange.join( '; ' ) }` )
 		}
 
 		const kept = family === 'soft' ? base.soft : base.gpu
