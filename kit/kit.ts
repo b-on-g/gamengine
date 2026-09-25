@@ -1,12 +1,12 @@
 namespace $ {
 
-	export type $bog_gamestudio_kit_mate = {
+	export type $bog_gamengine_studio_kit_mate = {
 		readonly node: string
 		readonly klass: string
 		readonly props: Readonly< Record< string, string > >
 	}
 
-	export type $bog_gamestudio_kit_world = {
+	export type $bog_gamengine_studio_kit_world = {
 		readonly prop: string
 		readonly node: string
 		readonly klass: string
@@ -16,7 +16,7 @@ namespace $ {
 		readonly ref: string
 	}
 
-	export type $bog_gamestudio_kit_item = {
+	export type $bog_gamengine_studio_kit_item = {
 		readonly id: string
 		readonly title: string
 		readonly klass: string
@@ -26,7 +26,7 @@ namespace $ {
 		readonly part?: boolean
 	}
 
-	export const $bog_gamestudio_kit_field = [
+	export const $bog_gamengine_studio_kit_field = [
 		'\\',
 		'\t\\......',
 		'\t\\......',
@@ -35,7 +35,7 @@ namespace $ {
 		'\t\\......',
 	].join( '\n' )
 
-	export const $bog_gamestudio_kit_worlds: Readonly< Record< string, $bog_gamestudio_kit_world > > = {
+	export const $bog_gamengine_studio_kit_worlds: Readonly< Record< string, $bog_gamengine_studio_kit_world > > = {
 		phys: {
 			prop: 'phys',
 			node: 'Phys',
@@ -58,14 +58,14 @@ namespace $ {
 			prop: '',
 			node: 'Tile',
 			klass: '$bog_gamengine_phys_tile',
-			props: { map: $bog_gamestudio_kit_field },
+			props: { map: $bog_gamengine_studio_kit_field },
 			binds: {},
 			list: '',
 			ref: 'tile',
 		},
 	}
 
-	export const $bog_gamestudio_kit_items: readonly $bog_gamestudio_kit_item[] = [
+	export const $bog_gamengine_studio_kit_items: readonly $bog_gamengine_studio_kit_item[] = [
 		{
 			id: 'map',
 			title: 'Карта',
@@ -108,28 +108,28 @@ namespace $ {
 		},
 	]
 
-	export type $bog_gamestudio_kit_join = {
+	export type $bog_gamengine_studio_kit_join = {
 		readonly node: string
 		readonly prop: string
 	}
 
-	export type $bog_gamestudio_kit_plan = {
-		readonly decls: readonly $bog_gamestudio_kit_mate[]
+	export type $bog_gamengine_studio_kit_plan = {
+		readonly decls: readonly $bog_gamengine_studio_kit_mate[]
 		readonly root: readonly string[]
 		readonly klass: string
 		readonly props: Readonly< Record< string, string > >
-		readonly join: $bog_gamestudio_kit_join | null
+		readonly join: $bog_gamengine_studio_kit_join | null
 	}
 
-	export function $bog_gamestudio_kit_plan_of(
-		item: $bog_gamestudio_kit_item,
+	export function $bog_gamengine_studio_kit_plan_of(
+		item: $bog_gamengine_studio_kit_item,
 		known: readonly string[],
 		root_props: readonly string[],
 		pos: string,
-	): $bog_gamestudio_kit_plan {
+	): $bog_gamengine_studio_kit_plan {
 
-		const world = $bog_gamestudio_kit_worlds[ item.world ] ?? null
-		const decls = [] as $bog_gamestudio_kit_mate[]
+		const world = $bog_gamengine_studio_kit_worlds[ item.world ] ?? null
+		const decls = [] as $bog_gamengine_studio_kit_mate[]
 		const root = [] as string[]
 
 		if( world ) {
@@ -165,14 +165,14 @@ namespace $ {
 
 	}
 
-	export function $bog_gamestudio_kit_line( doc: $bog_gamestudio_doc, owner: string, line: string ) {
+	export function $bog_gamengine_studio_kit_line( doc: $bog_gamengine_studio_doc, owner: string, line: string ) {
 		const klass = doc.decls().get( owner )
 		if( !klass ) return false
 		doc.insert( doc.end_row( klass ), doc.indent( klass.span.row ) + 1, [ line ] )
 		return true
 	}
 
-	export function $bog_gamestudio_kit_join( doc: $bog_gamestudio_doc, owner: string, prop: string, name: string ) {
+	export function $bog_gamengine_studio_kit_join( doc: $bog_gamengine_studio_doc, owner: string, prop: string, name: string ) {
 		const klass = doc.decls().get( owner )
 		if( !klass ) return false
 		const item = `<= ${ name }`
@@ -188,15 +188,15 @@ namespace $ {
 		return true
 	}
 
-	export function $bog_gamestudio_kit_attach( doc: $bog_gamestudio_doc, item: $bog_gamestudio_kit_item, host: string ) {
+	export function $bog_gamengine_studio_kit_attach( doc: $bog_gamengine_studio_doc, item: $bog_gamengine_studio_kit_item, host: string ) {
 		if( !doc.decls().get( host ) ) return ''
 		const name = doc.free_name( item.klass )
 		doc.declare( name, item.klass, item.props )
-		$bog_gamestudio_kit_join( doc, host, 'parts', name )
+		$bog_gamengine_studio_kit_join( doc, host, 'parts', name )
 		return name
 	}
 
-	export function $bog_gamestudio_kit_path_of( doc: $bog_gamestudio_doc, node: $bog_gamengine_node | null ) {
+	export function $bog_gamengine_studio_kit_path_of( doc: $bog_gamengine_studio_doc, node: $bog_gamengine_node | null ) {
 		if( !node ) return ''
 		let step = node
 		const steps = [] as number[]
@@ -209,7 +209,7 @@ namespace $ {
 		return doc.path_at( steps )
 	}
 
-	export function $bog_gamestudio_kit_refs( doc: $bog_gamestudio_doc, owner: string, prop: string ) {
+	export function $bog_gamengine_studio_kit_refs( doc: $bog_gamengine_studio_doc, owner: string, prop: string ) {
 		const klass = doc.decls().get( owner )
 		if( !klass ) return [] as readonly string[]
 		const items = klass.kids.find( kid => kid.type === prop )?.kids[ 0 ]?.kids ?? []
@@ -223,7 +223,7 @@ namespace $ {
 		return out as readonly string[]
 	}
 
-	export function $bog_gamestudio_kit_bound( doc: $bog_gamestudio_doc, owner: string, prop: string ) {
+	export function $bog_gamengine_studio_kit_bound( doc: $bog_gamengine_studio_doc, owner: string, prop: string ) {
 		const klass = doc.decls().get( owner )
 		if( !klass ) return ''
 		const line = klass.kids.find( kid => kid.type === prop )
@@ -232,14 +232,14 @@ namespace $ {
 		return bind.kids[ 0 ]?.type ?? ''
 	}
 
-	export function $bog_gamestudio_kit_bind( doc: $bog_gamestudio_doc, owner: string, prop: string, name: string, klass = '' ) {
+	export function $bog_gamengine_studio_kit_bind( doc: $bog_gamengine_studio_doc, owner: string, prop: string, name: string, klass = '' ) {
 		if( !doc.decls().get( owner ) ) return false
 		if( klass && doc.decls().get( name )?.type !== klass ) return false
-		$bog_gamestudio_kit_clear( doc, owner, prop )
-		return $bog_gamestudio_kit_line( doc, owner, `${ prop } <= ${ name }` )
+		$bog_gamengine_studio_kit_clear( doc, owner, prop )
+		return $bog_gamengine_studio_kit_line( doc, owner, `${ prop } <= ${ name }` )
 	}
 
-	export function $bog_gamestudio_kit_clear( doc: $bog_gamestudio_doc, owner: string, prop: string ) {
+	export function $bog_gamengine_studio_kit_clear( doc: $bog_gamengine_studio_doc, owner: string, prop: string ) {
 		const klass = doc.decls().get( owner )
 		if( !klass ) return false
 		const line = klass.kids.find( kid => kid.type === prop )
@@ -251,34 +251,34 @@ namespace $ {
 		return true
 	}
 
-	export function $bog_gamestudio_kit_apply( doc: $bog_gamestudio_doc, item: $bog_gamestudio_kit_item, pos: string ) {
+	export function $bog_gamengine_studio_kit_apply( doc: $bog_gamengine_studio_doc, item: $bog_gamengine_studio_kit_item, pos: string ) {
 
 		const root = doc.decls().get( '' )
 		if( !root ) return ''
 
 		const known = [ ... doc.decls().keys() ]
 		const root_props = root.kids.map( kid => kid.type )
-		const plan = $bog_gamestudio_kit_plan_of( item, known, root_props, pos )
+		const plan = $bog_gamengine_studio_kit_plan_of( item, known, root_props, pos )
 
 		for( let i = 0; i < plan.decls.length; ++i ) {
 			const decl = plan.decls[ i ]
 			doc.declare( decl.node, decl.klass, decl.props )
 		}
 		for( let i = 0; i < plan.root.length; ++i ) {
-			$bog_gamestudio_kit_line( doc, '', plan.root[ i ] )
+			$bog_gamengine_studio_kit_line( doc, '', plan.root[ i ] )
 		}
 
 		const name = doc.add( plan.klass, plan.props )
-		if( plan.join ) $bog_gamestudio_kit_join( doc, plan.join.node, plan.join.prop, name )
+		if( plan.join ) $bog_gamengine_studio_kit_join( doc, plan.join.node, plan.join.prop, name )
 
 		return name
 	}
 
-	export class $bog_gamestudio_kit extends $mol_object2 {
+	export class $bog_gamengine_studio_kit extends $mol_object2 {
 
 		@ $mol_mem
-		list( next?: readonly $bog_gamestudio_kit_item[] ) {
-			return next ?? $bog_gamestudio_kit_items
+		list( next?: readonly $bog_gamengine_studio_kit_item[] ) {
+			return next ?? $bog_gamengine_studio_kit_items
 		}
 
 		item( id: string ) {
@@ -288,7 +288,7 @@ namespace $ {
 		world( id: string ) {
 			const item = this.item( id )
 			if( !item ) return null
-			return $bog_gamestudio_kit_worlds[ item.world ] ?? null
+			return $bog_gamengine_studio_kit_worlds[ item.world ] ?? null
 		}
 
 		title( id: string ) {

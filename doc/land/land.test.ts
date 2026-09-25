@@ -1,6 +1,6 @@
 namespace $ {
 
-	class $bog_gamestudio_doc_land_stub extends $bog_gamestudio_doc_land {
+	class $bog_gamengine_studio_doc_land_stub extends $bog_gamengine_studio_doc_land {
 
 		clock = 1e6
 		beats = 0
@@ -32,14 +32,14 @@ namespace $ {
 		}
 
 		me_mate() {
-			return {} as $bog_gamestudio_doc_land_mate
+			return {} as $bog_gamengine_studio_doc_land_mate
 		}
 
 		seen( id: string ) {
 			return this.seen_at.get( id ) ?? 0
 		}
 
-		beat( mate: $bog_gamestudio_doc_land_mate, name: string, pick: string, spot: number[], now: number ) {
+		beat( mate: $bog_gamengine_studio_doc_land_mate, name: string, pick: string, spot: number[], now: number ) {
 			++ this.beats
 			this.seen_at.set( this.me(), now )
 		}
@@ -47,9 +47,9 @@ namespace $ {
 	}
 
 	function opened( $: $ ) {
-		const land = $bog_gamestudio_doc_land_stub.create( land => land.$ = $ )
-		land.text( $bog_gamestudio_sample )
-		const doc = $bog_gamestudio_doc.create( doc => {
+		const land = $bog_gamengine_studio_doc_land_stub.create( land => land.$ = $ )
+		land.text( $bog_gamengine_studio_sample )
+		const doc = $bog_gamengine_studio_doc.create( doc => {
 			doc.$ = $
 			doc.land( land )
 		} )

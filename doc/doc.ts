@@ -1,26 +1,26 @@
 namespace $ {
 
-	export type $bog_gamestudio_doc_value = string | number | boolean | readonly number[]
+	export type $bog_gamengine_studio_doc_value = string | number | boolean | readonly number[]
 
-	export type $bog_gamestudio_doc_row = Readonly< Record< string, string > >
+	export type $bog_gamengine_studio_doc_row = Readonly< Record< string, string > >
 
-	export type $bog_gamestudio_doc_kind = 'node' | 'part' | 'own'
+	export type $bog_gamengine_studio_doc_kind = 'node' | 'part' | 'own'
 
-	export type $bog_gamestudio_doc_node = {
+	export type $bog_gamengine_studio_doc_node = {
 		readonly name: string
 		readonly path: string
-		readonly kind: $bog_gamestudio_doc_kind
+		readonly kind: $bog_gamengine_studio_doc_kind
 		readonly title: string
 		readonly klass: string
 		readonly props: Readonly< Record< string, $mol_tree2 > >
 	}
 
-	export type $bog_gamestudio_doc_klass = new()=> $bog_gamengine_scene
+	export type $bog_gamengine_studio_doc_klass = new()=> $bog_gamengine_scene
 
-	export class $bog_gamestudio_doc extends $mol_object2 {
+	export class $bog_gamengine_studio_doc extends $mol_object2 {
 
 		@ $mol_mem
-		land( next?: $bog_gamestudio_doc_land | null ) {
+		land( next?: $bog_gamengine_studio_doc_land | null ) {
 			return next ?? null
 		}
 
@@ -113,7 +113,7 @@ namespace $ {
 
 		@ $mol_mem
 		kinds() {
-			const map = new Map< string, $bog_gamestudio_doc_kind >()
+			const map = new Map< string, $bog_gamengine_studio_doc_kind >()
 			const walk = ( name: string, prefix: string, chain: readonly string[] )=> {
 				const kids = this.refs( name )
 				for( const ref of [ ... kids, ... this.parts( name ) ] ) {
@@ -128,8 +128,8 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		nodes(): readonly $bog_gamestudio_doc_node[] {
-			const list = [] as $bog_gamestudio_doc_node[]
+		nodes(): readonly $bog_gamengine_studio_doc_node[] {
+			const list = [] as $bog_gamengine_studio_doc_node[]
 			const kinds = this.kinds()
 			const named = new Set< string >()
 			for( const path of kinds.keys() ) {
@@ -166,7 +166,7 @@ namespace $ {
 		}
 
 		@ $mol_mem_key
-		node( path: string ): $bog_gamestudio_doc_node {
+		node( path: string ): $bog_gamengine_studio_doc_node {
 			return { ... this.node_bare( path ), kind: this.kinds().get( path ) ?? 'own' }
 		}
 
@@ -178,7 +178,7 @@ namespace $ {
 			for( const step of this.chain( name ) ) {
 				for( const line of step.kids ) props[ line.type.replace( /\?$/, '' ) ] = line
 			}
-			return { name, path, kind: 'own' as $bog_gamestudio_doc_kind, title: props.name?.text() || name, klass: klass.type, props }
+			return { name, path, kind: 'own' as $bog_gamengine_studio_doc_kind, title: props.name?.text() || name, klass: klass.type, props }
 		}
 
 		own( klass: $mol_tree2, line?: $mol_tree2 ) {
@@ -190,7 +190,7 @@ namespace $ {
 			return this.nodes().filter( item => item.name === name ).map( item => item.path )
 		}
 
-		set( path: string, prop: string, value: $bog_gamestudio_doc_value ) {
+		set( path: string, prop: string, value: $bog_gamengine_studio_doc_value ) {
 			const node = this.node( path )
 			const klass = this.decls().get( node.name )!
 			const tree = this.tree()
@@ -201,7 +201,7 @@ namespace $ {
 			this.source( this.print( swap( tree ) ) )
 		}
 
-		list_rows( path: string, prop: string ): readonly $bog_gamestudio_doc_row[] {
+		list_rows( path: string, prop: string ): readonly $bog_gamengine_studio_doc_row[] {
 			const node = this.node( path )
 			const items = node.props[ prop ]?.kids[ 0 ]?.kids ?? []
 			return items.map( item => {
@@ -211,7 +211,7 @@ namespace $ {
 			} )
 		}
 
-		list_write( path: string, prop: string, rows: readonly $bog_gamestudio_doc_row[] ) {
+		list_write( path: string, prop: string, rows: readonly $bog_gamengine_studio_doc_row[] ) {
 			const node = this.node( path )
 			const klass = this.decls().get( node.name )!
 			const tree = this.tree()
@@ -230,7 +230,7 @@ namespace $ {
 			this.list_write( path, prop, this.list_rows( path, prop ).map( ( row, at )=> at === index ? { ... row, [ field ]: value } : row ) )
 		}
 
-		list_add( path: string, prop: string, row: $bog_gamestudio_doc_row ) {
+		list_add( path: string, prop: string, row: $bog_gamengine_studio_doc_row ) {
 			this.list_write( path, prop, [ ... this.list_rows( path, prop ), row ] )
 		}
 
@@ -517,7 +517,7 @@ namespace $ {
 			}
 		}
 
-		line( tree: $mol_tree2, prop: string, value: $bog_gamestudio_doc_value ) {
+		line( tree: $mol_tree2, prop: string, value: $bog_gamengine_studio_doc_value ) {
 			if( typeof value === 'string' ) return tree.struct( prop, [ tree.data( value ) ] )
 			if( typeof value !== 'object' ) return tree.struct( prop, [ tree.struct( this.token( value ) ) ] )
 			let chain = [] as $mol_tree2[]
@@ -639,7 +639,7 @@ namespace $ {
 				$mol_fail( new Error( `Unknown class ${ klass.type } of ${ name || 'scene' }` ) )
 			}
 			const root = this.tree().kids[ 0 ]?.type
-			const klass = root ? known[ root ] as $bog_gamestudio_doc_klass : this.$.$bog_gamengine_scene
+			const klass = root ? known[ root ] as $bog_gamengine_studio_doc_klass : this.$.$bog_gamengine_scene
 			return { klass, context }
 		}
 

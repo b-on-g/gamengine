@@ -1,31 +1,31 @@
 namespace $ {
 
-	export const $bog_gamestudio_probe_page = 'bog/gamestudio/app/-/index.html'
+	export const $bog_gamengine_studio_probe_page = 'bog/gamengine/demo/-/index.html#!demo=studio'
 
-	export const $bog_gamestudio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник, клик по холсту выбрал монету, стрелка гизмо перенесла её в исходнике, клик мимо снял выбор, игра с зажатой D сдвинула героя вправо, стоп вернул его на место и не тронул исходник, пять правок pos героя не мигают и не копят текстуры и буферы, вкладка «Ассеты» показала файлы пака, монета с панели встала на холст по клику и записалась в исходник спрайтом, столб мешем с загрузчиком, звук строкой в Sound, кисть на вкладке «Тайлы» покрасила клетку пола в стену одним символом, заливка перекрасила комнату, Esc снял инструмент'
+	export const $bog_gamengine_studio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник, клик по холсту выбрал монету, стрелка гизмо перенесла её в исходнике, клик мимо снял выбор, игра с зажатой D сдвинула героя вправо, стоп вернул его на место и не тронул исходник, пять правок pos героя не мигают и не копят текстуры и буферы, вкладка «Ассеты» показала файлы пака, монета с панели встала на холст по клику и записалась в исходник спрайтом, столб мешем с загрузчиком, звук строкой в Sound, кисть на вкладке «Тайлы» покрасила клетку пола в стену одним символом, заливка перекрасила комнату, Esc снял инструмент'
 
-	export const $bog_gamestudio_probe_moves = 5
+	export const $bog_gamengine_studio_probe_moves = 5
 
-	export const $bog_gamestudio_probe_flags = [ '--use-angle=swiftshader' ] as const
+	export const $bog_gamengine_studio_probe_flags = [ '--use-angle=swiftshader' ] as const
 
-	export const $bog_gamestudio_probe_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0`
+	export const $bog_gamengine_studio_probe_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0`
 
-	export const $bog_gamestudio_probe_selectors = [
-		'[bog_gamestudio_app_tree]',
-		'[bog_gamestudio_app_canvas]',
-		'[bog_gamestudio_app_inspect]',
-		'[bog_gamestudio_app_source]',
+	export const $bog_gamengine_studio_probe_selectors = [
+		'[bog_gamengine_studio_tree]',
+		'[bog_gamengine_studio_canvas]',
+		'[bog_gamengine_studio_inspect]',
+		'[bog_gamengine_studio_source]',
 		'canvas',
 	] as const
 
-	export type $bog_gamestudio_probe_pixel = readonly [ number, number, number, number ]
+	export type $bog_gamengine_studio_probe_pixel = readonly [ number, number, number, number ]
 
-	export type $bog_gamestudio_probe_result = $bog_probe_rects_result & {
+	export type $bog_gamengine_studio_probe_result = $bog_probe_rects_result & {
 		readonly webgl: boolean
 		readonly waited: number
-		readonly center: $bog_gamestudio_probe_pixel
-		readonly hero_before: $bog_gamestudio_probe_pixel
-		readonly hero_after: $bog_gamestudio_probe_pixel
+		readonly center: $bog_gamengine_studio_probe_pixel
+		readonly hero_before: $bog_gamengine_studio_probe_pixel
+		readonly hero_after: $bog_gamengine_studio_probe_pixel
 		readonly rows: number
 		readonly tree_text: string
 		readonly fields_before: string
@@ -47,20 +47,20 @@ namespace $ {
 		readonly textures: { readonly created: number, readonly deleted: number }
 		readonly buffers: { readonly created: number, readonly deleted: number, readonly scene: number }
 		readonly images: number
-		readonly moves: readonly { readonly x: number, readonly first: $bog_gamestudio_probe_pixel, readonly pixel: $bog_gamestudio_probe_pixel }[]
+		readonly moves: readonly { readonly x: number, readonly first: $bog_gamengine_studio_probe_pixel, readonly pixel: $bog_gamengine_studio_probe_pixel }[]
 		readonly tiles: {
 			readonly titles: readonly string[]
 			readonly cell_diff: number
 			readonly fill_diff: number
-			readonly wall_pixel: $bog_gamestudio_probe_pixel
-			readonly cell_before: $bog_gamestudio_probe_pixel
-			readonly cell_pixel: $bog_gamestudio_probe_pixel
+			readonly wall_pixel: $bog_gamengine_studio_probe_pixel
+			readonly cell_before: $bog_gamengine_studio_probe_pixel
+			readonly cell_pixel: $bog_gamengine_studio_probe_pixel
 			readonly tool_after: string
 			readonly map_fill: string
 		}
 		readonly asset_files: readonly string[]
-		readonly drop_before: $bog_gamestudio_probe_pixel
-		readonly drop_after: $bog_gamestudio_probe_pixel
+		readonly drop_before: $bog_gamengine_studio_probe_pixel
+		readonly drop_after: $bog_gamengine_studio_probe_pixel
 		readonly cursor: string
 		readonly tab_after: string
 		readonly rows_assets: number
@@ -69,14 +69,14 @@ namespace $ {
 		readonly mesh_line: string
 		readonly sound_line: string
 		readonly status: string
-		readonly mesh_pixel: $bog_gamestudio_probe_pixel
+		readonly mesh_pixel: $bog_gamengine_studio_probe_pixel
 	}
 
-	export const $bog_gamestudio_probe_gizmo_from = 20
+	export const $bog_gamengine_studio_probe_gizmo_from = 20
 
-	export const $bog_gamestudio_probe_arrow_script = `
+	export const $bog_gamengine_studio_probe_arrow_script = `
 		const arrow_at = ( at, x, y )=> {
-			for( let dx = ${ $bog_gamestudio_probe_gizmo_from }; dx < 90; ++ dx ) for( let dy = -3; dy <= 3; ++ dy ) {
+			for( let dx = ${ $bog_gamengine_studio_probe_gizmo_from }; dx < 90; ++ dx ) for( let dy = -3; dy <= 3; ++ dy ) {
 				const px = at( x + dx, y + dy )
 				if( px[ 0 ] > 200 && px[ 1 ] < 100 && px[ 2 ] < 100 ) return [ x + dx, y + dy ]
 			}
@@ -84,7 +84,7 @@ namespace $ {
 		}
 	`
 
-	export function $bog_gamestudio_probe_script( selectors: readonly string[] ) {
+	export function $bog_gamengine_studio_probe_script( selectors: readonly string[] ) {
 		return `
 			const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 			const canvas = document.querySelector( 'canvas' )
@@ -98,8 +98,8 @@ namespace $ {
 			const at = ( x, y )=> pixel( x, canvas.height - 1 - y )
 			const dark = px => px[ 0 ] < 40 && px[ 1 ] < 40 && px[ 2 ] < 40
 			const same = ( a, b )=> a.every( ( v, i )=> Math.abs( v - b[ i ] ) < 8 )
-			${ $bog_gamestudio_probe_spot_script }
-			const source_now = ()=> document.querySelector( '[bog_gamestudio_app_source] textarea' ).value
+			${ $bog_gamengine_studio_probe_spot_script }
+			const source_now = ()=> document.querySelector( '[bog_gamengine_studio_source] textarea' ).value
 			const ppu = canvas.height / 6
 			const screen_of = spot => [
 				canvas.width / 2 + spot[ 0 ] * ppu,
@@ -135,26 +135,26 @@ namespace $ {
 			const image_native = window.Image
 			const images = { count: 0 }
 			window.Image = function() { ++ images.count; return new image_native() }
-			const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+			const editor = document.querySelector( '[bog_gamengine_studio_source] textarea' )
 			type( editor, editor.value.replace( 'frame \\\\hero', 'frame \\\\coin' ) )
 			let hero_after = hero_before
 			for( let i = 0; i < 120 && same( hero_after, hero_before ); ++ i ) {
 				await frame()
 				hero_after = at( hero_x, hero_y )
 			}
-			const inspect = document.querySelector( '[bog_gamestudio_app_inspect]' )
+			const inspect = document.querySelector( '[bog_gamengine_studio_inspect]' )
 			const fields_before = inspect ? inspect.innerText : ''
-			const rows = document.querySelectorAll( '[bog_gamestudio_app_row]' )
-			const tree = document.querySelector( '[bog_gamestudio_app_tree]' )
+			const rows = document.querySelectorAll( '[bog_gamengine_studio_row]' )
+			const tree = document.querySelector( '[bog_gamengine_studio_tree]' )
 			const tree_text = tree ? tree.innerText : ''
-			const row_by = title => Array.from( document.querySelectorAll( '[bog_gamestudio_app_row]' ) ).find( el => el.innerText.trim() === title )
+			const row_by = title => Array.from( document.querySelectorAll( '[bog_gamengine_studio_row]' ) ).find( el => el.innerText.trim() === title )
 			const hero_row = row_by( 'Герой' )
 			if( hero_row ) hero_row.click()
 			await frame()
 			await frame()
 			const fields_after = inspect ? inspect.innerText : ''
 			const typed = String( ( spot_of( source_now(), 'Hero' ) || [ 0, 0 ] )[ 0 ] + 1 )
-			const num = document.querySelector( '[bog_gamestudio_app_vec_num] input' )
+			const num = document.querySelector( '[bog_gamengine_studio_vec_num] input' )
 			if( num ) type( num, typed )
 			await frame()
 			await frame()
@@ -168,7 +168,7 @@ namespace $ {
 			if( coin_seat ) coin_seat.click()
 			await frame()
 			await frame()
-			const coin_nums = document.querySelectorAll( '[bog_gamestudio_app_vec_num] input' )
+			const coin_nums = document.querySelectorAll( '[bog_gamengine_studio_vec_num] input' )
 			type( coin_nums[ 0 ], String( own_x ) )
 			type( coin_nums[ 1 ], String( own_y ) )
 			await frame()
@@ -193,8 +193,8 @@ namespace $ {
 			const fields_coin = inspect ? inspect.innerText : ''
 			const coin_row = row_by( 'Монета' )
 			const row_coin = coin_row ? coin_row.getAttribute( 'mol_check_checked' ) : null
-			${ $bog_gamestudio_probe_arrow_script }
-			const grid = document.querySelector( '[bog_gamestudio_app_grid]' )
+			${ $bog_gamengine_studio_probe_arrow_script }
+			const grid = document.querySelector( '[bog_gamengine_studio_grid]' )
 			if( grid && grid.getAttribute( 'mol_check_checked' ) === 'true' ) grid.click()
 			await frame()
 			await frame()
@@ -216,13 +216,13 @@ namespace $ {
 			await frame()
 			const fields_clear = inspect ? inspect.innerText : ''
 			const hero_line = ()=> ( editor.value.match( /Герой[^]*?pos \\/ [^\\n]*/ ) || [ '' ] )[ 0 ]
-			const x_value = ()=> document.querySelector( '[bog_gamestudio_app_vec_num] input' ).value
+			const x_value = ()=> document.querySelector( '[bog_gamengine_studio_vec_num] input' ).value
 			row_by( 'Герой' ).click()
 			await frame()
 			await frame()
 			const hero_line_before = hero_line()
 			const x_before = x_value()
-			document.querySelector( '[bog_gamestudio_app_play]' ).click()
+			document.querySelector( '[bog_gamengine_studio_play]' ).click()
 			await frame()
 			document.body.dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 68, bubbles: true } ) )
 			for( let i = 0; i < 30; ++ i ) await frame()
@@ -230,7 +230,7 @@ namespace $ {
 			await frame()
 			await frame()
 			const x_play = x_value()
-			document.querySelector( '[bog_gamestudio_app_stop]' ).click()
+			document.querySelector( '[bog_gamengine_studio_stop]' ).click()
 			await frame()
 			await frame()
 			const x_stop = x_value()
@@ -245,7 +245,7 @@ namespace $ {
 			}
 			const moves = []
 			let scene_buffers = 0
-			for( let step = 0; step < ${ $bog_gamestudio_probe_moves } && floors.length; ++ step ) {
+			for( let step = 0; step < ${ $bog_gamengine_studio_probe_moves } && floors.length; ++ step ) {
 				const spot = floors[ step % floors.length ]
 				const seen = screen_of( spot )
 				const created = buf_created.count
@@ -258,13 +258,13 @@ namespace $ {
 			}
 			const textures = { created: tex_created.count, deleted: tex_deleted.count }
 			const buffers = { created: buf_created.count, deleted: buf_deleted.count, scene: scene_buffers }
-			const tab = title => Array.from( document.querySelectorAll( '[bog_gamestudio_app_side] [mol_switch] [mol_check]' ) ).find( el => el.innerText.trim() === title )
+			const tab = title => Array.from( document.querySelectorAll( '[bog_gamengine_studio_side] [mol_switch] [mol_check]' ) ).find( el => el.innerText.trim() === title )
 			tab( 'Тайлы' ).click()
 			await frame()
 			await frame()
-			const tile_rows = Array.from( document.querySelectorAll( '[bog_gamestudio_app_tile]' ) )
+			const tile_rows = Array.from( document.querySelectorAll( '[bog_gamengine_studio_tile]' ) )
 			const tile_titles = tile_rows.map( el => el.innerText.trim() )
-			const tool = title => Array.from( document.querySelectorAll( '[bog_gamestudio_app_tools] [mol_check]' ) ).find( el => el.innerText.trim() === title )
+			const tool = title => Array.from( document.querySelectorAll( '[bog_gamengine_studio_tools] [mol_check]' ) ).find( el => el.innerText.trim() === title )
 			const map_text = ()=> rows_of( editor.value ).join( '\\n' )
 			const diff = ( a, b )=> {
 				let count = 0
@@ -297,14 +297,14 @@ namespace $ {
 			await frame()
 			await frame()
 			const map_fill = map_text()
-			document.querySelector( '[bog_gamestudio_app]' ).dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 27, bubbles: true } ) )
+			document.querySelector( '[bog_gamengine_studio]' ).dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 27, bubbles: true } ) )
 			await frame()
-			const tool_after = ( document.querySelector( '[bog_gamestudio_app_tools] [mol_check_checked="true"]' ) || { innerText: '' } ).innerText.trim()
+			const tool_after = ( document.querySelector( '[bog_gamengine_studio_tools] [mol_check_checked="true"]' ) || { innerText: '' } ).innerText.trim()
 			const tiles = { titles: tile_titles, cell_diff: diff( map_before, map_cell ), fill_diff: diff( map_cell, map_fill ), wall_pixel, cell_before, cell_pixel, tool_after, map_fill }
 			tab( 'Ассеты' ).click()
 			await frame()
 			await frame()
-			const asset_rows = document.querySelectorAll( '[bog_gamestudio_app_asset_row]' )
+			const asset_rows = document.querySelectorAll( '[bog_gamengine_studio_asset_row]' )
 			const asset = file => Array.from( asset_rows ).find( el => el.innerText.trim() === file )
 			const asset_files = Array.from( asset_rows ).map( el => el.innerText.trim() )
 			const drop_x = void_seen[ 0 ]
@@ -332,25 +332,25 @@ namespace $ {
 			pointer( 'pointerup', drop_x, drop_y )
 			await frame()
 			await frame()
-			const tab_after = document.querySelector( '[bog_gamestudio_app_side] [mol_switch] [mol_check_checked="true"]' ).innerText.trim()
+			const tab_after = document.querySelector( '[bog_gamengine_studio_side] [mol_switch] [mol_check_checked="true"]' ).innerText.trim()
 			tab( 'Сцена' ).click()
 			await frame()
 			await frame()
-			const rows_assets = document.querySelectorAll( '[bog_gamestudio_app_row]' ).length
-			const tree_assets = ( document.querySelector( '[bog_gamestudio_app_tree]' ) || { innerText: '' } ).innerText
+			const rows_assets = document.querySelectorAll( '[bog_gamengine_studio_row]' ).length
+			const tree_assets = ( document.querySelector( '[bog_gamengine_studio_tree]' ) || { innerText: '' } ).innerText
 			const line = re => ( editor.value.match( re ) || [ '' ] )[ 0 ]
 			const sprite_line = line( /<= Sprite_1[^]*?frame \\\\[^\\n]*/ )
 			const mesh_line = line( /<= Mesh_1_shape[^]*?uri \\\\[^\\n]*/ )
 			const sound_line = line( /Sound [^]*?coin \\\\[^\\n]*/ )
 			for( let i = 0; i < 60; ++ i ) await frame()
-			const status_node = document.querySelector( '[bog_gamestudio_app_status]' )
+			const status_node = document.querySelector( '[bog_gamengine_studio_status]' )
 			const status = status_node ? status_node.innerText.trim() : ''
 			const mesh_pixel = at( drop_x + 2 * ppu, drop_y )
 			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, typed, source_after, ppu, fields_coin, row_coin, arrow, coin_from, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after, textures, buffers, images: images.count, moves, tiles, asset_files, drop_before, drop_after, cursor, tab_after, rows_assets, tree_assets, sprite_line, mesh_line, sound_line, status, mesh_pixel }
 		`
 	}
 
-	export const $bog_gamestudio_probe_spot_script = `
+	export const $bog_gamengine_studio_probe_spot_script = `
 		const block_of = ( text, name )=> {
 			const tail = text.split( '<= ' + name + ' $' )[ 1 ] || ''
 			const next = tail.search( /\\n\\t\\t<= / )
@@ -379,16 +379,16 @@ namespace $ {
 		}
 	`
 
-	export const $bog_gamestudio_probe_tabs_ok = 'кисть красит после каждого переключения вкладок левой колонки'
+	export const $bog_gamengine_studio_probe_tabs_ok = 'кисть красит после каждого переключения вкладок левой колонки'
 
-	export const $bog_gamestudio_probe_tabs_script = `
+	export const $bog_gamengine_studio_probe_tabs_script = `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 		const wait = async n => { for( let i = 0; i < n; ++ i ) await frame() }
 		const canvas = ()=> document.querySelector( 'canvas' )
-		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+		const editor = document.querySelector( '[bog_gamengine_studio_source] textarea' )
 		if( !canvas() || !editor ) return { ready: false }
 		const map_of = ()=> ( editor.value.match( /map \\\\\\n(?:[ \\t]*\\\\.*\\n)+/ ) || [ '' ] )[ 0 ]
-		${ $bog_gamestudio_probe_spot_script }
+		${ $bog_gamengine_studio_probe_spot_script }
 		const tab = async title => {
 			const hit = [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === title )
 			if( hit ) hit.click()
@@ -414,7 +414,7 @@ namespace $ {
 		}
 		await wait( 20 )
 		if( !await tab( 'Тайлы' ) ) return { ready: false }
-		const tile = [ ... document.querySelectorAll( '[bog_gamestudio_app_tile]' ) ].find( el => el.textContent.includes( 'wall' ) )
+		const tile = [ ... document.querySelectorAll( '[bog_gamengine_studio_tile]' ) ].find( el => el.textContent.includes( 'wall' ) )
 		const tool = [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === 'Клетка' )
 		if( !tile || !tool ) return { ready: false }
 		tile.click()
@@ -438,7 +438,7 @@ namespace $ {
 		return { ready: true, armed, after_kit, after_tree, back, tile_kept, tool_kept, map: map_of().replace( /\\s+/g, ' ' ) }
 	`
 
-	export type $bog_gamestudio_probe_tabs_result = {
+	export type $bog_gamengine_studio_probe_tabs_result = {
 		readonly ready: boolean
 		readonly armed?: boolean
 		readonly after_kit?: boolean
@@ -449,9 +449,9 @@ namespace $ {
 		readonly map?: string
 	}
 
-	export async function $bog_gamestudio_probe_tabs(
+	export async function $bog_gamengine_studio_probe_tabs(
 		root = $node.process.cwd(),
-		flags: readonly string[] = $bog_gamestudio_probe_flags,
+		flags: readonly string[] = $bog_gamengine_studio_probe_flags,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
@@ -461,12 +461,12 @@ namespace $ {
 		const got = await $bog_probe_run({
 			root,
 			flags,
-			page: $bog_gamestudio_probe_page,
-			ready: $bog_gamestudio_probe_ready,
-			script: $bog_gamestudio_probe_tabs_script,
+			page: $bog_gamengine_studio_probe_page,
+			ready: $bog_gamengine_studio_probe_ready,
+			script: $bog_gamengine_studio_probe_tabs_script,
 			width: 1600,
 			height: 800,
-		}) as $bog_gamestudio_probe_tabs_result | typeof $bog_probe_skip
+		}) as $bog_gamengine_studio_probe_tabs_result | typeof $bog_probe_skip
 
 		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
 
@@ -481,17 +481,17 @@ namespace $ {
 		if( !got.back ) return fail( 'кисть умерла после возврата на «Тайлы»' )
 		if( !got.tile_kept || !got.tool_kept ) return fail( 'переключение сбросило выбор тайла или инструмента' )
 
-		return say( $bog_gamestudio_probe_tabs_ok )
+		return say( $bog_gamengine_studio_probe_tabs_ok )
 	}
 
-	export const $bog_gamestudio_probe_pick_ok = 'кисть поверх ассета красит и снимает ассет, ассет поверх кисти ставит узел и снимает кисть'
+	export const $bog_gamengine_studio_probe_pick_ok = 'кисть поверх ассета красит и снимает ассет, ассет поверх кисти ставит узел и снимает кисть'
 
-	export const $bog_gamestudio_probe_pick_script = `
+	export const $bog_gamengine_studio_probe_pick_script = `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 		const wait = async n => { for( let i = 0; i < n; ++ i ) await frame() }
 		const canvas = document.querySelector( 'canvas' )
 		if( !canvas ) return { webgl: false }
-		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+		const editor = document.querySelector( '[bog_gamengine_studio_source] textarea' )
 		const source = ()=> editor.value
 		const map_of = ()=> ( source().match( /map \\\\\\n(?:[ \\t]*\\\\.*\\n)+/ ) || [ '' ] )[ 0 ]
 		const sprites = ()=> source().split( '$bog_gamengine_sprite' ).length - 1
@@ -519,14 +519,14 @@ namespace $ {
 		const row_of = ( attr, mark )=> [ ... document.querySelectorAll( '[' + attr + ']' ) ]
 			.find( el => el.textContent.includes( mark ) ) || null
 		const checked = el => el && el.getAttribute( 'mol_check_checked' ) === 'true'
-		const drop = document.querySelector( '[bog_gamestudio_app_drop]' )
-		const placing = ()=> drop ? drop.getAttribute( 'bog_gamestudio_app_placing' ) : null
-		${ $bog_gamestudio_probe_spot_script }
+		const drop = document.querySelector( '[bog_gamengine_studio_drop]' )
+		const placing = ()=> drop ? drop.getAttribute( 'bog_gamengine_studio_placing' ) : null
+		${ $bog_gamengine_studio_probe_spot_script }
 
 		await wait( 20 )
 
 		await tab( 'Ассеты' )
-		const asset = row_of( 'bog_gamestudio_app_asset_row', 'coin.png' )
+		const asset = row_of( 'bog_gamengine_studio_asset_row', 'coin.png' )
 		if( !asset ) return { webgl: true, fail: 'нет строки ассета' }
 		asset.click()
 		await wait( 6 )
@@ -534,14 +534,14 @@ namespace $ {
 		const placing_asset = placing()
 
 		await tab( 'Тайлы' )
-		const tile = row_of( 'bog_gamestudio_app_tile', 'wall' )
+		const tile = row_of( 'bog_gamengine_studio_tile', 'wall' )
 		const tool = [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === 'Клетка' )
 		if( !tile || !tool ) return { webgl: true, fail: 'нет тайла или инструмента' }
 		tile.click()
 		await wait( 4 )
 		tool.click()
 		await wait( 6 )
-		const asset_after_brush = checked( row_of( 'bog_gamestudio_app_asset_row', 'coin.png' ) )
+		const asset_after_brush = checked( row_of( 'bog_gamengine_studio_asset_row', 'coin.png' ) )
 		const placing_after_brush = placing()
 		const map_before = map_of()
 		const sprites_before = sprites()
@@ -551,10 +551,10 @@ namespace $ {
 		const map_after = map_of()
 		const sprites_after = sprites()
 
-		const asset_again = row_of( 'bog_gamestudio_app_asset_row', 'coin.png' )
+		const asset_again = row_of( 'bog_gamengine_studio_asset_row', 'coin.png' )
 		asset_again.click()
 		await wait( 6 )
-		const tile_after_asset = checked( row_of( 'bog_gamestudio_app_tile', 'wall' ) )
+		const tile_after_asset = checked( row_of( 'bog_gamengine_studio_tile', 'wall' ) )
 		const tool_after_asset = checked( [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === 'Клетка' ) )
 		const map_mid = map_of()
 		const sprites_mid = sprites()
@@ -576,7 +576,7 @@ namespace $ {
 		}
 	`
 
-	export type $bog_gamestudio_probe_pick_result = {
+	export type $bog_gamengine_studio_probe_pick_result = {
 		readonly webgl: boolean
 		readonly fail?: string
 		readonly asset_on?: boolean
@@ -593,9 +593,9 @@ namespace $ {
 		readonly sprites_by_asset?: number
 	}
 
-	export async function $bog_gamestudio_probe_pick(
+	export async function $bog_gamengine_studio_probe_pick(
 		root = $node.process.cwd(),
-		flags: readonly string[] = $bog_gamestudio_probe_flags,
+		flags: readonly string[] = $bog_gamengine_studio_probe_flags,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
@@ -605,12 +605,12 @@ namespace $ {
 		const got = await $bog_probe_run({
 			root,
 			flags,
-			page: $bog_gamestudio_probe_page,
-			ready: $bog_gamestudio_probe_ready,
-			script: $bog_gamestudio_probe_pick_script,
+			page: $bog_gamengine_studio_probe_page,
+			ready: $bog_gamengine_studio_probe_ready,
+			script: $bog_gamengine_studio_probe_pick_script,
 			width: 1600,
 			height: 800,
-		}) as $bog_gamestudio_probe_pick_result | typeof $bog_probe_skip
+		}) as $bog_gamengine_studio_probe_pick_result | typeof $bog_probe_skip
 
 		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
 
@@ -631,14 +631,14 @@ namespace $ {
 		if( !got.map_kept ) return fail( 'ассет поверх кисти покрасил карту' )
 		if( got.sprites_by_asset !== 1 ) return fail( 'ассет поверх кисти не поставил узел' )
 
-		return say( $bog_gamestudio_probe_pick_ok )
+		return say( $bog_gamengine_studio_probe_pick_ok )
 	}
 
-	export const $bog_gamestudio_probe_grid_ok = 'с галкой узел встаёт на половину клетки, без галки — в точку указателя без хвоста цифр'
+	export const $bog_gamengine_studio_probe_grid_ok = 'с галкой узел встаёт на половину клетки, без галки — в точку указателя без хвоста цифр'
 
-	export const $bog_gamestudio_probe_grid_drag = 83
+	export const $bog_gamengine_studio_probe_grid_drag = 83
 
-	export function $bog_gamestudio_probe_grid_script( snap: boolean ) {
+	export function $bog_gamengine_studio_probe_grid_script( snap: boolean ) {
 		return `
 			const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 			const wait = async n => { for( let i = 0; i < n; ++ i ) await frame() }
@@ -651,8 +651,8 @@ namespace $ {
 				return Array.from( out )
 			}
 			const at = ( x, y )=> pixel( x, canvas.height - 1 - y )
-			${ $bog_gamestudio_probe_spot_script }
-			const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+			${ $bog_gamengine_studio_probe_spot_script }
+			const editor = document.querySelector( '[bog_gamengine_studio_source] textarea' )
 			if( !editor ) return { webgl: true, fail: 'нет исходника' }
 			const hero_at = ()=> spot_of( editor.value, 'Hero' )
 			const dpr = devicePixelRatio
@@ -673,7 +673,7 @@ namespace $ {
 			}
 			const spot_screen = seen()
 			if( spot_screen[ 0 ] < 0 || spot_screen[ 0 ] > canvas.width ) return { webgl: true, fail: 'узел вне холста, сценарию нужен видимый узел' }
-			const grid = document.querySelector( '[bog_gamestudio_app_grid]' )
+			const grid = document.querySelector( '[bog_gamengine_studio_grid]' )
 			if( !grid ) return { webgl: true, fail: 'нет галки «К сетке»' }
 			const want = ${ snap ? 'true' : 'false' }
 			if( ( grid.getAttribute( 'mol_check_checked' ) === 'true' ) !== want ) grid.click()
@@ -683,7 +683,7 @@ namespace $ {
 			pointer( 'pointerup', spot_screen[ 0 ], spot_screen[ 1 ] )
 			await wait( 8 )
 			let arrow = null
-			for( let dx = ${ $bog_gamestudio_probe_gizmo_from }; dx < 90 && !arrow; ++ dx ) for( let dy = -3; dy <= 3; ++ dy ) {
+			for( let dx = ${ $bog_gamengine_studio_probe_gizmo_from }; dx < 90 && !arrow; ++ dx ) for( let dy = -3; dy <= 3; ++ dy ) {
 				const px = at( spot_screen[ 0 ] + dx, spot_screen[ 1 ] + dy )
 				if( px[ 0 ] > 200 && px[ 1 ] < 100 && px[ 2 ] < 100 ) { arrow = [ spot_screen[ 0 ] + dx, spot_screen[ 1 ] + dy ]; break }
 			}
@@ -691,22 +691,22 @@ namespace $ {
 			pointer( 'pointerdown', arrow[ 0 ], arrow[ 1 ] )
 			await wait( 6 )
 			for( let step = 1; step <= 4; ++ step ) {
-				pointer( 'pointermove', arrow[ 0 ] - ${ $bog_gamestudio_probe_grid_drag } * step / 4, arrow[ 1 ] )
+				pointer( 'pointermove', arrow[ 0 ] - ${ $bog_gamengine_studio_probe_grid_drag } * step / 4, arrow[ 1 ] )
 				await wait( 6 )
 			}
-			pointer( 'pointerup', arrow[ 0 ] - ${ $bog_gamestudio_probe_grid_drag }, arrow[ 1 ] )
+			pointer( 'pointerup', arrow[ 0 ] - ${ $bog_gamengine_studio_probe_grid_drag }, arrow[ 1 ] )
 			await wait( 12 )
 			const now = hero_at()
 			return {
 				webgl: true, snapping, ppu,
 				start: start_spot[ 0 ],
 				moved: now ? now[ 0 ] : null,
-				step: - ${ $bog_gamestudio_probe_grid_drag } / ppu,
+				step: - ${ $bog_gamengine_studio_probe_grid_drag } / ppu,
 			}
 		`
 	}
 
-	export type $bog_gamestudio_probe_grid_result = {
+	export type $bog_gamengine_studio_probe_grid_result = {
 		readonly webgl: boolean
 		readonly fail?: string
 		readonly snapping?: boolean
@@ -716,9 +716,9 @@ namespace $ {
 		readonly ppu?: number
 	}
 
-	export async function $bog_gamestudio_probe_grid(
+	export async function $bog_gamengine_studio_probe_grid(
 		root = $node.process.cwd(),
-		flags: readonly string[] = $bog_gamestudio_probe_flags,
+		flags: readonly string[] = $bog_gamengine_studio_probe_flags,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
@@ -728,12 +728,12 @@ namespace $ {
 		const take = async ( snap: boolean )=> await $bog_probe_run({
 			root,
 			flags,
-			page: $bog_gamestudio_probe_page,
-			ready: $bog_gamestudio_probe_ready,
-			script: $bog_gamestudio_probe_grid_script( snap ),
+			page: $bog_gamengine_studio_probe_page,
+			ready: $bog_gamengine_studio_probe_ready,
+			script: $bog_gamengine_studio_probe_grid_script( snap ),
 			width: 1600,
 			height: 800,
-		}) as $bog_gamestudio_probe_grid_result | typeof $bog_probe_skip
+		}) as $bog_gamengine_studio_probe_grid_result | typeof $bog_probe_skip
 
 		const snapped = await take( true )
 		if( snapped === $bog_probe_skip ) return say( $bog_probe_skip )
@@ -754,25 +754,25 @@ namespace $ {
 		if( free.snapping ) return fail( 'галка «К сетке» не снялась' )
 		if( snapped.moved === snapped.start ) return fail( 'перенос с галкой не сдвинул узел' )
 
-		const half = snapped.moved! / $bog_gamestudio_app_grid_step
+		const half = snapped.moved! / $bog_gamengine_studio_grid_step
 		if( Math.abs( half - Math.round( half ) ) > 1e-9 ) {
-			return fail( `с галкой ${ snapped.moved } не кратно ${ $bog_gamestudio_app_grid_step }` )
+			return fail( `с галкой ${ snapped.moved } не кратно ${ $bog_gamengine_studio_grid_step }` )
 		}
 
 		const shift = free.moved! - free.start!
 		if( Math.abs( shift ) < 0.05 ) return fail( `без галки узел не сдвинулся: ${ JSON.stringify( free ) }` )
-		const free_half = free.moved! / $bog_gamestudio_app_grid_step
+		const free_half = free.moved! / $bog_gamengine_studio_grid_step
 		if( Math.abs( free_half - Math.round( free_half ) ) < 1e-9 ) {
-			return fail( `без галки ${ free.moved } всё равно кратно ${ $bog_gamestudio_app_grid_step }` )
+			return fail( `без галки ${ free.moved } всё равно кратно ${ $bog_gamengine_studio_grid_step }` )
 		}
 		if( Number( free.moved!.toFixed( 3 ) ) !== free.moved ) return fail( `без галки ${ free.moved } с хвостом длиннее тысячной` )
 
-		return say( $bog_gamestudio_probe_grid_ok )
+		return say( $bog_gamengine_studio_probe_grid_ok )
 	}
 
-	export async function $bog_gamestudio_probe_check(
+	export async function $bog_gamengine_studio_probe_check(
 		root = $node.process.cwd(),
-		flags: readonly string[] = $bog_gamestudio_probe_flags,
+		flags: readonly string[] = $bog_gamengine_studio_probe_flags,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
@@ -782,12 +782,12 @@ namespace $ {
 		const got = await $bog_probe_run({
 			root,
 			flags,
-			page: $bog_gamestudio_probe_page,
-			ready: $bog_gamestudio_probe_ready,
-			script: $bog_gamestudio_probe_script( $bog_gamestudio_probe_selectors ),
+			page: $bog_gamengine_studio_probe_page,
+			ready: $bog_gamengine_studio_probe_ready,
+			script: $bog_gamengine_studio_probe_script( $bog_gamengine_studio_probe_selectors ),
 			width: 1600,
 			height: 800,
-		}) as $bog_gamestudio_probe_result | typeof $bog_probe_skip
+		}) as $bog_gamengine_studio_probe_result | typeof $bog_probe_skip
 
 		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
 
@@ -797,7 +797,7 @@ namespace $ {
 
 		if( !got.webgl ) return fail( 'нет webgl2' )
 
-		const [ tree, canvas, inspect, source, holst ] = $bog_gamestudio_probe_selectors.map( selector => got.rects[ selector ] )
+		const [ tree, canvas, inspect, source, holst ] = $bog_gamengine_studio_probe_selectors.map( selector => got.rects[ selector ] )
 
 		if( !$bog_probe_beside( tree, canvas ) ) return fail( 'холст не справа от дерева' )
 		if( !$bog_probe_beside( canvas, inspect ) ) return fail( 'инспектор не справа от холста' )
@@ -826,7 +826,7 @@ namespace $ {
 		if( !( Number( got.x_play ) > Number( got.x_before ) ) ) return fail( 'игра с зажатой D не сдвинула героя вправо' )
 		if( got.x_stop !== got.x_before ) return fail( 'стоп не вернул x героя к исходному' )
 		if( got.hero_line_after !== got.hero_line_before ) return fail( 'игра изменила pos героя в исходнике' )
-		if( got.moves.length !== $bog_gamestudio_probe_moves ) return fail( 'правок pos героя не пять' )
+		if( got.moves.length !== $bog_gamengine_studio_probe_moves ) return fail( 'правок pos героя не пять' )
 		for( const move of got.moves ) {
 			if( move.pixel[ 0 ] < 40 && move.pixel[ 1 ] < 40 && move.pixel[ 2 ] < 40 ) return fail( `после правки pos героя на ${ move.x } его пиксель чёрный через два кадра` )
 		}
@@ -857,26 +857,26 @@ namespace $ {
 		if( got.mesh_pixel[ 0 ] < 40 && got.mesh_pixel[ 1 ] < 40 && got.mesh_pixel[ 2 ] < 40 ) return fail( 'в точке модели пиксель чёрный' )
 		if( got.mesh_pixel.every( ( value, index )=> Math.abs( value - got.hero_after[ index ] ) < 8 ) ) return fail( 'пиксель модели не отличается от пикселя героя, модель рисуется квадом спрайтов' )
 
-		return say( $bog_gamestudio_probe_ok )
+		return say( $bog_gamengine_studio_probe_ok )
 	}
 
-	export const $bog_gamestudio_probe_live_page = 'bog/gamestudio/app/-/index.html'
+	export const $bog_gamengine_studio_probe_live_page = 'bog/gamengine/demo/-/index.html'
 
-	export const $bog_gamestudio_probe_master = 'localhost:9090'
+	export const $bog_gamengine_studio_probe_master = 'localhost:9090'
 
-	export const $bog_gamestudio_probe_live_ok = 'второй редактор увидел правку первого в исходнике и на холсте'
+	export const $bog_gamengine_studio_probe_live_ok = 'второй редактор увидел правку первого в исходнике и на холсте'
 
-	export const $bog_gamestudio_probe_no_master = 'мастер Базы на 9090 не слушает, проба пропущена'
+	export const $bog_gamengine_studio_probe_no_master = 'мастер Базы на 9090 не слушает, проба пропущена'
 
-	export const $bog_gamestudio_probe_live_limit = 500
+	export const $bog_gamengine_studio_probe_live_limit = 500
 
-	export const $bog_gamestudio_probe_live_rounds = 3
+	export const $bog_gamengine_studio_probe_live_rounds = 3
 
-	export const $bog_gamestudio_probe_live_shift = 80
+	export const $bog_gamengine_studio_probe_live_shift = 80
 
-	export const $bog_gamestudio_probe_live_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0 && /land \\S{10,}/.test( document.body.innerText )`
+	export const $bog_gamengine_studio_probe_live_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0 && /land \\S{10,}/.test( document.body.innerText )`
 
-	export const $bog_gamestudio_probe_head_script = `
+	export const $bog_gamengine_studio_probe_head_script = `
 		const text = document.body.innerText
 		const me = ( /me (\\S+) \\|/.exec( text ) || [] )[ 1 ] || ''
 		const land = ( /land (\\S+)/.exec( text ) || [] )[ 1 ] || ''
@@ -884,7 +884,7 @@ namespace $ {
 		return { me, land, mates }
 	`
 
-	export const $bog_gamestudio_probe_drag_script = `
+	export const $bog_gamengine_studio_probe_drag_script = `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 		const canvas = document.querySelector( 'canvas' )
 		const gl = canvas.getContext( 'webgl2' )
@@ -894,7 +894,7 @@ namespace $ {
 			return Array.from( out )
 		}
 		const at = ( x, y )=> pixel( x, canvas.height - 1 - y )
-		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+		const editor = document.querySelector( '[bog_gamengine_studio_source] textarea' )
 		const hero_x = ()=> Number( ( editor.value.match( /Герой[^]*?pos \\/ (\\S+)/ ) || [] )[ 1 ] )
 		const hero_y = ()=> Number( ( editor.value.match( /Герой[^]*?pos \\/ \\S+ (\\S+)/ ) || [] )[ 1 ] )
 		const rect = canvas.getBoundingClientRect()
@@ -904,16 +904,16 @@ namespace $ {
 			bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: type === 'pointerup' ? 0 : 1,
 			clientX: rect.left + x / dpr, clientY: rect.top + y / dpr,
 		} ) )
-		Array.from( document.querySelectorAll( '[bog_gamestudio_app_row]' ) ).find( el => el.innerText.trim() === 'Герой' ).click()
+		Array.from( document.querySelectorAll( '[bog_gamengine_studio_row]' ) ).find( el => el.innerText.trim() === 'Герой' ).click()
 		await frame()
 		await frame()
 		const before = hero_x()
 		const origin_x = canvas.width / 2 + before * ppu
 		const origin_y = canvas.height / 2 - hero_y() * ppu
-		${ $bog_gamestudio_probe_arrow_script }
+		${ $bog_gamengine_studio_probe_arrow_script }
 		const arrow = arrow_at( at, origin_x, origin_y )
 		if( !arrow ) return { t0: -1, before, after: before, arrow }
-		const shift = ${ $bog_gamestudio_probe_live_shift }
+		const shift = ${ $bog_gamengine_studio_probe_live_shift }
 		pointer( 'pointerdown', arrow[ 0 ], arrow[ 1 ] )
 		pointer( 'pointermove', arrow[ 0 ] + shift / 2, arrow[ 1 ] )
 		await frame()
@@ -926,10 +926,10 @@ namespace $ {
 		return { t0, before, after: hero_x(), arrow }
 	`
 
-	export const $bog_gamestudio_probe_watch_script = `
+	export const $bog_gamengine_studio_probe_watch_script = `
 		const tick = ()=> new Promise( done => setTimeout( done, 2 ) )
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
-		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+		const editor = document.querySelector( '[bog_gamengine_studio_source] textarea' )
 		const hero_x = ()=> Number( ( editor.value.match( /Герой[^]*?pos \\/ (\\S+)/ ) || [] )[ 1 ] )
 		const hero_y = ()=> Number( ( editor.value.match( /Герой[^]*?pos \\/ \\S+ (\\S+)/ ) || [] )[ 1 ] )
 		const before = hero_x()
@@ -951,20 +951,20 @@ namespace $ {
 		return { t1, before, after, spot: Array.from( out ), mates }
 	`
 
-	export type $bog_gamestudio_probe_head = {
+	export type $bog_gamengine_studio_probe_head = {
 		readonly me: string
 		readonly land: string
 		readonly mates: number
 	}
 
-	export type $bog_gamestudio_probe_drag = {
+	export type $bog_gamengine_studio_probe_drag = {
 		readonly t0: number
 		readonly before: number
 		readonly after: number
 		readonly arrow: readonly [ number, number ] | null
 	}
 
-	export type $bog_gamestudio_probe_watch = {
+	export type $bog_gamengine_studio_probe_watch = {
 		readonly t1: number
 		readonly before: number
 		readonly after: number
@@ -972,7 +972,7 @@ namespace $ {
 		readonly mates: number
 	}
 
-	export function $bog_gamestudio_probe_master_alive( port = 9090 ) {
+	export function $bog_gamengine_studio_probe_master_alive( port = 9090 ) {
 		return new Promise< boolean >( done => {
 			const socket = $node.net.connect( port, '127.0.0.1' )
 			socket.once( 'connect', ()=> { socket.destroy(); done( true ) } )
@@ -980,17 +980,17 @@ namespace $ {
 		} )
 	}
 
-	export async function $bog_gamestudio_probe_window( bin: string, flags: readonly string[], width: number, height: number ) {
-		const profile = String( $node.fs.mkdtempSync( $node.path.join( $node.os.tmpdir(), 'bog-gamestudio-live-' ) ) )
+	export async function $bog_gamengine_studio_probe_window( bin: string, flags: readonly string[], width: number, height: number ) {
+		const profile = String( $node.fs.mkdtempSync( $node.path.join( $node.os.tmpdir(), 'bog-gamengine-studio-live-' ) ) )
 		const browser = new $bog_probe_browser( bin, profile, flags )
 		await browser.open()
 		await browser.viewport( width, height )
 		return { browser, profile }
 	}
 
-	export async function $bog_gamestudio_probe_live(
+	export async function $bog_gamengine_studio_probe_live(
 		root = $node.process.cwd(),
-		flags: readonly string[] = $bog_gamestudio_probe_flags,
+		flags: readonly string[] = $bog_gamengine_studio_probe_flags,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
@@ -998,7 +998,7 @@ namespace $ {
 		const bin = $bog_probe_chrome_bin()
 		if( !bin ) return say( $bog_probe_skip )
 
-		if( !await $bog_gamestudio_probe_master_alive() ) return say( $bog_gamestudio_probe_no_master )
+		if( !await $bog_gamengine_studio_probe_master_alive() ) return say( $bog_gamengine_studio_probe_no_master )
 
 		const started = Date.now()
 		const site = await new $bog_probe_static( String( $node.path.resolve( root ) ) ).open()
@@ -1006,24 +1006,24 @@ namespace $ {
 
 		try {
 
-			for( let i = 0; i < 2; ++ i ) windows.push( await $bog_gamestudio_probe_window( bin, flags, 1600, 800 ) )
+			for( let i = 0; i < 2; ++ i ) windows.push( await $bog_gamengine_studio_probe_window( bin, flags, 1600, 800 ) )
 			const [ first, second ] = windows.map( window => window.browser )
 
-			const page = site.uri( $bog_gamestudio_probe_live_page )
-			await first.open_page( `${ page }#!master=${ $bog_gamestudio_probe_master }`, $bog_gamestudio_probe_live_ready, 60000 )
+			const page = site.uri( $bog_gamengine_studio_probe_live_page )
+			await first.open_page( `${ page }#!demo=studio/master=${ $bog_gamengine_studio_probe_master }`, $bog_gamengine_studio_probe_live_ready, 60000 )
 
-			const head = await first.evaluate( $bog_gamestudio_probe_head_script, 15000 ) as $bog_gamestudio_probe_head
+			const head = await first.evaluate( $bog_gamengine_studio_probe_head_script, 15000 ) as $bog_gamengine_studio_probe_head
 			if( !head.me ) return $mol_fail( new Error( 'первый редактор не показал свой id' ) )
 			if( !head.land ) return $mol_fail( new Error( 'первый редактор не показал ленд документа' ) )
 			say( `документ ${ head.land }, первый редактор ${ head.me }` )
 
 			await second.open_page(
-				`${ page }#!land=${ head.land }/master=${ $bog_gamestudio_probe_master }`,
-				$bog_gamestudio_probe_live_ready,
+				`${ page }#!demo=studio/land=${ head.land }/master=${ $bog_gamengine_studio_probe_master }`,
+				$bog_gamengine_studio_probe_live_ready,
 				60000,
 			)
 
-			const got_doc = await second.until( `/Герой/.test( document.querySelector( '[bog_gamestudio_app_source] textarea' ).value )`, 30000 )
+			const got_doc = await second.until( `/Герой/.test( document.querySelector( '[bog_gamengine_studio_source] textarea' ).value )`, 30000 )
 			if( got_doc < 0 ) return $mol_fail( new Error( 'второй редактор не получил документ за 30 с' ) )
 			say( `оба редактора открыты за ${ Date.now() - started } мс, второй получил документ через ${ got_doc } мс` )
 
@@ -1031,13 +1031,13 @@ namespace $ {
 
 			const delays = [] as number[]
 
-			for( let round = -1; round < $bog_gamestudio_probe_live_rounds; ++ round ) {
+			for( let round = -1; round < $bog_gamengine_studio_probe_live_rounds; ++ round ) {
 
-				const watching = second.evaluate( $bog_gamestudio_probe_watch_script, 20000 )
+				const watching = second.evaluate( $bog_gamengine_studio_probe_watch_script, 20000 )
 				await $bog_probe_pause( 100 )
 
-				const moved = await first.evaluate( $bog_gamestudio_probe_drag_script, 20000 ) as $bog_gamestudio_probe_drag
-				const seen = await watching as $bog_gamestudio_probe_watch
+				const moved = await first.evaluate( $bog_gamengine_studio_probe_drag_script, 20000 ) as $bog_gamengine_studio_probe_drag
+				const seen = await watching as $bog_gamengine_studio_probe_watch
 
 				const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify({ moved, seen }) }` ) )
 				if( !moved.arrow ) return fail( 'у выбранного узла нет красной стрелки гизмо' )
@@ -1055,16 +1055,16 @@ namespace $ {
 				await $bog_probe_pause( 1500 )
 			}
 
-			const mates = await second.evaluate( $bog_gamestudio_probe_head_script, 15000 ) as $bog_gamestudio_probe_head
+			const mates = await second.evaluate( $bog_gamengine_studio_probe_head_script, 15000 ) as $bog_gamengine_studio_probe_head
 			if( mates.mates < 1 ) return $mol_fail( new Error( `второй редактор не видит первого в присутствии: ${ JSON.stringify( mates ) }` ) )
 			say( `второй редактор видит ${ mates.mates } чужой курсор` )
 
-			say( `задержка: ${ delays.join( ', ' ) } мс, порог ${ $bog_gamestudio_probe_live_limit } мс` )
+			say( `задержка: ${ delays.join( ', ' ) } мс, порог ${ $bog_gamengine_studio_probe_live_limit } мс` )
 
-			const slow = delays.filter( delay => delay >= $bog_gamestudio_probe_live_limit )
+			const slow = delays.filter( delay => delay >= $bog_gamengine_studio_probe_live_limit )
 			if( slow.length ) return $mol_fail( new Error( `задержка выше порога: ${ delays.join( ', ' ) } мс` ) )
 
-			return say( $bog_gamestudio_probe_live_ok )
+			return say( $bog_gamengine_studio_probe_live_ok )
 
 		} finally {
 			for( const { browser, profile } of windows ) {
@@ -1076,16 +1076,16 @@ namespace $ {
 
 	}
 
-	export const $bog_gamestudio_probe_keep_page = 'bog/gamestudio/app/-/index.html'
+	export const $bog_gamengine_studio_probe_keep_page = 'bog/gamengine/demo/-/index.html#!demo=studio'
 
-	export const $bog_gamestudio_probe_keep_ok = 'правка дожила до перезагрузки, подвал сказал где она лежит, при запрете записи редактор жив и признался'
+	export const $bog_gamengine_studio_probe_keep_ok = 'правка дожила до перезагрузки, подвал сказал где она лежит, при запрете записи редактор жив и признался'
 
-	export const $bog_gamestudio_probe_keep_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0 && !!document.querySelector( '[bog_gamestudio_app_kept]' )`
+	export const $bog_gamengine_studio_probe_keep_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0 && !!document.querySelector( '[bog_gamengine_studio_kept]' )`
 
-	export const $bog_gamestudio_probe_keep_state_script = `
-		const kept_editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+	export const $bog_gamengine_studio_probe_keep_state_script = `
+		const kept_editor = document.querySelector( '[bog_gamengine_studio_source] textarea' )
 		const text = kept_editor ? kept_editor.value : ''
-		const foot = document.querySelector( '[bog_gamestudio_app_kept]' )
+		const foot = document.querySelector( '[bog_gamengine_studio_kept]' )
 		const canvas = document.querySelector( 'canvas' )
 		const gl = canvas && canvas.getContext( 'webgl2' )
 		const out = new Uint8Array( 4 )
@@ -1098,35 +1098,35 @@ namespace $ {
 			first: /name \\\\Крошка/.test( text ),
 			second: /name \\\\Дозор/.test( text ),
 			size: text.length,
-			rows: document.querySelectorAll( '[bog_gamestudio_app_row]' ).length,
+			rows: document.querySelectorAll( '[bog_gamengine_studio_row]' ).length,
 			foot: foot ? foot.innerText : '',
-			stored: localStorage.getItem( 'bog_gamestudio_source' ) !== null,
+			stored: localStorage.getItem( 'bog_gamengine_studio_source' ) !== null,
 			lit,
 		}
 	`
 
-	export const $bog_gamestudio_probe_keep_type_script = ( from: string, to: string )=> `
+	export const $bog_gamengine_studio_probe_keep_type_script = ( from: string, to: string )=> `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
-		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+		const editor = document.querySelector( '[bog_gamengine_studio_source] textarea' )
 		editor.value = editor.value.replace( 'name \\\\${ from }', 'name \\\\${ to }' )
 		editor.dispatchEvent( new Event( 'input', { bubbles: true } ) )
 		await frame()
 		await frame()
-		${ $bog_gamestudio_probe_keep_state_script }
+		${ $bog_gamengine_studio_probe_keep_state_script }
 		return state
 	`
 
-	export const $bog_gamestudio_probe_keep_read_script = `
-		${ $bog_gamestudio_probe_keep_state_script }
+	export const $bog_gamengine_studio_probe_keep_read_script = `
+		${ $bog_gamengine_studio_probe_keep_state_script }
 		return state
 	`
 
-	export const $bog_gamestudio_probe_keep_lock_script = `
+	export const $bog_gamengine_studio_probe_keep_lock_script = `
 		Storage.prototype.setItem = function() { throw new Error( 'The operation is insecure' ) }
 		return { locked: true }
 	`
 
-	export type $bog_gamestudio_probe_keep_state = {
+	export type $bog_gamengine_studio_probe_keep_state = {
 		readonly first: boolean
 		readonly second: boolean
 		readonly size: number
@@ -1136,13 +1136,13 @@ namespace $ {
 		readonly lit: readonly number[]
 	}
 
-	export function $bog_gamestudio_probe_keep_dark( lit: readonly number[] ) {
+	export function $bog_gamengine_studio_probe_keep_dark( lit: readonly number[] ) {
 		return lit[ 0 ] < 40 && lit[ 1 ] < 40 && lit[ 2 ] < 40
 	}
 
-	export async function $bog_gamestudio_probe_keep(
+	export async function $bog_gamengine_studio_probe_keep(
 		root = $node.process.cwd(),
-		flags: readonly string[] = $bog_gamestudio_probe_flags,
+		flags: readonly string[] = $bog_gamengine_studio_probe_flags,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
@@ -1155,46 +1155,46 @@ namespace $ {
 
 		try {
 
-			windows.push( await $bog_gamestudio_probe_window( bin, flags, 1600, 800 ) )
+			windows.push( await $bog_gamengine_studio_probe_window( bin, flags, 1600, 800 ) )
 			const browser = windows[ 0 ].browser
-			const page = site.uri( $bog_gamestudio_probe_keep_page )
+			const page = site.uri( $bog_gamengine_studio_probe_keep_page )
 			const fail = ( reason: string, state: unknown )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( state ) }` ) )
 
-			await browser.open_page( page, $bog_gamestudio_probe_keep_ready, 60000 )
+			await browser.open_page( page, $bog_gamengine_studio_probe_keep_ready, 60000 )
 
 			const typed = await browser.evaluate(
-				$bog_gamestudio_probe_keep_type_script( 'Герой', 'Крошка' ),
+				$bog_gamengine_studio_probe_keep_type_script( 'Герой', 'Крошка' ),
 				15000,
-			) as $bog_gamestudio_probe_keep_state
+			) as $bog_gamengine_studio_probe_keep_state
 			say( `правка: ${ JSON.stringify( typed ) }` )
 
 			if( !typed.first ) return fail( 'правка не попала в исходник', typed )
 			if( !typed.stored ) return fail( 'правка не дошла до хранилища браузера', typed )
 			if( !typed.foot.startsWith( 'Браузер этой машины' ) ) return fail( 'подвал не сказал, что работа лежит в браузере', typed )
 
-			await browser.open_page( page, $bog_gamestudio_probe_keep_ready, 60000 )
+			await browser.open_page( page, $bog_gamengine_studio_probe_keep_ready, 60000 )
 
-			const back = await browser.evaluate( $bog_gamestudio_probe_keep_read_script, 15000 ) as $bog_gamestudio_probe_keep_state
+			const back = await browser.evaluate( $bog_gamengine_studio_probe_keep_read_script, 15000 ) as $bog_gamengine_studio_probe_keep_state
 			say( `после перезагрузки: ${ JSON.stringify( back ) }` )
 
 			if( !back.first ) return fail( 'перезагрузка потеряла правку', back )
 			if( back.rows !== typed.rows ) return fail( 'после перезагрузки в дереве сцены не столько узлов, сколько до неё', back )
-			if( $bog_gamestudio_probe_keep_dark( back.lit ) ) return fail( 'после перезагрузки холст чёрный', back )
+			if( $bog_gamengine_studio_probe_keep_dark( back.lit ) ) return fail( 'после перезагрузки холст чёрный', back )
 
-			await browser.evaluate( $bog_gamestudio_probe_keep_lock_script, 15000 )
+			await browser.evaluate( $bog_gamengine_studio_probe_keep_lock_script, 15000 )
 
 			const locked = await browser.evaluate(
-				$bog_gamestudio_probe_keep_type_script( 'Крошка', 'Дозор' ),
+				$bog_gamengine_studio_probe_keep_type_script( 'Крошка', 'Дозор' ),
 				15000,
-			) as $bog_gamestudio_probe_keep_state
+			) as $bog_gamengine_studio_probe_keep_state
 			say( `при запрете записи: ${ JSON.stringify( locked ) }` )
 
 			if( !locked.second ) return fail( 'при запрете записи правка пропала из редактора', locked )
 			if( locked.rows !== back.rows ) return fail( 'при запрете записи дерево сцены осыпалось', locked )
-			if( $bog_gamestudio_probe_keep_dark( locked.lit ) ) return fail( 'при запрете записи холст почернел', locked )
+			if( $bog_gamengine_studio_probe_keep_dark( locked.lit ) ) return fail( 'при запрете записи холст почернел', locked )
 			if( !locked.foot.startsWith( 'Браузер не сохраняет' ) ) return fail( 'подвал не признался, что запись не идёт', locked )
 
-			return say( $bog_gamestudio_probe_keep_ok )
+			return say( $bog_gamengine_studio_probe_keep_ok )
 
 		} finally {
 			for( const { browser, profile } of windows ) {

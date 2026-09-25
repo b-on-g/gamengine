@@ -1,6 +1,6 @@
 namespace $ {
 
-	class $bog_gamestudio_app_time_mock extends $mol_state_time {
+	class $bog_gamengine_studio_time_mock extends $mol_state_time {
 
 		@ $mol_mem
 		static stamp( next = 0 ) {
@@ -14,24 +14,24 @@ namespace $ {
 	}
 
 	function played( $: $ ) {
-		$.$mol_state_time = $bog_gamestudio_app_time_mock
-		const app = $$.$bog_gamestudio_app.make({ $ })
-		$bog_gamestudio_app_time_mock.stamp( 0 )
+		$.$mol_state_time = $bog_gamengine_studio_time_mock
+		const app = $$.$bog_gamengine_studio.make({ $ })
+		$bog_gamengine_studio_time_mock.stamp( 0 )
 		app.Scene().step()
 		app.play()
 		app.Key().keys().D( true )
 		for( let tick = 1; tick <= 3; ++ tick ) {
-			$bog_gamestudio_app_time_mock.stamp( tick * 16 )
+			$bog_gamengine_studio_time_mock.stamp( tick * 16 )
 			app.Scene().step()
 		}
 		return app
 	}
 
 	function canvas_app( $: $ ) {
-		return $$.$bog_gamestudio_app.make({ $, draw_width: ()=> 616, draw_height: ()=> 801 })
+		return $$.$bog_gamengine_studio.make({ $, draw_width: ()=> 616, draw_height: ()=> 801 })
 	}
 
-	function spot_at( app: $bog_gamestudio_app, x: number, y: number ) {
+	function spot_at( app: $bog_gamengine_studio, x: number, y: number ) {
 		return Array.from( app.Point().world( new Float32Array( 3 ), x, y ) )
 	}
 
@@ -41,11 +41,11 @@ namespace $ {
 		} as unknown as WheelEvent
 	}
 
-	function row_of( app: $bog_gamestudio_app, title: string ) {
+	function row_of( app: $bog_gamengine_studio, title: string ) {
 		return app.Doc().nodes().findIndex( row => row.title === title )
 	}
 
-	function pick( app: $bog_gamestudio_app, title: string ) {
+	function pick( app: $bog_gamengine_studio, title: string ) {
 		app.selected( row_of( app, title ) )
 		return app
 	}
@@ -56,39 +56,39 @@ namespace $ {
 		} as unknown as PointerEvent
 	}
 
-	function hero_row( app: $bog_gamestudio_app ) {
+	function hero_row( app: $bog_gamengine_studio ) {
 		return row_of_name( app, 'Hero' )
 	}
 
-	function row_of_name( app: $bog_gamestudio_app, name: string ) {
+	function row_of_name( app: $bog_gamengine_studio, name: string ) {
 		const at = app.Doc().nodes().findIndex( row => row.name === name )
 		$mol_assert_ok( at >= 0 )
 		return at
 	}
 
-	function scene_named( app: $bog_gamestudio_app, title: string ) {
+	function scene_named( app: $bog_gamengine_studio, title: string ) {
 		const node = app.Scene().nodes().find( one => one.title() === title )
 		$mol_assert_ok( Boolean( node ) )
 		return node!
 	}
 
-	function hero( app: $bog_gamestudio_app ) {
+	function hero( app: $bog_gamengine_studio ) {
 		return scene_named( app, 'Герой' )
 	}
 
 	$mol_test({
 
 		'play with D held moves the hero right'( $ ) {
-			$.$mol_state_time = $bog_gamestudio_app_time_mock
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			$.$mol_state_time = $bog_gamengine_studio_time_mock
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			pick( app, 'Герой' )
 			app.write( 'pos', [ 1.5, -1.5, 0 ] )
-			$bog_gamestudio_app_time_mock.stamp( 0 )
+			$bog_gamengine_studio_time_mock.stamp( 0 )
 			app.Scene().step()
 			app.play()
 			app.Key().keys().D( true )
 			for( let tick = 1; tick <= 3; ++ tick ) {
-				$bog_gamestudio_app_time_mock.stamp( tick * 16 )
+				$bog_gamengine_studio_time_mock.stamp( tick * 16 )
 				app.Scene().step()
 			}
 			$mol_assert_ok( hero( app ).pos()[ 0 ] > 1.5 )
@@ -96,9 +96,9 @@ namespace $ {
 		},
 
 		'stop returns the hero to where the play started'( $ ) {
-			$.$mol_state_time = $bog_gamestudio_app_time_mock
-			const app = $$.$bog_gamestudio_app.make({ $ })
-			$bog_gamestudio_app_time_mock.stamp( 0 )
+			$.$mol_state_time = $bog_gamengine_studio_time_mock
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			$bog_gamengine_studio_time_mock.stamp( 0 )
 			app.Scene().step()
 			hero( app ).pos( new Float32Array([ -5, 1, 0 ]) )
 			app.play()
@@ -111,31 +111,31 @@ namespace $ {
 		'play and stop leave the source untouched'( $ ) {
 			const app = played( $ )
 			app.stop()
-			$mol_assert_equal( app.source(), $bog_gamestudio_sample )
+			$mol_assert_equal( app.source(), $bog_gamengine_studio_sample )
 		},
 
 		'pause stops the movement'( $ ) {
 			const app = played( $ )
 			app.Pause().checked( true )
 			const before = hero( app ).pos()[ 0 ]
-			$bog_gamestudio_app_time_mock.stamp( 64 )
+			$bog_gamengine_studio_time_mock.stamp( 64 )
 			app.Scene().step()
-			$bog_gamestudio_app_time_mock.stamp( 80 )
+			$bog_gamengine_studio_time_mock.stamp( 80 )
 			app.Scene().step()
 			$mol_assert_equal( hero( app ).pos()[ 0 ], before )
 		},
 
 		'the key changes nothing in the edit mode'( $ ) {
-			$.$mol_state_time = $bog_gamestudio_app_time_mock
+			$.$mol_state_time = $bog_gamengine_studio_time_mock
 			const run = ( held: boolean )=> {
-				const app = $$.$bog_gamestudio_app.make({ $ })
+				const app = $$.$bog_gamengine_studio.make({ $ })
 				pick( app, 'Герой' )
 				app.write( 'pos', [ 1.5, -1.5, 0 ] )
-				$bog_gamestudio_app_time_mock.stamp( 0 )
+				$bog_gamengine_studio_time_mock.stamp( 0 )
 				app.Scene().step()
 				if( held ) app.Key().keys().D( true )
 				for( let tick = 1; tick <= 3; ++ tick ) {
-					$bog_gamestudio_app_time_mock.stamp( tick * 16 )
+					$bog_gamengine_studio_time_mock.stamp( tick * 16 )
 					app.Scene().step()
 				}
 				return Array.from( hero( app ).pos() )
@@ -144,15 +144,15 @@ namespace $ {
 		},
 
 		'the edit mode leaves the scene without input'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			$mol_assert_equal( app.scene_input(), null )
 			app.play()
 			$mol_assert_equal( app.scene_input(), app.Input() )
 		},
 
 		'stop restores a number of a component, not only of a node'( $ ) {
-			$.$mol_state_time = $bog_gamestudio_app_time_mock
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			$.$mol_state_time = $bog_gamengine_studio_time_mock
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.selected( hero_row( app ) )
 			const part = app.kit_attach( 'combat' )
 			const row = app.Doc().nodes().findIndex( one => one.path === `Hero/${ part }` )
@@ -160,7 +160,7 @@ namespace $ {
 			const health = ()=> app.props_of( `Hero/${ part }` ).find( one => one.name === 'health_max' )!
 			const before = health().get()
 			$mol_assert_ok( Number( before ) > 0 )
-			$bog_gamestudio_app_time_mock.stamp( 0 )
+			$bog_gamengine_studio_time_mock.stamp( 0 )
 			app.play()
 			health().set( 7 )
 			$mol_assert_equal( health().get(), 7 )
@@ -170,7 +170,7 @@ namespace $ {
 		},
 
 		'placed sound is selected by a row, renamed and dropped by the button'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.place( 'bog/gamengine/demo/sound/coin.wav', [ 0, 0, 0 ] )
 			const rows = app.Doc().nodes()
 			const at = rows.findIndex( one => one.name === 'Sound' )
@@ -188,7 +188,7 @@ namespace $ {
 		},
 
 		'component attached to a node shows up in the tree under its owner'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.selected( hero_row( app ) )
 			const part = app.kit_attach( 'combat' )
 			$mol_assert_ok( part.length > 0 )
@@ -204,7 +204,7 @@ namespace $ {
 		},
 
 		'scene tree lists every declaration of the document, not only the nodes'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			const titles = app.node_rows().map( ( row, at )=> app.row_title( at ) )
 			$mol_assert_equal( titles.length, app.Doc().nodes().length )
 			for( const title of [ 'Герой', 'Монета', 'Стена', 'Atlas' ] ) {
@@ -214,19 +214,19 @@ namespace $ {
 		},
 
 		'tree row shows node name'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			$mol_assert_equal( app.row_title( row_of( app, 'Герой' ) ), 'Герой' )
 		},
 
 		'pos typed into the inspector moves the selected node'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			pick( app, 'Монета' )
 			app.Vec_num( 'pos_0' ).value( 5 )
 			$mol_assert_equal( scene_named( app, 'Монета' ).pos()[ 0 ], 5 )
 		},
 
 		'pos typed into the inspector rewrites the source'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			pick( app, 'Герой' )
 			app.write( 'pos', [ 0, 0, 0 ] )
 			app.Vec_num( 'pos_0' ).value( 5 )
@@ -234,7 +234,7 @@ namespace $ {
 		},
 
 		'source typed into the editor moves the node'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			pick( app, 'Герой' )
 			app.write( 'pos', [ 0, 0, 0 ] )
 			app.source( app.source().replace( '\t\t\tpos / 0 0 0\n', '\t\t\tpos / 7 0 0\n' ) )
@@ -242,14 +242,14 @@ namespace $ {
 		},
 
 		'rotation is edited in degrees'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			pick( app, 'Герой' )
 			app.Vec_num( 'rot_2' ).value( 90 )
 			$mol_assert_equal( Math.round( hero( app ).rot()[ 2 ] * 1e6 ) / 1e6, Math.round( Math.PI / 2 * 1e6 ) / 1e6 )
 		},
 
 		'assets tab lists every asset of the pack with its file name'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			$mol_assert_equal( app.asset_rows().length, 8 )
 			$mol_assert_equal( app.Asset_row( 'bog/gamengine/demo/atlas/coin.png' ).title(), 'coin.png' )
 			$mol_assert_ok( app.asset_icon( 'bog/gamengine/demo/atlas/coin.png' ) instanceof $mol_image )
@@ -257,7 +257,7 @@ namespace $ {
 		},
 
 		'picked image placed by a canvas click becomes a sprite at the click point'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
 			$mol_assert_ok( app.placing() )
 			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 1, -2, 0 ] )
@@ -268,28 +268,28 @@ namespace $ {
 		},
 
 		'placed model gets a loader shape and no batch of its own'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.place( 'bog/gamengine/demo/room/model/pillar.glb', [ 0, 1, 0 ] )
 			$mol_assert_equal( app.row_title( row_of( app, 'pillar' ) ), 'pillar' )
-			$mol_assert_ok( app.source().includes( '\t\t\tshape <= Mesh_1_shape $bog_gamestudio_assets_gltf\n\t\t\t\turi \\bog/gamengine/demo/room/model/pillar.glb\n' ) )
+			$mol_assert_ok( app.source().includes( '\t\t\tshape <= Mesh_1_shape $bog_gamengine_studio_assets_gltf\n\t\t\t\turi \\bog/gamengine/demo/room/model/pillar.glb\n' ) )
 			$mol_assert_not( app.source().includes( '$bog_gamengine_batch' ) )
-			$mol_assert_ok( app.Scene().batches().some( batch => batch.shape() instanceof $bog_gamestudio_assets_gltf ) )
+			$mol_assert_ok( app.Scene().batches().some( batch => batch.shape() instanceof $bog_gamengine_studio_assets_gltf ) )
 			$mol_assert_ok( scene_named( app, 'pillar' ) instanceof $bog_gamengine_mesh )
 		},
 
 		'model and sprites go to batches of their own'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			const before = app.Scene().batches().length
 			app.place( 'bog/gamengine/demo/room/model/pillar.glb', [ 0, 1, 0 ] )
 			const batches = app.Scene().batches()
 			$mol_assert_equal( batches.length, before + 1 )
-			const mesh = batches.find( batch => batch.shape() instanceof $bog_gamestudio_assets_gltf )!
+			const mesh = batches.find( batch => batch.shape() instanceof $bog_gamengine_studio_assets_gltf )!
 			$mol_assert_equal( mesh.nodes().length, 1 )
 			$mol_assert_ok( mesh.nodes()[ 0 ] instanceof $bog_gamengine_mesh )
 		},
 
 		'placed sound is written into the sound dictionary'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.place( 'bog/gamengine/demo/sound/coin.wav', [ 0, 0, 0 ] )
 			$mol_assert_ok( app.source().endsWith( '\tSound $bog_gamengine_sound\n\t\turis *\n\t\t\tcoin \\bog/gamengine/demo/sound/coin.wav\n' ) )
 			app.place( 'bog/gamengine/demo/sound/coin.wav', [ 0, 0, 0 ] )
@@ -302,7 +302,7 @@ namespace $ {
 		},
 
 		'assets tab survives the scene rebuild'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.Side_switch().value( '1' )
 			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 1, -2, 0 ] )
 			$mol_assert_equal( app.tab(), '1' )
@@ -312,7 +312,7 @@ namespace $ {
 		},
 
 		'tiles tab lists the palette of the scene'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			$mol_assert_equal( app.tile_rows().length, 3 )
 			$mol_assert_equal( app.tile_title( '#' ), '# wall' )
 			$mol_assert_equal( app.tile_uri( '.' ), 'bog/gamengine/demo/atlas/floor.png' )
@@ -320,7 +320,7 @@ namespace $ {
 		},
 
 		'picked char and cell tool paint the map of the document'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.Tile( '#' ).checked( true )
 			app.Tools().value( 'cell' )
 			app.brush_down([ 1, 1 ])
@@ -330,7 +330,7 @@ namespace $ {
 		},
 
 		'rect tool paints a rectangle and shows a preview frame'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.Tile( '#' ).checked( true )
 			app.Tools().value( 'rect' )
 			app.brush_down([ 1, 1 ])
@@ -342,7 +342,7 @@ namespace $ {
 		},
 
 		'fill tool floods the room and the tool blocks the gizmo'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			pick( app, 'Герой' )
 			$mol_assert_equal( app.gizmo_arrow_nodes().length, 2 )
 			app.Tile( '#' ).checked( true )
@@ -355,7 +355,7 @@ namespace $ {
 		},
 
 		'painted cell reaches the map of the scene'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			$mol_assert_equal( app.tile_grid()!.rows()[ 1 ][ 1 ], '.' )
 			app.Tile( '#' ).checked( true )
 			app.Tools().value( 'cell' )
@@ -367,8 +367,8 @@ namespace $ {
 		},
 
 		'inspector draws a row per record of a list prop'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
-			app.source( $bog_gamestudio_sample_brain )
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_brain )
 			app.selected( row_of_name( app, 'Walk' ) )
 			$mol_assert_equal( app.row_title( 1 ), 'Ходит' )
 			$mol_assert_ok( app.fields().some( field => field.name() === 'next' ) )
@@ -380,8 +380,8 @@ namespace $ {
 		},
 
 		'text typed into a list row rewrites the record in the source'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
-			app.source( $bog_gamestudio_sample_brain )
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_brain )
 			app.selected( row_of_name( app, 'Walk' ) )
 			app.List_field( 'next/0/to' ).value( 'Спит' )
 			$mol_assert_ok( app.source().includes( '\t\t\t\t\tto \\Спит\n\t\t\t\t\twhen \\near\n' ) )
@@ -389,8 +389,8 @@ namespace $ {
 		},
 
 		'buttons add and drop a record of a list prop'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
-			app.source( $bog_gamestudio_sample_brain )
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_brain )
 			app.selected( row_of_name( app, 'Walk' ) )
 			app.List_add( 'next' ).click( null )
 			$mol_assert_equal( app.list_values( 'next' ).length, 2 )
@@ -401,8 +401,8 @@ namespace $ {
 		},
 
 		'inspector writes into the nested node, not into its neighbour'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
-			app.source( $bog_gamestudio_sample_nest )
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_nest )
 			const titles = app.Scene().nodes().map( node => node.title() )
 			$mol_assert_equal( titles, [ 'Сторож', 'Ходит', 'Ждёт', 'Метка' ] )
 			app.selected( titles.indexOf( 'Ходит' ) )
@@ -416,8 +416,8 @@ namespace $ {
 		},
 
 		'inspector signs a field shared by prefab instances'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
-			app.source( $bog_gamestudio_sample_prefab )
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_prefab )
 			const titles = app.Scene().nodes().map( node => node.title() )
 			app.selected( titles.indexOf( 'Ствол' ) )
 			$mol_assert_equal( app.doc_path(), 'Enemy_1/Gun' )
@@ -427,8 +427,8 @@ namespace $ {
 		},
 
 		'detach button rebinds one instance and leaves the prefab compiling'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
-			app.source( $bog_gamestudio_sample_prefab )
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_prefab )
 			app.selected( app.Scene().nodes().map( node => node.title() ).indexOf( 'Ствол' ) )
 			$mol_assert_ok( app.form_foot().includes( app.Detach() ) )
 			app.Detach().click( null )
@@ -441,9 +441,9 @@ namespace $ {
 		},
 
 		'edited source comes back to a freshly opened editor'( $ ) {
-			const key = 'bog_gamestudio_source_test_keep'
+			const key = 'bog_gamengine_studio_source_test_keep'
 			const make = ()=> {
-				const app = $$.$bog_gamestudio_app.make({ $ })
+				const app = $$.$bog_gamengine_studio.make({ $ })
 				app.source_key = ()=> key
 				return app
 			}
@@ -458,9 +458,9 @@ namespace $ {
 		},
 
 		'node put by the mouse is still there after a reload, without asking to save'( $ ) {
-			const key = 'bog_gamestudio_source_test_place'
+			const key = 'bog_gamengine_studio_source_test_place'
 			const make = ()=> {
-				const app = $$.$bog_gamestudio_app.make({ $ })
+				const app = $$.$bog_gamengine_studio.make({ $ })
 				app.source_key = ()=> key
 				return app
 			}
@@ -484,7 +484,7 @@ namespace $ {
 				}
 			}
 			$.$mol_state_local = $mol_state_local_locked
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			const edited = app.source().replace( '\\Герой', '\\Крошка' )
 			app.source( edited )
 			$mol_assert_equal( app.source(), edited )
@@ -494,21 +494,21 @@ namespace $ {
 		},
 
 		'footer says the work lies in the browser while saving goes through'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
-			app.source_key = ()=> 'bog_gamestudio_source_test_stat'
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source_key = ()=> 'bog_gamengine_studio_source_test_stat'
 			app.source( app.source() )
 			$mol_assert_ok( app.kept_stat().startsWith( 'Браузер этой машины' ) )
 		},
 
 		'editor without kept source starts from the sample'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
-			app.source_key = ()=> 'bog_gamestudio_source_test_empty'
-			$mol_assert_equal( app.source(), $bog_gamestudio_sample )
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source_key = ()=> 'bog_gamengine_studio_source_test_empty'
+			$mol_assert_equal( app.source(), $bog_gamengine_studio_sample )
 		},
 
 		'source uri carries the document and asks to be saved as a tree file'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
-			app.source_key = ()=> 'bog_gamestudio_source_test_uri'
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source_key = ()=> 'bog_gamengine_studio_source_test_uri'
 			const uri = app.source_uri()
 			$mol_assert_ok( uri.startsWith( 'data:text/plain;charset=utf-8,' ) )
 			$mol_assert_equal( decodeURIComponent( uri.slice( 'data:text/plain;charset=utf-8,'.length ) ), app.source() )
@@ -516,7 +516,7 @@ namespace $ {
 		},
 
 		'name typed into the inspector renames the node in the tree and in the source'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			pick( app, 'Герой' )
 			app.Name_string().value( 'Крошка' )
 			$mol_assert_equal( app.row_title( row_of( app, 'Крошка' ) ), 'Крошка' )
@@ -525,7 +525,7 @@ namespace $ {
 		},
 
 		'cleared name falls the node back to its declaration name'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			pick( app, 'Герой' )
 			app.Name_string().value( '' )
 			$mol_assert_equal( app.node_name(), '' )
@@ -533,20 +533,20 @@ namespace $ {
 		},
 
 		'name hint shows what the node is called now'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.selected( row_of_name( app, 'Coin' ) )
 			$mol_assert_equal( app.node_hint(), 'Монета' )
 		},
 
 		'form has no name field while nothing is selected'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			$mol_assert_equal( app.fields().length, 0 )
 			pick( app, 'Герой' )
 			$mol_assert_equal( app.fields()[ 0 ], app.Name_field() )
 		},
 
 		'delete button takes the selected node out of the scene and drops the selection'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.selected( row_of_name( app, 'Coin' ) )
 			app.Node_drop().click( null )
 			$mol_assert_ok( row_of( app, 'Монета' ) < 0 )
@@ -555,7 +555,7 @@ namespace $ {
 		},
 
 		'duplicate button copies the node and selects the copy'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			const at = row_of_name( app, 'Coin' )
 			app.selected( at )
 			app.Node_dup().click( null )
@@ -565,7 +565,7 @@ namespace $ {
 		},
 
 		'delete leaves the atlas and the map of the scene alone'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.selected( row_of_name( app, 'Coin' ) )
 			app.Node_drop().click( null )
 			$mol_assert_ok( app.source().includes( 'Atlas $bog_gamengine_atlas' ) )
@@ -574,14 +574,14 @@ namespace $ {
 		},
 
 		'inspector shows no delete and no duplicate while nothing is selected'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			$mol_assert_equal( app.form_foot().length, 0 )
 			pick( app, 'Герой' )
 			$mol_assert_equal( app.form_foot(), [ app.Node_dup(), app.Node_drop() ] )
 		},
 
 		'delete key drops the selected node'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.selected( row_of_name( app, 'Coin' ) )
 			app.Delete_key().keydown({ keyCode: 46, target: { tagName: 'BUTTON' } } as unknown as KeyboardEvent )
 			$mol_assert_ok( row_of( app, 'Монета' ) < 0 )
@@ -589,7 +589,7 @@ namespace $ {
 		},
 
 		'delete key typed into a field leaves the node alone'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.selected( row_of_name( app, 'Coin' ) )
 			for( const tag of [ 'INPUT', 'TEXTAREA' ] ) {
 				app.Delete_key().keydown({ keyCode: 46, target: { tagName: tag } } as unknown as KeyboardEvent )
@@ -599,7 +599,7 @@ namespace $ {
 		},
 
 		'delete key does nothing while the game is playing'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.selected( row_of_name( app, 'Coin' ) )
 			app.play()
 			app.Delete_key().keydown({ keyCode: 46, target: { tagName: 'BUTTON' } } as unknown as KeyboardEvent )
@@ -607,7 +607,7 @@ namespace $ {
 		},
 
 		'undo returns the document to the state before the edit, redo brings it back'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			const before = app.source()
 			pick( app, 'Герой' )
 			app.Vec_num( 'pos_0' ).value( 7 )
@@ -620,7 +620,7 @@ namespace $ {
 		},
 
 		'undo takes back a deleted node'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.selected( row_of_name( app, 'Coin' ) )
 			app.Node_drop().click( null )
 			$mol_assert_ok( row_of( app, 'Монета' ) < 0 )
@@ -629,7 +629,7 @@ namespace $ {
 		},
 
 		'two edits within the pause give one step of history'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			const before = app.source()
 			app.source( before.replace( '\\Герой', '\\Первый' ) )
 			app.source( app.source().replace( '\\Первый', '\\Второй' ) )
@@ -647,7 +647,7 @@ namespace $ {
 		},
 
 		'one undo takes the whole gesture, not a frame of it'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			pick( app, 'Герой' )
 			const before = app.source()
 			app.history_gesture = true
@@ -679,7 +679,7 @@ namespace $ {
 		},
 
 		'undo button is dark while there is nothing to undo'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			$mol_assert_equal( app.can_undo(), false )
 			$mol_assert_equal( app.can_redo(), false )
 			$mol_assert_equal( app.undo_stat(), 'Отмена: отменять нечего' )
@@ -693,7 +693,7 @@ namespace $ {
 		},
 
 		'history forgets the oldest step when it is full'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.history_depth = ()=> 2
 			pick( app, 'Герой' )
 			for( const x of [ 1, 2, 3, 4 ] ) {
@@ -705,16 +705,16 @@ namespace $ {
 		},
 
 		'shared document leaves undo to the base'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			pick( app, 'Герой' )
 			app.Vec_num( 'pos_0' ).value( 7 )
-			app.doc_land = ()=> ( {} as unknown as $bog_gamestudio_doc_land )
+			app.doc_land = ()=> ( {} as unknown as $bog_gamengine_studio_doc_land )
 			$mol_assert_equal( app.can_undo(), false )
 			$mol_assert_equal( app.undo_stat(), 'Отмена у Базы: документ общий' )
 		},
 
 		'ctrl z typed into a field leaves the document to the browser'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			pick( app, 'Герой' )
 			app.Vec_num( 'pos_0' ).value( 7 )
 			const typed = app.source()
@@ -725,25 +725,25 @@ namespace $ {
 		},
 
 		'gizmo hit on the x arrow'( $ ) {
-			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
+			$mol_assert_equal( $bog_gamengine_studio_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
 		},
 
 		'gizmo hit on the y arrow'( $ ) {
-			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( -0.05, 0.9, 1 ), 'y' )
+			$mol_assert_equal( $bog_gamengine_studio_gizmo_hit( -0.05, 0.9, 1 ), 'y' )
 		},
 
 		'gizmo hit on the box'( $ ) {
-			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.1, -0.1, 1 ), 'xy' )
+			$mol_assert_equal( $bog_gamengine_studio_gizmo_hit( 0.1, -0.1, 1 ), 'xy' )
 		},
 
 		'gizmo miss'( $ ) {
-			$mol_assert_equal( $bog_gamestudio_app_gizmo_hit( 0.5, 0.5, 1 ), null )
+			$mol_assert_equal( $bog_gamengine_studio_gizmo_hit( 0.5, 0.5, 1 ), null )
 		},
 
 		'wheel up zooms in, wheel down zooms out, line mode counts as pixels'( $ ) {
-			$mol_assert_ok( $bog_gamestudio_app_zoom_factor( -100 ) > 1 )
-			$mol_assert_ok( $bog_gamestudio_app_zoom_factor( 100 ) < 1 )
-			$mol_assert_equal( $bog_gamestudio_app_zoom_factor( -3, 1 ), $bog_gamestudio_app_zoom_factor( -48 ) )
+			$mol_assert_ok( $bog_gamengine_studio_zoom_factor( -100 ) > 1 )
+			$mol_assert_ok( $bog_gamengine_studio_zoom_factor( 100 ) < 1 )
+			$mol_assert_equal( $bog_gamengine_studio_zoom_factor( -3, 1 ), $bog_gamengine_studio_zoom_factor( -48 ) )
 		},
 
 		'wheel keeps the world point under the cursor'( $ ) {
@@ -795,7 +795,7 @@ namespace $ {
 			const app = canvas_app( $ )
 			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 40, -30, 0 ] )
 			app.fit()
-			const bounds = $bog_gamestudio_app_bounds( app.Scene().nodes(), new Float32Array( 4 ) )!
+			const bounds = $bog_gamengine_studio_bounds( app.Scene().nodes(), new Float32Array( 4 ) )!
 			const cam = app.Cam()
 			const half = cam.height() / cam.zoom() / 2
 			const aspect = app.draw_width() / app.draw_height()
@@ -807,9 +807,9 @@ namespace $ {
 		},
 
 		'grid snapping rounds to the step, and without it to a thousandth'( $ ) {
-			$mol_assert_equal( $bog_gamestudio_app_grid_value( -4.500001, 0.5 ), -4.5 )
-			$mol_assert_equal( $bog_gamestudio_app_grid_value( 5.3, 0.5 ), 5.5 )
-			$mol_assert_equal( $bog_gamestudio_app_grid_value( 5.3000001907, 0 ), 5.3 )
+			$mol_assert_equal( $bog_gamengine_studio_grid_value( -4.500001, 0.5 ), -4.5 )
+			$mol_assert_equal( $bog_gamengine_studio_grid_value( 5.3, 0.5 ), 5.5 )
+			$mol_assert_equal( $bog_gamengine_studio_grid_value( 5.3000001907, 0 ), 5.3 )
 		},
 
 		'click puts the node on the grid without a tail of digits'( $ ) {
@@ -934,7 +934,7 @@ namespace $ {
 
 		'fit shows the whole tile map of a scene made of tiles alone'( $ ) {
 			const app = canvas_app( $ )
-			app.source( $bog_gamestudio_sample_tiles )
+			app.source( $bog_gamengine_studio_sample_tiles )
 			app.fit()
 			const rows = app.tile_grid()!.rows()
 			const cam = app.Cam()
@@ -956,8 +956,8 @@ namespace $ {
 		},
 
 		'export links hand out the module the document turns into'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
-			$mol_assert_equal( app.klass(), '$bog_gamestudio_sample' )
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			$mol_assert_equal( app.klass(), '$bog_gamengine_studio_sample' )
 			$mol_assert_equal( app.module_tree_name(), 'sample.view.tree' )
 			$mol_assert_equal( app.module_ts_name(), 'sample.view.ts' )
 			const made = app.module()!
@@ -969,7 +969,7 @@ namespace $ {
 		},
 
 		'export names follow the class typed by hand and stop on a bad one'( $ ) {
-			const app = $$.$bog_gamestudio_app.make({ $ })
+			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.Klass().value( '$bog_myapp_level' )
 			$mol_assert_equal( app.module_tree_name(), 'level.view.tree' )
 			$mol_assert_ok( app.module()!.tree.split( '\n' )[ 0 ].startsWith( '$bog_myapp_level $' ) )

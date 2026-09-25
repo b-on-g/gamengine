@@ -1,7 +1,7 @@
 namespace $ {
 
-	export const $bog_gamestudio_sample = [
-		'$bog_gamestudio_sample $bog_gamengine_scene',
+	export const $bog_gamengine_studio_sample = [
+		'$bog_gamengine_studio_sample $bog_gamengine_scene',
 		'\tphys <= Phys $bog_gamengine_phys',
 		'\t\ttile <= Tile',
 		'\t\tbodies /',
@@ -50,8 +50,8 @@ namespace $ {
 		'\t\tsize 64',
 	].join( '\n' ) + '\n'
 
-	export const $bog_gamestudio_sample_tiles = [
-		'$bog_gamestudio_sample_tiles $bog_gamengine_scene',
+	export const $bog_gamengine_studio_sample_tiles = [
+		'$bog_gamengine_studio_sample_tiles $bog_gamengine_scene',
 		'\tTile $bog_gamengine_phys_tile',
 		'\t\tmap \\',
 		'\t\t\t\\######',
@@ -72,8 +72,8 @@ namespace $ {
 		'\t\tsize 64',
 	].join( '\n' ) + '\n'
 
-	export const $bog_gamestudio_sample_brain = [
-		'$bog_gamestudio_sample_brain $bog_gamengine_scene',
+	export const $bog_gamengine_studio_sample_brain = [
+		'$bog_gamengine_studio_sample_brain $bog_gamengine_scene',
 		'\tkids /',
 		'\t\t<= Guard $bog_gamengine_brain_fsm',
 		'\t\t\tname \\Сторож',
@@ -87,8 +87,8 @@ namespace $ {
 		'\t\t\tname \\Ждёт',
 	].join( '\n' ) + '\n'
 
-	export const $bog_gamestudio_sample_nest = [
-		'$bog_gamestudio_sample_nest $bog_gamengine_scene',
+	export const $bog_gamengine_studio_sample_nest = [
+		'$bog_gamengine_studio_sample_nest $bog_gamengine_scene',
 		'\tkids /',
 		'\t\t<= Guard $bog_gamengine_brain_fsm',
 		'\t\t\tname \\Сторож',
@@ -104,16 +104,16 @@ namespace $ {
 		'\t\t\tpos / 2 0 0',
 	].join( '\n' ) + '\n'
 
-	export const $bog_gamestudio_sample_prefab = [
-		'$bog_gamestudio_sample_prefab $bog_gamengine_scene',
+	export const $bog_gamengine_studio_sample_prefab = [
+		'$bog_gamengine_studio_sample_prefab $bog_gamengine_scene',
 		'\tkids /',
-		'\t\t<= Enemy_1 $bog_gamestudio_sample_guard',
+		'\t\t<= Enemy_1 $bog_gamengine_studio_sample_guard',
 		'\t\t\tpos / 1 0 0',
-		'\t\t<= Enemy_2 $bog_gamestudio_sample_guard',
+		'\t\t<= Enemy_2 $bog_gamengine_studio_sample_guard',
 		'\t\t\tpos / 5 0 0',
 		'\t\t\tname \\Вожак',
 		'',
-		'$bog_gamestudio_sample_guard $bog_gamengine_node',
+		'$bog_gamengine_studio_sample_guard $bog_gamengine_node',
 		'\tname \\Страж',
 		'\tkids /',
 		'\t\t<= Gun $bog_gamengine_node',

@@ -1,4 +1,4 @@
-$bog_gamestudio_case $bog_gamestudio_sample_map
+$bog_gamengine_studio_case $bog_gamengine_studio_sample_map
 	atlas <= Atlas
 	map \
 		\######
@@ -10,7 +10,7 @@ $bog_gamestudio_case $bog_gamestudio_sample_map
 		# \wall
 		. \floor
 	kids /
-		<= Hero $bog_gamestudio_sample_hero
+		<= Hero $bog_gamengine_studio_sample_hero
 			name \Герой
 			role \hero
 			atlas <= Atlas

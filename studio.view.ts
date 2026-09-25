@@ -1,37 +1,37 @@
 namespace $ {
 
-	export type $bog_gamestudio_app_axis = 'x' | 'y' | 'xy'
+	export type $bog_gamengine_studio_axis = 'x' | 'y' | 'xy'
 
-	export type $bog_gamestudio_app_mode = 'edit' | 'play' | 'pause'
+	export type $bog_gamengine_studio_mode = 'edit' | 'play' | 'pause'
 
-	export type $bog_gamestudio_app_snap = {
+	export type $bog_gamengine_studio_snap = {
 		readonly path: string
 		readonly prop: string
 		readonly value: unknown
 	}
 
-	export const $bog_gamestudio_app_zoom_rate = 0.0015
+	export const $bog_gamengine_studio_zoom_rate = 0.0015
 
-	export const $bog_gamestudio_app_zoom_step = 400
+	export const $bog_gamengine_studio_zoom_step = 400
 
-	export const $bog_gamestudio_app_fit_gap = 1.1
+	export const $bog_gamengine_studio_fit_gap = 1.1
 
-	export const $bog_gamestudio_app_grid_step = 0.5
+	export const $bog_gamengine_studio_grid_step = 0.5
 
-	export const $bog_gamestudio_app_grid_precision = 1e3
+	export const $bog_gamengine_studio_grid_precision = 1e3
 
-	export function $bog_gamestudio_app_grid_value( value: number, step: number ) {
+	export function $bog_gamengine_studio_grid_value( value: number, step: number ) {
 		if( step > 0 ) return Math.round( value / step ) * step
-		return Math.round( value * $bog_gamestudio_app_grid_precision ) / $bog_gamestudio_app_grid_precision
+		return Math.round( value * $bog_gamengine_studio_grid_precision ) / $bog_gamengine_studio_grid_precision
 	}
 
-	export function $bog_gamestudio_app_zoom_factor( delta: number, mode = 0 ) {
+	export function $bog_gamengine_studio_zoom_factor( delta: number, mode = 0 ) {
 		const pixels = mode === 1 ? delta * 16 : mode === 2 ? delta * 400 : delta
-		const step = Math.max( - $bog_gamestudio_app_zoom_step, Math.min( $bog_gamestudio_app_zoom_step, pixels ) )
-		return Math.exp( - step * $bog_gamestudio_app_zoom_rate )
+		const step = Math.max( - $bog_gamengine_studio_zoom_step, Math.min( $bog_gamengine_studio_zoom_step, pixels ) )
+		return Math.exp( - step * $bog_gamengine_studio_zoom_rate )
 	}
 
-	export function $bog_gamestudio_app_bounds( nodes: readonly $bog_gamengine_node[], out: Float32Array ) {
+	export function $bog_gamengine_studio_bounds( nodes: readonly $bog_gamengine_node[], out: Float32Array ) {
 
 		out[ 0 ] = Infinity
 		out[ 1 ] = Infinity
@@ -76,7 +76,7 @@ namespace $ {
 		return found ? out : null
 	}
 
-	export function $bog_gamestudio_app_wider(
+	export function $bog_gamengine_studio_wider(
 		bounds: Float32Array | null,
 		left: number,
 		bottom: number,
@@ -98,22 +98,22 @@ namespace $ {
 		return out
 	}
 
-	export const $bog_gamestudio_app_gizmo_box = 0.15
+	export const $bog_gamengine_studio_gizmo_box = 0.15
 
-	export const $bog_gamestudio_app_gizmo_near = 0.1
+	export const $bog_gamengine_studio_gizmo_near = 0.1
 
-	function $bog_gamestudio_app_gizmo_gap( along: number, aside: number, size: number ) {
+	function $bog_gamengine_studio_gizmo_gap( along: number, aside: number, size: number ) {
 		if( along < 0 ) return Math.hypot( along, aside )
 		if( along > size ) return Math.hypot( along - size, aside )
 		return Math.abs( aside )
 	}
 
-	export function $bog_gamestudio_app_gizmo_hit( x: number, y: number, size: number ): $bog_gamestudio_app_axis | null {
-		const box = size * $bog_gamestudio_app_gizmo_box
+	export function $bog_gamengine_studio_gizmo_hit( x: number, y: number, size: number ): $bog_gamengine_studio_axis | null {
+		const box = size * $bog_gamengine_studio_gizmo_box
 		if( Math.abs( x ) <= box && Math.abs( y ) <= box ) return 'xy'
-		const near = size * $bog_gamestudio_app_gizmo_near
-		if( $bog_gamestudio_app_gizmo_gap( x, y, size ) <= near ) return 'x'
-		if( $bog_gamestudio_app_gizmo_gap( y, x, size ) <= near ) return 'y'
+		const near = size * $bog_gamengine_studio_gizmo_near
+		if( $bog_gamengine_studio_gizmo_gap( x, y, size ) <= near ) return 'x'
+		if( $bog_gamengine_studio_gizmo_gap( y, x, size ) <= near ) return 'y'
 		return null
 	}
 
@@ -125,7 +125,7 @@ namespace $.$$ {
 	const vec_zero = new Float32Array( 3 )
 
 	const gizmo_pixels = 96
-	const box = $bog_gamestudio_app_gizmo_box
+	const box = $bog_gamengine_studio_gizmo_box
 
 	const arrow_points = new Float32Array([
 		0, 0, 0, 1, 0, 0,
@@ -151,10 +151,10 @@ namespace $.$$ {
 	const tint_xy = new Float32Array([ 1, 1, 0, 1 ])
 	const rot_y = new Float32Array([ 0, 0, Math.PI / 2 ])
 
-	export class $bog_gamestudio_app extends $.$bog_gamestudio_app {
+	export class $bog_gamengine_studio extends $.$bog_gamengine_studio {
 
 		source_key() {
-			return 'bog_gamestudio_source'
+			return 'bog_gamengine_studio_source'
 		}
 
 		kept_fail = false
@@ -206,11 +206,11 @@ namespace $.$$ {
 			try {
 				const kept = this.$.$mol_state_local.value< string >( this.source_key(), next )
 				if( next !== undefined ) this.kept_fail = false
-				return kept ?? $bog_gamestudio_sample
+				return kept ?? $bog_gamengine_studio_sample
 			} catch( error ) {
 				if( $mol_promise_like( error ) ) return $mol_fail_hidden( error )
 				this.kept_fail = true
-				return next ?? $bog_gamestudio_sample
+				return next ?? $bog_gamengine_studio_sample
 			}
 		}
 
@@ -334,7 +334,7 @@ namespace $.$$ {
 		}
 
 		@ $mol_mem
-		mode( next?: $bog_gamestudio_app_mode ) {
+		mode( next?: $bog_gamengine_studio_mode ) {
 			return next ?? 'edit'
 		}
 
@@ -352,11 +352,6 @@ namespace $.$$ {
 
 		scene_input() {
 			return this.editing() ? null : this.Input()
-		}
-
-		@ $mol_mem
-		key_map() {
-			return this.Key().keys()
 		}
 
 		land_arg() {
@@ -594,7 +589,7 @@ namespace $.$$ {
 			const item = this.Kit().item( id )
 			if( !item ) return ''
 			const doc = this.Doc()
-			return $bog_gamestudio_kit_apply( doc, item, `/ ${ doc.token( at[ 0 ] ) } ${ doc.token( at[ 1 ] ) } 0` )
+			return $bog_gamengine_studio_kit_apply( doc, item, `/ ${ doc.token( at[ 0 ] ) } ${ doc.token( at[ 1 ] ) } 0` )
 		}
 
 		@ $mol_mem
@@ -616,15 +611,15 @@ namespace $.$$ {
 			if( !path ) return 'никого'
 			const doc = this.Doc()
 			const host = doc.node( path ).name
-			if( this.prop( name )?.kind === 'node' ) return $bog_gamestudio_kit_bound( doc, host, name ) || 'никого'
-			const names = $bog_gamestudio_kit_refs( doc, host, name )
+			if( this.prop( name )?.kind === 'node' ) return $bog_gamengine_studio_kit_bound( doc, host, name ) || 'никого'
+			const names = $bog_gamengine_studio_kit_refs( doc, host, name )
 			return names.length ? names.join( ', ' ) : 'никого'
 		}
 
 		refs_clear( name: string, next?: any ) {
 			if( next === undefined ) return null
 			const path = this.doc_path()
-			if( path ) $bog_gamestudio_kit_clear( this.Doc(), this.Doc().node( path ).name, name )
+			if( path ) $bog_gamengine_studio_kit_clear( this.Doc(), this.Doc().node( path ).name, name )
 			return null
 		}
 
@@ -635,15 +630,15 @@ namespace $.$$ {
 			const host = doc.node( path ).name
 			const kind = this.prop( name )?.kind
 			if( kind === 'nodes' || kind === 'node' ) {
-				const mate = $bog_gamestudio_kit_path_of( doc, node )
+				const mate = $bog_gamengine_studio_kit_path_of( doc, node )
 				if( !mate || mate === host ) return
 				const mate_name = doc.node( mate ).name
 				if( kind === 'node' ) {
-					$bog_gamestudio_kit_bind( doc, host, name, mate_name )
+					$bog_gamengine_studio_kit_bind( doc, host, name, mate_name )
 					this.aiming( null )
 					return
 				}
-				$bog_gamestudio_kit_join( doc, host, name, mate_name )
+				$bog_gamengine_studio_kit_join( doc, host, name, mate_name )
 				return
 			}
 			doc.set( host, name, [ at[ 0 ], at[ 1 ], 0 ] )
@@ -655,7 +650,7 @@ namespace $.$$ {
 			const path = this.doc_path()
 			if( !item || !path ) return ''
 			const doc = this.Doc()
-			return $bog_gamestudio_kit_attach( doc, item, doc.node( path ).name )
+			return $bog_gamengine_studio_kit_attach( doc, item, doc.node( path ).name )
 		}
 
 		@ $mol_mem
@@ -725,7 +720,7 @@ namespace $.$$ {
 						atlas: '<= Atlas',
 						frame: `\\${ frame }`,
 						pos,
-						shape: `<= ${ mesh }_shape $bog_gamestudio_assets_gltf\n\turi \\${ uri }`,
+						shape: `<= ${ mesh }_shape $bog_gamengine_studio_assets_gltf\n\turi \\${ uri }`,
 					} )
 				}
 				case 'sound': {
@@ -745,11 +740,11 @@ namespace $.$$ {
 			return ''
 		}
 
-		snap = [] as readonly $bog_gamestudio_app_snap[]
+		snap = [] as readonly $bog_gamengine_studio_snap[]
 		snap_scene = null as $bog_gamengine_scene | null
 
 		snapshot() {
-			const snap = [] as $bog_gamestudio_app_snap[]
+			const snap = [] as $bog_gamengine_studio_snap[]
 			for( const row of this.Doc().nodes() ) {
 				for( const prop of this.props_of( row.path ) ) {
 					const value = prop.get()
@@ -975,7 +970,7 @@ namespace $.$$ {
 			return null
 		}
 
-		write( prop: string, value: $bog_gamestudio_doc_value ) {
+		write( prop: string, value: $bog_gamengine_studio_doc_value ) {
 			const path = this.doc_path()
 			if( !path ) return
 			this.Doc().set( path, prop, value )
@@ -986,7 +981,7 @@ namespace $.$$ {
 		}
 
 		list_values( name: string ) {
-			return ( this.prop( name )?.get() as readonly $bog_gamestudio_doc_row[] | undefined ) ?? []
+			return ( this.prop( name )?.get() as readonly $bog_gamengine_studio_doc_row[] | undefined ) ?? []
 		}
 
 		@ $mol_mem_key
@@ -1300,7 +1295,7 @@ namespace $.$$ {
 			this.Doc().paint_all( cells, this.tile_char() )
 		}
 
-		drag_axis = null as $bog_gamestudio_app_axis | null
+		drag_axis = null as $bog_gamengine_studio_axis | null
 		drag_moved = false
 		drag_start = new Float32Array( 3 )
 		drag_from = new Float32Array( 3 )
@@ -1326,11 +1321,11 @@ namespace $.$$ {
 		}
 
 		grid_step() {
-			return $bog_gamestudio_app_grid_step
+			return $bog_gamengine_studio_grid_step
 		}
 
 		grid_value( value: number ) {
-			return $bog_gamestudio_app_grid_value( value, this.grid() ? this.grid_step() : 0 )
+			return $bog_gamengine_studio_grid_value( value, this.grid() ? this.grid_step() : 0 )
 		}
 
 		grid_at( at: ArrayLike< number > ) {
@@ -1341,7 +1336,7 @@ namespace $.$$ {
 			if( !event ) return null
 			event.preventDefault()
 			const at = this.Point().world( this.point_world, this.point_x( event ), this.point_y( event ) )
-			this.Cam().zoom_at( $bog_gamestudio_app_zoom_factor( event.deltaY, event.deltaMode ), at[ 0 ], at[ 1 ] )
+			this.Cam().zoom_at( $bog_gamengine_studio_zoom_factor( event.deltaY, event.deltaMode ), at[ 0 ], at[ 1 ] )
 			return event
 		}
 
@@ -1361,16 +1356,16 @@ namespace $.$$ {
 		}
 
 		fit( event?: Event ) {
-			const bounds = $bog_gamestudio_app_bounds( this.Scene().nodes(), this.fit_box )
+			const bounds = $bog_gamengine_studio_bounds( this.Scene().nodes(), this.fit_box )
 			const rows = this.tile_grid()?.rows() ?? null
 			let wide = 0
 			if( rows ) for( let i = 0; i < rows.length; ++ i ) wide = Math.max( wide, rows[ i ].length )
-			const shown = wide ? $bog_gamestudio_app_wider( bounds, 0, - rows!.length, wide, 0, this.fit_box ) : bounds
+			const shown = wide ? $bog_gamengine_studio_wider( bounds, 0, - rows!.length, wide, 0, this.fit_box ) : bounds
 			if( !shown ) return event ?? null
 			const cam = this.Cam()
 			const aspect = this.draw_width() / this.draw_height() || cam.aspect()
-			const width = Math.max( ( shown[ 2 ] - shown[ 0 ] ) * $bog_gamestudio_app_fit_gap, 1 )
-			const height = Math.max( ( shown[ 3 ] - shown[ 1 ] ) * $bog_gamestudio_app_fit_gap, 1 )
+			const width = Math.max( ( shown[ 2 ] - shown[ 0 ] ) * $bog_gamengine_studio_fit_gap, 1 )
+			const height = Math.max( ( shown[ 3 ] - shown[ 1 ] ) * $bog_gamengine_studio_fit_gap, 1 )
 			const zoom = Math.min( cam.height() / height, cam.height() * aspect / width )
 			cam.zoom( Math.min( cam.zoom_max(), Math.max( cam.zoom_min(), zoom ) ) )
 			cam.place( ( shown[ 0 ] + shown[ 2 ] ) / 2, ( shown[ 1 ] + shown[ 3 ] ) / 2 )
@@ -1423,7 +1418,7 @@ namespace $.$$ {
 			if( node && this.editing() ) {
 				const at = point.world( this.point_world, x, y )
 				const origin = this.gizmo_pos()
-				const axis = $bog_gamestudio_app_gizmo_hit( at[ 0 ] - origin[ 0 ], at[ 1 ] - origin[ 1 ], this.gizmo_size() )
+				const axis = $bog_gamengine_studio_gizmo_hit( at[ 0 ] - origin[ 0 ], at[ 1 ] - origin[ 1 ], this.gizmo_size() )
 				if( axis ) {
 					this.drag_axis = axis
 					this.drag_moved = false

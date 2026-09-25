@@ -1,6 +1,6 @@
 namespace $.$$ {
 
-	export class $bog_gamestudio_case extends $.$bog_gamestudio_case {
+	export class $bog_gamengine_studio_case extends $.$bog_gamengine_studio_case {
 
 		@ $mol_mem
 		Hero_pos( next?: Float32Array ) {

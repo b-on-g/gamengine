@@ -1,7 +1,7 @@
 namespace $ {
 
-	export const $bog_gamestudio_case_source = [
-		'$bog_gamestudio_case $bog_gamestudio_sample_map',
+	export const $bog_gamengine_studio_case_source = [
+		'$bog_gamengine_studio_case $bog_gamengine_studio_sample_map',
 		'\tatlas <= Atlas',
 		'\tmap \\',
 		'\t\t\\######',
@@ -13,7 +13,7 @@ namespace $ {
 		'\t\t# \\wall',
 		'\t\t. \\floor',
 		'\tkids /',
-		'\t\t<= Hero $bog_gamestudio_sample_hero',
+		'\t\t<= Hero $bog_gamengine_studio_sample_hero',
 		'\t\t\tname \\Герой',
 		'\t\t\trole \\hero',
 		'\t\t\tatlas <= Atlas',
@@ -49,8 +49,8 @@ namespace $ {
 		'\t\tsize 64',
 	].join( '\n' ) + '\n'
 
-	export const $bog_gamestudio_case_alt_source = [
-		'$bog_gamestudio_case_alt $bog_gamengine_scene',
+	export const $bog_gamengine_studio_case_alt_source = [
+		'$bog_gamengine_studio_case_alt $bog_gamengine_scene',
 		'\tkids /',
 		'\t\t<= Walker_9 $bog_gamengine_sprite',
 		'\t\t\tname \\Другой герой',

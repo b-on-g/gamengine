@@ -1,6 +1,6 @@
 namespace $.$$ {
 
-	$mol_style_define( $bog_gamestudio_app, {
+	$mol_style_define( $bog_gamengine_studio, {
 
 		Side: {
 			flex: { grow: 0, shrink: 0, basis: '16rem' },
@@ -58,7 +58,7 @@ namespace $.$$ {
 					},
 				},
 			},
-			'[bog_gamestudio_app_shared]': {
+			'[bog_gamengine_studio_shared]': {
 				true: {
 					color: $mol_theme.special,
 				},

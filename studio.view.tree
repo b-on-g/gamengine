@@ -1,12 +1,11 @@
-$bog_gamestudio_app $mol_view
+$bog_gamengine_studio $mol_view
+	title \Студия
 	selected? null
 	source? \
 	source_own? \
 	klass? \
 	land_link? \
 	plugins /
-		<= Control $mol_keyboard_state
-			key <= key_map *
 		<= Escape $mol_hotkey
 			key * escape? <=> tool_drop? null
 		<= Delete_key $mol_hotkey
@@ -93,7 +92,7 @@ $bog_gamestudio_app $mol_view
 				<= Drop $mol_drop
 					attr *
 						^
-						bog_gamestudio_app_placing <= placing false
+						bog_gamengine_studio_placing <= placing false
 					drop? <=> asset_drop? null
 					Sub <= Draw $bog_gamengine_draw
 						scene <= Scene
@@ -157,7 +156,7 @@ $bog_gamestudio_app $mol_view
 					sub / <= kept_stat \
 				<= Undo_stat $mol_view
 					sub / <= undo_stat \
-	Doc $bog_gamestudio_doc
+	Doc $bog_gamengine_studio_doc
 		source_own? <=> source_own?
 		land <= doc_land null
 		input <= scene_input null
@@ -177,7 +176,7 @@ $bog_gamestudio_app $mol_view
 		shader <= Gizmo_shader
 		shape <= Rect_shape $bog_gamengine_shape_lines
 		nodes <= rect_nodes /
-	Land $bog_gamestudio_doc_land
+	Land $bog_gamengine_studio_doc_land
 		link? <=> land_link?
 		name <= mate_name \
 	Mate_shape $bog_gamengine_shape_lines
@@ -206,7 +205,7 @@ $bog_gamestudio_app $mol_view
 		shader <= Text_shader
 		atlas <= Font_atlas
 		source <= mate_pool* null
-	Assets $bog_gamestudio_assets
+	Assets $bog_gamengine_studio_assets
 		fallback /
 			*
 				uri \bog/gamengine/demo/atlas/hero.png
@@ -288,8 +287,8 @@ $bog_gamestudio_app $mol_view
 		checked? <=> row_selected*? false
 		attr *
 			^
-			bog_gamestudio_app_shared <= row_shared* false
-	Kit $bog_gamestudio_kit
+			bog_gamengine_studio_shared <= row_shared* false
+	Kit $bog_gamengine_studio_kit
 	Kit_row* $mol_check
 		title <= kit_title* \
 		checked? <=> kit_selected*? false

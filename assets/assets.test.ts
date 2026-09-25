@@ -5,7 +5,7 @@ namespace $ {
 		{ uri: 'bog/gamengine/demo/room/model/pillar.glb', kind: 'model' },
 		{ uri: 'bog/gamengine/demo/sound/coin.wav', kind: 'sound' },
 		{ uri: 'bog/gamengine/demo/atlas/coin.png', kind: 'image' },
-	] as readonly $bog_gamestudio_assets_item[]
+	] as readonly $bog_gamengine_studio_assets_item[]
 
 	function assets( $: $, json: unknown = null ) {
 		$.$mol_fetch = class extends $mol_fetch {
@@ -14,7 +14,7 @@ namespace $ {
 				return json
 			}
 		}
-		return $bog_gamestudio_assets.create( assets => {
+		return $bog_gamengine_studio_assets.create( assets => {
 			assets.$ = $
 			assets.fallback = ()=> tree_list
 		} )

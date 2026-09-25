@@ -1,6 +1,6 @@
 namespace $ {
 
-	export class $bog_gamestudio_sample_map extends $bog_gamengine_scene {
+	export class $bog_gamengine_studio_sample_map extends $bog_gamengine_scene {
 
 		@ $mol_mem
 		map( next = '' ) {

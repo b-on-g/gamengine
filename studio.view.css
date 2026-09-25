@@ -1,0 +1,12 @@
+[bog_gamengine_studio_drop][bog_gamengine_studio_placing="true"] {
+	cursor: copy;
+}
+
+[bog_gamengine_studio_source_foot] {
+	flex-wrap: wrap;
+}
+
+[bog_gamengine_studio_source_foot] > * {
+	flex: 1 1 8rem;
+	min-width: 0;
+}

@@ -1,6 +1,6 @@
 namespace $ {
 
-	export class $bog_gamestudio_sample_hero extends $bog_gamengine_sprite {
+	export class $bog_gamengine_studio_sample_hero extends $bog_gamengine_sprite {
 
 		@ $mol_mem
 		input( next?: $bog_gamengine_input | null ) {

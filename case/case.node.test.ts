@@ -1,13 +1,13 @@
 namespace $ {
 
 	function case_file( name: string ) {
-		return $mol_file.relative( `bog/gamestudio/case/${ name }` ).text()
+		return $mol_file.relative( `bog/gamengine/studio/case/${ name }` ).text()
 	}
 
 	$mol_test({
 
 		'game finds nodes by role, not by the name the editor gave them'( $ ) {
-			const scene = new $$.$bog_gamestudio_case
+			const scene = new $$.$bog_gamengine_studio_case
 			const hero = scene.by_role_one( 'hero' )
 			$mol_assert_equal( hero.title(), 'Герой' )
 			$mol_assert_equal( scene.by_role( 'crumb' ).map( node => node.title() ), [ 'Монета', 'Ключ' ] )
@@ -15,9 +15,9 @@ namespace $ {
 		},
 
 		'the same roles live in another document with other declaration names'( $ ) {
-			const doc = $bog_gamestudio_doc.create( doc => {
+			const doc = $bog_gamengine_studio_doc.create( doc => {
 				doc.$ = $
-				doc.source( $bog_gamestudio_case_alt_source )
+				doc.source( $bog_gamengine_studio_case_alt_source )
 			} )
 			const scene = doc.scene()
 			$mol_assert_equal( scene.by_role_one( 'hero' ).title(), 'Другой герой' )
@@ -27,13 +27,13 @@ namespace $ {
 		},
 
 		'role asked for one is loud when there is none or many'( $ ) {
-			const scene = new $$.$bog_gamestudio_case
+			const scene = new $$.$bog_gamengine_studio_case
 			$mol_assert_fail( ()=> scene.by_role_one( 'nobody' ), 'Role "nobody" is on 0 nodes, need exactly one' )
 			$mol_assert_fail( ()=> scene.by_role_one( 'crumb' ), 'Role "crumb" is on 2 nodes, need exactly one' )
 		},
 
 		'exported module runs: the scene steps and every vector is writable'( $ ) {
-			const scene = new $$.$bog_gamestudio_case
+			const scene = new $$.$bog_gamengine_studio_case
 			const nodes = scene.nodes()
 			$mol_assert_ok( nodes.length > 0 )
 			scene.step()
@@ -60,26 +60,26 @@ namespace $ {
 		},
 
 		'module exported from the editor document is the one built in this folder'( $ ) {
-			const doc = $bog_gamestudio_doc.create( doc => {
+			const doc = $bog_gamengine_studio_doc.create( doc => {
 				doc.$ = $
-				doc.source( $bog_gamestudio_case_source )
+				doc.source( $bog_gamengine_studio_case_source )
 			} )
-			const made = doc.module( '$bog_gamestudio_case' )
+			const made = doc.module( '$bog_gamengine_studio_case' )
 			$mol_assert_equal( made.tree, case_file( 'case.view.tree' ) )
 			$mol_assert_equal( made.ts, case_file( 'case.view.ts' ) )
 		},
 
 		'editor document itself keeps the list form that never type checks'( $ ) {
-			$mol_assert_ok( $bog_gamestudio_case_source.includes( '\t\t\tpos / 3.25 0 0\n' ) )
+			$mol_assert_ok( $bog_gamengine_studio_case_source.includes( '\t\t\tpos / 3.25 0 0\n' ) )
 			$mol_assert_not( case_file( 'case.view.tree' ).includes( 'pos / ' ) )
 		},
 
 		'every vector of the document becomes a typed port'( $ ) {
-			const doc = $bog_gamestudio_doc.create( doc => {
+			const doc = $bog_gamengine_studio_doc.create( doc => {
 				doc.$ = $
-				doc.source( $bog_gamestudio_case_source )
+				doc.source( $bog_gamengine_studio_case_source )
 			} )
-			const made = doc.module( '$bog_gamestudio_case' )
+			const made = doc.module( '$bog_gamengine_studio_case' )
 			$mol_assert_not( /^\t+\w+\?? \/ -?[\d.]/m.test( made.tree ) )
 			for( const port of [ 'Hero_pos', 'Coin_pos', 'Coin_tint', 'Wall_pos', 'Wall_scale', 'Sprite_1_pos' ] ) {
 				$mol_assert_ok( made.tree.includes( `<=> ${ port }? Float32Array` ) )
@@ -88,11 +88,11 @@ namespace $ {
 		},
 
 		'lists of strings are left alone'( $ ) {
-			const doc = $bog_gamestudio_doc.create( doc => {
+			const doc = $bog_gamengine_studio_doc.create( doc => {
 				doc.$ = $
-				doc.source( $bog_gamestudio_case_source )
+				doc.source( $bog_gamengine_studio_case_source )
 			} )
-			const made = doc.module( '$bog_gamestudio_case' )
+			const made = doc.module( '$bog_gamengine_studio_case' )
 			$mol_assert_ok( made.tree.includes( '\t\turis /\n\t\t\t\\bog/gamengine/demo/atlas/hero.png\n' ) )
 		},
 

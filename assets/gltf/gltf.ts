@@ -1,6 +1,6 @@
 namespace $ {
 
-	export class $bog_gamestudio_assets_gltf extends $bog_gamengine_shape_gltf {
+	export class $bog_gamengine_studio_assets_gltf extends $bog_gamengine_shape_gltf {
 
 		@ $mol_mem
 		uri( next = '' ) {

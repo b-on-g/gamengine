@@ -1,18 +1,18 @@
 namespace $ {
 
-	export class $bog_gamestudio_doc_land_mate extends $giper_baza_dict.with({
+	export class $bog_gamengine_studio_doc_land_mate extends $giper_baza_dict.with({
 		Name: $giper_baza_atom_text,
 		Pick: $giper_baza_atom_text,
 		Spot: $giper_baza_atom_list,
 		Seen: $giper_baza_atom_real,
 	}) {}
 
-	export class $bog_gamestudio_doc_land_data extends $giper_baza_dict.with({
+	export class $bog_gamengine_studio_doc_land_data extends $giper_baza_dict.with({
 		Source: $giper_baza_atom_text,
-		Mates: $giper_baza_dict_to( $bog_gamestudio_doc_land_mate ),
+		Mates: $giper_baza_dict_to( $bog_gamengine_studio_doc_land_mate ),
 	}) {}
 
-	export class $bog_gamestudio_doc_land extends $mol_object2 {
+	export class $bog_gamengine_studio_doc_land extends $mol_object2 {
 
 		@ $mol_mem
 		link( next = '' ) {
@@ -52,7 +52,7 @@ namespace $ {
 		}
 
 		data() {
-			return this.land().Data( $bog_gamestudio_doc_land_data )
+			return this.land().Data( $bog_gamengine_studio_doc_land_data )
 		}
 
 		read() {
@@ -79,7 +79,7 @@ namespace $ {
 
 		@ $mol_mem
 		me() {
-			const key = 'bog_gamestudio_doc_land_me:' + this.land_link()
+			const key = 'bog_gamengine_studio_doc_land_me:' + this.land_link()
 			const kept = this.$.$mol_state_local.value< string >( key )
 			if( kept ) return kept
 			const id = $mol_guid()
@@ -172,7 +172,7 @@ namespace $ {
 			new this.$.$mol_after_tick( ()=> $mol_wire_async( this ).beat( mate, name, pick, snap, now ) )
 		}
 
-		beat( mate: $bog_gamestudio_doc_land_mate, name: string, pick: string, spot: number[], now: number ) {
+		beat( mate: $bog_gamengine_studio_doc_land_mate, name: string, pick: string, spot: number[], now: number ) {
 			if( mate.Name()?.val() !== name ) mate.Name( 'auto' )!.val( name )
 			if( mate.Pick()?.val() !== pick ) mate.Pick( 'auto' )!.val( pick )
 			mate.Spot( 'auto' )!.val( spot )
