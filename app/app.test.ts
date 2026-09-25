@@ -129,9 +129,10 @@ namespace $ {
 			$.$mol_state_time = $bog_gamestudio_app_time_mock
 			const run = ( held: boolean )=> {
 				const app = $$.$bog_gamestudio_app.make({ $ })
+				pick( app, 'Герой' )
+				app.write( 'pos', [ 1.5, -1.5, 0 ] )
 				$bog_gamestudio_app_time_mock.stamp( 0 )
 				app.Scene().step()
-				hero( app ).pos( new Float32Array([ -4, 1, 0 ]) )
 				if( held ) app.Key().keys().D( true )
 				for( let tick = 1; tick <= 3; ++ tick ) {
 					$bog_gamestudio_app_time_mock.stamp( tick * 16 )
@@ -140,6 +141,13 @@ namespace $ {
 				return Array.from( hero( app ).pos() )
 			}
 			$mol_assert_equal( run( true ), run( false ) )
+		},
+
+		'the edit mode leaves the scene without input'( $ ) {
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			$mol_assert_equal( app.scene_input(), null )
+			app.play()
+			$mol_assert_equal( app.scene_input(), app.Input() )
 		},
 
 		'stop restores a number of a component, not only of a node'( $ ) {
