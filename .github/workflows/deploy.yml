@@ -147,6 +147,16 @@ jobs:
       with:
         folder: 'bog/gamengine/demo/-'
 
+    - name: Числа проб из файлов пака
+      if: always()
+      run: |
+        far=bog/gamengine/demo/legion/probe/-/far.md
+        if [ -s "$far" ]; then
+          cat "$far"
+        else
+          echo "$far пуст или не создан: проба не дошла до замера, числа за этот прогон нет."
+        fi
+
     - name: URLs
       if: github.ref == 'refs/heads/main'
       run: |
