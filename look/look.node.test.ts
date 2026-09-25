@@ -114,16 +114,16 @@ namespace $ {
 		},
 
 		'recorded renderers are told apart from an unknown one'() {
-			$mol_assert_equal( $bog_gamengine_look_family( $bog_gamengine_look_base.soft_renderer ), 'soft' )
-			$mol_assert_equal( $bog_gamengine_look_family( $bog_gamengine_look_base.gpu_renderer ), 'gpu' )
+			$mol_assert_equal( $bog_gamengine_look_family( $bog_gamengine_look_machine.soft ), 'soft' )
+			$mol_assert_equal( $bog_gamengine_look_family( $bog_gamengine_look_machine.gpu ), 'gpu' )
 			$mol_assert_equal( $bog_gamengine_look_family( 'ANGLE (NVIDIA, GeForce RTX 4090, OpenGL 4.6)' ), '' )
 			$mol_assert_equal( $bog_gamengine_look_family( 'нет webgl2' ), '' )
 		},
 
 		'another backend of the same renderer keeps its family but is not the recorded one'() {
-			const other = $bog_gamengine_look_base.soft_renderer.replace( 'LLVM 10.0.0', 'Subzero' )
+			const other = $bog_gamengine_look_machine.soft.replace( 'LLVM 10.0.0', 'Subzero' )
 			$mol_assert_equal( $bog_gamengine_look_family( other ), 'soft' )
-			$mol_assert_not( other === $bog_gamengine_look_base.soft_renderer )
+			$mol_assert_not( other === $bog_gamengine_look_machine.soft )
 		},
 
 		'scene signature holds against the written one'() {

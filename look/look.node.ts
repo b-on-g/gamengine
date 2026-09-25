@@ -307,10 +307,10 @@ namespace $ {
 		readonly scenes: { readonly [ name: string ]: $bog_gamengine_look_take_shot }
 	}
 
-	export function $bog_gamengine_look_family( renderer: string, base = $bog_gamengine_look_base ) {
+	export function $bog_gamengine_look_family( renderer: string, machine = $bog_gamengine_look_machine ) {
 		if( /нет webgl2/i.test( renderer ) ) return ''
 		if( /swiftshader|software|llvmpipe/i.test( renderer ) ) return 'soft'
-		if( renderer === base.gpu_renderer ) return 'gpu'
+		if( renderer === machine.gpu ) return 'gpu'
 		return ''
 	}
 
@@ -401,6 +401,7 @@ namespace $ {
 		scenes: readonly $bog_gamengine_look_scene[] = $bog_gamengine_look_scenes,
 		base = $bog_gamengine_look_base,
 		mine = !$node.process.env[ 'CI' ],
+		machine = $bog_gamengine_look_machine,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, 'подпись: ' + line + '\n' ); return line }
@@ -415,10 +416,10 @@ namespace $ {
 
 		const fail = ( reason: string )=> $mol_fail( new Error( reason ) )
 
-		const family = $bog_gamengine_look_family( got.renderer, base )
+		const family = $bog_gamengine_look_family( got.renderer, machine )
 		if( !family ) return fail( `рендерер не распознан, подпись сверять не с чем: ${ got.renderer }` )
 
-		const renderer = family === 'soft' ? base.soft_renderer : base.gpu_renderer
+		const renderer = family === 'soft' ? machine.soft : machine.gpu
 		if( got.renderer !== renderer ) {
 			return fail( `подпись снята не на этом рендерере:\n  ${ got.renderer }\n  против\n  ${ renderer }` )
 		}

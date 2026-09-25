@@ -4,15 +4,16 @@ namespace $ {
 		readonly [ scene: string ]: $bog_gamengine_look_shot
 	}
 
+	export const $bog_gamengine_look_machine = {
+		soft: 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)',
+		gpu: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
+	}
+
 	export const $bog_gamengine_look_base = {
 
 		at: '2026-09-25',
 
 		commit: 'f1bc287',
-
-		soft_renderer: 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)',
-
-		gpu_renderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
 
 		soft: {
 			flat: {
