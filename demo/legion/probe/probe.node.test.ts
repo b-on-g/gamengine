@@ -7,6 +7,15 @@ namespace $ {
 			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_demo_legion_probe_ok ) )
 		},
 
+		'order to the far corner for every own unit stays under the price we admit'() {
+			const out = $bog_probe_test( 'bog/gamengine/demo/legion/probe/-/node.js', 'bog_gamengine_demo_legion_probe_far' )
+			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_demo_legion_probe_far_ok ) )
+		},
+
+		'admitted ceiling of the far order stands above the goal it will come down to'() {
+			$mol_assert_ok( $bog_gamengine_demo_legion_probe_far_max > $bog_gamengine_demo_legion_probe_peak_max )
+		},
+
 	})
 
 }
