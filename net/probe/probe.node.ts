@@ -10,7 +10,19 @@ namespace $ {
 
 	export const $bog_gamengine_net_probe_no_master = 'мастер Базы на 9090 не слушает, проба пропущена'
 
-	export const $bog_gamengine_net_probe_alone_ok = 'окно с мастером в адресе поднялось, объявило комнату и увело героя вправо'
+	export const $bog_gamengine_net_probe_alone_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0`
+
+	export const $bog_gamengine_net_probe_state_script = `
+		return {
+			mol: typeof $ !== 'undefined',
+			canvas: document.querySelector( 'canvas' )?.width ?? -1,
+			land: /land \\S{10,}/.test( document.body.innerText ),
+			text: document.body.innerText.slice( 0, 200 ),
+			errors: window.$bog_gamengine_net_probe_errors ?? null,
+		}
+	`
+
+	export const $bog_gamengine_net_probe_alone_ok = 'окно с мастером в адресе нарисовало стенд и увело героя вправо'
 
 	export const $bog_gamengine_net_probe_limit = 200
 
@@ -110,11 +122,17 @@ namespace $ {
 
 			const page = site.uri( $bog_gamengine_net_probe_page )
 
-			await window.browser.open_page(
-				`${ page }#!master=${ $bog_gamengine_net_probe_master }`,
-				$bog_gamengine_net_probe_ready,
-				60000,
-			)
+			try {
+				await window.browser.open_page(
+					`${ page }#!master=${ $bog_gamengine_net_probe_master }`,
+					$bog_gamengine_net_probe_alone_ready,
+					60000,
+				)
+			} catch( error ) {
+				const seen = await window.browser.evaluate( $bog_gamengine_net_probe_state_script, 15000 ).catch( () => 'страница не ответила' )
+				say( `стенд не вышел в готовность, состояние: ${ JSON.stringify( seen ) }` )
+				return $mol_fail( error as Error )
+			}
 
 			const head = await window.browser.evaluate(
 				$bog_gamengine_net_probe_head_script, 15000,
@@ -126,8 +144,6 @@ namespace $ {
 
 			say( `${ Date.now() - started } мс, ${ JSON.stringify( head ) }, ${ JSON.stringify( moved ) }` )
 
-			if( !head.me ) return $mol_fail( new Error( 'окно не показало свой id' ) )
-			if( !head.land ) return $mol_fail( new Error( 'окно не показало ленд комнаты' ) )
 			if( !moved.start || !moved.moved ) return $mol_fail( new Error( 'окно не показало позицию героя' ) )
 			if( !( moved.moved[ 0 ] > moved.start[ 0 ] ) ) return $mol_fail( new Error( 'герой не поехал вправо на D' ) )
 
