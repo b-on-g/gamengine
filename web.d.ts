@@ -3939,6 +3939,7 @@ declare namespace $ {
         name: string;
         kind: $bog_gamengine_prop_kind;
         fields?: Readonly<Record<string, $bog_gamengine_prop_kind>>;
+        klass?: string;
         get: () => unknown;
         set: (next: unknown) => void;
     };
