@@ -12,7 +12,7 @@ namespace $ {
 
 	export const $bog_gamengine_demo_legion_probe_peak_max = 24
 
-	export const $bog_gamengine_demo_legion_probe_far_max = 200
+	export const $bog_gamengine_demo_legion_probe_far_max = 24
 
 	export const $bog_gamengine_demo_legion_probe_far_ok = 'приказ всем своим в дальний угол доведён, и худший кадр не вырос выше признанного потолка'
 

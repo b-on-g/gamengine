@@ -249,20 +249,9 @@ namespace $ {
 		}
 
 		visible( x0: number, y0: number, x1: number, y1: number ) {
-			const pad = this.pad()
-			const dx = x1 - x0
-			const dy = y1 - y0
-			const steps = Math.ceil( Math.max( Math.abs( dx ), Math.abs( dy ) ) * 4 )
-			for( let i = 0; i <= steps; ++i ) {
-				const t = steps === 0 ? 0 : i / steps
-				const x = x0 + dx * t
-				const y = y0 + dy * t
-				if( this.solid_at( x - pad, y - pad ) ) return false
-				if( this.solid_at( x + pad, y - pad ) ) return false
-				if( this.solid_at( x - pad, y + pad ) ) return false
-				if( this.solid_at( x + pad, y + pad ) ) return false
-			}
-			return true
+			const tile = this.tile()
+			if( !tile ) return false
+			return tile.line_free( x0, y0, x1, y1, this.pad(), 4, this.solid() )
 		}
 
 		smooth( path: Float32Array, count: number, out: Float32Array ) {

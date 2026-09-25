@@ -28,6 +28,35 @@ namespace $ {
 			return out
 		}
 
+		line_free( x0: number, y0: number, x1: number, y1: number, pad: number, per: number, solid: Uint8Array ) {
+			const plane = this.plane()
+			if( plane !== 'xy' && plane !== 'xz' ) {
+				return $mol_fail( new Error( `Map plane ${ plane } is unknown, known: xy, xz` ) )
+			}
+			const down = plane === 'xy'
+			const origin = this.origin()
+			const ox = origin[ 0 ]
+			const ov = origin[ 1 ]
+			const width = this.width()
+			const height = this.height()
+			const dx = x1 - x0
+			const dv = y1 - y0
+			const steps = Math.ceil( Math.max( Math.abs( dx ), Math.abs( dv ) ) * per )
+			for( let i = 0; i <= steps; ++ i ) {
+				const t = steps === 0 ? 0 : i / steps
+				const x = x0 + dx * t
+				const v = y0 + dv * t
+				for( let k = 0; k < 4; ++ k ) {
+					const sx = Math.floor( ( k & 1 ? x + pad : x - pad ) - ox )
+					const sv = k & 2 ? v + pad : v - pad
+					const sy = Math.floor( down ? ov - sv : sv - ov )
+					if( sx < 0 || sy < 0 || sx >= width || sy >= height ) return false
+					if( solid[ sy * width + sx ] ) return false
+				}
+			}
+			return true
+		}
+
 		cell_pos( x: number, y: number, out: Float32Array ) {
 			return this.pos( x, y, 0, out )
 		}
