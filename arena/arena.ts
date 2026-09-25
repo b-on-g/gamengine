@@ -1,6 +1,6 @@
 namespace $ {
 
-	export class $bog_shooter_arena extends $bog_gamengine_map {
+	export class $bog_gamengine_demo_shooter_arena extends $bog_gamengine_map {
 
 		@ $mol_mem
 		plane( next?: $bog_gamengine_map_plane ) {

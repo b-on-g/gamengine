@@ -1,14 +1,14 @@
 namespace $ {
 
-	export const $bog_shooter_probe_page = 'bog/shooter/app/-/index.html'
+	export const $bog_gamengine_demo_shooter_probe_page = 'bog/gamengine/demo/-/index.html#!demo=shooter'
 
-	export const $bog_shooter_probe_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0`
+	export const $bog_gamengine_demo_shooter_probe_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0`
 
-	export const $bog_shooter_probe_ok = 'арена нарисована, выстрел снял мишень, W увёл игрока вперёд'
+	export const $bog_gamengine_demo_shooter_probe_ok = 'арена нарисована, выстрел снял мишень, W увёл игрока вперёд'
 
-	export const $bog_shooter_probe_flags = [ '--use-angle=swiftshader' ] as const
+	export const $bog_gamengine_demo_shooter_probe_flags = [ '--use-angle=swiftshader' ] as const
 
-	export const $bog_shooter_probe_script = `
+	export const $bog_gamengine_demo_shooter_probe_script = `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 		const canvas = document.querySelector( 'canvas' )
 		const gl = canvas && canvas.getContext( 'webgl2' )
@@ -51,7 +51,7 @@ namespace $ {
 		}
 	`
 
-	export type $bog_shooter_probe_look = {
+	export type $bog_gamengine_demo_shooter_probe_look = {
 		readonly x: number
 		readonly z: number
 		readonly health: number
@@ -59,12 +59,12 @@ namespace $ {
 		readonly shots: number
 	}
 
-	export type $bog_shooter_probe_result = {
+	export type $bog_gamengine_demo_shooter_probe_result = {
 		readonly webgl: boolean
 		readonly loaded: boolean
-		readonly start?: $bog_shooter_probe_look
-		readonly shot?: $bog_shooter_probe_look
-		readonly moved?: $bog_shooter_probe_look
+		readonly start?: $bog_gamengine_demo_shooter_probe_look
+		readonly shot?: $bog_gamengine_demo_shooter_probe_look
+		readonly moved?: $bog_gamengine_demo_shooter_probe_look
 		readonly fps?: number
 		readonly frames?: number
 		readonly stat?: string
@@ -74,9 +74,9 @@ namespace $ {
 		readonly size?: readonly [ number, number ]
 	}
 
-	export async function $bog_shooter_probe_check(
+	export async function $bog_gamengine_demo_shooter_probe_check(
 		root = $node.process.cwd(),
-		flags: readonly string[] = $bog_shooter_probe_flags,
+		flags: readonly string[] = $bog_gamengine_demo_shooter_probe_flags,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
@@ -86,12 +86,12 @@ namespace $ {
 		const got = await $bog_probe_run({
 			root,
 			flags,
-			page: $bog_shooter_probe_page,
-			ready: $bog_shooter_probe_ready,
-			script: $bog_shooter_probe_script,
+			page: $bog_gamengine_demo_shooter_probe_page,
+			ready: $bog_gamengine_demo_shooter_probe_ready,
+			script: $bog_gamengine_demo_shooter_probe_script,
 			width: 1024,
 			height: 768,
-		}) as $bog_shooter_probe_result | typeof $bog_probe_skip
+		}) as $bog_gamengine_demo_shooter_probe_result | typeof $bog_probe_skip
 
 		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
 
@@ -108,7 +108,7 @@ namespace $ {
 		const [ r, g, b ] = got.center!
 		if( r < 25 && g < 25 && b < 25 ) return fail( 'центр чёрный, арена не нарисована' )
 
-		return say( $bog_shooter_probe_ok )
+		return say( $bog_gamengine_demo_shooter_probe_ok )
 	}
 
 }

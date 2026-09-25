@@ -1,6 +1,6 @@
 namespace $ {
 
-	export class $bog_shooter_phys extends $bog_gamengine_phys3 {
+	export class $bog_gamengine_demo_shooter_phys extends $bog_gamengine_phys3 {
 
 		layer = new Float32Array( 0 )
 

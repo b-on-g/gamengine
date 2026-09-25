@@ -14,18 +14,14 @@ namespace $.$$ {
 	const floor_normal = new Float32Array([ 0, 1, 0 ])
 	const floor_at = new Float32Array( 3 )
 
-	export class $bog_shooter_app extends $.$bog_shooter_app {
-
-		key_map() {
-			return this.Key().keys()
-		}
+	export class $bog_gamengine_demo_shooter extends $.$bog_gamengine_demo_shooter {
 
 		@ $mol_mem
 		Phys() {
 			this.round()
 			const arena = this.Arena()
 			const atlas = this.Atlas()
-			const phys = new this.$.$bog_shooter_phys
+			const phys = new this.$.$bog_gamengine_demo_shooter_phys
 			phys.place( $bog_gamengine_phys3.shape_plane, floor_normal, 0, floor_at, atlas.layer( 'floor' ) )
 			const wall = atlas.layer( 'wall' )
 			const ids = arena.wall_ids()
@@ -52,7 +48,7 @@ namespace $.$$ {
 
 		@ $mol_mem
 		targets() {
-			return this.target_keys().map( key => this.Target( key ) ) as readonly $bog_shooter_target[]
+			return this.target_keys().map( key => this.Target( key ) ) as readonly $bog_gamengine_demo_shooter_target[]
 		}
 
 		@ $mol_mem

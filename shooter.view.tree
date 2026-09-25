@@ -1,8 +1,5 @@
-$bog_shooter_app $mol_page
+$bog_gamengine_demo_shooter $mol_page
 	title \Стрелок
-	plugins /
-		<= Control $mol_keyboard_state
-			key <= key_map *
 	tools /
 		<= Health $mol_labeler
 			title \Здоровье
@@ -60,22 +57,22 @@ $bog_shooter_app $mol_page
 		\#.....E....#
 		\#....P.....#
 		\############
-	Phys $bog_shooter_phys
-	Arena $bog_shooter_arena
+	Phys $bog_gamengine_demo_shooter_phys
+	Arena $bog_gamengine_demo_shooter_arena
 		map <= map
 	Atlas $bog_gamengine_atlas
 		uris /
-			\bog/shooter/app/atlas/wall.png
-			\bog/shooter/app/atlas/floor.png
-			\bog/shooter/app/atlas/target.png
-			\bog/shooter/app/atlas/spark.png
+			\bog/gamengine/demo/shooter/atlas/wall.png
+			\bog/gamengine/demo/shooter/atlas/floor.png
+			\bog/gamengine/demo/shooter/atlas/target.png
+			\bog/gamengine/demo/shooter/atlas/spark.png
 		size 256
 	Sound $bog_gamengine_sound
 		listener <= Eye
 		range 16
 		uris *
-			shot \bog/shooter/app/sound/shot.wav
-			hit \bog/shooter/app/sound/hit.wav
+			shot \bog/gamengine/demo/shooter/sound/shot.wav
+			hit \bog/gamengine/demo/shooter/sound/hit.wav
 	Key $bog_gamengine_key
 		bind *
 			forward /
@@ -140,7 +137,7 @@ $bog_shooter_app $mol_page
 		frame \floor
 		pos <= floor_pos Float32Array
 		size <= floor_size Float32Array
-	Player $bog_shooter_player
+	Player $bog_gamengine_demo_shooter_player
 		phys3 <= Phys
 		input <= Input
 		screen <= Screen
@@ -157,7 +154,7 @@ $bog_shooter_app $mol_page
 		follow <= Player
 		lift <= eye_lift 0
 		far 60
-	Target* $bog_shooter_target
+	Target* $bog_gamengine_demo_shooter_target
 		phys3 <= Phys
 		player <= Player
 		sound <= Sound

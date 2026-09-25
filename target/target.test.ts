@@ -1,21 +1,21 @@
 namespace $ {
 
 	function world_of() {
-		const world = new $bog_shooter_phys
+		const world = new $bog_gamengine_demo_shooter_phys
 		world.place( $bog_gamengine_phys3.shape_plane, new Float32Array([ 0, 1, 0 ]), 0, new Float32Array( 3 ), 0 )
 		return world
 	}
 
-	function target_at( world: $bog_shooter_phys, at: Float32Array ) {
-		const target = new $bog_shooter_target
+	function target_at( world: $bog_gamengine_demo_shooter_phys, at: Float32Array ) {
+		const target = new $bog_gamengine_demo_shooter_target
 		target.phys3( world )
 		target.start( at )
 		target.index()
 		return target
 	}
 
-	function player_at( world: $bog_shooter_phys, at: Float32Array ) {
-		const player = new $bog_shooter_player
+	function player_at( world: $bog_gamengine_demo_shooter_phys, at: Float32Array ) {
+		const player = new $bog_gamengine_demo_shooter_player
 		player.phys3( world )
 		player.pos( at )
 		return player

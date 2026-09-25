@@ -1,0 +1,6 @@
+deploy \/bog/gamengine/demo/shooter/atlas/wall.png
+deploy \/bog/gamengine/demo/shooter/atlas/floor.png
+deploy \/bog/gamengine/demo/shooter/atlas/target.png
+deploy \/bog/gamengine/demo/shooter/atlas/spark.png
+deploy \/bog/gamengine/demo/shooter/sound/shot.wav
+deploy \/bog/gamengine/demo/shooter/sound/hit.wav

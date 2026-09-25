@@ -1,6 +1,6 @@
 namespace $.$$ {
 
-	$mol_style_define( $bog_shooter_app, {
+	$mol_style_define( $bog_gamengine_demo_shooter, {
 
 		flex: {
 			grow: 1,

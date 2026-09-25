@@ -1,12 +1,12 @@
 namespace $ {
 
-	export type $bog_shooter_player_target = {
+	export type $bog_gamengine_demo_shooter_player_target = {
 		alive(): boolean
 		index(): number
 		hurt( amount: number, dir: Float32Array, push: number ): boolean
 	}
 
-	export class $bog_shooter_player extends $bog_gamengine_phys3_walker {
+	export class $bog_gamengine_demo_shooter_player extends $bog_gamengine_phys3_walker {
 
 		@ $mol_mem
 		screen( next?: $bog_gamengine_screen | null ) {
@@ -24,7 +24,7 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		targets( next?: readonly $bog_shooter_player_target[] ) {
+		targets( next?: readonly $bog_gamengine_demo_shooter_player_target[] ) {
 			return next ?? []
 		}
 

@@ -1,10 +1,10 @@
 namespace $ {
 
-	export class $bog_shooter_target extends $bog_gamengine_phys3_body {
+	export class $bog_gamengine_demo_shooter_target extends $bog_gamengine_phys3_body {
 
 		@ $mol_mem
-		phys3( next?: $bog_shooter_phys ) {
-			return next ?? new $bog_shooter_phys
+		phys3( next?: $bog_gamengine_demo_shooter_phys ) {
+			return next ?? new $bog_gamengine_demo_shooter_phys
 		}
 
 		@ $mol_mem
@@ -23,7 +23,7 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		player( next?: $bog_shooter_player | null ) {
+		player( next?: $bog_gamengine_demo_shooter_player | null ) {
 			return next ?? null
 		}
 
@@ -166,7 +166,7 @@ namespace $ {
 			if( !this.seen ) this.patrol( world, dt )
 		}
 
-		patrol( world: $bog_shooter_phys, dt: number ) {
+		patrol( world: $bog_gamengine_demo_shooter_phys, dt: number ) {
 			const pos = this.pos()
 			const skin = this.size()[ 0 ] + 0.05
 			const dir = this.dir
@@ -192,7 +192,7 @@ namespace $ {
 			world.trans_write( i )
 		}
 
-		aim( world: $bog_shooter_phys, dt: number ) {
+		aim( world: $bog_gamengine_demo_shooter_phys, dt: number ) {
 			if( this.wait > 0 ) this.wait -= dt
 			this.seen = false
 			const player = this.player()
