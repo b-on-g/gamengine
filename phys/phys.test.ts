@@ -106,6 +106,22 @@ namespace $ {
 			$mol_assert_equal( mover.hits, [ ghost ] )
 		},
 
+		'body inside tile wall stays put while time stands still and moves out once it runs'() {
+			const body = new Probe
+			body.pos( new Float32Array([ 0.5, -0.5, 0 ]) )
+			const tile = new $bog_gamengine_phys_tile
+			tile.map( map )
+			const phys = new $bog_gamengine_phys
+			phys.tile( tile )
+			phys.bodies([ body ])
+			phys.step( 0 )
+			$mol_assert_equal( body.pos()[ 0 ], 0.5 )
+			$mol_assert_equal( body.pos()[ 1 ], -0.5 )
+			$mol_assert_equal( body.hits, [] )
+			phys.step( 0.1 )
+			$mol_assert_ok( body.pos()[ 0 ] !== 0.5 || body.pos()[ 1 ] !== -0.5 )
+		},
+
 		'ghost inside tile wall is not pushed out'() {
 			const ghost = new Probe
 			ghost.ghost( true )

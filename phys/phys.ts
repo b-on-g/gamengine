@@ -48,6 +48,7 @@ namespace $ {
 		}
 
 		step_world( dt: number ) {
+			if( dt === 0 ) return
 			const bodies = this.bodies()
 			const tile = this.tile()
 			const gravity = this.gravity()
