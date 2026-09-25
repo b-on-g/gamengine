@@ -200,11 +200,7 @@ namespace $ {
 		worlds = $bog_gamengine_skin_empty
 		trs_main = $bog_gamengine_skin_empty
 		trs_mix = $bog_gamengine_skin_empty
-		done_skeleton = null as $bog_gamengine_shape_gltf_skeleton | null
-		done_time = NaN
-		done_clip = ''
-		done_mix = ''
-		done_weight = NaN
+		watch = new $bog_gamengine_watch
 
 		prepare() {
 			if( this.bones.length ) return this.bones
@@ -240,19 +236,19 @@ namespace $ {
 				return $mol_fail( new Error( `Skeleton has more than ${ $bog_gamengine_skin_max } joints` ) )
 			}
 
-			const time = this.time()
-			const clip = this.clip()
-			const mix = this.mix()
-			const weight = this.weight()
-			if(
-				this.done_skeleton === skeleton
-				&& this.done_time === time
-				&& this.done_clip === clip
-				&& this.done_mix === mix
-				&& this.done_weight === weight
-			) return this.bones
+			const watch = this.watch.open()
+			const time = watch.of( this.time() )
+			const clip = watch.of( this.clip() )
+			const mix = watch.of( this.mix() )
+			const weight = watch.of( this.weight() )
+			const clips = watch.of( shape!.clips() )
+			watch.of( skeleton.count )
+			watch.of( skeleton.base )
+			watch.of( skeleton.order )
+			watch.of( skeleton.parents )
+			watch.of( skeleton.binds )
+			if( watch.fresh() ) return this.bones
 
-			const clips = shape!.clips()
 			const count = skeleton.count
 			const trs = this.trs_main
 			this.apply( clips.get( clip ), time, trs, count, skeleton.base )
@@ -281,11 +277,6 @@ namespace $ {
 				$bog_gamengine_skin_mat_mul( this.bones, i * 16, this.worlds, i * 16, skeleton.binds, i * 16 )
 			}
 
-			this.done_skeleton = skeleton
-			this.done_time = time
-			this.done_clip = clip
-			this.done_mix = mix
-			this.done_weight = weight
 			++ this.version
 			return this.bones
 		}

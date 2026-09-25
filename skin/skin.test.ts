@@ -79,6 +79,61 @@ namespace $ {
 
 	$mol_test({
 
+		'clips changed under the same skeleton move the pose'( $ ) {
+			const skeleton = $bog_gamengine_skin_test_skeleton()
+			let clips = $bog_gamengine_skin_test_clips()
+			const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: ()=> skeleton, clips: ()=> clips })
+			const skin = new $bog_gamengine_skin
+			skin.shape( shape )
+			skin.clip( 'there' )
+			skin.time( 1 )
+			$mol_assert_ok( Math.abs( skin.pose()[ 12 ] - 2 ) < 1e-4 )
+			const was = clips.get( 'there' )!
+			const next = new Map( clips )
+			next.set( 'there', {
+				... was,
+				channels: [ { ... was.channels[ 0 ], values: new Float32Array([ 5, 0, 0, 5, 0, 0 ]) } ],
+			} )
+			clips = next
+			$mol_assert_equal( shape.skeleton(), skeleton )
+			$mol_assert_ok( Math.abs( skin.pose()[ 12 ] - 5 ) < 1e-4 )
+		},
+
+		'skeleton array swapped under the same object moves the pose'( $ ) {
+			const skeleton = $bog_gamengine_skin_test_skeleton()
+			const clips = $bog_gamengine_skin_test_clips()
+			const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: ()=> skeleton, clips: ()=> clips })
+			const skin = new $bog_gamengine_skin
+			skin.shape( shape )
+			skin.clip( 'here' )
+			skin.time( 0 )
+			$mol_assert_ok( Math.abs( skin.pose()[ 12 ] ) < 1e-4 )
+			const binds = new Float32Array( skeleton.binds )
+			binds[ 12 ] = 3
+			;( skeleton as { binds: Float32Array } ).binds = binds
+			$mol_assert_ok( Math.abs( skin.pose()[ 12 ] - 3 ) < 1e-4 )
+		},
+
+		'every drawing input of the skin is watched'( $ ) {
+			const steps = [
+				( skin: $bog_gamengine_skin )=> skin.time( 0.5 ),
+				( skin: $bog_gamengine_skin )=> skin.clip( 'there' ),
+				( skin: $bog_gamengine_skin )=> skin.mix( 'here' ),
+				( skin: $bog_gamengine_skin )=> skin.weight( 0.5 ),
+			]
+			for( const step of steps ) {
+				const skin = $bog_gamengine_skin_test_make( $, 'turn' )
+				skin.time( 0 )
+				skin.mix( '' )
+				skin.weight( 0 )
+				skin.pose()
+				const version = skin.version
+				step( skin )
+				skin.pose()
+				$mol_assert_equal( skin.version > version, true )
+			}
+		},
+
 		'pose at time zero keeps the bind pose'( $ ) {
 			const skin = $bog_gamengine_skin_test_make( $, 'turn' )
 			const bones = skin.pose()
