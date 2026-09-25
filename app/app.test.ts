@@ -779,6 +779,56 @@ namespace $ {
 			$mol_assert_not( /\d\.\d{4,}/.test( app.source() ) )
 		},
 
+		'taking the brush drops the picked asset instead of losing the stroke'( $ ) {
+			const app = canvas_app( $ )
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			$mol_assert_ok( app.placing() )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			$mol_assert_not( app.placing() )
+			$mol_assert_not( app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked() )
+			$mol_assert_ok( app.brushing() )
+			const before = app.node_rows().length
+			app.brush_down([ 1, 1 ])
+			app.brush_up([ 1, 1 ])
+			$mol_assert_equal( app.Doc().map()[ 1 ][ 1 ], '#' )
+			$mol_assert_equal( app.node_rows().length, before )
+		},
+
+		'taking an asset drops the brush instead of painting a cell'( $ ) {
+			const app = canvas_app( $ )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			$mol_assert_ok( app.brushing() )
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			$mol_assert_not( app.brushing() )
+			$mol_assert_equal( app.Tools().value(), '' )
+			$mol_assert_not( app.Tile( '#' ).checked() )
+			const before = app.node_rows().length
+			const map_before = app.Doc().map().map( row => row.join( '' ) ).join( '\n' )
+			app.pointer_down( press_at( 200, 300 ) )
+			$mol_assert_equal( app.node_rows().length, before + 1 )
+			$mol_assert_equal( app.Doc().map().map( row => row.join( '' ) ).join( '\n' ), map_before )
+		},
+
+		'picked class of the palette drops the brush too'( $ ) {
+			const app = canvas_app( $ )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			app.Kit_row( 'walker' ).checked( true )
+			$mol_assert_not( app.brushing() )
+			$mol_assert_equal( app.kit(), 'walker' )
+		},
+
+		'escape drops the tile under the brush as well'( $ ) {
+			const app = canvas_app( $ )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			app.tool_drop()
+			$mol_assert_equal( app.tile_char(), '' )
+			$mol_assert_not( app.Tile( '#' ).checked() )
+		},
+
 		'picked asset stays picked and puts a copy on every click'( $ ) {
 			const app = canvas_app( $ )
 			const before = app.node_rows().length

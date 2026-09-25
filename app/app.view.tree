@@ -254,7 +254,7 @@ $bog_gamestudio_app $mol_view
 	Rect_node $bog_gamengine_node
 		tint <= gizmo_tint_xy Float32Array
 	Tools $mol_switch
-		value? <=> tool? \
+		value? <=> tool_pick? \
 		options *
 			cell \Клетка
 			rect \Прямоугольник

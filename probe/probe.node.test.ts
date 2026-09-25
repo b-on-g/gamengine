@@ -7,6 +7,11 @@ namespace $ {
 			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamestudio_probe_ok ) )
 		},
 
+		'brush over a picked asset paints and drops it, asset over a brush places and drops it'() {
+			const out = $bog_probe_test( 'bog/gamestudio/probe/-/node.js', 'bog_gamestudio_probe_pick' )
+			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamestudio_probe_pick_ok ) )
+		},
+
 		'gizmo drag lands on the grid with the tick and in the pointer spot without it'() {
 			const out = $bog_probe_test( 'bog/gamestudio/probe/-/node.js', 'bog_gamestudio_probe_grid' )
 			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamestudio_probe_grid_ok ) )

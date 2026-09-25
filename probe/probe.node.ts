@@ -300,6 +300,153 @@ namespace $ {
 		`
 	}
 
+	export const $bog_gamestudio_probe_pick_ok = 'кисть поверх ассета красит и снимает ассет, ассет поверх кисти ставит узел и снимает кисть'
+
+	export const $bog_gamestudio_probe_pick_script = `
+		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
+		const wait = async n => { for( let i = 0; i < n; ++ i ) await frame() }
+		const canvas = document.querySelector( 'canvas' )
+		if( !canvas ) return { webgl: false }
+		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+		const source = ()=> editor.value
+		const map_of = ()=> ( source().match( /map \\\\\\n(?:[ \\t]*\\\\.*\\n)+/ ) || [ '' ] )[ 0 ]
+		const sprites = ()=> source().split( '$bog_gamengine_sprite' ).length - 1
+		const rect = ()=> canvas.getBoundingClientRect()
+		const dpr = devicePixelRatio
+		const ppu = canvas.height / 6
+		const pointer = ( kind, x, y )=> canvas.dispatchEvent( new PointerEvent( kind, {
+			bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: kind === 'pointerup' ? 0 : 1,
+			clientX: rect().left + x / dpr, clientY: rect().top + y / dpr,
+		} ) )
+		const click_cell = async ( cx, cy )=> {
+			const x = canvas.width / 2 + ( cx + 0.5 ) * ppu
+			const y = canvas.height / 2 + ( cy + 0.5 ) * ppu
+			pointer( 'pointerdown', x, y )
+			pointer( 'pointerup', x, y )
+			await wait( 6 )
+		}
+		const tab = async title => {
+			const hit = [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === title )
+			if( hit ) hit.click()
+			await wait( 4 )
+			return Boolean( hit )
+		}
+		const row_of = ( attr, mark )=> [ ... document.querySelectorAll( '[' + attr + ']' ) ]
+			.find( el => el.textContent.includes( mark ) ) || null
+		const checked = el => el && el.getAttribute( 'mol_check_checked' ) === 'true'
+		const drop = document.querySelector( '[bog_gamestudio_app_drop]' )
+		const placing = ()=> drop ? drop.getAttribute( 'bog_gamestudio_app_placing' ) : null
+
+		await wait( 20 )
+
+		await tab( 'Ассеты' )
+		const asset = row_of( 'bog_gamestudio_app_asset_row', 'coin.png' )
+		if( !asset ) return { webgl: true, fail: 'нет строки ассета' }
+		asset.click()
+		await wait( 6 )
+		const asset_on = checked( asset )
+		const placing_asset = placing()
+
+		await tab( 'Тайлы' )
+		const tile = row_of( 'bog_gamestudio_app_tile', 'wall' )
+		const tool = [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === 'Клетка' )
+		if( !tile || !tool ) return { webgl: true, fail: 'нет тайла или инструмента' }
+		tile.click()
+		await wait( 4 )
+		tool.click()
+		await wait( 6 )
+		const placing_after_brush = placing()
+		const map_before = map_of()
+		const sprites_before = sprites()
+		await click_cell( 1, 1 )
+		const map_after = map_of()
+		const sprites_after = sprites()
+
+		await tab( 'Ассеты' )
+		const asset_after_brush = checked( row_of( 'bog_gamestudio_app_asset_row', 'coin.png' ) )
+		const asset_again = row_of( 'bog_gamestudio_app_asset_row', 'coin.png' )
+		asset_again.click()
+		await wait( 6 )
+		await tab( 'Тайлы' )
+		const tile_after_asset = checked( row_of( 'bog_gamestudio_app_tile', 'wall' ) )
+		const tool_after_asset = checked( [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === 'Клетка' ) )
+		const map_mid = map_of()
+		const sprites_mid = sprites()
+		await click_cell( 2, 2 )
+		const map_end = map_of()
+		const sprites_end = sprites()
+
+		return {
+			webgl: true,
+			asset_on, placing_asset, asset_after_brush, placing_after_brush,
+			painted: map_after !== map_before,
+			map_before: map_before.replace( /\\s+/g, ' ' ).slice( 0, 60 ),
+			map_after: map_after.replace( /\\s+/g, ' ' ).slice( 0, 60 ),
+			sprites_by_brush: sprites_after - sprites_before,
+			tile_after_asset, tool_after_asset,
+			map_kept: map_end === map_mid,
+			sprites_by_asset: sprites_end - sprites_mid,
+		}
+	`
+
+	export type $bog_gamestudio_probe_pick_result = {
+		readonly webgl: boolean
+		readonly fail?: string
+		readonly asset_on?: boolean
+		readonly placing_asset?: string | null
+		readonly asset_after_brush?: boolean
+		readonly placing_after_brush?: string | null
+		readonly painted?: boolean
+		readonly map_before?: string
+		readonly map_after?: string
+		readonly sprites_by_brush?: number
+		readonly tile_after_asset?: boolean
+		readonly tool_after_asset?: boolean
+		readonly map_kept?: boolean
+		readonly sprites_by_asset?: number
+	}
+
+	export async function $bog_gamestudio_probe_pick(
+		root = $node.process.cwd(),
+		flags: readonly string[] = $bog_gamestudio_probe_flags,
+	) {
+
+		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
+
+		const started = Date.now()
+
+		const got = await $bog_probe_run({
+			root,
+			flags,
+			page: $bog_gamestudio_probe_page,
+			ready: $bog_gamestudio_probe_ready,
+			script: $bog_gamestudio_probe_pick_script,
+			width: 1600,
+			height: 800,
+		}) as $bog_gamestudio_probe_pick_result | typeof $bog_probe_skip
+
+		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
+
+		say( `${ flags.join( ' ' ) || 'без флагов' }: ${ Date.now() - started } мс, ${ JSON.stringify( got ) }` )
+
+		const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( got ) }` ) )
+
+		if( !got.webgl ) return fail( 'нет webgl2' )
+		if( got.fail ) return fail( got.fail )
+		if( !got.asset_on ) return fail( 'ассет не выбрался' )
+		if( got.placing_asset !== 'true' ) return fail( 'холст не показал, что ставим ассет' )
+		if( got.asset_after_brush ) return fail( 'кисть взяли, а ассет остался выбранным' )
+		if( got.placing_after_brush === 'true' ) return fail( 'кисть взяли, а холст всё ещё ставит ассет' )
+		if( !got.painted ) return fail( 'кисть поверх ассета не покрасила клетку' )
+		if( got.sprites_by_brush !== 0 ) return fail( 'кисть поставила узел вместо покраски' )
+		if( got.tile_after_asset ) return fail( 'ассет взяли, а тайл остался выбранным' )
+		if( got.tool_after_asset ) return fail( 'ассет взяли, а инструмент кисти остался включённым' )
+		if( !got.map_kept ) return fail( 'ассет поверх кисти покрасил карту' )
+		if( got.sprites_by_asset !== 1 ) return fail( 'ассет поверх кисти не поставил узел' )
+
+		return say( $bog_gamestudio_probe_pick_ok )
+	}
+
 	export const $bog_gamestudio_probe_grid_ok = 'с галкой узел встаёт на половину клетки, без галки — в точку указателя без хвоста цифр'
 
 	export const $bog_gamestudio_probe_grid_drag = 83

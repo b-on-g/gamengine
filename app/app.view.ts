@@ -569,6 +569,7 @@ namespace $.$$ {
 			if( next !== undefined ) {
 				this.asset( null )
 				this.kit( next ? id : null )
+				if( next ) this.brush_drop()
 			}
 			return this.kit() === id
 		}
@@ -666,7 +667,10 @@ namespace $.$$ {
 		asset_selected( uri: string, next?: boolean ) {
 			if( next !== undefined ) {
 				this.asset( next ? uri : null )
-				if( next ) this.kit( null )
+				if( next ) {
+					this.kit( null )
+					this.brush_drop()
+				}
 			}
 			return this.asset() === uri
 		}
@@ -1126,10 +1130,27 @@ namespace $.$$ {
 			return next ?? ''
 		}
 
-		tool_drop( event?: Event | null ) {
-			this.tool( '' )
+		tool_pick( next?: string ) {
+			if( next !== undefined ) {
+				this.tool( next )
+				if( next ) this.place_drop()
+			}
+			return this.tool()
+		}
+
+		place_drop() {
 			this.asset( null )
 			this.kit( null )
+		}
+
+		brush_drop() {
+			this.tool( '' )
+			this.tile_char( '' )
+		}
+
+		tool_drop( event?: Event | null ) {
+			this.brush_drop()
+			this.place_drop()
 			this.aiming( null )
 			return event ?? null
 		}
@@ -1175,7 +1196,10 @@ namespace $.$$ {
 		}
 
 		tile_selected( char: string, next?: boolean ) {
-			if( next !== undefined ) this.tile_char( next ? char : '' )
+			if( next !== undefined ) {
+				this.tile_char( next ? char : '' )
+				if( next ) this.place_drop()
+			}
 			return this.tile_char() === char
 		}
 
