@@ -3,8 +3,10 @@
 Как сделать на движке свою игру. Решения и внутренности в [ARCHITECTURE.md](./ARCHITECTURE.md),
 правила кода в [STYLE.md](./STYLE.md), сравнение с Godot и Bevy в [COMPARE.md](./COMPARE.md).
 
-Весь код здесь взят из работающих игр: платформер `bog/jumper`, шутер `bog/shooter`,
-стратегия `bog/legion` и демки `bog/gamengine/demo`. Под каждым куском написано, откуда он.
+Весь код здесь взят из работающих игр и демок одного пака: платформер
+`bog/gamengine/demo/jumper`, шутер `bog/gamengine/demo/shooter`, стратегия
+`bog/gamengine/demo/legion` и остальные страницы `bog/gamengine/demo`. Под каждым
+куском написано, откуда он.
 
 ---
 
@@ -24,8 +26,8 @@ npm start
 `npm start` поднимает дев-сервер на `localhost:9080`. Он собирает модуль по запросу за
 секунды: открыл адрес — получил свежий бандл. Руками ничего собирать не надо.
 
-Движок и игры лежат в том же дереве, каждый пак это папка первого уровня: `bog/gamengine`,
-`bog/jumper`. Свою игру заводим там же.
+Движок лежит в том же дереве одним паком `bog/gamengine`, а его игры это страницы
+демо в `bog/gamengine/demo`. Свою игру заводим своим паком рядом: `bog/mygame`.
 
 **Проверка:** `http://localhost:9080/bog/gamengine/demo/` открывает демки движка.
 
@@ -208,7 +210,7 @@ console.log( Array.from( hero.pos() ) )
 Уровень это строки символов прямо в дереве. `$bog_gamengine_phys_tile` разбирает их и
 знает, какие символы твёрдые.
 
-Из `bog/jumper/app/app.view.tree`:
+Из `bog/gamengine/demo/jumper/jumper.view.tree`:
 
 ```tree
 	map \
@@ -240,10 +242,10 @@ console.log( Array.from( hero.pos() ) )
 ```
 
 Тело задаёт размер и скорость, а столкновения ловит методом `hit`. Из
-`bog/jumper/hero/hero.ts`:
+`bog/gamengine/demo/jumper/hero/hero.ts`:
 
 ```ts
-	export class $bog_jumper_hero extends $bog_gamengine_phys_body {
+	export class $bog_gamengine_demo_jumper_hero extends $bog_gamengine_phys_body {
 
 		@ $mol_mem
 		size( next?: ArrayLike< number > ) {
@@ -270,8 +272,8 @@ console.log( Array.from( hero.pos() ) )
 
 		hit( other: $bog_gamengine_phys_body | null ) {
 			if( !other || this.frozen() ) return
-			if( other instanceof $bog_jumper_item ) return this.take( other )
-			if( other instanceof $bog_jumper_enemy ) this.clash( other )
+			if( other instanceof $bog_gamengine_demo_jumper_item ) return this.take( other )
+			if( other instanceof $bog_gamengine_demo_jumper_enemy ) this.clash( other )
 		}
 
 	}
@@ -331,11 +333,11 @@ console.log( Array.from( hero.pos() ) )
 набор картинок для ходьбы влево не нужен.
 
 Свои картинки кладут в пак рядом с приложением и перечисляют в `app.meta.tree`, иначе при
-деплое их не будет. Из `bog/jumper/app/app.meta.tree`:
+деплое их не будет. Из `bog/gamengine/demo/jumper/jumper.meta.tree`:
 
 ```tree
-deploy \/bog/jumper/app/atlas/hero.png
-deploy \/bog/jumper/app/sound/jump.wav
+deploy \/bog/gamengine/demo/jumper/atlas/hero.png
+deploy \/bog/gamengine/demo/jumper/sound/jump.wav
 ```
 
 ## Ввод
@@ -343,7 +345,7 @@ deploy \/bog/jumper/app/sound/jump.wav
 Клавиши, экранные кнопки и геймпад сводятся к именованным действиям. Игра спрашивает
 «нажат ли jump», а не «нажат ли пробел».
 
-Из `bog/jumper/app/app.view.tree`:
+Из `bog/gamengine/demo/jumper/jumper.view.tree`:
 
 ```tree
 	Key $bog_gamengine_key
@@ -394,7 +396,7 @@ deploy \/bog/jumper/app/sound/jump.wav
 ## Камера
 
 Плоская камера это ортография, `height` задаёт, сколько единиц мира влезает по вертикали.
-Из `bog/jumper/app/app.view.tree`:
+Из `bog/gamengine/demo/jumper/jumper.view.tree`:
 
 ```tree
 	Cam $bog_gamengine_cam_flat
@@ -424,7 +426,7 @@ deploy \/bog/jumper/app/sound/jump.wav
 ## Интерфейс поверх холста
 
 HUD, меню и кнопки это обычный `view.tree`, никакого игрового слоя для них нет. Холст
-лежит в `body` страницы, счётчики в `tools` и `foot`. Из `bog/jumper/app/app.view.tree`:
+лежит в `body` страницы, счётчики в `tools` и `foot`. Из `bog/gamengine/demo/jumper/jumper.view.tree`:
 
 ```tree
 	tools /
@@ -452,10 +454,10 @@ HUD, меню и кнопки это обычный `view.tree`, никаког�
 
 Одна ловушка при вёрстке: `$mol_scroll` внутри `$mol_page` не тянет содержимое по высоте,
 холст получает ноль пикселей и ничего не рисует. Лечится строкой в стилях
-(`bog/jumper/app/app.view.css.ts`):
+(`bog/gamengine/demo/jumper/jumper.view.css.ts`):
 
 ```ts
-	$mol_style_define( $bog_jumper_app, {
+	$mol_style_define( $bog_gamengine_demo_jumper, {
 
 		flex: {
 			grow: 1,
@@ -486,14 +488,14 @@ HUD, меню и кнопки это обычный `view.tree`, никаког�
 
 ## Звук
 
-Сэмплы объявляют по именам, играют из логики. Из `bog/jumper`:
+Сэмплы объявляют по именам, играют из логики. Из `bog/gamengine/demo/jumper`:
 
 ```tree
 	Sound $bog_gamengine_sound
 		uris *
-			jump \bog/jumper/app/sound/jump.wav
-			coin \bog/jumper/app/sound/coin.wav
-			death \bog/jumper/app/sound/death.wav
+			jump \bog/gamengine/demo/jumper/sound/jump.wav
+			coin \bog/gamengine/demo/jumper/sound/coin.wav
+			death \bog/gamengine/demo/jumper/sound/death.wav
 ```
 
 ```ts
@@ -510,10 +512,10 @@ HUD, меню и кнопки это обычный `view.tree`, никаког�
 
 ## Куда смотреть дальше
 
-**Читать код игр.** Они маленькие и полные: `bog/jumper` это платформер с физикой,
-врагами и звуком, `bog/shooter` это объёмный шутер с лучами и генератором уровня,
-`bog/legion` это стратегия с сотней юнитов, навигацией и свободной камерой. Демки движка
-в `bog/gamengine/demo` короче игр и показывают по одной вещи.
+**Читать код игр.** Они маленькие и полные: `demo/jumper` это платформер с физикой,
+врагами и звуком, `demo/shooter` это объёмный шутер с лучами и генератором уровня,
+`demo/legion` это стратегия с сотней юнитов, навигацией и свободной камерой. Остальные
+страницы `bog/gamengine/demo` короче игр и показывают по одной вещи.
 
 **Что в движке уже есть**, кроме показанного выше:
 
