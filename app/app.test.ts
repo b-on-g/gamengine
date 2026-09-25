@@ -88,12 +88,12 @@ namespace $ {
 			const app = $$.$bog_gamestudio_app.make({ $ })
 			$bog_gamestudio_app_time_mock.stamp( 0 )
 			app.Scene().step()
-			const before = Array.from( hero( app ).pos() )
+			hero( app ).pos( new Float32Array([ -5, 1, 0 ]) )
 			app.play()
-			hero( app ).pos([ before[ 0 ] + 3, before[ 1 ], before[ 2 ] ])
-			$mol_assert_equal( hero( app ).pos()[ 0 ], before[ 0 ] + 3 )
+			hero( app ).pos( new Float32Array([ -2, 1, 0 ]) )
+			$mol_assert_equal( hero( app ).pos()[ 0 ], -2 )
 			app.stop()
-			$mol_assert_equal( Array.from( hero( app ).pos() ), before )
+			$mol_assert_equal( Array.from( hero( app ).pos() ), [ -5, 1, 0 ] )
 		},
 
 		'play and stop leave the source untouched'( $ ) {
@@ -113,18 +113,21 @@ namespace $ {
 			$mol_assert_equal( hero( app ).pos()[ 0 ], before )
 		},
 
-		'hero stands still in the edit mode'( $ ) {
+		'the key changes nothing in the edit mode'( $ ) {
 			$.$mol_state_time = $bog_gamestudio_app_time_mock
-			const app = $$.$bog_gamestudio_app.make({ $ })
-			$bog_gamestudio_app_time_mock.stamp( 0 )
-			app.Scene().step()
-			const still = Array.from( hero( app ).pos() )
-			app.Key().keys().D( true )
-			for( let tick = 1; tick <= 3; ++ tick ) {
-				$bog_gamestudio_app_time_mock.stamp( tick * 16 )
+			const run = ( held: boolean )=> {
+				const app = $$.$bog_gamestudio_app.make({ $ })
+				$bog_gamestudio_app_time_mock.stamp( 0 )
 				app.Scene().step()
+				hero( app ).pos( new Float32Array([ -4, 1, 0 ]) )
+				if( held ) app.Key().keys().D( true )
+				for( let tick = 1; tick <= 3; ++ tick ) {
+					$bog_gamestudio_app_time_mock.stamp( tick * 16 )
+					app.Scene().step()
+				}
+				return Array.from( hero( app ).pos() )
 			}
-			$mol_assert_equal( Array.from( hero( app ).pos() ), still )
+			$mol_assert_equal( run( true ), run( false ) )
 		},
 
 		'stop restores a number of a component, not only of a node'( $ ) {
