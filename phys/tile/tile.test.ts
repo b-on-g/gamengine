@@ -110,6 +110,54 @@ namespace $ {
 			$mol_assert_equal( tile.solid_at( 1.5, - 1.5 ), true )
 		},
 
+		'shifted grid on the vertical plane reads back the very cell it drew'() {
+			const tile = new $bog_gamengine_phys_tile
+			tile.map( '####\n#..#\n#..#\n####' )
+			tile.plane( 'xz' )
+			tile.origin([ 6, - 5 ])
+			const spot = tile.cell_pos( 1, 2, new Float32Array( 3 ) )
+			$mol_assert_equal( [ spot[ 0 ], spot[ 2 ] ], [ 7.5, - 2.5 ] )
+			$mol_assert_equal( tile.solid_at( spot[ 0 ], spot[ 2 ] ), false )
+			const pos = new Float32Array( 3 )
+			const at = new Int32Array( 2 )
+			for( let y = 0; y < tile.height(); ++ y ) {
+				for( let x = 0; x < tile.width(); ++ x ) {
+					tile.cell_pos( x, y, pos )
+					tile.cell_at( pos[ 0 ], pos[ 2 ], at )
+					$mol_assert_equal( [ at[ 0 ], at[ 1 ] ], [ x, y ] )
+					$mol_assert_equal( tile.solid_at( pos[ 0 ], pos[ 2 ] ), tile.cell( x, y ) )
+				}
+			}
+		},
+
+		'cell spot is the packed pair that cell at consumes, on both planes'() {
+			for( const plane of [ 'xy', 'xz' ] as const ) {
+				const tile = new $bog_gamengine_phys_tile
+				tile.map( '####\n#..#\n####' )
+				tile.plane( plane )
+				tile.origin([ 3, - 2 ])
+				const spot = new Float32Array( 2 )
+				const at = new Int32Array( 2 )
+				for( let y = 0; y < tile.height(); ++ y ) {
+					for( let x = 0; x < tile.width(); ++ x ) {
+						tile.cell_spot( x, y, spot )
+						tile.cell_at( spot[ 0 ], spot[ 1 ], at )
+						$mol_assert_equal( [ at[ 0 ], at[ 1 ] ], [ x, y ] )
+					}
+				}
+			}
+		},
+
+		'unknown plane falls at cell at, not into xy silently'() {
+			const tile = new $bog_gamengine_phys_tile
+			tile.map( '####\n#..#\n####' )
+			tile.plane( 'zx' )
+			$mol_assert_fail(
+				()=> tile.cell_at( 1.5, - 1.5, new Int32Array( 2 ) ),
+				'Map plane zx is unknown, known: xy, xz',
+			)
+		},
+
 		'solid at a point uses the same cell as cell at'() {
 			const tile = $bog_gamengine_phys_tile_test_make()
 			const pos = tile.cell_pos( 1, 1, new Float32Array( 3 ) )

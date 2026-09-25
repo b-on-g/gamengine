@@ -85,9 +85,12 @@ namespace $ {
 			const hh = body.kind() === 'circle' ? hw : size[ 1 ] / 2
 			const eps = this.eps
 			const side = $bog_gamengine_phys_body
+			const origin = tile?.origin()
+			const ox = origin ? origin[ 0 ] : 0
+			const oy = origin ? origin[ 1 ] : 0
 
-			let x = pos[ 0 ] + vel[ 0 ] * dt
-			let y = pos[ 1 ]
+			let x = pos[ 0 ] - ox + vel[ 0 ] * dt
+			let y = pos[ 1 ] - oy
 			let vx = vel[ 0 ]
 			let vy = vel[ 1 ]
 			let hit = false
@@ -129,7 +132,7 @@ namespace $ {
 
 			}
 
-			y = pos[ 1 ] + vy * dt
+			y = pos[ 1 ] - oy + vy * dt
 
 			if( tile ) {
 
@@ -167,8 +170,8 @@ namespace $ {
 			}
 
 			const next = new Float32Array( 3 )
-			next[ 0 ] = x
-			next[ 1 ] = y
+			next[ 0 ] = x + ox
+			next[ 1 ] = y + oy
 			next[ 2 ] = pos[ 2 ]
 			body.pos( next )
 

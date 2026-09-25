@@ -141,6 +141,22 @@ namespace $ {
 			$mol_assert_equal( falling( 8 ).pos()[ 1 ], -3.5 )
 		},
 
+		'gravity drops the body onto the floor of a shifted map'() {
+			const body = new Probe
+			body.pos( new Float32Array([ 32.5, - 21.5, 0 ]) )
+			const tile = new $bog_gamengine_phys_tile
+			tile.map( room )
+			tile.origin([ 30, - 20 ])
+			const phys = new $bog_gamengine_phys
+			phys.tile( tile )
+			phys.gravity( new Float32Array([ 0, - 10 ]) )
+			phys.bodies([ body ])
+			for( let i = 0; i < 8; ++i ) phys.step( 0.1 )
+			$mol_assert_equal( body.pos()[ 1 ], - 23.5 )
+			$mol_assert_equal( body.pos()[ 0 ], 32.5 )
+			$mol_assert_equal( body.on_ground(), true )
+		},
+
 		'landed body stands on ground'() {
 			const body = falling( 8 )
 			$mol_assert_equal( body.on_ground(), true )

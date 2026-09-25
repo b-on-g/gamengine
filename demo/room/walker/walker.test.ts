@@ -44,6 +44,7 @@ namespace $ {
 			'#...#',
 			'#####',
 		].join( '\n' ) )
+		tile.plane( 'xz' )
 		return tile
 	}
 
@@ -124,6 +125,17 @@ namespace $ {
 			walker.pos( new Float32Array([ 2.5, 0.5, 2.75 ]) )
 			for( let i = 0; i < 8; ++ i ) walker.step( 0.125 )
 			$mol_assert_equal( [ ... walker.pos() ], [ 2.5, 0.5, 1.25 ] )
+		},
+
+		'wall of a shifted room stops the walker at its face'() {
+			const tile = walker_test_tile()
+			tile.origin([ 40, 60 ])
+			const walker = walker_test_walker( walker_test_key( 'W' ), tile )
+			walker.radius( 0.25 )
+			walker.speed( 2 )
+			walker.pos( new Float32Array([ 42.5, 0.5, 62.75 ]) )
+			for( let i = 0; i < 8; ++ i ) walker.step( 0.125 )
+			$mol_assert_equal( [ ... walker.pos() ], [ 42.5, 0.5, 61.25 ] )
 		},
 
 		'wall aside slides along it'() {

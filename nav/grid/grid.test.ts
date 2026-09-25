@@ -27,6 +27,28 @@ namespace $ {
 			for( let i = 0; i < count; ++i ) $mol_assert_not( nav.solid_at( out[ i * 2 ], out[ i * 2 + 1 ] ) )
 		},
 
+		'shifted grid takes and gives world points of the shifted map'() {
+			const nav = grid( '#######\n#..#..#\n#..#..#\n#.....#\n#######' )
+			nav.tile()!.origin([ 10, - 20 ])
+			$mol_assert_equal( nav.solid_at( 11.5, - 21.5 ), false )
+			$mol_assert_equal( nav.solid_at( 13.5, - 21.5 ), true )
+			$mol_assert_equal( nav.solid_at( 1.5, - 1.5 ), true )
+			const out = new Float32Array( 64 )
+			const count = nav.path( new Float32Array([ 11.5, -21.5, 0 ]), new Float32Array([ 15.5, -21.5, 0 ]), out )
+			$mol_assert_ok( count > 2 )
+			$mol_assert_ok( length( out, count ) > 4 )
+			for( let i = 0; i < count; ++i ) $mol_assert_not( nav.solid_at( out[ i * 2 ], out[ i * 2 + 1 ] ) )
+			$mol_assert_equal( [ out[ 0 ], out[ 1 ] ], [ 11.5, - 21.5 ] )
+			$mol_assert_equal( [ out[ count * 2 - 2 ], out[ count * 2 - 1 ] ], [ 15.5, - 21.5 ] )
+		},
+
+		'path off the shifted map gives zero'() {
+			const nav = grid( '#######\n#..#..#\n#..#..#\n#.....#\n#######' )
+			nav.tile()!.origin([ 10, - 20 ])
+			const out = new Float32Array( 64 )
+			$mol_assert_equal( nav.path( new Float32Array([ 1.5, -1.5, 0 ]), new Float32Array([ 15.5, -21.5, 0 ]), out ), 0 )
+		},
+
 		'unreachable target gives zero'() {
 			const nav = grid( '#######\n#..#..#\n#..#..#\n#..#..#\n#######' )
 			const out = new Float32Array( 64 )

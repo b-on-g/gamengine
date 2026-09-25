@@ -45,10 +45,10 @@ namespace $ {
 			const tile = this.tile()
 			if( !tile ) return true
 			const r = this.radius()
-			if( tile.solid_at( x - r, - ( z - r ) ) ) return false
-			if( tile.solid_at( x + r, - ( z - r ) ) ) return false
-			if( tile.solid_at( x - r, - ( z + r ) ) ) return false
-			if( tile.solid_at( x + r, - ( z + r ) ) ) return false
+			if( tile.solid_at( x - r, z - r ) ) return false
+			if( tile.solid_at( x + r, z - r ) ) return false
+			if( tile.solid_at( x - r, z + r ) ) return false
+			if( tile.solid_at( x + r, z + r ) ) return false
 			return true
 		}
 

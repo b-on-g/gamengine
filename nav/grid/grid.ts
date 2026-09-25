@@ -43,8 +43,14 @@ namespace $ {
 			return this.solid()[ y * width + x ] === 1
 		}
 
-		solid_at( wx: number, wy: number ) {
-			return this.cell( Math.floor( wx ), Math.floor( - wy ) )
+		cell_out = new Int32Array( 2 )
+		spot = new Float32Array( 2 )
+
+		solid_at( wx: number, wv: number ) {
+			const tile = this.tile()
+			if( !tile ) return true
+			const at = tile.cell_at( wx, wv, this.cell_out )
+			return this.cell( at[ 0 ], at[ 1 ] )
 		}
 
 		block( x: number, y: number, solid: boolean ) {
@@ -142,10 +148,13 @@ namespace $ {
 			this.grow()
 
 			const solid = this.solid()
-			const x0 = Math.floor( from[ 0 ] )
-			const y0 = Math.floor( - from[ 1 ] )
-			const x1 = Math.floor( to[ 0 ] )
-			const y1 = Math.floor( - to[ 1 ] )
+			const tile = this.tile()!
+			const at = tile.cell_at( from[ 0 ], from[ 1 ], this.cell_out )
+			const x0 = at[ 0 ]
+			const y0 = at[ 1 ]
+			tile.cell_at( to[ 0 ], to[ 1 ], at )
+			const x1 = at[ 0 ]
+			const y1 = at[ 1 ]
 			if( x0 < 0 || y0 < 0 || x0 >= width || y0 >= height ) return 0
 			if( x1 < 0 || y1 < 0 || x1 >= width || y1 >= height ) return 0
 			if( solid[ y1 * width + x1 ] ) return 0
@@ -227,8 +236,9 @@ namespace $ {
 				const node = trace[ i ]
 				const x = node % width
 				const y = ( node - x ) / width
-				out[ count * 2 ] = x + 0.5
-				out[ count * 2 + 1 ] = - y - 0.5
+				tile.cell_spot( x, y, this.spot )
+				out[ count * 2 ] = this.spot[ 0 ]
+				out[ count * 2 + 1 ] = this.spot[ 1 ]
 				++ count
 			}
 			out[ 0 ] = from[ 0 ]
