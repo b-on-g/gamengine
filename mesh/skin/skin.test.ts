@@ -40,5 +40,16 @@ namespace $ {
 			$mol_assert_equal( skin.time(), 0.5 )
 		},
 
+		'sphere of the culler holds every corner of the box in every state'() {
+			for( const over of $bog_gamengine_node_reach_states ) {
+				const node = new $bog_gamengine_mesh_skin
+				if( over.size ) node.size( new Float32Array( over.size.slice( 0, 3 ) ) )
+				if( over.scale ) node.scale( new Float32Array( over.scale ) )
+				if( over.rot ) node.rot( new Float32Array( over.rot ) )
+				const sphere = node.radius() * $bog_gamengine_batch_scale_max( node.world() )
+				$mol_assert_ok( sphere + 1e-6 >= $bog_gamengine_node_reach( node ) )
+			}
+		},
+
 	})
 }

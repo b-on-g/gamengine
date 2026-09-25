@@ -81,6 +81,21 @@ namespace $ {
 			return uv_plain
 		}
 
+		box_local() {
+			let shape = null as $bog_gamengine_shape | null
+			try {
+				shape = this.shape()
+			} catch( error ) {
+				if( $mol_promise_like( error ) ) return null
+				return $mol_fail_hidden( error )
+			}
+			const shown = shape.box()
+			if( !( shown[ 0 ] <= shown[ 3 ] ) ) return null
+			const box = this.local_box
+			for( let k = 0; k < 6; ++ k ) box[ k ] = shown[ k ]
+			return box
+		}
+
 		@ $mol_mem
 		trans() {
 			return $mol_3d_mat4.multiply(

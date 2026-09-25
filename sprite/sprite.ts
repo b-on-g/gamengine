@@ -81,6 +81,17 @@ namespace $ {
 			return this.flip_x() ? uv_flip : uv_plain
 		}
 
+		box_local() {
+			const box = this.local_box
+			box[ 0 ] = -0.5
+			box[ 1 ] = -0.5
+			box[ 2 ] = 0
+			box[ 3 ] = 0.5
+			box[ 4 ] = 0.5
+			box[ 5 ] = 0
+			return box
+		}
+
 		@ $mol_mem
 		trans() {
 			const size = this.size()

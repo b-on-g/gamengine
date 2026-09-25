@@ -20,6 +20,43 @@ namespace $ {
 		return next instanceof Float32Array ? next : new Float32Array( next )
 	}
 
+	export const $bog_gamengine_node_reach_states: readonly {
+		readonly size?: readonly number[]
+		readonly scale?: readonly number[]
+		readonly rot?: readonly number[]
+	}[] = [
+		{},
+		{ scale: [ 3, 3, 3 ] },
+		{ scale: [ 0.2, 5, 1 ] },
+		{ rot: [ 0, 0, Math.PI / 6 ] },
+		{ rot: [ Math.PI / 6, Math.PI * 2 / 9, 0 ] },
+		{ size: [ 4, 0.5, 1 ] },
+		{ size: [ 4, 0.5, 1 ], rot: [ 0, 0, Math.PI / 6 ], scale: [ 2, 2, 2 ] },
+	]
+
+	export function $bog_gamengine_node_reach( node: $bog_gamengine_node ) {
+
+		const local = node.box_local()
+		if( !local ) return 0
+
+		const world = node.world()
+		let far = 0
+
+		for( let corner = 0; corner < 8; ++ corner ) {
+			const x = local[ corner & 1 ? 3 : 0 ]
+			const y = local[ corner & 2 ? 4 : 1 ]
+			const z = local[ corner & 4 ? 5 : 2 ]
+			let sum = 0
+			for( let k = 0; k < 3; ++ k ) {
+				const axis = world[ k ] * x + world[ 4 + k ] * y + world[ 8 + k ] * z
+				sum += axis * axis
+			}
+			if( sum > far ) far = sum
+		}
+
+		return Math.sqrt( far )
+	}
+
 	export class $bog_gamengine_node extends $mol_object2 {
 
 		@ $mol_mem
@@ -163,6 +200,69 @@ namespace $ {
 		world(): $mol_3d_mat4 {
 			const parent = this.parent()
 			return parent ? $mol_3d_mat4.multiply( parent.world(), this.trans() ) : this.trans()
+		}
+
+		local_box = new Float32Array( 6 )
+		world_box = new Float32Array( 6 )
+
+		box_local(): Float32Array | null {
+
+			const self = this as $bog_gamengine_node & { size?(): ArrayLike< number >, radius?(): number }
+			const box = this.local_box
+
+			if( typeof self.size === 'function' ) {
+				const size = self.size()
+				for( let i = 0; i < 3; ++ i ) {
+					const half = i < size.length ? size[ i ] / 2 : 0
+					box[ i ] = - half
+					box[ i + 3 ] = half
+				}
+				return box
+			}
+
+			if( typeof self.radius === 'function' ) {
+				const radius = self.radius()
+				if( !Number.isFinite( radius ) ) return null
+				for( let i = 0; i < 3; ++ i ) {
+					box[ i ] = - radius
+					box[ i + 3 ] = radius
+				}
+				return box
+			}
+
+			return null
+		}
+
+		aabb() {
+
+			const box = this.world_box
+			for( let k = 0; k < 3; ++ k ) {
+				box[ k ] = Infinity
+				box[ k + 3 ] = - Infinity
+			}
+
+			const local = this.box_local()
+			if( !local ) return box
+
+			const world = this.world()
+
+			for( let corner = 0; corner < 8; ++ corner ) {
+				const x = local[ corner & 1 ? 3 : 0 ]
+				const y = local[ corner & 2 ? 4 : 1 ]
+				const z = local[ corner & 4 ? 5 : 2 ]
+				for( let k = 0; k < 3; ++ k ) {
+					const value = world[ 12 + k ] + world[ k ] * x + world[ 4 + k ] * y + world[ 8 + k ] * z
+					if( value < box[ k ] ) box[ k ] = value
+					if( value > box[ k + 3 ] ) box[ k + 3 ] = value
+				}
+			}
+
+			return box
+		}
+
+		aabb_empty() {
+			const box = this.aabb()
+			return !( box[ 0 ] <= box[ 3 ] )
 		}
 
 		step( dt: number ) {}

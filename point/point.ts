@@ -4,6 +4,8 @@ namespace $ {
 		size?(): Float32Array
 	}
 
+	export const $bog_gamengine_point_grab = 0.5
+
 	export class $bog_gamengine_point extends $mol_object2 {
 
 		@ $mol_mem
@@ -140,16 +142,18 @@ namespace $ {
 
 			for( let n = 0; n < nodes.length; ++ n ) {
 
-				const node = nodes[ n ] as $bog_gamengine_point_node
-				const world = node.world()
-				const size = typeof node.size === 'function' ? node.size() : null
-				const half_x = size && size.length > 0 ? size[ 0 ] / 2 : 0
-				const half_y = size && size.length > 1 ? size[ 1 ] / 2 : 0
-				const x = world[ 12 ]
-				const y = world[ 13 ]
+				const node = nodes[ n ]
+				const box = node.aabb()
+				const wide = box[ 0 ] <= box[ 3 ]
+				const world = wide ? null : node.world()
 
-				if( x + half_x < lo_x || x - half_x > hi_x ) continue
-				if( y + half_y < lo_y || y - half_y > hi_y ) continue
+				const left = wide ? box[ 0 ] : world![ 12 ]
+				const right = wide ? box[ 3 ] : world![ 12 ]
+				const bottom = wide ? box[ 1 ] : world![ 13 ]
+				const top = wide ? box[ 4 ] : world![ 13 ]
+
+				if( right < lo_x || left > hi_x ) continue
+				if( top < lo_y || bottom > hi_y ) continue
 
 				hits.push( nodes[ n ] )
 				if( out ) out.push( n )
@@ -170,18 +174,21 @@ namespace $ {
 
 			for( let n = 0; n < nodes.length; ++ n ) {
 
-				const node = nodes[ n ] as $bog_gamengine_point_node
+				const node = nodes[ n ]
 				const world = node.world()
-				const size = typeof node.size === 'function' ? node.size() : null
+				const box = node.aabb()
+				const grab = $bog_gamengine_point_grab
 
 				let tmin = - Infinity
 				let tmax = Infinity
 				let hit = true
 
 				for( let i = 0; i < 3; ++ i ) {
-					const half = size && size.length > i ? size[ i ] / 2 : 0.5
-					const lo = world[ 12 + i ] - half
-					const hi = world[ 12 + i ] + half
+					const wide = box[ i ] <= box[ i + 3 ]
+					const mid = wide ? ( box[ i ] + box[ i + 3 ] ) / 2 : world[ 12 + i ]
+					const half = Math.max( wide ? ( box[ i + 3 ] - box[ i ] ) / 2 : 0, grab )
+					const lo = mid - half
+					const hi = mid + half
 					const o = origin[ i ]
 					const d = dir[ i ]
 					if( d === 0 ) {

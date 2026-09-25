@@ -11,6 +11,24 @@ namespace $ {
 		}
 
 		@ $mol_memo.method
+		box() {
+			const geometry = this.geometry()
+			const box = new Float32Array( 6 )
+			for( let k = 0; k < 3; ++ k ) {
+				box[ k ] = Infinity
+				box[ k + 3 ] = - Infinity
+			}
+			for( let i = 0; i + 2 < geometry.length; i += 3 ) {
+				for( let k = 0; k < 3; ++ k ) {
+					const value = geometry[ i + k ]
+					if( value < box[ k ] ) box[ k ] = value
+					if( value > box[ k + 3 ] ) box[ k + 3 ] = value
+				}
+			}
+			return box
+		}
+
+		@ $mol_memo.method
 		radius() {
 			const geometry = this.geometry()
 			let max = 0

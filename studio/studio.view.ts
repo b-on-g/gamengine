@@ -41,30 +41,15 @@ namespace $ {
 
 		for( let i = 0; i < nodes.length; ++ i ) {
 
-			const node = nodes[ i ] as $bog_gamengine_point_node & { aabb?(): Float32Array }
-			const box = typeof node.aabb === 'function' ? node.aabb() : null
-			let left = 0
-			let bottom = 0
-			let right = 0
-			let top = 0
+			const box = nodes[ i ].aabb()
+			const left = box[ 0 ]
+			const bottom = box[ 1 ]
+			const right = box[ 3 ]
+			const top = box[ 4 ]
 
-			if( box ) {
-				left = box[ 0 ]
-				bottom = box[ 1 ]
-				right = box[ 3 ]
-				top = box[ 4 ]
-			} else {
-				const world = node.world()
-				const size = typeof node.size === 'function' ? node.size() : null
-				const half_x = size && size.length > 0 ? size[ 0 ] / 2 : 0.5
-				const half_y = size && size.length > 1 ? size[ 1 ] / 2 : 0.5
-				left = world[ 12 ] - half_x
-				right = world[ 12 ] + half_x
-				bottom = world[ 13 ] - half_y
-				top = world[ 13 ] + half_y
-			}
-
+			if( !( left <= right ) || !( bottom <= top ) ) continue
 			if( !Number.isFinite( left ) || !Number.isFinite( bottom ) ) continue
+			if( !Number.isFinite( right ) || !Number.isFinite( top ) ) continue
 			if( left < out[ 0 ] ) out[ 0 ] = left
 			if( bottom < out[ 1 ] ) out[ 1 ] = bottom
 			if( right > out[ 2 ] ) out[ 2 ] = right
