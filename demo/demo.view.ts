@@ -12,6 +12,9 @@ namespace $.$$ {
 				this.Shooter().Key().keys(),
 				this.Legion().key_map(),
 				this.Studio().Key().keys(),
+				this.Crumb().key_map(),
+				this.Crumb_studio().Key().keys(),
+				this.Crumb2().key_map(),
 			]
 			const keys: Record< string, ( state?: boolean )=> boolean > = {}
 			for( const map of maps ) {

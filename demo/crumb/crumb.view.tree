@@ -1,0 +1,102 @@
+$bog_gamengine_demo_crumb $mol_page
+	title \Крошки
+	key_map *
+	tools /
+		<= Left_label $mol_labeler
+			title \Осталось
+			content / <= left_str \
+		<= Time_label $mol_labeler
+			title \Время
+			content / <= time_str \
+		<= Pause_switch $mol_check_box
+			title \Пауза
+			checked? <=> paused? false
+	body /
+		<= Field $mol_view
+			sub <= field /
+				<= Draw $bog_gamengine_draw
+					scene <= Scene
+					cam <= Cam
+					stat => stat
+				<= End $mol_page
+					title <= end_title \
+					body /
+						<= End_hint $mol_view
+							sub / <= end_hint \
+					foot /
+						<= Again $mol_button_major
+							title \Ещё раз
+							click? <=> restart? null
+	foot /
+		<= Stat $mol_view
+			sub / <= stat
+	map \
+		\############
+		\#....#.....#
+		\#.##....##.#
+		\#.#......#.#
+		\#....##....#
+		\#.#......#.#
+		\#.##....##.#
+		\#.....#....#
+		\############
+	Tile $bog_gamengine_phys_tile
+		map <= map
+		solid \#
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/atlas/hero.png
+			\bog/gamengine/demo/atlas/coin.png
+			\bog/gamengine/demo/atlas/wall.png
+			\bog/gamengine/demo/atlas/floor.png
+		size 64
+	Clock $bog_gamengine_clock
+		paused <= paused false
+	Key $bog_gamengine_key
+		bind *
+			left /
+				\A
+				\left
+			right /
+				\D
+				\right
+			up /
+				\W
+				\up
+			down /
+				\S
+				\down
+	Input $bog_gamengine_input
+		key <= Key
+	Cam $bog_gamengine_cam_flat
+		height 11
+		pos <= cam_pos Float32Array
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		input <= Input
+		cam <= Cam
+		kids <= nodes /
+		phys <= Phys $bog_gamengine_phys
+			bodies <= bodies /
+			tile <= Tile
+	Tilemap $bog_gamengine_tilemap
+		tile <= Tile
+		atlas <= Atlas
+		palette <= palette *
+	Hero $bog_gamengine_demo_crumb_hero
+		input <= Input
+		pos? <=> hero_pos? Float32Array
+	Hero_sprite $bog_gamengine_sprite
+		parent <= Hero
+		atlas <= Atlas
+		frame \hero
+		size <= hero_size Float32Array
+	Crumb* $bog_gamengine_sprite
+		atlas <= Atlas
+		frame \coin
+		pos <= crumb_pos* Float32Array
+		size <= crumb_size Float32Array
+	Rule $bog_gamengine_demo_crumb_rule
+		hero <= Hero
+		crumbs <= crumbs /
+		limit 40

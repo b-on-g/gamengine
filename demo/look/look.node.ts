@@ -24,13 +24,13 @@ namespace $ {
 			],
 			base: {
 				at: '2026-09-25',
-				commit: 'ab4ce86',
+				commit: '050ed25',
 				soft: {
 					level: {
 						median: 204, low: 172, high: 204, dark: 0, blown: 0, sat: 71.79,
 						spots: {
 							sky: [ 161, 214, 230, 255 ],
-							ground: [ 105, 57, 30, 255 ],
+							ground: [ 143, 86, 45, 255 ],
 							hero: [ 220, 58, 58, 255 ],
 						},
 					},
@@ -40,7 +40,7 @@ namespace $ {
 						median: 204, low: 170, high: 204, dark: 0, blown: 0, sat: 71.79,
 						spots: {
 							sky: [ 161, 214, 230, 255 ],
-							ground: [ 106, 58, 30, 255 ],
+							ground: [ 143, 86, 45, 255 ],
 							hero: [ 220, 57, 57, 255 ],
 						},
 					},
@@ -67,28 +67,28 @@ namespace $ {
 			],
 			base: {
 				at: '2026-09-25',
-				commit: 'fed05fa',
+				commit: '050ed25',
 				soft: {
 					arena: {
-						median: 60, low: 12, high: 127, dark: 0.3517, blown: 0, sat: 50.11,
+						median: 60, low: 12, high: 127, dark: 0.3517, blown: 0, sat: 50.06,
 						spots: {
-							wall: [ 197, 94, 61, 255 ],
+							wall: [ 198, 95, 61, 255 ],
 							target: [ 178, 25, 25, 255 ],
-							floor: [ 127, 127, 137, 255 ],
+							floor: [ 129, 129, 139, 255 ],
 							sky: [ 12, 12, 16, 255 ],
-							far: [ 150, 57, 37, 255 ],
+							far: [ 149, 57, 36, 255 ],
 						},
 					},
 				} as $bog_gamengine_look_base_keep,
 				gpu: {
 					arena: {
-						median: 60, low: 12, high: 127, dark: 0.3518, blown: 0, sat: 50.12,
+						median: 60, low: 12, high: 127, dark: 0.3517, blown: 0, sat: 50.06,
 						spots: {
-							wall: [ 197, 94, 61, 255 ],
+							wall: [ 198, 96, 61, 255 ],
 							target: [ 178, 25, 25, 255 ],
-							floor: [ 127, 127, 137, 255 ],
+							floor: [ 129, 129, 139, 255 ],
 							sky: [ 12, 12, 16, 255 ],
-							far: [ 150, 57, 37, 255 ],
+							far: [ 149, 57, 36, 255 ],
 						},
 					},
 				} as $bog_gamengine_look_base_keep,
@@ -113,26 +113,26 @@ namespace $ {
 			],
 			base: {
 				at: '2026-09-25',
-				commit: '0056331',
+				commit: '050ed25',
 				soft: {
 					field: {
-						median: 65, low: 55, high: 112, dark: 0, blown: 0, sat: 17.9,
+						median: 65, low: 56, high: 111, dark: 0, blown: 0, sat: 17.9,
 						spots: {
-							grass: [ 51, 67, 54, 255 ],
-							wall: [ 107, 101, 100, 255 ],
-							unit: [ 100, 174, 224, 255 ],
-							gold: [ 222, 201, 59, 255 ],
+							grass: [ 54, 70, 57, 255 ],
+							wall: [ 103, 97, 95, 255 ],
+							unit: [ 99, 174, 223, 255 ],
+							gold: [ 215, 191, 50, 255 ],
 						},
 					},
 				} as $bog_gamengine_look_base_keep,
 				gpu: {
 					field: {
-						median: 65, low: 55, high: 111, dark: 0, blown: 0, sat: 17.91,
+						median: 65, low: 55, high: 111, dark: 0, blown: 0, sat: 17.9,
 						spots: {
-							grass: [ 51, 67, 54, 255 ],
-							wall: [ 105, 100, 99, 255 ],
-							unit: [ 100, 174, 224, 255 ],
-							gold: [ 221, 201, 58, 255 ],
+							grass: [ 54, 70, 57, 255 ],
+							wall: [ 102, 95, 95, 255 ],
+							unit: [ 99, 174, 223, 255 ],
+							gold: [ 215, 190, 49, 255 ],
 						},
 					},
 				} as $bog_gamengine_look_base_keep,

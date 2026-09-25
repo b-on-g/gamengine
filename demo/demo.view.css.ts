@@ -15,6 +15,10 @@ namespace $.$$ {
 
 	$mol_style_define( $bog_gamengine_demo, {
 
+		Menu: {
+			width: '9.3125rem',
+		},
+
 		Quad: {
 			... spread,
 			'>': {
@@ -41,6 +45,12 @@ namespace $.$$ {
 		Legion: spread,
 
 		Studio: spread,
+
+		Crumb: spread,
+
+		Crumb_studio: spread,
+
+		Crumb2: spread,
 
 	} )
 

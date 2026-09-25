@@ -1,0 +1,63 @@
+$bog_gamengine_demo_crumb2_level $bog_gamengine_scene
+	phys <= Phys $bog_gamengine_phys
+		tile <= Tile
+		bodies /
+			<= Hero
+	Tile $bog_gamengine_phys_tile
+		map \
+			\######
+			\#..#.#
+			\#..#.#
+			\#.#..#
+			\######
+	kids /
+		<= Tiles $bog_gamengine_tilemap
+			name \Карта
+			tile <= Tile
+			atlas <= Atlas
+			palette *
+				# \wall
+				. \floor
+		<= Hero $bog_gamengine_phys_walker
+			name \Герой
+			pos? <=> Hero_pos? Float32Array
+			size? <=> Hero_size? Float32Array
+			speed 3
+			role \hero
+		<= Coin $bog_gamengine_sprite
+			name \Монета
+			atlas <= Atlas
+			frame \coin
+			pos? <=> Coin_pos? Float32Array
+			role \crumb
+		<= Sprite_1 $bog_gamengine_sprite
+			name \coin
+			atlas <= Atlas
+			frame \coin
+			pos? <=> Sprite_1_pos? Float32Array
+			role \crumb
+		<= Sprite_2 $bog_gamengine_sprite
+			name \coin
+			atlas <= Atlas
+			frame \coin
+			pos? <=> Sprite_2_pos? Float32Array
+			role \crumb
+		<= Sprite_3 $bog_gamengine_sprite
+			name \coin
+			atlas <= Atlas
+			frame \coin
+			pos? <=> Sprite_3_pos? Float32Array
+			role \crumb
+		<= Sprite_4 $bog_gamengine_sprite
+			name \coin
+			atlas <= Atlas
+			frame \coin
+			pos? <=> Sprite_4_pos? Float32Array
+			role \crumb
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/atlas/hero.png
+			\bog/gamengine/demo/atlas/coin.png
+			\bog/gamengine/demo/atlas/wall.png
+			\bog/gamengine/demo/atlas/floor.png
+		size 64

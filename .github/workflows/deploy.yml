@@ -68,4 +68,7 @@ jobs:
           echo "- https://b-on-g.github.io/gamengine/#!demo=shooter"
           echo "- https://b-on-g.github.io/gamengine/#!demo=legion"
           echo "- https://b-on-g.github.io/gamengine/#!demo=studio"
+          echo "- https://b-on-g.github.io/gamengine/#!demo=crumb"
+          echo "- https://b-on-g.github.io/gamengine/#!demo=crumb_studio"
+          echo "- https://b-on-g.github.io/gamengine/#!demo=crumb2"
         } >> "$GITHUB_STEP_SUMMARY"

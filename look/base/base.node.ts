@@ -13,36 +13,36 @@ namespace $ {
 
 		at: '2026-09-25',
 
-		commit: 'f1bc287',
+		commit: '050ed25',
 
 		soft: {
 			flat: {
-				median: 60, low: 58, high: 107, dark: 0.061, blown: 0, sat: 43.2,
+				median: 61, low: 58, high: 108, dark: 0.0599, blown: 0, sat: 43.24,
 				spots: {
-					wall: [ 199, 85, 45, 255 ],
-					floor: [ 59, 59, 64, 255 ],
+					wall: [ 199, 84, 45, 255 ],
+					floor: [ 59, 59, 65, 255 ],
 					hero: [ 227, 211, 166, 255 ],
 					coin: [ 230, 216, 58, 255 ],
 					outside: [ 12, 12, 16, 255 ],
 				},
 			},
 			room: {
-				median: 68, low: 11, high: 98, dark: 0.3873, blown: 0, sat: 29.81,
+				median: 68, low: 11, high: 98, dark: 0.3871, blown: 0, sat: 29.84,
 				spots: {
-					lit: [ 192, 110, 88, 255 ],
-					shade: [ 138, 95, 85, 255 ],
-					floor: [ 93, 94, 101, 255 ],
-					far: [ 123, 104, 99, 255 ],
+					lit: [ 196, 113, 88, 255 ],
+					shade: [ 148, 90, 77, 255 ],
+					floor: [ 94, 94, 102, 255 ],
+					far: [ 116, 106, 102, 255 ],
 					sky: [ 12, 12, 16, 255 ],
 				},
 			},
 			shine: {
-				median: 70, low: 11, high: 128, dark: 0.3774, blown: 0, sat: 32.07,
+				median: 70, low: 11, high: 128, dark: 0.3773, blown: 0, sat: 32.11,
 				spots: {
-					lit: [ 219, 151, 127, 255 ],
-					shade: [ 170, 113, 99, 255 ],
-					floor: [ 93, 94, 101, 255 ],
-					far: [ 183, 128, 114, 255 ],
+					lit: [ 220, 152, 126, 255 ],
+					shade: [ 177, 109, 92, 255 ],
+					floor: [ 94, 94, 102, 255 ],
+					far: [ 182, 128, 115, 255 ],
 					sky: [ 12, 12, 16, 255 ],
 				},
 			},
@@ -50,32 +50,32 @@ namespace $ {
 
 		gpu: {
 			flat: {
-				median: 60, low: 58, high: 107, dark: 0.061, blown: 0, sat: 43.22,
+				median: 60, low: 58, high: 107, dark: 0.0599, blown: 0, sat: 43.3,
 				spots: {
-					wall: [ 199, 85, 45, 255 ],
-					floor: [ 59, 59, 64, 255 ],
+					wall: [ 199, 84, 45, 255 ],
+					floor: [ 59, 59, 65, 255 ],
 					hero: [ 227, 211, 166, 255 ],
 					coin: [ 230, 216, 57, 255 ],
 					outside: [ 12, 12, 16, 255 ],
 				},
 			},
 			room: {
-				median: 68, low: 11, high: 98, dark: 0.3873, blown: 0, sat: 29.79,
+				median: 68, low: 11, high: 98, dark: 0.3872, blown: 0, sat: 29.8,
 				spots: {
-					lit: [ 192, 110, 89, 255 ],
-					shade: [ 138, 95, 85, 255 ],
-					floor: [ 93, 94, 101, 255 ],
-					far: [ 123, 104, 99, 255 ],
+					lit: [ 196, 113, 89, 255 ],
+					shade: [ 148, 90, 78, 255 ],
+					floor: [ 94, 94, 101, 255 ],
+					far: [ 116, 106, 102, 255 ],
 					sky: [ 12, 12, 16, 255 ],
 				},
 			},
 			shine: {
-				median: 70, low: 11, high: 128, dark: 0.3773, blown: 0, sat: 32.04,
+				median: 70, low: 11, high: 127, dark: 0.3774, blown: 0, sat: 32.07,
 				spots: {
-					lit: [ 219, 150, 126, 255 ],
-					shade: [ 170, 113, 99, 255 ],
-					floor: [ 93, 94, 101, 255 ],
-					far: [ 183, 128, 114, 255 ],
+					lit: [ 220, 152, 127, 255 ],
+					shade: [ 177, 109, 92, 255 ],
+					floor: [ 94, 94, 101, 255 ],
+					far: [ 182, 128, 115, 255 ],
 					sky: [ 12, 12, 16, 255 ],
 				},
 			},
