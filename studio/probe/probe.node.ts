@@ -860,6 +860,253 @@ namespace $ {
 		return say( $bog_gamengine_studio_probe_ok )
 	}
 
+	export const $bog_gamengine_studio_probe_pass_klass = '$bog_gamengine_demo_jumper_level'
+
+	export const $bog_gamengine_studio_probe_pass_ok = 'путь пройден мышью: два узла убраны, кисть покрасила клетку, два ассета встали щелчками, «Ходок» из палитры встал телом в мир физики, роли дошли до вывоза, вывезенное дерево стоит на движковой сцене и без имён студии'
+
+	export const $bog_gamengine_studio_probe_pass_script = `
+		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
+		const wait = async n => { for( let i = 0; i < n; ++ i ) await frame() }
+		const missed = []
+		const need = ( name, hit )=> { if( !hit ) missed.push( name ); return hit }
+		const canvas = ()=> document.querySelector( 'canvas' )
+		const editor = document.querySelector( '[bog_gamengine_studio_source] textarea' )
+		if( !need( 'canvas', canvas() ) || !need( 'editor', editor ) ) return { ready: false, missed }
+		${ $bog_gamengine_studio_probe_spot_script }
+		const source = ()=> editor.value
+		const titles = ()=> [ ... document.querySelectorAll( '[bog_gamengine_studio_row]' ) ].map( el => el.textContent.trim() )
+		const checks = title => [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === title )
+		const button = title => [ ... document.querySelectorAll( '[mol_button]' ) ].find( el => el.textContent.trim() === title )
+		const tab = async title => {
+			const hit = need( 'вкладка ' + title, checks( title ) )
+			if( hit ) hit.click()
+			await wait( 8 )
+			return Boolean( hit )
+		}
+		const row = async title => {
+			await tab( 'Сцена' )
+			const hit = need( 'строка ' + title, [ ... document.querySelectorAll( '[bog_gamengine_studio_row]' ) ].find( el => el.textContent.trim() === title ) )
+			if( hit ) hit.click()
+			await wait( 8 )
+			return Boolean( hit )
+		}
+		const press = async title => {
+			const hit = need( 'кнопка ' + title, button( title ) )
+			if( hit ) hit.click()
+			await wait( 8 )
+			return Boolean( hit )
+		}
+		const drop = async title => {
+			if( !await row( title ) ) return false
+			return await press( 'Удалить' )
+		}
+		const type = async ( input, text )=> {
+			input.value = text
+			input.dispatchEvent( new Event( 'input', { bubbles: true } ) )
+			await wait( 8 )
+			return input.value === text
+		}
+		const field = async ( hint, text )=> {
+			const one = need( 'поле ' + hint, [ ... document.querySelectorAll( '[bog_gamengine_studio_inspect] [mol_form_field]' ) ].find( el => el.textContent.trim().indexOf( hint ) === 0 ) )
+			if( !one ) return false
+			const input = need( 'ввод поля ' + hint, one.querySelector( 'input, textarea' ) )
+			return input ? await type( input, text ) : false
+		}
+		const studio = need( 'страница студии', $$.$bog_gamengine_demo.Root( 0 ).Studio() )
+		const seen = ( wx, wy )=> {
+			const out = studio.Point().screen( new Float32Array( 3 ), new Float32Array([ wx, wy, 0 ]) )
+			return [ out[ 0 ], out[ 1 ] ]
+		}
+		const click_world = async ( wx, wy )=> {
+			const node = canvas()
+			const box = node.getBoundingClientRect()
+			const dpr = devicePixelRatio
+			const at = seen( wx, wy )
+			for( const kind of [ 'pointerdown', 'pointerup' ] ) node.dispatchEvent( new PointerEvent( kind, {
+				bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: kind === 'pointerup' ? 0 : 1,
+				clientX: box.left + at[ 0 ] / dpr, clientY: box.top + at[ 1 ] / dpr,
+			} ) )
+			await wait( 8 )
+		}
+		const cell_click = async ( cx, cy )=> await click_world( cx + 0.5, - ( cy + 0.5 ) )
+		const sprites = () => ( source().match( /\\$bog_gamengine_sprite/g ) || [] ).length
+		const roles = role => ( source().match( new RegExp( 'role \\\\\\\\' + role, 'g' ) ) || [] ).length
+		const diff_cells = ( before, after )=> {
+			let count = 0
+			for( let y = 0; y < Math.max( before.length, after.length ); ++ y ) {
+				const one = before[ y ] || ''
+				const two = after[ y ] || ''
+				for( let x = 0; x < Math.max( one.length, two.length ); ++ x ) if( one[ x ] !== two[ x ] ) ++ count
+			}
+			return count
+		}
+		await wait( 20 )
+		const started = titles()
+		await drop( 'Вид героя' )
+		await drop( 'Стена' )
+		const dropped = titles()
+		await press( 'Показать всё' )
+		const sprites_before = sprites()
+		const map_before = rows_of( source() )
+		if( !await tab( 'Тайлы' ) ) return { ready: false, missed }
+		const tile = need( 'тайл wall', [ ... document.querySelectorAll( '[bog_gamengine_studio_tile]' ) ].find( el => el.textContent.includes( 'wall' ) ) )
+		if( tile ) tile.click()
+		await wait( 4 )
+		if( !await tab( 'Тайлы' ) ) return { ready: false, missed }
+		const tool = need( 'инструмент Клетка', checks( 'Клетка' ) )
+		if( tool ) tool.click()
+		await wait( 8 )
+		const hero_spot = spot_of( source(), 'Hero' ) || [ 0.5, -0.5 ]
+		const hero_cell = [ Math.floor( hero_spot[ 0 ] ), Math.floor( - hero_spot[ 1 ] ) ]
+		const floors = []
+		const rows_map = rows_of( source() )
+		for( let y = 0; y < rows_map.length; ++ y ) {
+			for( let x = 0; x < rows_map[ y ].length; ++ x ) {
+				if( rows_map[ y ][ x ] !== '.' ) continue
+				if( x === hero_cell[ 0 ] && y === hero_cell[ 1 ] ) continue
+				floors.push( [ x, y ] )
+			}
+		}
+		if( !need( 'клетки пола без героя', floors.length > 3 ) ) return { ready: false, missed }
+		const brush_cell = floors[ floors.length - 1 ]
+		await cell_click( brush_cell[ 0 ], brush_cell[ 1 ] )
+		const painted = rows_of( source() )
+		if( !await tab( 'Ассеты' ) ) return { ready: false, missed }
+		const asset = need( 'ассет coin.png', [ ... document.querySelectorAll( '[bog_gamengine_studio_asset_row]' ) ].find( el => el.textContent.includes( 'coin.png' ) ) )
+		if( asset ) asset.click()
+		await wait( 8 )
+		const spots = floors.slice( 0, 2 )
+		for( const spot of spots ) await cell_click( spot[ 0 ], spot[ 1 ] )
+		if( asset ) asset.click()
+		await wait( 8 )
+		const placed = sprites()
+		const walkers_before = ( source().match( /\\$bog_gamengine_phys_walker/g ) || [] ).length
+		if( !await tab( 'Классы' ) ) return { ready: false, missed }
+		const kit = need( 'палитра Ходок', [ ... document.querySelectorAll( '[bog_gamengine_studio_kit_row]' ) ].find( el => el.textContent.trim() === 'Ходок' ) )
+		if( kit ) kit.click()
+		await wait( 8 )
+		const kit_cell = floors[ 2 ]
+		await cell_click( kit_cell[ 0 ], kit_cell[ 1 ] )
+		const walkers = ( source().match( /\\$bog_gamengine_phys_walker/g ) || [] ).length
+		const bodies = ( ( source().match( /bodies \\/\\n(?:\\t+<= \\w+\\n)+/ ) || [ '' ] )[ 0 ].match( /<= \\w+/g ) || [] ).length
+		let roles_set = 0
+		const coin_rows = ()=> [ ... document.querySelectorAll( '[bog_gamengine_studio_row]' ) ].filter( el => el.textContent.trim() === 'coin' )
+		if( !need( 'строки поставленных крошек', coin_rows().length === spots.length ) ) return { ready: false, missed }
+		for( let i = 0; i < spots.length; ++ i ) {
+			await tab( 'Сцена' )
+			coin_rows()[ i ].click()
+			await wait( 8 )
+			if( studio.doc_path() && await field( 'role', 'crumb' ) ) ++ roles_set
+		}
+		if( await row( 'Герой' ) && await field( 'role', 'hero' ) ) ++ roles_set
+		const klass = document.querySelector( '[bog_gamengine_studio_klass]' )
+		const klass_input = need( 'поле класса', klass && ( klass.tagName === 'INPUT' ? klass : klass.querySelector( 'input' ) ) )
+		if( klass_input ) await type( klass_input, ${ JSON.stringify( $bog_gamengine_studio_probe_pass_klass ) } )
+		const link = name => {
+			const el = need( 'ссылка ' + name, document.querySelector( '[bog_gamengine_studio_' + name + ']' ) )
+			if( !el ) return ''
+			const uri = el.getAttribute( 'href' ) || ''
+			const at = uri.indexOf( ',' )
+			return at < 0 ? '' : decodeURIComponent( uri.slice( at + 1 ) )
+		}
+		const tree = link( 'export_tree' )
+		const ts = link( 'export_ts' )
+		return {
+			ready: true,
+			missed,
+			started,
+			dropped,
+			cells: diff_cells( map_before, painted ),
+			sprites_before,
+			placed,
+			walkers_before,
+			walkers,
+			bodies,
+			roles_set,
+			roles_hero: roles( 'hero' ),
+			roles_crumb: roles( 'crumb' ),
+
+
+			tree_head: tree.split( '\\n' )[ 0 ],
+			tree_lines: tree ? tree.split( '\\n' ).length : 0,
+			tree_studio: ( tree.match( /studio/g ) || [] ).length,
+			ts_lines: ts ? ts.split( '\\n' ).length : 0,
+			ts_ports: ( ts.match( /Float32Array\\(\\[/g ) || [] ).length,
+		}
+	`
+
+	export type $bog_gamengine_studio_probe_pass_result = {
+		readonly ready: boolean
+		readonly missed: readonly string[]
+		readonly started?: readonly string[]
+		readonly dropped?: readonly string[]
+		readonly cells?: number
+		readonly sprites_before?: number
+		readonly placed?: number
+		readonly walkers_before?: number
+		readonly walkers?: number
+		readonly bodies?: number
+		readonly roles_set?: number
+		readonly roles_hero?: number
+		readonly roles_crumb?: number
+
+
+		readonly tree_head?: string
+		readonly tree_lines?: number
+		readonly tree_studio?: number
+		readonly ts_lines?: number
+		readonly ts_ports?: number
+	}
+
+	export async function $bog_gamengine_studio_probe_pass(
+		root = $node.process.cwd(),
+		flags: readonly string[] = $bog_gamengine_studio_probe_flags,
+	) {
+
+		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
+
+		const started = Date.now()
+
+		const got = await $bog_probe_run({
+			root,
+			flags,
+			page: $bog_gamengine_studio_probe_page,
+			ready: $bog_gamengine_studio_probe_ready,
+			script: $bog_gamengine_studio_probe_pass_script,
+			width: 1600,
+			height: 900,
+		}) as $bog_gamengine_studio_probe_pass_result | typeof $bog_probe_skip
+
+		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
+
+		say( `${ flags.join( ' ' ) || 'без флагов' }: ${ Date.now() - started } мс, ${ JSON.stringify( got ) }` )
+
+		const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( got ) }` ) )
+
+		if( !got.ready ) return fail( 'страница не собралась для прохода' )
+		if( got.missed.length ) return fail( `сценарий не нашёл по имени: ${ got.missed.join( ', ' ) }` )
+		if( !got.started?.includes( 'Вид героя' ) ) return fail( 'в начале не было узла «Вид героя», проход мерит не тот документ' )
+		if( got.dropped?.includes( 'Вид героя' ) ) return fail( 'удаление не убрало «Вид героя»' )
+		if( got.dropped?.includes( 'Стена' ) ) return fail( 'удаление не убрало «Стена»' )
+		if( !got.dropped?.includes( 'Карта' ) || !got.dropped?.includes( 'Герой' ) ) return fail( 'удаление унесло лишнее' )
+		if( got.cells !== 1 ) return fail( 'кисть покрасила не одну клетку' )
+		if( got.placed !== ( got.sprites_before ?? 0 ) + 2 ) return fail( 'два щелчка ассетом не дали двух спрайтов' )
+		if( got.walkers !== ( got.walkers_before ?? 0 ) + 1 ) return fail( 'палитра «Ходок» не поставила второе тело' )
+		if( got.bodies !== 2 ) return fail( 'в списке тел мира не два тела' )
+		if( got.roles_set !== 3 ) return fail( 'роль встала не во все три узла' )
+		if( got.roles_hero !== 1 ) return fail( 'роль hero не одна' )
+		if( got.roles_crumb !== 2 ) return fail( 'ролей crumb не две' )
+		if( !got.tree_head?.startsWith( `${ $bog_gamengine_studio_probe_pass_klass } $bog_gamengine_scene` ) ) {
+			return fail( 'вывезенное дерево начинается не с движковой сцены под именем из поля класса' )
+		}
+		if( ( got.tree_lines ?? 0 ) < 20 ) return fail( 'вывезенное дерево короче двадцати строк, вывоз сломан' )
+		if( ( got.ts_lines ?? 0 ) < 5 ) return fail( 'вывезенный спутник короче пяти строк, вывоз сломан' )
+		if( ( got.ts_ports ?? 0 ) < 1 ) return fail( 'в спутнике нет ни одного порта вектора' )
+		if( got.tree_studio !== 0 ) return fail( 'в вывезенном дереве есть имена студии' )
+
+		return say( $bog_gamengine_studio_probe_pass_ok )
+	}
+
 	export const $bog_gamengine_studio_probe_live_page = 'bog/gamengine/demo/-/index.html'
 
 	export const $bog_gamengine_studio_probe_master = 'localhost:9090'

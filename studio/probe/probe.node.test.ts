@@ -27,6 +27,11 @@ namespace $ {
 			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_studio_probe_keep_ok ) )
 		},
 
+		'whole path from the sample to an exported level goes by mouse alone'() {
+			const out = $bog_probe_test( 'bog/gamengine/studio/probe/-/node.js', 'bog_gamengine_studio_probe_pass' )
+			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_studio_probe_pass_ok ) )
+		},
+
 		'editor asked for a master comes up on its own, declares its land and shows the document'() {
 			const out = $bog_probe_test( 'bog/gamengine/studio/probe/-/node.js', 'bog_gamengine_studio_probe_alone' )
 			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_studio_probe_alone_ok ) )
