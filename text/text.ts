@@ -148,17 +148,10 @@ namespace $ {
 
 			const axes = this.axes
 			if( cam ) {
-				const view = cam.world()
-				for( let c = 0; c < 3; ++c ) {
-					const x = view[ c * 4 ]
-					const y = view[ c * 4 + 1 ]
-					const z = view[ c * 4 + 2 ]
-					const k = 1 / ( Math.sqrt( x * x + y * y + z * z ) || 1 )
-					axes[ c * 4 ] = x * k
-					axes[ c * 4 + 1 ] = y * k
-					axes[ c * 4 + 2 ] = z * k
-					axes[ c * 4 + 3 ] = 0
-				}
+				$bog_gamengine_vec_mat4_basis( axes, cam.world(), 4 )
+				axes[ 3 ] = 0
+				axes[ 7 ] = 0
+				axes[ 11 ] = 0
 				axes[ 12 ] = world[ 12 ]
 				axes[ 13 ] = world[ 13 ]
 				axes[ 14 ] = world[ 14 ]

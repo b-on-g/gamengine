@@ -57,6 +57,20 @@ namespace $ {
 		return out
 	}
 
+	export function $bog_gamengine_vec_mat4_basis( out: Float32Array, m: Float32List, stride: number ) {
+		for( let c = 0; c < 3; ++ c ) {
+			const at = c * stride
+			const x = m[ c * 4 ]
+			const y = m[ c * 4 + 1 ]
+			const z = m[ c * 4 + 2 ]
+			const k = 1 / ( Math.sqrt( x * x + y * y + z * z ) || 1 )
+			out[ at ] = x * k
+			out[ at + 1 ] = y * k
+			out[ at + 2 ] = z * k
+		}
+		return out
+	}
+
 	export function $bog_gamengine_vec_quat_identity( out: Float32Array ) {
 		out[ 0 ] = 0
 		out[ 1 ] = 0

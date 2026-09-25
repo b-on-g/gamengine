@@ -116,6 +116,44 @@ namespace $ {
 			$mol_assert_ok( Math.abs( out[ 2 ] - 1.2 ) < 1e-6 )
 		},
 
+		'mat4_basis normalizes the three columns, which scale makes visible'() {
+			const m = new Float32Array([
+				2, 0, 0, 0,
+				0, 0, 3, 0,
+				0, - 4, 0, 0,
+				7, 8, 9, 1,
+			])
+			const out = $bog_gamengine_vec_mat4_basis( new Float32Array( 16 ), m, 4 )
+			$mol_assert_equal( [ out[ 0 ], out[ 1 ], out[ 2 ] ], [ 1, 0, 0 ] )
+			$mol_assert_equal( [ out[ 4 ], out[ 5 ], out[ 6 ] ], [ 0, 0, 1 ] )
+			$mol_assert_equal( [ out[ 8 ], out[ 9 ], out[ 10 ] ], [ 0, - 1, 0 ] )
+		},
+
+		'mat4_basis with stride three packs columns tight and clobbers nothing'() {
+			const m = new Float32Array([
+				2, 0, 0, 0,
+				0, 0, 3, 0,
+				0, - 4, 0, 0,
+				7, 8, 9, 1,
+			])
+			const out = $bog_gamengine_vec_mat4_basis( new Float32Array( 9 ).fill( 5 ), m, 3 )
+			$mol_assert_equal( [ ... out ], [ 1, 0, 0, 0, 0, 1, 0, - 1, 0 ] )
+		},
+
+		'mat4_basis leaves the translation of the matrix alone'() {
+			const m = new Float32Array( 16 )
+			m[ 0 ] = 1; m[ 5 ] = 1; m[ 10 ] = 1
+			m[ 12 ] = 7; m[ 13 ] = 8; m[ 14 ] = 9; m[ 15 ] = 1
+			const out = $bog_gamengine_vec_mat4_basis( new Float32Array( 16 ), m, 4 )
+			$mol_assert_equal( [ out[ 12 ], out[ 13 ], out[ 14 ], out[ 15 ] ], [ 0, 0, 0, 0 ] )
+			$mol_assert_equal( [ m[ 12 ], m[ 13 ], m[ 14 ] ], [ 7, 8, 9 ] )
+		},
+
+		'mat4_basis of a zero column gives zero instead of dividing by it'() {
+			const out = $bog_gamengine_vec_mat4_basis( new Float32Array( 9 ), new Float32Array( 16 ), 3 )
+			$mol_assert_equal( [ ... out ], [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ] )
+		},
+
 		'quat_integrate one second at half pi around Y turns x to minus z'() {
 			const q = $bog_gamengine_vec_quat_identity( new Float32Array( 4 ) )
 			const ang = new Float32Array([ 0, Math.PI / 2, 0 ])

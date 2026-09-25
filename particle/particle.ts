@@ -317,16 +317,7 @@ namespace $ {
 			const basis = this.basis
 			const cam = this.billboard() ? this.scene()?.cam() ?? null : null
 			if( cam ) {
-				const view = cam.world()
-				for( let c = 0; c < 3; ++ c ) {
-					const x = view[ c * 4 ]
-					const y = view[ c * 4 + 1 ]
-					const z = view[ c * 4 + 2 ]
-					const k = 1 / ( Math.sqrt( x * x + y * y + z * z ) || 1 )
-					basis[ c * 3 ] = x * k
-					basis[ c * 3 + 1 ] = y * k
-					basis[ c * 3 + 2 ] = z * k
-				}
+				$bog_gamengine_vec_mat4_basis( basis, cam.world(), 3 )
 			} else {
 				basis.fill( 0 )
 				basis[ 0 ] = 1

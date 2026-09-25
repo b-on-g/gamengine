@@ -84,6 +84,33 @@ namespace $ {
 			}
 		},
 
+		'billboard glyph axes are the camera basis under pitch and under roll'() {
+			for( const rot of [ [ - Math.PI / 4, 0, 0 ], [ 0, 0, Math.PI / 6 ], [ - 0.3, 0.7, 0.2 ] ] ) {
+				const text = $bog_gamengine_text_test_make( 'a' )
+				text.height( 1 )
+				const cam = new $bog_gamengine_cam
+				const scene = new $bog_gamengine_scene
+				scene.cam( cam )
+				scene.kids([ text ])
+				text.billboard( true )
+				cam.scale( new Float32Array([ 2, 2, 2 ]) )
+				cam.rot( new Float32Array( rot ) )
+				const view = cam.world()
+				const trans = text.pool().trans
+				for( let c = 0; c < 3; ++ c ) {
+					const x = view[ c * 4 ]
+					const y = view[ c * 4 + 1 ]
+					const z = view[ c * 4 + 2 ]
+					const k = 1 / Math.sqrt( x * x + y * y + z * z )
+					$mol_assert_equal( $bog_gamengine_text_test_round( trans[ c * 4 ] ), $bog_gamengine_text_test_round( x * k ) )
+					$mol_assert_equal( $bog_gamengine_text_test_round( trans[ c * 4 + 1 ] ), $bog_gamengine_text_test_round( y * k ) )
+					$mol_assert_equal( $bog_gamengine_text_test_round( trans[ c * 4 + 2 ] ), $bog_gamengine_text_test_round( z * k ) )
+					const len = Math.hypot( trans[ c * 4 ], trans[ c * 4 + 1 ], trans[ c * 4 + 2 ] )
+					$mol_assert_ok( Math.abs( len - 1 ) < 1e-5 )
+				}
+			}
+		},
+
 		'camera tipped in pitch redraws a billboard string though its own world stays'() {
 			const text = $bog_gamengine_text_test_make( 'ab' )
 			const cam = new $bog_gamengine_cam

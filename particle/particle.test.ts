@@ -119,6 +119,34 @@ namespace $ {
 			$mol_assert_equal( world.pool().trans[ 12 ], 5 )
 		},
 
+		'billboard basis is the camera basis under pitch and under roll'() {
+			for( const rot of [ [ - Math.PI / 4, 0, 0 ], [ 0, 0, Math.PI / 6 ], [ - 0.3, 0.7, 0.2 ] ] ) {
+				const scene = new $bog_gamengine_scene
+				const cam = new $bog_gamengine_cam
+				cam.scale( new Float32Array([ 2, 2, 2 ]) )
+				cam.rot( new Float32Array( rot ) )
+				scene.cam( cam )
+				const emitter = $bog_gamengine_particle_test_emitter( 0, 10 )
+				emitter.billboard( true )
+				emitter.speed( new Float32Array([ 0, 0 ]) )
+				scene.kids([ emitter ])
+				emitter.burst( 1 )
+				const view = cam.world()
+				const basis = emitter.basis
+				for( let c = 0; c < 3; ++ c ) {
+					const x = view[ c * 4 ]
+					const y = view[ c * 4 + 1 ]
+					const z = view[ c * 4 + 2 ]
+					const k = 1 / Math.sqrt( x * x + y * y + z * z )
+					const round = ( v: number )=> Math.round( v * 1e6 ) / 1e6
+					$mol_assert_equal( round( basis[ c * 3 ] ), round( x * k ) )
+					$mol_assert_equal( round( basis[ c * 3 + 1 ] ), round( y * k ) )
+					$mol_assert_equal( round( basis[ c * 3 + 2 ] ), round( z * k ) )
+					$mol_assert_ok( Math.abs( Math.hypot( basis[ c * 3 ], basis[ c * 3 + 1 ], basis[ c * 3 + 2 ] ) - 1 ) < 1e-5 )
+				}
+			}
+		},
+
 		'billboard takes rotation from the scene camera'() {
 			const scene = new $bog_gamengine_scene
 			const cam = new $bog_gamengine_cam
