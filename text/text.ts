@@ -103,6 +103,27 @@ namespace $ {
 			return total * this.height()
 		}
 
+		box_local() {
+			let width = 0
+			try {
+				width = this.width()
+			} catch( error ) {
+				if( $mol_promise_like( error ) ) return null
+				return $mol_fail_hidden( error )
+			}
+			if( !width ) return null
+			const height = this.height()
+			const align = this.align()
+			const box = this.local_box
+			box[ 0 ] = align === 'center' ? - width / 2 : align === 'right' ? - width : 0
+			box[ 3 ] = box[ 0 ] + width
+			box[ 1 ] = - height / 2
+			box[ 4 ] = height / 2
+			box[ 2 ] = 0
+			box[ 5 ] = 0
+			return box
+		}
+
 		axes = new Float32Array( 16 )
 		watch = new $bog_gamengine_watch
 
@@ -117,7 +138,10 @@ namespace $ {
 			const billboard = watch.of( this.billboard() )
 			const cam = billboard ? this.scene()?.cam() ?? null : null
 			watch.of( cam?.world() ?? null )
-			const font = watch.of( this.font() )
+			const font = this.font()
+			watch.of( font.family() )
+			watch.of( font.size() )
+			watch.of( font.chars() )
 			const names = watch.of( this.atlas()?.names() ?? null )
 			if( watch.fresh() ) return pool.count
 			++ pool.version

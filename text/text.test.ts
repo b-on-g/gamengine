@@ -84,6 +84,43 @@ namespace $ {
 			}
 		},
 
+		'camera tipped in pitch redraws a billboard string though its own world stays'() {
+			const text = $bog_gamengine_text_test_make( 'ab' )
+			const cam = new $bog_gamengine_cam
+			const scene = new $bog_gamengine_scene
+			scene.cam( cam )
+			scene.kids([ text ])
+			text.billboard( true )
+			cam.rot( new Float32Array([ 0, 0, 0 ]) )
+			const version = text.pool().version
+			const world = [ ... text.world() ]
+			const was = $bog_gamengine_text_test_round( text.pool().trans[ 6 ] )
+			cam.rot( new Float32Array([ Math.PI / 4, 0, 0 ]) )
+			$mol_assert_equal( [ ... text.world() ], world )
+			text.emit()
+			$mol_assert_equal( text.pool_own().version > version, true )
+			$mol_assert_equal( $bog_gamengine_text_test_round( text.pool_own().trans[ 6 ] ) === was, false )
+		},
+
+		'font edited in place redraws the string without being swapped'() {
+			const text = $bog_gamengine_text_test_make( 'ab' )
+			const font = text.font()
+			font.family( 'sans-serif' )
+			font.size( 64 )
+			const version = text.pool().version
+			font.size( 32 )
+			text.emit()
+			$mol_assert_equal( text.pool_own().version > version, true )
+			const after = text.pool_own().version
+			font.family( 'serif' )
+			text.emit()
+			$mol_assert_equal( text.pool_own().version > after, true )
+			const last = text.pool_own().version
+			font.chars( 'ab' )
+			text.emit()
+			$mol_assert_equal( text.pool_own().version > last, true )
+		},
+
 		'swapped font and swapped atlas both redraw the string'() {
 			const text = $bog_gamengine_text_test_make( 'ab' )
 			const version = text.pool().version

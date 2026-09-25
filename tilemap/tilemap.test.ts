@@ -114,6 +114,26 @@ namespace $ {
 			$mol_assert_equal( box[ 4 ], 0 )
 		},
 
+		'changed palette relayers the cells'() {
+			const node = $bog_gamengine_tilemap_test_make()
+			const before = $bog_gamengine_tilemap_test_mark( node )
+			node.palette({ '#': 'floor', '.': 'wall' })
+			node.emit()
+			$mol_assert_equal( $bog_gamengine_tilemap_test_mark( node ) === before, false )
+			$mol_assert_equal( node.pool().layer[ 0 ], node.atlas()!.layer( 'floor' ) )
+		},
+
+		'grid swapped for another one redraws from the new grid'() {
+			const node = $bog_gamengine_tilemap_test_make()
+			const before = $bog_gamengine_tilemap_test_mark( node )
+			const other = new $bog_gamengine_phys_tile
+			other.map( '##\n##' )
+			node.tile( other )
+			node.emit()
+			$mol_assert_equal( $bog_gamengine_tilemap_test_mark( node ) === before, false )
+			$mol_assert_equal( node.pool().count, 4 )
+		},
+
 		'atlas reordered in place relayers the cells without being swapped'() {
 			const node = $bog_gamengine_tilemap_test_make()
 			const atlas = node.atlas()!

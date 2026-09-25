@@ -86,7 +86,7 @@ namespace $ {
 		emit() {
 			const pool = this.pool()
 			const watch = this.watch.open()
-			const tile = watch.of( this.tile() )
+			const tile = this.tile()
 			if( !tile ) {
 				pool.count = 0
 				return 0
@@ -95,7 +95,7 @@ namespace $ {
 			const size = watch.of( this.size() )
 			const palette = watch.of( this.palette() )
 			const tint = watch.of( this.tint() )
-			const atlas = watch.of( this.atlas() )
+			const atlas = this.atlas()
 			watch.of( tile.map() )
 			watch.of( tile.plane() )
 			watch.of( tile.origin() )
