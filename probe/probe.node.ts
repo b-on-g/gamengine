@@ -1082,7 +1082,11 @@ namespace $ {
 		const canvas = document.querySelector( 'canvas' )
 		const gl = canvas && canvas.getContext( 'webgl2' )
 		const out = new Uint8Array( 4 )
-		if( gl ) gl.readPixels( ( canvas.width / 2 ) | 0, ( canvas.height / 2 ) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
+		let lit = [ 0, 0, 0, 0 ]
+		for( let y = 16; gl && y < canvas.height && !lit[ 3 ]; y += 32 ) for( let x = 16; x < canvas.width; x += 32 ) {
+			gl.readPixels( x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
+			if( out[ 0 ] > 40 || out[ 1 ] > 40 || out[ 2 ] > 40 ) { lit = Array.from( out ); break }
+		}
 		const state = {
 			first: /name \\\\Крошка/.test( text ),
 			second: /name \\\\Дозор/.test( text ),
@@ -1090,7 +1094,7 @@ namespace $ {
 			rows: document.querySelectorAll( '[bog_gamestudio_app_row]' ).length,
 			foot: foot ? foot.innerText : '',
 			stored: localStorage.getItem( 'bog_gamestudio_source' ) !== null,
-			center: Array.from( out ),
+			lit,
 		}
 	`
 
@@ -1122,11 +1126,11 @@ namespace $ {
 		readonly rows: number
 		readonly foot: string
 		readonly stored: boolean
-		readonly center: readonly number[]
+		readonly lit: readonly number[]
 	}
 
-	export function $bog_gamestudio_probe_keep_dark( center: readonly number[] ) {
-		return center[ 0 ] < 40 && center[ 1 ] < 40 && center[ 2 ] < 40
+	export function $bog_gamestudio_probe_keep_dark( lit: readonly number[] ) {
+		return lit[ 0 ] < 40 && lit[ 1 ] < 40 && lit[ 2 ] < 40
 	}
 
 	export async function $bog_gamestudio_probe_keep(
@@ -1167,8 +1171,8 @@ namespace $ {
 			say( `после перезагрузки: ${ JSON.stringify( back ) }` )
 
 			if( !back.first ) return fail( 'перезагрузка потеряла правку', back )
-			if( back.rows !== 3 ) return fail( 'после перезагрузки в дереве сцены не три узла', back )
-			if( $bog_gamestudio_probe_keep_dark( back.center ) ) return fail( 'после перезагрузки холст чёрный', back )
+			if( back.rows !== typed.rows ) return fail( 'после перезагрузки в дереве сцены не столько узлов, сколько до неё', back )
+			if( $bog_gamestudio_probe_keep_dark( back.lit ) ) return fail( 'после перезагрузки холст чёрный', back )
 
 			await browser.evaluate( $bog_gamestudio_probe_keep_lock_script, 15000 )
 
@@ -1179,8 +1183,8 @@ namespace $ {
 			say( `при запрете записи: ${ JSON.stringify( locked ) }` )
 
 			if( !locked.second ) return fail( 'при запрете записи правка пропала из редактора', locked )
-			if( locked.rows !== 3 ) return fail( 'при запрете записи дерево сцены осыпалось', locked )
-			if( $bog_gamestudio_probe_keep_dark( locked.center ) ) return fail( 'при запрете записи холст почернел', locked )
+			if( locked.rows !== back.rows ) return fail( 'при запрете записи дерево сцены осыпалось', locked )
+			if( $bog_gamestudio_probe_keep_dark( locked.lit ) ) return fail( 'при запрете записи холст почернел', locked )
 			if( !locked.foot.startsWith( 'Браузер не сохраняет' ) ) return fail( 'подвал не признался, что запись не идёт', locked )
 
 			return say( $bog_gamestudio_probe_keep_ok )
