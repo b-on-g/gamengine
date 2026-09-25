@@ -37,7 +37,7 @@ jobs:
         CI: true
       with:
         package: 'bog/gamengine'
-        modules: 'demo probe look demo/jumper/probe demo/shooter/probe demo/legion/probe studio/probe'
+        modules: 'demo probe look demo/jumper/probe demo/shooter/probe demo/legion/probe studio/probe pack'
 
     - uses: hyoo-ru/gh-deploy@v4.4.1
       if: github.ref == 'refs/heads/main'
