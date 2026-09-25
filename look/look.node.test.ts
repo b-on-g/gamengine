@@ -128,11 +128,7 @@ namespace $ {
 
 		'scene signature holds against the written one'() {
 			const out = $bog_probe_test( 'bog/gamengine/look/-/node.js', 'bog_gamengine_look_check' )
-			$mol_assert_ok(
-				out.includes( $bog_probe_skip )
-				|| out.includes( $bog_gamengine_look_ok )
-				|| out.includes( $bog_gamengine_look_away ),
-			)
+			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_look_ok, $bog_gamengine_look_away ) )
 		},
 
 	})

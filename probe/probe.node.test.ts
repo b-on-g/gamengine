@@ -4,32 +4,32 @@ namespace $ {
 
 		'quad center is red and no buffers after second frame'() {
 			const out = $bog_probe_test( 'bog/gamengine/probe/-/node.js', 'bog_gamengine_probe_check' )
-			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_ok ) )
+			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_probe_ok ) )
 		},
 
 		'flat hero walks right on D and floor shows through hero corner'() {
 			const out = $bog_probe_test( 'bog/gamengine/probe/-/node.js', 'bog_gamengine_probe_flat_check' )
-			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_flat_ok ) )
+			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_probe_flat_ok ) )
 		},
 
 		'room walker goes forward on W, lit wall is brighter than shaded one, glb pillar differs from floor'() {
 			const out = $bog_probe_test( 'bog/gamengine/probe/-/node.js', 'bog_gamengine_probe_room_check' )
-			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_room_ok ) )
+			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_probe_room_ok ) )
 		},
 
 		'room and flat pages load without a single thrown exception'() {
 			const out = $bog_probe_test( 'bog/gamengine/probe/-/node.js', 'bog_gamengine_probe_quiet_check' )
-			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_quiet_ok ) )
+			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_probe_quiet_ok ) )
 		},
 
 		'boxes settle on the floor with contacts, click throws one more, center is not black'() {
 			const out = $bog_probe_test( 'bog/gamengine/probe/-/node.js', 'bog_gamengine_probe_boxes_check' )
-			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_boxes_ok ) )
+			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_probe_boxes_ok ) )
 		},
 
 		'catalog menu rows lay out without overlap on every spread the catalog itself declares'() {
 			const out = $bog_probe_test( 'bog/gamengine/probe/-/node.js', 'bog_gamengine_probe_menu_check' )
-			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_menu_ok ) )
+			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_probe_menu_ok ) )
 		},
 
 		'lit over shade holds in linear light and slips in screen light'() {

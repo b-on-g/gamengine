@@ -46,12 +46,12 @@ namespace $ {
 
 		'square turns hero into 32×32 png'() {
 			const out = $bog_probe_test( 'bog/gamengine/pack/-/node.js', 'bog_gamengine_pack_square_check' )
-			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_pack_square_ok ) )
+			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_pack_square_ok ) )
 		},
 
 		'atlas of two images gives two squares, meta with deploys and layer list'() {
 			const out = $bog_probe_test( 'bog/gamengine/pack/-/node.js', 'bog_gamengine_pack_atlas_check' )
-			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_pack_atlas_ok ) )
+			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_pack_atlas_ok ) )
 		},
 
 	})

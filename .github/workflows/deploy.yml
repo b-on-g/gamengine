@@ -30,6 +30,8 @@ jobs:
         echo "CHROME_PATH=${{ steps.chrome.outputs.chrome-path }}" >> "$GITHUB_ENV"
 
     - uses: hyoo-ru/mam_build@master2
+      env:
+        CI: true
       with:
         package: 'bog/gamengine'
         modules: 'demo probe look demo/jumper/probe demo/shooter/probe demo/legion/probe studio/probe'
