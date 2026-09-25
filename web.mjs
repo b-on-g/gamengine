@@ -10117,6 +10117,9 @@ var $;
         name(next = '') {
             return next;
         }
+        role(next = '') {
+            return next;
+        }
         title() {
             const name = this.name();
             if (name)
@@ -10130,6 +10133,7 @@ var $;
                 { name: 'rot', kind: 'euler', get: () => this.rot(), set: next => this.rot(next) },
                 { name: 'scale', kind: 'vec3', get: () => this.scale(), set: next => this.scale(next) },
                 { name: 'tint', kind: 'vec4', get: () => this.tint(), set: next => this.tint(next) },
+                { name: 'role', kind: 'text', get: () => this.role(), set: next => this.role(String(next ?? '')) },
             ];
         }
         parts(next) {
@@ -10223,6 +10227,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "name", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_node.prototype, "role", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_node.prototype, "parts", null);
@@ -14756,6 +14763,21 @@ var $;
             }
             return list;
         }
+        by_role(role) {
+            const nodes = this.nodes();
+            const out = [];
+            for (let i = 0; i < nodes.length; ++i) {
+                if (nodes[i].role() === role)
+                    out.push(nodes[i]);
+            }
+            return out;
+        }
+        by_role_one(role) {
+            const found = this.by_role(role);
+            if (found.length === 1)
+                return found[0];
+            return $mol_fail(new Error(`Role "${role}" is on ${found.length} nodes, need exactly one`));
+        }
         lights() {
             const nodes = this.nodes();
             const lights = [];
@@ -14980,6 +15002,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "nodes", null);
+    __decorate([
+        $mol_mem_key
+    ], $bog_gamengine_scene.prototype, "by_role", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_scene.prototype, "lights", null);

@@ -3808,10 +3808,14 @@ var $;
             node.name('Hero');
             $mol_assert_equal(node.title(), 'Hero');
         },
-        'base props are pos, rot, scale and tint with kinds'() {
+        'base props name their kinds'() {
             const props = new $bog_gamengine_node().props();
-            $mol_assert_equal(props.map(prop => prop.name), ['pos', 'rot', 'scale', 'tint']);
-            $mol_assert_equal(props.map(prop => prop.kind), ['vec3', 'euler', 'vec3', 'vec4']);
+            const kind = (name) => props.find(prop => prop.name === name)?.kind ?? 'нет такого';
+            $mol_assert_equal(kind('pos'), 'vec3');
+            $mol_assert_equal(kind('rot'), 'euler');
+            $mol_assert_equal(kind('scale'), 'vec3');
+            $mol_assert_equal(kind('tint'), 'vec4');
+            $mol_assert_equal(kind('role'), 'text');
         },
         'set through props changes pos'() {
             const node = new $bog_gamengine_node;
@@ -3907,12 +3911,14 @@ var $;
             const part = new $bog_gamengine_combat;
             part.health_max(40);
             node.parts([part]);
-            $mol_assert_equal(node.props().map(prop => prop.name), ['pos', 'rot', 'scale', 'tint']);
+            const names = node.props().map(prop => prop.name);
+            $mol_assert_equal(names.filter(name => /health|rate|\./.test(name)), []);
             $mol_assert_equal(part.props().find(prop => prop.name === 'health_max').get(), 40);
         },
-        'node without parts shows the same props as before'() {
-            const node = new $bog_gamengine_node;
-            $mol_assert_equal(node.props().map(prop => prop.name), ['pos', 'rot', 'scale', 'tint']);
+        'node without parts keeps its props to itself'() {
+            const names = new $bog_gamengine_node().props().map(prop => prop.name);
+            $mol_assert_equal(names.filter(name => name.includes('.')), []);
+            $mol_assert_ok(names.indexOf('pos') >= 0);
         },
     });
 })($ || ($ = {}));
@@ -6784,6 +6790,11 @@ var $;
             this.pos(new Float32Array([pos[0] + dt, pos[1], pos[2]]));
         }
     }
+    class $bog_gamengine_scene_roled extends $bog_gamengine_node {
+        role() {
+            return 'hero';
+        }
+    }
     class $bog_gamengine_scene_parted extends $bog_gamengine_node {
         own = [];
         parts() {
@@ -7163,6 +7174,58 @@ var $;
             scene.step();
             $mol_assert_equal(scene.snapshot_version(), version + 1);
             $mol_assert_equal(scene.snapshot(), snap);
+        },
+        'nodes of a role come in the order of the scene'() {
+            const first = new $bog_gamengine_node;
+            const second = new $bog_gamengine_node;
+            const other = new $bog_gamengine_node;
+            first.role('crumb');
+            second.role('crumb');
+            other.role('hero');
+            const scene = new $bog_gamengine_scene;
+            scene.kids([first, other, second]);
+            $mol_assert_equal(scene.by_role('crumb'), [first, second]);
+            $mol_assert_equal(scene.by_role('hero'), [other]);
+            $mol_assert_equal(scene.by_role('ghost'), []);
+        },
+        'list of a role is remembered until a role changes'() {
+            const node = new $bog_gamengine_node;
+            const mate = new $bog_gamengine_node;
+            node.role('crumb');
+            const scene = new $bog_gamengine_scene;
+            scene.kids([node, mate]);
+            const first = scene.by_role('crumb');
+            $mol_assert_equal(scene.by_role('crumb'), first);
+            mate.role('crumb');
+            $mol_assert_equal(scene.by_role('crumb'), [node, mate]);
+            node.role('');
+            $mol_assert_equal(scene.by_role('crumb'), [mate]);
+        },
+        'role given by a tree is seen as well as one given by code'() {
+            const node = new $bog_gamengine_scene_roled;
+            const scene = new $bog_gamengine_scene;
+            scene.kids([node]);
+            $mol_assert_equal(scene.by_role('hero'), [node]);
+            $mol_assert_equal(scene.by_role_one('hero'), node);
+        },
+        'single node of a role is demanded loudly'() {
+            const first = new $bog_gamengine_node;
+            const second = new $bog_gamengine_node;
+            first.role('hero');
+            const scene = new $bog_gamengine_scene;
+            scene.kids([first, second]);
+            $mol_assert_equal(scene.by_role_one('hero'), first);
+            $mol_assert_fail(() => scene.by_role_one('ghost'), 'Role "ghost" is on 0 nodes, need exactly one');
+            second.role('hero');
+            $mol_assert_fail(() => scene.by_role_one('hero'), 'Role "hero" is on 2 nodes, need exactly one');
+        },
+        'role of a node is shown to the inspector as text'() {
+            const node = new $bog_gamengine_node;
+            const prop = node.props().find(one => one.name === 'role');
+            $mol_assert_equal(prop.kind, 'text');
+            $mol_assert_equal(prop.get(), '');
+            prop.set('hero');
+            $mol_assert_equal(node.role(), 'hero');
         },
         'part declared by a tree gets its owner on the nodes walk'() {
             const part = new $bog_gamengine_combat;

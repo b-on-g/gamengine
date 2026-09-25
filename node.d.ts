@@ -4033,6 +4033,7 @@ declare namespace $ {
     function $bog_gamengine_node_vec(next: ArrayLike<number>): Float32Array<ArrayBufferLike>;
     class $bog_gamengine_node extends $mol_object2 {
         name(next?: string): string;
+        role(next?: string): string;
         title(): string;
         props(): readonly $bog_gamengine_prop[];
         parts(next?: readonly $bog_gamengine_part[]): readonly $bog_gamengine_part[];
@@ -4850,6 +4851,8 @@ declare namespace $ {
         is_scene(): boolean;
         auto_nodes(next?: readonly $bog_gamengine_node[]): readonly $bog_gamengine_node[];
         nodes(): readonly $bog_gamengine_node[];
+        by_role(role: string): readonly $bog_gamengine_node[];
+        by_role_one(role: string): $bog_gamengine_node;
         lights(): readonly $bog_gamengine_light[];
         Shader_sprite(next?: $bog_gamengine_shader): $bog_gamengine_shader | $bog_gamengine_shader_sprite;
         Shader_solid(next?: $bog_gamengine_shader): $bog_gamengine_shader | $bog_gamengine_shader_solid;
