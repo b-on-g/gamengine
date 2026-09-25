@@ -16,6 +16,8 @@ namespace $ {
 
 	export const $bog_gamengine_demo_legion_probe_far_ok = 'приказ всем своим в дальний угол доведён, и худший кадр не вырос выше признанного потолка'
 
+	export const $bog_gamengine_demo_legion_probe_far_away = 'приказ всем своим в дальний угол доведён, а потолок худшего кадра не сверялся: прогон не на машине, где он назначен'
+
 	export const $bog_gamengine_demo_legion_probe_far_zooms = 10
 
 	export const $bog_gamengine_demo_legion_probe_far_frames = 90
@@ -91,12 +93,17 @@ namespace $ {
 			.map( one => one.path_count() )
 			.filter( one => one > 0 )
 
+		const shown_ticks = ticks.filter( one => Number.isFinite( one ) )
+		const shown_peaks = peaks.filter( one => Number.isFinite( one ) )
+
 		return {
 			webgl: true, loaded: true, picked, inside, cell, plans,
 			dense_top: dense.reduce( ( most, one )=> one > most ? one : most, 0 ),
 			route_top: routes.reduce( ( most, one )=> one > most ? one : most, 0 ),
-			tick: ticks.reduce( ( sum, one )=> sum + one, 0 ) / ticks.length,
-			peak: peaks.reduce( ( worst, one )=> one > worst ? one : worst, 0 ),
+			frames: peaks.length,
+			peak_seen: shown_peaks.length,
+			tick: shown_ticks.length ? shown_ticks.reduce( ( sum, one )=> sum + one, 0 ) / shown_ticks.length : NaN,
+			peak: shown_peaks.length ? shown_peaks.reduce( ( worst, one )=> one > worst ? one : worst, 0 ) : NaN,
 		}
 	`
 
@@ -109,6 +116,8 @@ namespace $ {
 		readonly plans?: number
 		readonly dense_top?: number
 		readonly route_top?: number
+		readonly frames?: number
+		readonly peak_seen?: number
 		readonly tick?: number
 		readonly peak?: number
 	}
@@ -148,6 +157,21 @@ namespace $ {
 		if( !( got.dense_top! > 0 ) ) return fail( 'за окно замера никто не перепланировал путь, мерить нечего' )
 		if( !( got.route_top! > 1 ) ) return fail( 'ни у кого нет пути длиннее точки, приказ не дошёл' )
 		if( !Number.isFinite( got.peak! ) ) return fail( 'страница не печатает peak, худший кадр не с чем сверить' )
+		if( got.peak_seen !== got.frames ) return fail(
+			`страница напечатала peak лишь в ${ got.peak_seen } кадрах из ${ got.frames }, худший кадр собран не по всему окну`
+		)
+
+		const seen = `худший кадр ${ got.peak!.toFixed( 1 ) } мс,`
+			+ ` средний ${ got.tick!.toFixed( 2 ) } мс,`
+			+ ` перепланирований ${ got.plans }, в густейшем кадре ${ got.dense_top }`
+
+		const mine = !$bog_probe_needed()
+
+		if( !mine ) return say(
+			`${ $bog_gamengine_demo_legion_probe_far_away }: ${ seen },`
+			+ ` местный потолок ${ $bog_gamengine_demo_legion_probe_far_max } мс,`
+			+ ` цель ${ $bog_gamengine_demo_legion_probe_peak_max } мс`
+		)
 
 		if( !( got.peak! < $bog_gamengine_demo_legion_probe_far_max ) ) return fail(
 			`худший кадр дороже ${ $bog_gamengine_demo_legion_probe_far_max } мс:`
@@ -155,10 +179,8 @@ namespace $ {
 		)
 
 		return say(
-			`${ $bog_gamengine_demo_legion_probe_far_ok }, худший кадр ${ got.peak!.toFixed( 1 ) } мс`
-			+ ` при потолке ${ $bog_gamengine_demo_legion_probe_far_max } и цели ${ $bog_gamengine_demo_legion_probe_peak_max },`
-			+ ` средний ${ got.tick!.toFixed( 2 ) } мс,`
-			+ ` перепланирований ${ got.plans }, в густейшем кадре ${ got.dense_top }`
+			`${ $bog_gamengine_demo_legion_probe_far_ok }, ${ seen },`
+			+ ` потолок ${ $bog_gamengine_demo_legion_probe_far_max } мс, цель ${ $bog_gamengine_demo_legion_probe_peak_max } мс`
 		)
 	}
 
