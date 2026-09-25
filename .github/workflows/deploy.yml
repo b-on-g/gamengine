@@ -81,6 +81,8 @@ jobs:
       if: always()
       env:
         CI: true
+        GIT_HTTP_LOW_SPEED_LIMIT: 1000
+        GIT_HTTP_LOW_SPEED_TIME: 30
       run: |
         set -uo pipefail
 
@@ -118,8 +120,10 @@ jobs:
           art="bog/gamengine/$mod/-/node.audit.js"
           rm -f "$art"
           start=$SECONDS
+          echo "::group::$mod"
           code=0
-          timeout 300 node bog/gamengine/.github/audit.js "bog/gamengine/$mod" || code=$?
+          timeout 300 stdbuf -o0 -e0 node bog/gamengine/.github/audit.js "bog/gamengine/$mod" || code=$?
+          echo "::endgroup::"
           if [ "$code" -eq 124 ]; then
             echo "$mod: аудит висел дольше 300 с и снят по таймауту, это отказ, а не задержка"
           fi
