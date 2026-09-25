@@ -32,7 +32,8 @@ namespace $ {
 		readonly fields_after: string
 		readonly typed: string
 		readonly source_after: string
-		readonly ppu: number
+		readonly unit: number
+		readonly floors: number
 		readonly fields_coin: string
 		readonly row_coin: string | null
 		readonly arrow: readonly [ number, number ] | null
@@ -57,6 +58,7 @@ namespace $ {
 			readonly cell_pixel: $bog_gamengine_studio_probe_pixel
 			readonly tool_after: string
 			readonly map_fill: string
+			readonly wall_found: boolean
 		}
 		readonly asset_files: readonly string[]
 		readonly drop_before: $bog_gamengine_studio_probe_pixel
@@ -100,11 +102,11 @@ namespace $ {
 			const same = ( a, b )=> a.every( ( v, i )=> Math.abs( v - b[ i ] ) < 8 )
 			${ $bog_gamengine_studio_probe_spot_script }
 			const source_now = ()=> document.querySelector( '[bog_gamengine_studio_source] textarea' ).value
-			const ppu = canvas.height / 6
-			const screen_of = spot => [
-				canvas.width / 2 + spot[ 0 ] * ppu,
-				canvas.height / 2 - spot[ 1 ] * ppu,
-			]
+			const screen_of = spot => seen( spot[ 0 ], spot[ 1 ] )
+			const shown_all = [ ... document.querySelectorAll( '[mol_button]' ) ].find( el => el.innerText.trim() === 'Показать всё' )
+			if( shown_all ) shown_all.click()
+			await frame()
+			await frame()
 			const cell_seen = ( text, char )=> {
 				const cell = cell_of( text, char )
 				return cell ? screen_of( map_spot( text, cell ) ) : null
@@ -162,8 +164,9 @@ namespace $ {
 			const rect = canvas.getBoundingClientRect()
 			const dpr = devicePixelRatio
 			const snap = value => Math.round( value * 2 ) / 2
-			const own_x = - snap( canvas.width / 4 / ppu )
-			const own_y = - snap( canvas.height / 4 / ppu )
+			const own_spot = world_at( canvas.width / 4, canvas.height / 4 )
+			const own_x = snap( own_spot[ 0 ] )
+			const own_y = snap( own_spot[ 1 ] )
 			const coin_seat = row_by( 'Монета' )
 			if( coin_seat ) coin_seat.click()
 			await frame()
@@ -240,21 +243,22 @@ namespace $ {
 			for( let y = 0; y < map_rows.length; ++ y ) for( let x = 0; x < map_rows[ y ].length; ++ x ) {
 				if( map_rows[ y ][ x ] !== '.' ) continue
 				const spot = map_spot( editor.value, [ x, y ] )
-				const seen = screen_of( spot )
-				if( seen[ 0 ] > ppu / 2 && seen[ 0 ] < canvas.width - ppu / 2 && seen[ 1 ] > ppu / 2 && seen[ 1 ] < canvas.height - ppu / 2 ) floors.push( spot )
+				const spot_seen = screen_of( spot )
+				const edge = unit_px() / 2
+				if( spot_seen[ 0 ] > edge && spot_seen[ 0 ] < canvas.width - edge && spot_seen[ 1 ] > edge && spot_seen[ 1 ] < canvas.height - edge ) floors.push( spot )
 			}
 			const moves = []
 			let scene_buffers = 0
 			for( let step = 0; step < ${ $bog_gamengine_studio_probe_moves } && floors.length; ++ step ) {
 				const spot = floors[ step % floors.length ]
-				const seen = screen_of( spot )
+				const spot_seen = screen_of( spot )
 				const created = buf_created.count
 				type( editor, editor.value.replace( /(Герой[^]*?pos \\/ )[^\\n]*/, '$1' + spot[ 0 ] + ' ' + spot[ 1 ] + ' 0' ) )
 				await frame()
-				const first = at( seen[ 0 ], seen[ 1 ] )
+				const first = at( spot_seen[ 0 ], spot_seen[ 1 ] )
 				await frame()
 				if( !scene_buffers ) scene_buffers = buf_created.count - created
-				moves.push({ x: spot[ 0 ], first, pixel: at( seen[ 0 ], seen[ 1 ] ) })
+				moves.push({ x: spot[ 0 ], first, pixel: at( spot_seen[ 0 ], spot_seen[ 1 ] ) })
 			}
 			const textures = { created: tex_created.count, deleted: tex_deleted.count }
 			const buffers = { created: buf_created.count, deleted: buf_deleted.count, scene: scene_buffers }
@@ -275,9 +279,23 @@ namespace $ {
 			tool( 'Клетка' ).click()
 			await frame()
 			const map_before = map_text()
-			const wall_seen = cell_seen( editor.value, '#' ) || [ 0, 0 ]
+			const brush_spot = floors[ floors.length - 1 ] || [ 0, 0 ]
+			const near_wall = ( text, spot )=> {
+				const rows = rows_of( text )
+				let best = null
+				let away = Infinity
+				for( let y = 0; y < rows.length; ++ y ) for( let x = 0; x < rows[ y ].length; ++ x ) {
+					if( rows[ y ][ x ] !== '#' ) continue
+					const at_spot = map_spot( text, [ x, y ] )
+					const gap = Math.max( Math.abs( at_spot[ 0 ] - spot[ 0 ] ), Math.abs( at_spot[ 1 ] - spot[ 1 ] ) )
+					if( gap < away ) { away = gap; best = at_spot }
+				}
+				return best
+			}
+			const wall_spot = near_wall( editor.value, brush_spot )
+			const wall_seen = screen_of( wall_spot || [ 0, 0 ] )
 			const wall_pixel = at( wall_seen[ 0 ], wall_seen[ 1 ] )
-			const floor_seen = screen_of( floors[ floors.length - 1 ] || [ 0, 0 ] )
+			const floor_seen = screen_of( brush_spot )
 			const cell_x = floor_seen[ 0 ]
 			const cell_y = floor_seen[ 1 ]
 			const cell_before = at( cell_x, cell_y )
@@ -300,7 +318,7 @@ namespace $ {
 			document.querySelector( '[bog_gamengine_studio]' ).dispatchEvent( new KeyboardEvent( 'keydown', { keyCode: 27, bubbles: true } ) )
 			await frame()
 			const tool_after = ( document.querySelector( '[bog_gamengine_studio_tools] [mol_check_checked="true"]' ) || { innerText: '' } ).innerText.trim()
-			const tiles = { titles: tile_titles, cell_diff: diff( map_before, map_cell ), fill_diff: diff( map_cell, map_fill ), wall_pixel, cell_before, cell_pixel, tool_after, map_fill }
+			const tiles = { titles: tile_titles, cell_diff: diff( map_before, map_cell ), fill_diff: diff( map_cell, map_fill ), wall_pixel, cell_before, cell_pixel, tool_after, map_fill, wall_found: !!wall_spot }
 			tab( 'Ассеты' ).click()
 			await frame()
 			await frame()
@@ -322,8 +340,9 @@ namespace $ {
 			}
 			asset( 'pillar.glb' ).click()
 			await frame()
-			pointer( 'pointerdown', drop_x + 2 * ppu, drop_y )
-			pointer( 'pointerup', drop_x + 2 * ppu, drop_y )
+			const mesh_seen = seen( own_x + 2, 1 )
+			pointer( 'pointerdown', mesh_seen[ 0 ], mesh_seen[ 1 ] )
+			pointer( 'pointerup', mesh_seen[ 0 ], mesh_seen[ 1 ] )
 			await frame()
 			await frame()
 			asset( 'coin.wav' ).click()
@@ -345,8 +364,8 @@ namespace $ {
 			for( let i = 0; i < 60; ++ i ) await frame()
 			const status_node = document.querySelector( '[bog_gamengine_studio_status]' )
 			const status = status_node ? status_node.innerText.trim() : ''
-			const mesh_pixel = at( drop_x + 2 * ppu, drop_y )
-			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, typed, source_after, ppu, fields_coin, row_coin, arrow, coin_from, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after, textures, buffers, images: images.count, moves, tiles, asset_files, drop_before, drop_after, cursor, tab_after, rows_assets, tree_assets, sprite_line, mesh_line, sound_line, status, mesh_pixel }
+			const mesh_pixel = at( mesh_seen[ 0 ], mesh_seen[ 1 ] )
+			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, typed, source_after, unit: unit_px(), floors: floors.length, fields_coin, row_coin, arrow, coin_from, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after, textures, buffers, images: images.count, moves, tiles, asset_files, drop_before, drop_after, cursor, tab_after, rows_assets, tree_assets, sprite_line, mesh_line, sound_line, status, mesh_pixel }
 		`
 	}
 
@@ -365,6 +384,16 @@ namespace $ {
 			const base = named && spot_of( text, named[ 1 ] ) || [ 0, 0 ]
 			return [ base[ 0 ] + cell[ 0 ] + 0.5, base[ 1 ] - cell[ 1 ] - 0.5 ]
 		}
+		const studio_page = ()=> $$.$bog_gamengine_demo.Root( 0 ).Studio()
+		const seen = ( wx, wy )=> {
+			const out = studio_page().Point().screen( new Float32Array( 3 ), new Float32Array([ wx, wy, 0 ]) )
+			return [ out[ 0 ], out[ 1 ] ]
+		}
+		const world_at = ( sx, sy )=> {
+			const out = studio_page().Point().world( new Float32Array( 3 ), sx, sy )
+			return [ out[ 0 ], out[ 1 ] ]
+		}
+		const unit_px = ()=> Math.abs( seen( 1, 0 )[ 0 ] - seen( 0, 0 )[ 0 ] )
 		const rows_of = text => {
 			const map = ( text.match( /map \\\\\\n(?:[ \\t]*\\\\.*\\n)+/ ) || [ '' ] )[ 0 ]
 			return ( map.match( /\\\\[^\\n]+/g ) || [] ).map( row => row.slice( 1 ) )
@@ -400,10 +429,10 @@ namespace $ {
 			const node = canvas()
 			const box = node.getBoundingClientRect()
 			const dpr = devicePixelRatio
-			const ppu = node.height / 6
 			const spot = map_spot( editor.value, [ cx, cy ] )
-			const x = node.width / 2 + spot[ 0 ] * ppu
-			const y = node.height / 2 - spot[ 1 ] * ppu
+			const spot_seen = seen( spot[ 0 ], spot[ 1 ] )
+			const x = spot_seen[ 0 ]
+			const y = spot_seen[ 1 ]
 			const before = map_of()
 			for( const kind of [ 'pointerdown', 'pointerup' ] ) node.dispatchEvent( new PointerEvent( kind, {
 				bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: kind === 'pointerup' ? 0 : 1,
@@ -497,15 +526,15 @@ namespace $ {
 		const sprites = ()=> source().split( '$bog_gamengine_sprite' ).length - 1
 		const rect = ()=> canvas.getBoundingClientRect()
 		const dpr = devicePixelRatio
-		const ppu = canvas.height / 6
 		const pointer = ( kind, x, y )=> canvas.dispatchEvent( new PointerEvent( kind, {
 			bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: kind === 'pointerup' ? 0 : 1,
 			clientX: rect().left + x / dpr, clientY: rect().top + y / dpr,
 		} ) )
 		const click_cell = async ( cx, cy )=> {
 			const spot = map_spot( source(), [ cx, cy ] )
-			const x = canvas.width / 2 + spot[ 0 ] * ppu
-			const y = canvas.height / 2 - spot[ 1 ] * ppu
+			const spot_seen = seen( spot[ 0 ], spot[ 1 ] )
+			const x = spot_seen[ 0 ]
+			const y = spot_seen[ 1 ]
 			pointer( 'pointerdown', x, y )
 			pointer( 'pointerup', x, y )
 			await wait( 6 )
@@ -656,7 +685,6 @@ namespace $ {
 			if( !editor ) return { webgl: true, fail: 'нет исходника' }
 			const hero_at = ()=> spot_of( editor.value, 'Hero' )
 			const dpr = devicePixelRatio
-			const ppu = canvas.height / 6
 			const pointer = ( type, x, y )=> {
 				const rect = canvas.getBoundingClientRect()
 				canvas.dispatchEvent( new PointerEvent( type, {
@@ -667,11 +695,11 @@ namespace $ {
 			await wait( 20 )
 			const start_spot = hero_at()
 			if( !start_spot ) return { webgl: true, fail: 'в документе нет узла Hero с позицией' }
-			const seen = ()=> {
+			const hero_seen = ()=> {
 				const spot = hero_at()
-				return [ canvas.width / 2 + spot[ 0 ] * ppu, canvas.height / 2 - spot[ 1 ] * ppu ]
+				return seen( spot[ 0 ], spot[ 1 ] )
 			}
-			const spot_screen = seen()
+			const spot_screen = hero_seen()
 			if( spot_screen[ 0 ] < 0 || spot_screen[ 0 ] > canvas.width ) return { webgl: true, fail: 'узел вне холста, сценарию нужен видимый узел' }
 			const grid = document.querySelector( '[bog_gamengine_studio_grid]' )
 			if( !grid ) return { webgl: true, fail: 'нет галки «К сетке»' }
@@ -698,10 +726,10 @@ namespace $ {
 			await wait( 12 )
 			const now = hero_at()
 			return {
-				webgl: true, snapping, ppu,
+				webgl: true, snapping, unit: unit_px(),
 				start: start_spot[ 0 ],
 				moved: now ? now[ 0 ] : null,
-				step: - ${ $bog_gamengine_studio_probe_grid_drag } / ppu,
+				step: - ${ $bog_gamengine_studio_probe_grid_drag } / unit_px(),
 			}
 		`
 	}
@@ -713,7 +741,7 @@ namespace $ {
 		readonly start?: number
 		readonly moved?: number | null
 		readonly step?: number
-		readonly ppu?: number
+		readonly unit?: number
 	}
 
 	export async function $bog_gamengine_studio_probe_grid(
@@ -819,13 +847,14 @@ namespace $ {
 		if( !got.arrow ) return fail( 'справа от монеты нет красной стрелки гизмо' )
 		const moved = got.source_moved.match( /Монета[^]*?pos \/ (\S+) (\S+) (\S+)/ )
 		if( !moved ) return fail( 'в исходнике нет pos монеты' )
-		if( Math.abs( Number( moved[ 1 ] ) - got.coin_from[ 0 ] - 80 / got.ppu ) > 0.1 ) return fail( 'x монеты после переноса по стрелке не вырос на 80 px' )
+		if( Math.abs( Number( moved[ 1 ] ) - got.coin_from[ 0 ] - 80 / got.unit ) > 0.1 ) return fail( 'x монеты после переноса по стрелке не вырос на 80 px' )
 		if( Number( moved[ 2 ] ) !== got.coin_from[ 1 ] ) return fail( 'перенос по стрелке X сдвинул y' )
 		if( got.fields_clear.includes( 'pos' ) ) return fail( 'клик мимо не снял выбор' )
 		if( !got.hero_line_before ) return fail( 'в исходнике нет pos героя' )
 		if( !( Number( got.x_play ) > Number( got.x_before ) ) ) return fail( 'игра с зажатой D не сдвинула героя вправо' )
 		if( got.x_stop !== got.x_before ) return fail( 'стоп не вернул x героя к исходному' )
 		if( got.hero_line_after !== got.hero_line_before ) return fail( 'игра изменила pos героя в исходнике' )
+		if( !( got.floors >= $bog_gamengine_studio_probe_moves ) ) return fail( `на холсте видно ${ got.floors } клеток пола, а правок нужно ${ $bog_gamengine_studio_probe_moves }: сценарию не на чем ставить героя` )
 		if( got.moves.length !== $bog_gamengine_studio_probe_moves ) return fail( 'правок pos героя не пять' )
 		for( const move of got.moves ) {
 			if( move.pixel[ 0 ] < 40 && move.pixel[ 1 ] < 40 && move.pixel[ 2 ] < 40 ) return fail( `после правки pos героя на ${ move.x } его пиксель чёрный через два кадра` )
@@ -836,6 +865,7 @@ namespace $ {
 		const tiles = got.tiles
 		if( !tiles.titles.some( title => title.includes( 'wall' ) ) ) return fail( 'на вкладке «Тайлы» нет символа стены' )
 		if( !tiles.titles.some( title => title.includes( 'floor' ) ) ) return fail( 'на вкладке «Тайлы» нет символа пола' )
+		if( !tiles.wall_found ) return fail( 'в карте нет ни одной стены, сравнивать цвет клика не с чем' )
 		if( tiles.cell_diff !== 1 ) return fail( 'клик кистью по клетке изменил в карте не один символ' )
 		if( tiles.cell_pixel.every( ( value, index )=> Math.abs( value - tiles.cell_before[ index ] ) < 8 ) ) return fail( 'клик кистью не перерисовал клетку' )
 		if( !tiles.cell_pixel.every( ( value, index )=> Math.abs( value - tiles.wall_pixel[ index ] ) < 16 ) ) return fail( 'пиксель в точке клика не цвета стены' )
@@ -912,11 +942,7 @@ namespace $ {
 			const input = need( 'ввод поля ' + hint, one.querySelector( 'input, textarea' ) )
 			return input ? await type( input, text ) : false
 		}
-		const studio = need( 'страница студии', $$.$bog_gamengine_demo.Root( 0 ).Studio() )
-		const seen = ( wx, wy )=> {
-			const out = studio.Point().screen( new Float32Array( 3 ), new Float32Array([ wx, wy, 0 ]) )
-			return [ out[ 0 ], out[ 1 ] ]
-		}
+		const studio = need( 'страница студии', studio_page() )
 		const click_world = async ( wx, wy )=> {
 			const node = canvas()
 			const box = node.getBoundingClientRect()
@@ -1144,9 +1170,9 @@ namespace $ {
 		const editor = document.querySelector( '[bog_gamengine_studio_source] textarea' )
 		const hero_x = ()=> Number( ( editor.value.match( /Герой[^]*?pos \\/ (\\S+)/ ) || [] )[ 1 ] )
 		const hero_y = ()=> Number( ( editor.value.match( /Герой[^]*?pos \\/ \\S+ (\\S+)/ ) || [] )[ 1 ] )
+		${ $bog_gamengine_studio_probe_spot_script }
 		const rect = canvas.getBoundingClientRect()
 		const dpr = devicePixelRatio
-		const ppu = canvas.height / 6
 		const pointer = ( type, x, y )=> canvas.dispatchEvent( new PointerEvent( type, {
 			bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: type === 'pointerup' ? 0 : 1,
 			clientX: rect.left + x / dpr, clientY: rect.top + y / dpr,
@@ -1155,8 +1181,9 @@ namespace $ {
 		await frame()
 		await frame()
 		const before = hero_x()
-		const origin_x = canvas.width / 2 + before * ppu
-		const origin_y = canvas.height / 2 - hero_y() * ppu
+		const origin = seen( before, hero_y() )
+		const origin_x = origin[ 0 ]
+		const origin_y = origin[ 1 ]
 		${ $bog_gamengine_studio_probe_arrow_script }
 		const arrow = arrow_at( at, origin_x, origin_y )
 		if( !arrow ) return { t0: -1, before, after: before, arrow }
@@ -1192,8 +1219,9 @@ namespace $ {
 		const canvas = document.querySelector( 'canvas' )
 		const gl = canvas.getContext( 'webgl2' )
 		const out = new Uint8Array( 4 )
-		const ppu = canvas.height / 6
-		gl.readPixels( ( canvas.width / 2 + after * ppu ) | 0, ( canvas.height / 2 + hero_y() * ppu ) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
+		${ $bog_gamengine_studio_probe_spot_script }
+		const hero_seen = seen( after, hero_y() )
+		gl.readPixels( hero_seen[ 0 ] | 0, ( canvas.height - 1 - hero_seen[ 1 ] ) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
 		const mates = Number( ( /mates (\\d+)/.exec( document.body.innerText ) || [] )[ 1 ] || -1 )
 		return { t1, before, after, spot: Array.from( out ), mates }
 	`
