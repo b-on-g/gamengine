@@ -123,7 +123,14 @@ namespace $ {
 
 		const [ r, g, b ] = got.center!
 		if( r < 25 && g < 25 && b < 25 ) return fail( 'центр чёрный, карта не нарисована' )
-		if( !( got.tick! < $bog_gamengine_demo_legion_probe_tick_max ) ) return fail( `кадр дороже ${ $bog_gamengine_demo_legion_probe_tick_max } мс` )
+		const mine = !$node.process.env[ $bog_probe_need ]
+		if( mine && !( got.tick! < $bog_gamengine_demo_legion_probe_tick_max ) ) {
+			return fail( `кадр дороже ${ $bog_gamengine_demo_legion_probe_tick_max } мс` )
+		}
+		if( !mine ) return say(
+			`${ $bog_gamengine_demo_legion_probe_ok }, tick ${ got.tick!.toFixed( 2 ) } мс,`
+			+ ` бюджет кадра не сверялся: прогон не на машине, где он назначен`
+		)
 
 		return say( `${ $bog_gamengine_demo_legion_probe_ok }, tick ${ got.tick!.toFixed( 2 ) } мс` )
 	}
