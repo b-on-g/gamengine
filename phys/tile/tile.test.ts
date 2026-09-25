@@ -110,6 +110,26 @@ namespace $ {
 			$mol_assert_equal( tile.solid_at( 1.5, - 1.5 ), true )
 		},
 
+		'cells fills in bulk exactly what cell answers one by one'() {
+			for( const map of [
+				'###\n#.#\n###',
+				'#..#\n##\n#\n#..##',
+				'..o..\n.###.\n.E...\n#####',
+			] ) {
+				const tile = new $bog_gamengine_phys_tile
+				tile.map( map )
+				tile.solid( '#=' )
+				const width = tile.width()
+				const height = tile.height()
+				const bulk = tile.cells( new Uint8Array( width * height ), width, height )
+				for( let y = 0; y < height; ++ y ) {
+					for( let x = 0; x < width; ++ x ) {
+						$mol_assert_equal( bulk[ y * width + x ] === 1, tile.cell( x, y ) )
+					}
+				}
+			}
+		},
+
 		'shifted grid on the vertical plane reads back the very cell it drew'() {
 			const tile = new $bog_gamengine_phys_tile
 			tile.map( '####\n#..#\n#..#\n####' )

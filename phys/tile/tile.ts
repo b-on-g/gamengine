@@ -15,6 +15,19 @@ namespace $ {
 			return this.solid().includes( row[ x ] )
 		}
 
+		cells( out: Uint8Array, width: number, height: number ) {
+			const rows = this.rows()
+			const marks = this.solid()
+			for( let y = 0; y < height; ++y ) {
+				const row = y < rows.length ? rows[ y ] : ''
+				const len = row.length
+				for( let x = 0; x < width; ++x ) {
+					out[ y * width + x ] = x >= len || marks.includes( row[ x ] ) ? 1 : 0
+				}
+			}
+			return out
+		}
+
 		cell_pos( x: number, y: number, out: Float32Array ) {
 			return this.pos( x, y, 0, out )
 		}

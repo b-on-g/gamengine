@@ -31,10 +31,7 @@ namespace $ {
 			const height = this.height()
 			const solid = new Uint8Array( width * height )
 			if( !tile ) return solid
-			for( let y = 0; y < height; ++y ) {
-				for( let x = 0; x < width; ++x ) solid[ y * width + x ] = tile.cell( x, y ) ? 1 : 0
-			}
-			return solid
+			return tile.cells( solid, width, height )
 		}
 
 		cell( x: number, y: number ) {
