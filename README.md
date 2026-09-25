@@ -1,6 +1,6 @@
 # $bog_crumb2
 
-Та же игра, что `bog/crumb`, но сцена собрана в редакторе `bog/gamestudio` мышью и
+Та же игра, что `bog/crumb`, но сцена собрана в редакторе `bog/gamengine/studio` мышью и
 вывезена кнопкой «Вывезти дерево» двумя файлами: `level/level.view.tree` и
 `level/level.view.ts`.
 
