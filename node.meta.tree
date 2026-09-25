@@ -123,6 +123,34 @@
 	deploy \/bog/gamengine/skin/model/arm.glb
 \/bog/gamengine/demo/room
 	deploy \/bog/gamengine/demo/room/model/pillar.glb
+\/bog/gamengine/demo/jumper
+	deploy \/bog/gamengine/demo/jumper/atlas/hero.png
+	deploy \/bog/gamengine/demo/jumper/atlas/hero_1.png
+	deploy \/bog/gamengine/demo/jumper/atlas/enemy.png
+	deploy \/bog/gamengine/demo/jumper/atlas/coin.png
+	deploy \/bog/gamengine/demo/jumper/atlas/spike.png
+	deploy \/bog/gamengine/demo/jumper/atlas/flag.png
+	deploy \/bog/gamengine/demo/jumper/atlas/ground.png
+	deploy \/bog/gamengine/demo/jumper/atlas/platform.png
+	deploy \/bog/gamengine/demo/jumper/atlas/sky.png
+	deploy \/bog/gamengine/demo/jumper/sound/jump.wav
+	deploy \/bog/gamengine/demo/jumper/sound/coin.wav
+	deploy \/bog/gamengine/demo/jumper/sound/death.wav
+\/bog/gamengine/demo/shooter
+	deploy \/bog/gamengine/demo/shooter/atlas/wall.png
+	deploy \/bog/gamengine/demo/shooter/atlas/floor.png
+	deploy \/bog/gamengine/demo/shooter/atlas/target.png
+	deploy \/bog/gamengine/demo/shooter/atlas/spark.png
+	deploy \/bog/gamengine/demo/shooter/sound/shot.wav
+	deploy \/bog/gamengine/demo/shooter/sound/hit.wav
+\/bog/gamengine/demo/legion
+	deploy \/bog/gamengine/demo/legion/atlas/mine.png
+	deploy \/bog/gamengine/demo/legion/atlas/foe.png
+	deploy \/bog/gamengine/demo/legion/atlas/floor.png
+	deploy \/bog/gamengine/demo/legion/atlas/wall.png
+	deploy \/bog/gamengine/demo/legion/atlas/res.png
+	deploy \/bog/gamengine/demo/legion/sound/hit.wav
+	deploy \/bog/gamengine/demo/legion/sound/order.wav
 \/bog/gamengine/demo
 	include \/mol/offline/install
 	deploy \/bog/gamengine/demo/icon/hero-192.png

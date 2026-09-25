@@ -8164,6 +8164,2571 @@ declare namespace $.$$ {
 }
 
 declare namespace $ {
+}
+
+declare namespace $ {
+
+	export class $mol_button_major extends $mol_button_minor {
+		theme( ): string
+	}
+	
+}
+
+//# sourceMappingURL=major.view.tree.d.ts.map
+declare namespace $ {
+    class $bog_gamengine_demo_jumper_level extends $mol_object2 {
+        tile(next?: $bog_gamengine_phys_tile | null): $bog_gamengine_phys_tile | null;
+        width(): number;
+        height(): number;
+        sign(x: number, y: number): string;
+        solid(x: number, y: number): boolean;
+        frame(x: number, y: number): "ground" | "platform" | "sky";
+        ids(sign: string): readonly string[];
+        xy(id: string): [number, number];
+        pos(x: number, y: number): Float32Array<ArrayBufferLike>;
+        pos_of(id: string): Float32Array<ArrayBufferLike>;
+        start(): readonly [number, number];
+        start_pos(): Float32Array<ArrayBufferLike>;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_demo_jumper_item extends $bog_gamengine_phys_body {
+        role(next?: string): string;
+        taken(next?: boolean): boolean;
+        size(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
+        still(): boolean;
+        ghost(): boolean;
+    }
+}
+
+declare namespace $ {
+    type $bog_gamengine_brain_fsm_next = {
+        readonly to: string;
+        readonly when: string;
+    };
+    class $bog_gamengine_brain_state extends $bog_gamengine_node {
+        next(next?: readonly $bog_gamengine_brain_fsm_next[]): readonly $bog_gamengine_brain_fsm_next[];
+        owner(): $bog_gamengine_node | null;
+        props(): readonly $bog_gamengine_prop[];
+        enter(): void;
+        exit(): void;
+        tick(dt: number): void;
+    }
+    class $bog_gamengine_brain_fsm extends $bog_gamengine_node {
+        state_now: string;
+        is_brain(): boolean;
+        owner_now: $bog_gamengine_node | null;
+        owner(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
+        state(next?: string): string;
+        props(): readonly $bog_gamengine_prop[];
+        first(): $bog_gamengine_brain_state | null;
+        state_of(name: string): $bog_gamengine_brain_state | null;
+        cond(name: string): boolean;
+        go(name: string): void;
+        step(dt: number): void;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_demo_jumper_enemy extends $bog_gamengine_phys_body {
+        tile(next?: $bog_gamengine_phys_tile | null): $bog_gamengine_phys_tile | null;
+        brain(next?: $bog_gamengine_brain_fsm | null): $bog_gamengine_brain_fsm | null;
+        speed(next?: number): number;
+        gravity(next?: number): number;
+        fall_max(next?: number): number;
+        size(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
+        dead(next?: boolean): boolean;
+        face_left(next?: boolean): boolean;
+        edge(dir: number): boolean;
+        edge_left(): boolean;
+        edge_right(): boolean;
+        props(): readonly $bog_gamengine_prop[];
+        dir(): 1 | -1;
+        step(dt: number): void;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_demo_jumper_hero extends $bog_gamengine_phys_body {
+        input(next?: $bog_gamengine_input | null): $bog_gamengine_input | null;
+        sound(next?: $bog_gamengine_sound | null): $bog_gamengine_sound | null;
+        speed(next?: number): number;
+        jump_speed(next?: number): number;
+        gravity(next?: number): number;
+        fall_max(next?: number): number;
+        lives_max(next?: number): number;
+        size(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
+        start(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
+        lives(next?: number): number;
+        coins(next?: number): number;
+        won(next?: boolean): boolean;
+        face_left(next?: boolean): boolean;
+        clip(next?: string): string;
+        over(): boolean;
+        frozen(): boolean;
+        step(dt: number): void;
+        die(): void;
+        revive(): void;
+        take(item: $bog_gamengine_demo_jumper_item): void;
+        clash(enemy: $bog_gamengine_demo_jumper_enemy): void;
+        hit(other: $bog_gamengine_phys_body | null): void;
+    }
+}
+
+declare namespace $ {
+
+	type $mol_labeler__title_bog_gamengine_demo_jumper_1 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_labeler['title'] >
+	>
+	type $mol_labeler__content_bog_gamengine_demo_jumper_2 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_labeler['content'] >
+	>
+	type $mol_labeler__title_bog_gamengine_demo_jumper_3 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_labeler['title'] >
+	>
+	type $mol_labeler__content_bog_gamengine_demo_jumper_4 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_labeler['content'] >
+	>
+	type $mol_check_box__title_bog_gamengine_demo_jumper_5 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_check_box['title'] >
+	>
+	type $mol_check_box__checked_bog_gamengine_demo_jumper_6 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['screen_shown'] >
+		,
+		ReturnType< $mol_check_box['checked'] >
+	>
+	type $bog_gamengine_draw__scene_bog_gamengine_demo_jumper_7 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Scene'] >
+		,
+		ReturnType< $bog_gamengine_draw['scene'] >
+	>
+	type $bog_gamengine_draw__cam_bog_gamengine_demo_jumper_8 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Cam'] >
+		,
+		ReturnType< $bog_gamengine_draw['cam'] >
+	>
+	type $bog_gamengine_input_screen__shown_bog_gamengine_demo_jumper_9 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['screen_shown'] >
+		,
+		ReturnType< $bog_gamengine_input_screen['shown'] >
+	>
+	type $bog_gamengine_input_screen__actions_bog_gamengine_demo_jumper_10 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $bog_gamengine_input_screen['actions'] >
+	>
+	type $bog_gamengine_input_screen__titles_bog_gamengine_demo_jumper_11 = $mol_type_enforce<
+		({ 
+			'jump': string,
+		}) 
+		,
+		ReturnType< $bog_gamengine_input_screen['titles'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_jumper_12 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_button_major__title_bog_gamengine_demo_jumper_13 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_button_major['title'] >
+	>
+	type $mol_button_major__click_bog_gamengine_demo_jumper_14 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['restart'] >
+		,
+		ReturnType< $mol_button_major['click'] >
+	>
+	type $mol_page__title_bog_gamengine_demo_jumper_15 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['end_title'] >
+		,
+		ReturnType< $mol_page['title'] >
+	>
+	type $mol_page__body_bog_gamengine_demo_jumper_16 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_page['body'] >
+	>
+	type $mol_page__foot_bog_gamengine_demo_jumper_17 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_page['foot'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_jumper_18 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_jumper_19 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_jumper_20 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $bog_gamengine_phys__bodies_bog_gamengine_demo_jumper_21 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['bodies'] >
+		,
+		ReturnType< $bog_gamengine_phys['bodies'] >
+	>
+	type $bog_gamengine_phys__tile_bog_gamengine_demo_jumper_22 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Tile'] >
+		,
+		ReturnType< $bog_gamengine_phys['tile'] >
+	>
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_jumper_23 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Sprite_shader'] >
+		,
+		ReturnType< $bog_gamengine_batch['shader'] >
+	>
+	type $bog_gamengine_batch__atlas_bog_gamengine_demo_jumper_24 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_batch['atlas'] >
+	>
+	type $bog_gamengine_batch__nodes_bog_gamengine_demo_jumper_25 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['sprites'] >
+		,
+		ReturnType< $bog_gamengine_batch['nodes'] >
+	>
+	type __bog_gamengine_demo_jumper_26 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_jumper['hero_lives'] >[0]
+		,
+		Parameters< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['lives'] >[0]
+	>
+	type __bog_gamengine_demo_jumper_27 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_jumper['hero_coins'] >[0]
+		,
+		Parameters< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['coins'] >[0]
+	>
+	type __bog_gamengine_demo_jumper_28 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_jumper['hero_won'] >[0]
+		,
+		Parameters< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['won'] >[0]
+	>
+	type __bog_gamengine_demo_jumper_29 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_jumper['hero_face_left'] >[0]
+		,
+		Parameters< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['face_left'] >[0]
+	>
+	type __bog_gamengine_demo_jumper_30 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_jumper['hero_clip'] >[0]
+		,
+		Parameters< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['clip'] >[0]
+	>
+	type __bog_gamengine_demo_jumper_31 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_jumper['item_taken'] >[0]
+		,
+		Parameters< $bog_gamengine_demo_jumper['Item'] >[0]
+	>
+	type __bog_gamengine_demo_jumper_32 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_jumper['item_taken'] >[1]
+		,
+		Parameters< $bog_gamengine_demo_jumper['Item'] >[0]
+	>
+	type __bog_gamengine_demo_jumper_33 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_jumper['enemy_dead'] >[0]
+		,
+		Parameters< $bog_gamengine_demo_jumper['Enemy'] >[0]
+	>
+	type __bog_gamengine_demo_jumper_34 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_jumper['enemy_dead'] >[1]
+		,
+		Parameters< $bog_gamengine_demo_jumper['Enemy'] >[0]
+	>
+	type __bog_gamengine_demo_jumper_35 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_jumper['enemy_face_left'] >[0]
+		,
+		Parameters< $bog_gamengine_demo_jumper['Enemy'] >[0]
+	>
+	type __bog_gamengine_demo_jumper_36 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_jumper['enemy_face_left'] >[1]
+		,
+		Parameters< $bog_gamengine_demo_jumper['Enemy'] >[0]
+	>
+	type $bog_gamengine_demo_jumper_level__tile_bog_gamengine_demo_jumper_37 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Tile'] >
+		,
+		ReturnType< $bog_gamengine_demo_jumper_level['tile'] >
+	>
+	type $bog_gamengine_phys_tile__map_bog_gamengine_demo_jumper_38 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['map'] >
+		,
+		ReturnType< $bog_gamengine_phys_tile['map'] >
+	>
+	type $bog_gamengine_phys_tile__solid_bog_gamengine_demo_jumper_39 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_phys_tile['solid'] >
+	>
+	type $bog_gamengine_atlas__uris_bog_gamengine_demo_jumper_40 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $bog_gamengine_atlas['uris'] >
+	>
+	type $bog_gamengine_atlas__size_bog_gamengine_demo_jumper_41 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_atlas['size'] >
+	>
+	type $bog_gamengine_sound__uris_bog_gamengine_demo_jumper_42 = $mol_type_enforce<
+		({ 
+			'jump': string,
+			'coin': string,
+			'death': string,
+		}) 
+		,
+		ReturnType< $bog_gamengine_sound['uris'] >
+	>
+	type $bog_gamengine_key__bind_bog_gamengine_demo_jumper_43 = $mol_type_enforce<
+		({ 
+			'left': readonly(any)[],
+			'right': readonly(any)[],
+			'jump': readonly(any)[],
+		}) 
+		,
+		ReturnType< $bog_gamengine_key['bind'] >
+	>
+	type $bog_gamengine_input__key_bog_gamengine_demo_jumper_44 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Key'] >
+		,
+		ReturnType< $bog_gamengine_input['key'] >
+	>
+	type $bog_gamengine_input__screen_bog_gamengine_demo_jumper_45 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Screen'] >
+		,
+		ReturnType< $bog_gamengine_input['screen'] >
+	>
+	type $bog_gamengine_scene__clock_bog_gamengine_demo_jumper_46 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Clock'] >
+		,
+		ReturnType< $bog_gamengine_scene['clock'] >
+	>
+	type $bog_gamengine_scene__input_bog_gamengine_demo_jumper_47 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Input'] >
+		,
+		ReturnType< $bog_gamengine_scene['input'] >
+	>
+	type $bog_gamengine_scene__kids_bog_gamengine_demo_jumper_48 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['nodes'] >
+		,
+		ReturnType< $bog_gamengine_scene['kids'] >
+	>
+	type $bog_gamengine_scene__phys_bog_gamengine_demo_jumper_49 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Phys'] >
+		,
+		ReturnType< $bog_gamengine_scene['phys'] >
+	>
+	type $bog_gamengine_scene__batches_bog_gamengine_demo_jumper_50 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $bog_gamengine_scene['batches'] >
+	>
+	type $bog_gamengine_cam_flat__height_bog_gamengine_demo_jumper_51 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['cam_height'] >
+		,
+		ReturnType< $bog_gamengine_cam_flat['height'] >
+	>
+	type $bog_gamengine_cam_flat__target_bog_gamengine_demo_jumper_52 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Hero'] >
+		,
+		ReturnType< $bog_gamengine_cam_flat['target'] >
+	>
+	type $bog_gamengine_cam_flat__bounds_bog_gamengine_demo_jumper_53 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['cam_bounds'] >
+		,
+		ReturnType< $bog_gamengine_cam_flat['bounds'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_jumper_54 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_jumper_55 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__pos_bog_gamengine_demo_jumper_56 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['sky_pos'] >
+		,
+		ReturnType< $bog_gamengine_sprite['pos'] >
+	>
+	type $bog_gamengine_sprite__size_bog_gamengine_demo_jumper_57 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['sky_size'] >
+		,
+		ReturnType< $bog_gamengine_sprite['size'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_jumper_58 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_jumper_59 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['cell_frame'] >
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__pos_bog_gamengine_demo_jumper_60 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['cell_pos'] >
+		,
+		ReturnType< $bog_gamengine_sprite['pos'] >
+	>
+	type $bog_gamengine_demo_jumper_hero__input_bog_gamengine_demo_jumper_61 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Input'] >
+		,
+		ReturnType< $bog_gamengine_demo_jumper_hero['input'] >
+	>
+	type $bog_gamengine_demo_jumper_hero__sound_bog_gamengine_demo_jumper_62 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Sound'] >
+		,
+		ReturnType< $bog_gamengine_demo_jumper_hero['sound'] >
+	>
+	type $bog_gamengine_demo_jumper_hero__start_bog_gamengine_demo_jumper_63 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['hero_start'] >
+		,
+		ReturnType< $bog_gamengine_demo_jumper_hero['start'] >
+	>
+	type $bog_gamengine_demo_jumper_hero__pos_bog_gamengine_demo_jumper_64 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['hero_pos'] >
+		,
+		ReturnType< $bog_gamengine_demo_jumper_hero['pos'] >
+	>
+	type $bog_gamengine_sprite__parent_bog_gamengine_demo_jumper_65 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Hero'] >
+		,
+		ReturnType< $bog_gamengine_sprite['parent'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_jumper_66 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_jumper_67 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__flip_x_bog_gamengine_demo_jumper_68 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['hero_face_left'] >
+		,
+		ReturnType< $bog_gamengine_sprite['flip_x'] >
+	>
+	type $bog_gamengine_sprite__clock_bog_gamengine_demo_jumper_69 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Clock'] >
+		,
+		ReturnType< $bog_gamengine_sprite['clock'] >
+	>
+	type $bog_gamengine_sprite__clip_bog_gamengine_demo_jumper_70 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['hero_clip'] >
+		,
+		ReturnType< $bog_gamengine_sprite['clip'] >
+	>
+	type $bog_gamengine_sprite__fps_bog_gamengine_demo_jumper_71 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_sprite['fps'] >
+	>
+	type $bog_gamengine_sprite__clips_bog_gamengine_demo_jumper_72 = $mol_type_enforce<
+		({ 
+			'walk': readonly(any)[],
+		}) 
+		,
+		ReturnType< $bog_gamengine_sprite['clips'] >
+	>
+	type $bog_gamengine_demo_jumper_item__role_bog_gamengine_demo_jumper_73 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['item_role'] >
+		,
+		ReturnType< $bog_gamengine_demo_jumper_item['role'] >
+	>
+	type $bog_gamengine_demo_jumper_item__pos_bog_gamengine_demo_jumper_74 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['item_pos'] >
+		,
+		ReturnType< $bog_gamengine_demo_jumper_item['pos'] >
+	>
+	type $bog_gamengine_sprite__parent_bog_gamengine_demo_jumper_75 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Item'] >
+		,
+		ReturnType< $bog_gamengine_sprite['parent'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_jumper_76 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_jumper_77 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['item_role'] >
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_demo_jumper_enemy__tile_bog_gamengine_demo_jumper_78 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Tile'] >
+		,
+		ReturnType< $bog_gamengine_demo_jumper_enemy['tile'] >
+	>
+	type $bog_gamengine_demo_jumper_enemy__pos_bog_gamengine_demo_jumper_79 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['enemy_pos'] >
+		,
+		ReturnType< $bog_gamengine_demo_jumper_enemy['pos'] >
+	>
+	type $bog_gamengine_demo_jumper_enemy__brain_bog_gamengine_demo_jumper_80 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Brain'] >
+		,
+		ReturnType< $bog_gamengine_demo_jumper_enemy['brain'] >
+	>
+	type $bog_gamengine_demo_jumper_enemy__kids_bog_gamengine_demo_jumper_81 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['enemy_kids'] >
+		,
+		ReturnType< $bog_gamengine_demo_jumper_enemy['kids'] >
+	>
+	type $bog_gamengine_sprite__parent_bog_gamengine_demo_jumper_82 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Enemy'] >
+		,
+		ReturnType< $bog_gamengine_sprite['parent'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_jumper_83 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_jumper_84 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__flip_x_bog_gamengine_demo_jumper_85 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['enemy_face_left'] >
+		,
+		ReturnType< $bog_gamengine_sprite['flip_x'] >
+	>
+	type $bog_gamengine_brain_fsm__owner_bog_gamengine_demo_jumper_86 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['Enemy'] >
+		,
+		ReturnType< $bog_gamengine_brain_fsm['owner'] >
+	>
+	type $bog_gamengine_brain_fsm__kids_bog_gamengine_demo_jumper_87 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['brain_kids'] >
+		,
+		ReturnType< $bog_gamengine_brain_fsm['kids'] >
+	>
+	type $bog_gamengine_brain_state__name_bog_gamengine_demo_jumper_88 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_brain_state['name'] >
+	>
+	type $bog_gamengine_brain_state__next_bog_gamengine_demo_jumper_89 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['walk_right_next'] >
+		,
+		ReturnType< $bog_gamengine_brain_state['next'] >
+	>
+	type $bog_gamengine_brain_state__name_bog_gamengine_demo_jumper_90 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_brain_state['name'] >
+	>
+	type $bog_gamengine_brain_state__next_bog_gamengine_demo_jumper_91 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_jumper['walk_left_next'] >
+		,
+		ReturnType< $bog_gamengine_brain_state['next'] >
+	>
+	export class $bog_gamengine_demo_jumper extends $mol_page {
+		lives_stat( ): string
+		Lives( ): $mol_labeler
+		coins_stat( ): string
+		Coins( ): $mol_labeler
+		screen_shown( next?: boolean ): boolean
+		Screen_switch( ): $mol_check_box
+		stat( ): ReturnType< ReturnType< $bog_gamengine_demo_jumper['Draw'] >['stat'] >
+		draw_width( ): ReturnType< ReturnType< $bog_gamengine_demo_jumper['Draw'] >['width'] >
+		draw_height( ): ReturnType< ReturnType< $bog_gamengine_demo_jumper['Draw'] >['height'] >
+		Draw( ): $bog_gamengine_draw
+		Screen( ): $bog_gamengine_input_screen
+		end_title( ): string
+		end_hint( ): string
+		End_hint( ): $mol_view
+		restart( next?: any ): any
+		Again( ): $mol_button_major
+		End( ): $mol_page
+		game( ): readonly(any)[]
+		time_stat( ): string
+		Time( ): $mol_view
+		hero_stat( ): string
+		Hero_stat( ): $mol_view
+		Stat( ): $mol_view
+		nodes( ): readonly(any)[]
+		bodies( ): readonly(any)[]
+		Phys( ): $bog_gamengine_phys
+		Sprite_shader( ): $bog_gamengine_shader_sprite
+		sprites( ): readonly(any)[]
+		Batch( ): $bog_gamengine_batch
+		cam_height( ): number
+		cam_bounds( ): Float32Array
+		sky_pos( ): Float32Array
+		sky_size( ): Float32Array
+		cell_frame( id: any): string
+		cell_pos( id: any): Float32Array
+		hero_start( ): Float32Array
+		hero_pos( next?: Float32Array ): Float32Array
+		hero_lives( next?: ReturnType< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['lives'] > ): ReturnType< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['lives'] >
+		hero_coins( next?: ReturnType< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['coins'] > ): ReturnType< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['coins'] >
+		hero_won( next?: ReturnType< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['won'] > ): ReturnType< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['won'] >
+		hero_face_left( next?: ReturnType< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['face_left'] > ): ReturnType< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['face_left'] >
+		hero_clip( next?: ReturnType< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['clip'] > ): ReturnType< ReturnType< $bog_gamengine_demo_jumper['Hero'] >['clip'] >
+		item_role( id: any): string
+		item_pos( id: any): Float32Array
+		item_taken( id: any, next?: ReturnType< ReturnType< $bog_gamengine_demo_jumper['Item'] >['taken'] > ): ReturnType< ReturnType< $bog_gamengine_demo_jumper['Item'] >['taken'] >
+		enemy_pos( id: any, next?: Float32Array ): Float32Array
+		enemy_kids( id: any): readonly(any)[]
+		enemy_dead( id: any, next?: ReturnType< ReturnType< $bog_gamengine_demo_jumper['Enemy'] >['dead'] > ): ReturnType< ReturnType< $bog_gamengine_demo_jumper['Enemy'] >['dead'] >
+		enemy_face_left( id: any, next?: ReturnType< ReturnType< $bog_gamengine_demo_jumper['Enemy'] >['face_left'] > ): ReturnType< ReturnType< $bog_gamengine_demo_jumper['Enemy'] >['face_left'] >
+		brain_kids( id: any): readonly(any)[]
+		walk_right_next( ): readonly(any)[]
+		walk_left_next( ): readonly(any)[]
+		title( ): string
+		tools( ): readonly(any)[]
+		body( ): ReturnType< $bog_gamengine_demo_jumper['game'] >
+		foot( ): readonly(any)[]
+		map( ): string
+		Level( ): $bog_gamengine_demo_jumper_level
+		Tile( ): $bog_gamengine_phys_tile
+		Atlas( ): $bog_gamengine_atlas
+		Sound( ): $bog_gamengine_sound
+		Key( ): $bog_gamengine_key
+		Input( ): $bog_gamengine_input
+		Clock( ): $bog_gamengine_clock
+		Scene( ): $bog_gamengine_scene
+		Cam( ): $bog_gamengine_cam_flat
+		Sky( ): $bog_gamengine_sprite
+		Cell( id: any): $bog_gamengine_sprite
+		Hero( ): $bog_gamengine_demo_jumper_hero
+		Hero_sprite( ): $bog_gamengine_sprite
+		Item( id: any): $bog_gamengine_demo_jumper_item
+		Item_sprite( id: any): $bog_gamengine_sprite
+		Enemy( id: any): $bog_gamengine_demo_jumper_enemy
+		Enemy_sprite( id: any): $bog_gamengine_sprite
+		Brain( id: any): $bog_gamengine_brain_fsm
+		Walk_right( id: any): $bog_gamengine_brain_state
+		Walk_left( id: any): $bog_gamengine_brain_state
+	}
+	
+}
+
+//# sourceMappingURL=jumper.view.tree.d.ts.map
+declare namespace $.$$ {
+    class $bog_gamengine_demo_jumper extends $.$bog_gamengine_demo_jumper {
+        cell_ids(): readonly string[];
+        cell_frame(id: string): "ground" | "platform" | "sky";
+        cell_pos(id: string): Float32Array<ArrayBufferLike>;
+        cells(): $bog_gamengine_sprite[];
+        sky_pos(): Float32Array<ArrayBuffer>;
+        sky_size(): Float32Array<ArrayBuffer>;
+        item_ids(): readonly string[];
+        item_role(id: string): "coin" | "spike" | "flag";
+        item_pos(id: string): Float32Array<ArrayBufferLike>;
+        items_left(): string[];
+        items(): $bog_gamengine_demo_jumper_item[];
+        item_sprites(): $bog_gamengine_sprite[];
+        enemy_ids(): readonly string[];
+        enemy_pos(id: string, next?: Float32Array): Float32Array<ArrayBufferLike>;
+        enemy_kids(id: string): $bog_gamengine_brain_fsm[];
+        brain_kids(id: string): $bog_gamengine_brain_state[];
+        walk_right_next(): readonly $bog_gamengine_brain_fsm_next[];
+        walk_left_next(): readonly $bog_gamengine_brain_fsm_next[];
+        enemies_left(): string[];
+        enemies(): $bog_gamengine_demo_jumper_enemy[];
+        enemy_sprites(): $bog_gamengine_sprite[];
+        hero_start(): Float32Array<ArrayBufferLike>;
+        hero_pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        bodies(): ($bog_gamengine_demo_jumper_hero | $bog_gamengine_demo_jumper_enemy | $bog_gamengine_demo_jumper_item)[];
+        sprites(): $bog_gamengine_sprite[];
+        nodes(): ($bog_gamengine_sprite | $bog_gamengine_demo_jumper_hero | $bog_gamengine_demo_jumper_enemy | $bog_gamengine_demo_jumper_item | $bog_gamengine_cam_flat)[];
+        cam_height(): number;
+        cam_bounds(): Float32Array<ArrayBuffer>;
+        over(): boolean;
+        game(): ($mol_page | $.$bog_gamengine_input_screen | $.$bog_gamengine_draw)[];
+        end_title(): "Победа" | "Игра окончена";
+        end_hint(): string;
+        restart(next?: any): null;
+        lives_stat(): string;
+        coins_stat(): string;
+        time_stat(): string;
+        hero_stat(): string;
+    }
+}
+
+declare namespace $.$$ {
+}
+
+declare namespace $ {
+    class $bog_gamengine_demo_shooter_phys extends $bog_gamengine_phys3 {
+        layer: Float32Array<ArrayBuffer>;
+        grow(need: number): void;
+        place(shape: number, size: Float32Array, mass: number, pos: Float32Array, layer: number): number;
+        drop(index: number): number;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_demo_shooter_arena extends $bog_gamengine_map {
+        plane(next?: $bog_gamengine_map_plane): $bog_gamengine_map_plane;
+        wall_sign(next?: string): string;
+        target_sign(next?: string): string;
+        start_sign(next?: string): string;
+        wall(x: number, y: number): boolean;
+        wall_ids(): readonly string[];
+        target_ids(): readonly string[];
+        pos_of(id: string, lift: number): Float32Array<ArrayBufferLike>;
+        start(): readonly [number, number];
+        start_pos(lift: number): Float32Array<ArrayBufferLike>;
+    }
+}
+
+declare namespace $ {
+    type $bog_gamengine_phys3_walker_input = {
+        axis(neg: string, pos: string): number;
+        action(name: string): boolean;
+    };
+    class $bog_gamengine_phys3_walker extends $bog_gamengine_node {
+        static skin: number;
+        phys3(next?: $bog_gamengine_phys3 | null): $bog_gamengine_phys3 | null;
+        input(next?: $bog_gamengine_input | null): $bog_gamengine_input | null;
+        radius(next?: number): number;
+        height(next?: number): number;
+        speed(next?: number): number;
+        jump(next?: number): number;
+        step_height(next?: number): number;
+        slope(next?: number): number;
+        yaw: number;
+        yaw_shown: number;
+        grounded: boolean;
+        vel_y: number;
+        handle_last: number;
+        world_last: $bog_gamengine_phys3 | null;
+        opts: {
+            skip_ghost: boolean;
+            skip: number;
+        };
+        cast: $bog_gamengine_phys3_cast;
+        size: Float32Array<ArrayBuffer>;
+        rot_id: Float32Array<ArrayBuffer>;
+        at: Float32Array<ArrayBuffer>;
+        move: Float32Array<ArrayBuffer>;
+        dir: Float32Array<ArrayBuffer>;
+        hit: Float32Array<ArrayBuffer>;
+        probe: Float32Array<ArrayBuffer>;
+        cos_slope: number;
+        size_write(): Float32Array<ArrayBuffer>;
+        body(): number;
+        body_drop(): void;
+        yaw_show(): void;
+        step(dt: number): void;
+        destructor(): void;
+        vertical(world: $bog_gamengine_phys3, dt: number): void;
+        horizontal(world: $bog_gamengine_phys3, input: $bog_gamengine_phys3_walker_input, dt: number): void;
+        slide(world: $bog_gamengine_phys3, move: Float32Array, iterations: number, walking: boolean): void;
+        climb(world: $bog_gamengine_phys3, move: Float32Array): boolean;
+    }
+}
+
+declare namespace $ {
+    type $bog_gamengine_demo_shooter_player_target = {
+        alive(): boolean;
+        index(): number;
+        hurt(amount: number, dir: Float32Array, push: number): boolean;
+    };
+    class $bog_gamengine_demo_shooter_player extends $bog_gamengine_phys3_walker {
+        screen(next?: $bog_gamengine_screen | null): $bog_gamengine_screen | null;
+        sound(next?: $bog_gamengine_sound | null): $bog_gamengine_sound | null;
+        spark(next?: $bog_gamengine_particle | null): $bog_gamengine_particle | null;
+        targets(next?: readonly $bog_gamengine_demo_shooter_player_target[]): readonly $bog_gamengine_demo_shooter_player_target[];
+        look_speed(next?: number): number;
+        turn_speed(next?: number): number;
+        pitch_limit(next?: number): number;
+        shot_delay(next?: number): number;
+        damage(next?: number): number;
+        reach(next?: number): number;
+        push(next?: number): number;
+        eye_drop(next?: number): number;
+        trace_time(next?: number): number;
+        health_max(next?: number): number;
+        health(next?: number): number;
+        pitch(next?: number): number;
+        shots(next?: number): number;
+        look: Float32Array<ArrayBuffer>;
+        aim_dir: Float32Array<ArrayBuffer>;
+        eye_at: Float32Array<ArrayBuffer>;
+        shot_hit: Float32Array<ArrayBuffer>;
+        shot_cast: $bog_gamengine_phys3_cast;
+        trace: Float32Array<ArrayBuffer>;
+        trace_left: number;
+        wait: number;
+        dead(): boolean;
+        eye_lift(): number;
+        eye(): Float32Array<ArrayBuffer>;
+        aim(): Float32Array<ArrayBuffer>;
+        revive(): void;
+        hurt(amount: number): void;
+        step(dt: number): void;
+        look_step(dt: number): void;
+        target_of(index: number): $bog_gamengine_demo_shooter_player_target | null;
+        fire(): $bog_gamengine_demo_shooter_player_target | null;
+        trace_write(out: Float32Array, at: number): number;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_demo_shooter_target extends $bog_gamengine_phys3_body {
+        phys3(next?: $bog_gamengine_demo_shooter_phys): $bog_gamengine_demo_shooter_phys;
+        size(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        start(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        layer(next?: number): number;
+        player(next?: $bog_gamengine_demo_shooter_player | null): $bog_gamengine_demo_shooter_player | null;
+        sound(next?: $bog_gamengine_sound | null): $bog_gamengine_sound | null;
+        health_max(next?: number): number;
+        health(next?: number): number;
+        speed(next?: number): number;
+        reach(next?: number): number;
+        damage(next?: number): number;
+        shot_delay(next?: number): number;
+        eye_lift(next?: number): number;
+        fade(next?: number): number;
+        trace_time(next?: number): number;
+        way: number;
+        gone: number;
+        done: boolean;
+        wait: number;
+        seen: boolean;
+        trace_left: number;
+        trace: Float32Array<ArrayBuffer>;
+        cast: $bog_gamengine_phys3_cast;
+        hit: Float32Array<ArrayBuffer>;
+        dir: Float32Array<ArrayBuffer>;
+        from: Float32Array<ArrayBuffer>;
+        eye_at: Float32Array<ArrayBuffer>;
+        move: Float32Array<ArrayBuffer>;
+        away: Float32Array<ArrayBuffer>;
+        opts: {
+            skip_ghost: boolean;
+            skip: number;
+        };
+        alive(): boolean;
+        index(): number;
+        mass(next?: number): number;
+        eye(): Float32Array<ArrayBuffer>;
+        hurt(amount: number, dir: Float32Array, push: number): boolean;
+        vanish(): void;
+        step(dt: number): void;
+        patrol(world: $bog_gamengine_demo_shooter_phys, dt: number): void;
+        aim(world: $bog_gamengine_demo_shooter_phys, dt: number): void;
+        trace_write(out: Float32Array, at: number): number;
+    }
+}
+
+declare namespace $ {
+
+	type $mol_labeler__title_bog_gamengine_demo_shooter_1 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_labeler['title'] >
+	>
+	type $mol_labeler__content_bog_gamengine_demo_shooter_2 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_labeler['content'] >
+	>
+	type $mol_labeler__title_bog_gamengine_demo_shooter_3 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_labeler['title'] >
+	>
+	type $mol_labeler__content_bog_gamengine_demo_shooter_4 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_labeler['content'] >
+	>
+	type $mol_check_box__title_bog_gamengine_demo_shooter_5 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_check_box['title'] >
+	>
+	type $mol_check_box__checked_bog_gamengine_demo_shooter_6 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['shadows'] >
+		,
+		ReturnType< $mol_check_box['checked'] >
+	>
+	type $mol_check_box__title_bog_gamengine_demo_shooter_7 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_check_box['title'] >
+	>
+	type $mol_check_box__checked_bog_gamengine_demo_shooter_8 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['paused'] >
+		,
+		ReturnType< $mol_check_box['checked'] >
+	>
+	type $bog_gamengine_draw__scene_bog_gamengine_demo_shooter_9 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Scene'] >
+		,
+		ReturnType< $bog_gamengine_draw['scene'] >
+	>
+	type $bog_gamengine_draw__cam_bog_gamengine_demo_shooter_10 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Eye'] >
+		,
+		ReturnType< $bog_gamengine_draw['cam'] >
+	>
+	type $bog_gamengine_draw__shadows_bog_gamengine_demo_shooter_11 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['shadows'] >
+		,
+		ReturnType< $bog_gamengine_draw['shadows'] >
+	>
+	type $bog_gamengine_draw__shadow_range_bog_gamengine_demo_shooter_12 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_draw['shadow_range'] >
+	>
+	type $bog_gamengine_draw__ambient_bog_gamengine_demo_shooter_13 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_draw['ambient'] >
+	>
+	type $bog_gamengine_draw__event_bog_gamengine_demo_shooter_14 = $mol_type_enforce<
+		({ 
+			pointerdown( next?: ReturnType< $bog_gamengine_demo_shooter['shoot'] > ): ReturnType< $bog_gamengine_demo_shooter['shoot'] >,
+		}) 
+		,
+		ReturnType< $bog_gamengine_draw['event'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_shooter_15 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_shooter_16 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_button_major__title_bog_gamengine_demo_shooter_17 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_button_major['title'] >
+	>
+	type $mol_button_major__click_bog_gamengine_demo_shooter_18 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['restart'] >
+		,
+		ReturnType< $mol_button_major['click'] >
+	>
+	type $mol_page__title_bog_gamengine_demo_shooter_19 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['end_title'] >
+		,
+		ReturnType< $mol_page['title'] >
+	>
+	type $mol_page__body_bog_gamengine_demo_shooter_20 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_page['body'] >
+	>
+	type $mol_page__foot_bog_gamengine_demo_shooter_21 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_page['foot'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_shooter_22 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_shooter_23 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_shooter_24 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type __bog_gamengine_demo_shooter_25 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_shooter['paused'] >[0]
+		,
+		Parameters< ReturnType< $bog_gamengine_demo_shooter['Clock'] >['paused'] >[0]
+	>
+	type $bog_gamengine_shape_lines__points_bog_gamengine_demo_shooter_26 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['trace_points'] >
+		,
+		ReturnType< $bog_gamengine_shape_lines['points'] >
+	>
+	type $bog_gamengine_shape_lines__count_bog_gamengine_demo_shooter_27 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['trace_count'] >
+		,
+		ReturnType< $bog_gamengine_shape_lines['count'] >
+	>
+	type $bog_gamengine_shape_plane__tile_bog_gamengine_demo_shooter_28 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['floor_tile'] >
+		,
+		ReturnType< $bog_gamengine_shape_plane['tile'] >
+	>
+	type __bog_gamengine_demo_shooter_29 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_shooter['player_health'] >[0]
+		,
+		Parameters< ReturnType< $bog_gamengine_demo_shooter['Player'] >['health'] >[0]
+	>
+	type __bog_gamengine_demo_shooter_30 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_shooter['target_health'] >[0]
+		,
+		Parameters< $bog_gamengine_demo_shooter['Target'] >[0]
+	>
+	type __bog_gamengine_demo_shooter_31 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_shooter['target_health'] >[1]
+		,
+		Parameters< $bog_gamengine_demo_shooter['Target'] >[0]
+	>
+	type $bog_gamengine_demo_shooter_arena__map_bog_gamengine_demo_shooter_32 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['map'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_arena['map'] >
+	>
+	type $bog_gamengine_atlas__uris_bog_gamengine_demo_shooter_33 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $bog_gamengine_atlas['uris'] >
+	>
+	type $bog_gamengine_atlas__size_bog_gamengine_demo_shooter_34 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_atlas['size'] >
+	>
+	type $bog_gamengine_sound__listener_bog_gamengine_demo_shooter_35 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Eye'] >
+		,
+		ReturnType< $bog_gamengine_sound['listener'] >
+	>
+	type $bog_gamengine_sound__range_bog_gamengine_demo_shooter_36 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_sound['range'] >
+	>
+	type $bog_gamengine_sound__uris_bog_gamengine_demo_shooter_37 = $mol_type_enforce<
+		({ 
+			'shot': string,
+			'hit': string,
+		}) 
+		,
+		ReturnType< $bog_gamengine_sound['uris'] >
+	>
+	type $bog_gamengine_key__bind_bog_gamengine_demo_shooter_38 = $mol_type_enforce<
+		({ 
+			'forward': readonly(any)[],
+			'back': readonly(any)[],
+			'left': readonly(any)[],
+			'right': readonly(any)[],
+			'jump': readonly(any)[],
+			'turn_left': readonly(any)[],
+			'turn_right': readonly(any)[],
+			'fire': readonly(any)[],
+		}) 
+		,
+		ReturnType< $bog_gamengine_key['bind'] >
+	>
+	type $bog_gamengine_input__key_bog_gamengine_demo_shooter_39 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Key'] >
+		,
+		ReturnType< $bog_gamengine_input['key'] >
+	>
+	type $bog_gamengine_screen__target_bog_gamengine_demo_shooter_40 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['draw_node'] >
+		,
+		ReturnType< $bog_gamengine_screen['target'] >
+	>
+	type $bog_gamengine_scene__clock_bog_gamengine_demo_shooter_41 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Clock'] >
+		,
+		ReturnType< $bog_gamengine_scene['clock'] >
+	>
+	type $bog_gamengine_scene__input_bog_gamengine_demo_shooter_42 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Input'] >
+		,
+		ReturnType< $bog_gamengine_scene['input'] >
+	>
+	type $bog_gamengine_scene__kids_bog_gamengine_demo_shooter_43 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['nodes'] >
+		,
+		ReturnType< $bog_gamengine_scene['kids'] >
+	>
+	type $bog_gamengine_scene__phys3_bog_gamengine_demo_shooter_44 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Phys'] >
+		,
+		ReturnType< $bog_gamengine_scene['phys3'] >
+	>
+	type $bog_gamengine_scene__batches_bog_gamengine_demo_shooter_45 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['batches'] >
+		,
+		ReturnType< $bog_gamengine_scene['batches'] >
+	>
+	type $bog_gamengine_scene__cam_bog_gamengine_demo_shooter_46 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Eye'] >
+		,
+		ReturnType< $bog_gamengine_scene['cam'] >
+	>
+	type $bog_gamengine_scene__aspect_bog_gamengine_demo_shooter_47 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['aspect'] >
+		,
+		ReturnType< $bog_gamengine_scene['aspect'] >
+	>
+	type $bog_gamengine_scene__Shader_solid_bog_gamengine_demo_shooter_48 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Solid'] >
+		,
+		ReturnType< $bog_gamengine_scene['Shader_solid'] >
+	>
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_shooter_49 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Solid'] >
+		,
+		ReturnType< $bog_gamengine_batch['shader'] >
+	>
+	type $bog_gamengine_batch__shape_bog_gamengine_demo_shooter_50 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Box'] >
+		,
+		ReturnType< $bog_gamengine_batch['shape'] >
+	>
+	type $bog_gamengine_batch__atlas_bog_gamengine_demo_shooter_51 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_batch['atlas'] >
+	>
+	type $bog_gamengine_batch__source_bog_gamengine_demo_shooter_52 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Phys'] >
+		,
+		ReturnType< $bog_gamengine_batch['source'] >
+	>
+	type $bog_gamengine_batch__skip_bog_gamengine_demo_shooter_53 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_batch['skip'] >
+	>
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_shooter_54 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Flat'] >
+		,
+		ReturnType< $bog_gamengine_batch['shader'] >
+	>
+	type $bog_gamengine_batch__shape_bog_gamengine_demo_shooter_55 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Lines'] >
+		,
+		ReturnType< $bog_gamengine_batch['shape'] >
+	>
+	type $bog_gamengine_batch__instances_bog_gamengine_demo_shooter_56 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_batch['instances'] >
+	>
+	type $bog_gamengine_particle_pool__cap_bog_gamengine_demo_shooter_57 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_particle_pool['cap'] >
+	>
+	type $bog_gamengine_particle__pool_bog_gamengine_demo_shooter_58 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Spark_pool'] >
+		,
+		ReturnType< $bog_gamengine_particle['pool'] >
+	>
+	type $bog_gamengine_particle__atlas_bog_gamengine_demo_shooter_59 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_particle['atlas'] >
+	>
+	type $bog_gamengine_particle__frame_bog_gamengine_demo_shooter_60 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_particle['frame'] >
+	>
+	type $bog_gamengine_particle__life_bog_gamengine_demo_shooter_61 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['spark_life'] >
+		,
+		ReturnType< $bog_gamengine_particle['life'] >
+	>
+	type $bog_gamengine_particle__speed_bog_gamengine_demo_shooter_62 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['spark_speed'] >
+		,
+		ReturnType< $bog_gamengine_particle['speed'] >
+	>
+	type $bog_gamengine_particle__spread_bog_gamengine_demo_shooter_63 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_particle['spread'] >
+	>
+	type $bog_gamengine_particle__size_bog_gamengine_demo_shooter_64 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['spark_size'] >
+		,
+		ReturnType< $bog_gamengine_particle['size'] >
+	>
+	type $bog_gamengine_particle__color_bog_gamengine_demo_shooter_65 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['spark_color'] >
+		,
+		ReturnType< $bog_gamengine_particle['color'] >
+	>
+	type $bog_gamengine_particle__billboard_bog_gamengine_demo_shooter_66 = $mol_type_enforce<
+		boolean
+		,
+		ReturnType< $bog_gamengine_particle['billboard'] >
+	>
+	type $bog_gamengine_mesh__shape_bog_gamengine_demo_shooter_67 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Plane'] >
+		,
+		ReturnType< $bog_gamengine_mesh['shape'] >
+	>
+	type $bog_gamengine_mesh__atlas_bog_gamengine_demo_shooter_68 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_mesh['atlas'] >
+	>
+	type $bog_gamengine_mesh__frame_bog_gamengine_demo_shooter_69 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_mesh['frame'] >
+	>
+	type $bog_gamengine_mesh__pos_bog_gamengine_demo_shooter_70 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['floor_pos'] >
+		,
+		ReturnType< $bog_gamengine_mesh['pos'] >
+	>
+	type $bog_gamengine_mesh__size_bog_gamengine_demo_shooter_71 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['floor_size'] >
+		,
+		ReturnType< $bog_gamengine_mesh['size'] >
+	>
+	type $bog_gamengine_demo_shooter_player__phys3_bog_gamengine_demo_shooter_72 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Phys'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_player['phys3'] >
+	>
+	type $bog_gamengine_demo_shooter_player__input_bog_gamengine_demo_shooter_73 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Input'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_player['input'] >
+	>
+	type $bog_gamengine_demo_shooter_player__screen_bog_gamengine_demo_shooter_74 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Screen'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_player['screen'] >
+	>
+	type $bog_gamengine_demo_shooter_player__sound_bog_gamengine_demo_shooter_75 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Sound'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_player['sound'] >
+	>
+	type $bog_gamengine_demo_shooter_player__spark_bog_gamengine_demo_shooter_76 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Spark'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_player['spark'] >
+	>
+	type $bog_gamengine_demo_shooter_player__targets_bog_gamengine_demo_shooter_77 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['targets'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_player['targets'] >
+	>
+	type $bog_gamengine_demo_shooter_player__height_bog_gamengine_demo_shooter_78 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['player_height'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_player['height'] >
+	>
+	type $bog_gamengine_demo_shooter_player__radius_bog_gamengine_demo_shooter_79 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_demo_shooter_player['radius'] >
+	>
+	type $bog_gamengine_demo_shooter_player__speed_bog_gamengine_demo_shooter_80 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_demo_shooter_player['speed'] >
+	>
+	type $bog_gamengine_demo_shooter_player__jump_bog_gamengine_demo_shooter_81 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_demo_shooter_player['jump'] >
+	>
+	type $bog_gamengine_demo_shooter_player__pos_bog_gamengine_demo_shooter_82 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['player_pos'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_player['pos'] >
+	>
+	type $bog_gamengine_cam_deep__follow_bog_gamengine_demo_shooter_83 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Player'] >
+		,
+		ReturnType< $bog_gamengine_cam_deep['follow'] >
+	>
+	type $bog_gamengine_cam_deep__lift_bog_gamengine_demo_shooter_84 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['eye_lift'] >
+		,
+		ReturnType< $bog_gamengine_cam_deep['lift'] >
+	>
+	type $bog_gamengine_cam_deep__far_bog_gamengine_demo_shooter_85 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_cam_deep['far'] >
+	>
+	type $bog_gamengine_demo_shooter_target__phys3_bog_gamengine_demo_shooter_86 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Phys'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_target['phys3'] >
+	>
+	type $bog_gamengine_demo_shooter_target__player_bog_gamengine_demo_shooter_87 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Player'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_target['player'] >
+	>
+	type $bog_gamengine_demo_shooter_target__sound_bog_gamengine_demo_shooter_88 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Sound'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_target['sound'] >
+	>
+	type $bog_gamengine_demo_shooter_target__layer_bog_gamengine_demo_shooter_89 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['target_layer'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_target['layer'] >
+	>
+	type $bog_gamengine_demo_shooter_target__start_bog_gamengine_demo_shooter_90 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['target_start'] >
+		,
+		ReturnType< $bog_gamengine_demo_shooter_target['start'] >
+	>
+	type $bog_gamengine_light__kind_bog_gamengine_demo_shooter_91 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_light['kind'] >
+	>
+	type $bog_gamengine_light__rot_bog_gamengine_demo_shooter_92 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['sun_rot'] >
+		,
+		ReturnType< $bog_gamengine_light['rot'] >
+	>
+	type $bog_gamengine_light__power_bog_gamengine_demo_shooter_93 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_light['power'] >
+	>
+	type $bog_gamengine_light__kind_bog_gamengine_demo_shooter_94 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_light['kind'] >
+	>
+	type $bog_gamengine_light__parent_bog_gamengine_demo_shooter_95 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_shooter['Eye'] >
+		,
+		ReturnType< $bog_gamengine_light['parent'] >
+	>
+	type $bog_gamengine_light__power_bog_gamengine_demo_shooter_96 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_light['power'] >
+	>
+	type $bog_gamengine_light__range_bog_gamengine_demo_shooter_97 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_light['range'] >
+	>
+	type $bog_gamengine_light__angle_bog_gamengine_demo_shooter_98 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_light['angle'] >
+	>
+	export class $bog_gamengine_demo_shooter extends $mol_page {
+		health_stat( ): string
+		Health( ): $mol_labeler
+		targets_stat( ): string
+		Targets( ): $mol_labeler
+		shadows( next?: boolean ): boolean
+		Shadows( ): $mol_check_box
+		Pause( ): $mol_check_box
+		stat( ): ReturnType< ReturnType< $bog_gamengine_demo_shooter['Draw'] >['stat'] >
+		shoot( next?: any ): any
+		Draw( ): $bog_gamengine_draw
+		Cross_bar( ): $mol_view
+		Cross_pin( ): $mol_view
+		Cross( ): $mol_view
+		end_title( ): string
+		end_hint( ): string
+		End_hint( ): $mol_view
+		restart( next?: any ): any
+		Again( ): $mol_button_major
+		End( ): $mol_page
+		game( ): readonly(any)[]
+		player_stat( ): string
+		Player_stat( ): $mol_view
+		Stat( ): $mol_view
+		phys_stat( ): string
+		Phys_stat( ): $mol_view
+		draw_node( ): any
+		paused( next?: ReturnType< ReturnType< $bog_gamengine_demo_shooter['Clock'] >['paused'] > ): ReturnType< ReturnType< $bog_gamengine_demo_shooter['Clock'] >['paused'] >
+		nodes( ): readonly(any)[]
+		batches( ): readonly(any)[]
+		aspect( ): number
+		Solid( ): $bog_gamengine_shader_solid
+		Box( ): $bog_gamengine_shape_box
+		Flat( ): $bog_gamengine_shader_flat
+		trace_points( ): Float32Array
+		trace_count( ): number
+		Lines( ): $bog_gamengine_shape_lines
+		spark_life( ): Float32Array
+		spark_speed( ): Float32Array
+		spark_size( ): Float32Array
+		spark_color( ): Float32Array
+		floor_tile( ): Float32Array
+		Plane( ): $bog_gamengine_shape_plane
+		floor_pos( ): Float32Array
+		floor_size( ): Float32Array
+		targets( ): readonly(any)[]
+		player_height( ): number
+		player_pos( next?: Float32Array ): Float32Array
+		player_health( next?: ReturnType< ReturnType< $bog_gamengine_demo_shooter['Player'] >['health'] > ): ReturnType< ReturnType< $bog_gamengine_demo_shooter['Player'] >['health'] >
+		eye_lift( ): number
+		target_layer( ): number
+		target_start( id: any): Float32Array
+		target_health( id: any, next?: ReturnType< ReturnType< $bog_gamengine_demo_shooter['Target'] >['health'] > ): ReturnType< ReturnType< $bog_gamengine_demo_shooter['Target'] >['health'] >
+		sun_rot( ): Float32Array
+		title( ): string
+		tools( ): readonly(any)[]
+		body( ): ReturnType< $bog_gamengine_demo_shooter['game'] >
+		foot( ): readonly(any)[]
+		round( next?: number ): number
+		map( ): string
+		Phys( ): $bog_gamengine_demo_shooter_phys
+		Arena( ): $bog_gamengine_demo_shooter_arena
+		Atlas( ): $bog_gamengine_atlas
+		Sound( ): $bog_gamengine_sound
+		Key( ): $bog_gamengine_key
+		Input( ): $bog_gamengine_input
+		Screen( ): $bog_gamengine_screen
+		Clock( ): $bog_gamengine_clock
+		Scene( ): $bog_gamengine_scene
+		Solids( ): $bog_gamengine_batch
+		Traces( ): $bog_gamengine_batch
+		Spark_pool( ): $bog_gamengine_particle_pool
+		Spark( ): $bog_gamengine_particle
+		Floor( ): $bog_gamengine_mesh
+		Player( ): $bog_gamengine_demo_shooter_player
+		Eye( ): $bog_gamengine_cam_deep
+		Target( id: any): $bog_gamengine_demo_shooter_target
+		Sun( ): $bog_gamengine_light
+		Lamp( ): $bog_gamengine_light
+	}
+	
+}
+
+//# sourceMappingURL=shooter.view.tree.d.ts.map
+declare namespace $.$$ {
+    class $bog_gamengine_demo_shooter extends $.$bog_gamengine_demo_shooter {
+        Phys(): $bog_gamengine_demo_shooter_phys;
+        target_layer(): number;
+        target_keys(): readonly string[];
+        target_start(key: string): Float32Array<ArrayBufferLike>;
+        targets(): readonly $bog_gamengine_demo_shooter_target[];
+        targets_left(): number;
+        player_pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        eye_lift(): number;
+        spark_life(): Float32Array<ArrayBuffer>;
+        spark_speed(): Float32Array<ArrayBuffer>;
+        spark_size(): Float32Array<ArrayBuffer>;
+        spark_color(): Float32Array<ArrayBuffer>;
+        sun_rot(): Float32Array<ArrayBuffer>;
+        floor_pos(): Float32Array<ArrayBufferLike>;
+        floor_size(): Float32Array<ArrayBuffer>;
+        floor_tile(): Float32Array<ArrayBuffer>;
+        nodes(): ($bog_gamengine_light | $bog_gamengine_mesh | $bog_gamengine_demo_shooter_player | $bog_gamengine_demo_shooter_target | $bog_gamengine_particle)[];
+        batches(): readonly $bog_gamengine_batch[];
+        trace_buf: Float32Array<ArrayBuffer>;
+        trace_at: number;
+        trace_points(): Float32Array<ArrayBuffer>;
+        trace_count(): number;
+        aspect(): number;
+        draw_node(): Element;
+        shoot(next?: PointerEvent | null): PointerEvent | null;
+        won(): boolean;
+        lost(): boolean;
+        over(): boolean;
+        game(): ($mol_view | $mol_page)[];
+        end_title(): "Победил" | "Проиграл";
+        end_hint(): string;
+        restart(next?: any): null;
+        health_stat(): string;
+        targets_stat(): string;
+        player_stat(): string;
+        phys_stat(): string;
+    }
+}
+
+declare namespace $.$$ {
+}
+
+declare namespace $ {
+    class $bog_gamengine_cam_edge extends $bog_gamengine_node {
+        cam(next?: $bog_gamengine_cam_flat | null): $bog_gamengine_cam_flat | null;
+        width(next?: number): number;
+        height(next?: number): number;
+        edge(next?: number): number;
+        speed(next?: number): number;
+        at_x: number;
+        at_y: number;
+        aim(x: number, y: number): void;
+        away(): void;
+        push(value: number, size: number): number;
+        step(dt: number): void;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_nav_squad extends $mol_object2 {
+        gap(next?: number): number;
+        rings(next?: number): number;
+        spots: Float32Array<ArrayBuffer>;
+        count: number;
+        at: Float32Array<ArrayBuffer>;
+        grow(need: number): void;
+        step_of(nodes: readonly $bog_gamengine_nav_agent[]): number;
+        free(x: number, y: number, grid: $bog_gamengine_nav_grid | null, step: number): boolean;
+        seek(x: number, y: number, grid: $bog_gamengine_nav_grid | null, step: number): Float32Array<ArrayBuffer>;
+        order(nodes: readonly $bog_gamengine_nav_agent[], x: number, y: number, grid?: $bog_gamengine_nav_grid | null): Float32Array;
+    }
+}
+
+declare namespace $ {
+    type $bog_gamengine_combat_owner = $bog_gamengine_node & {
+        die?(from?: $bog_gamengine_node | null): void;
+    };
+    class $bog_gamengine_combat extends $mol_object2 {
+        owner_now: $bog_gamengine_node | null;
+        owner(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
+        health_max(next?: number): number;
+        armor(next?: number): number;
+        rate(next?: number): number;
+        health(next?: number): number;
+        props(): readonly $bog_gamengine_prop[];
+        dead_on: boolean;
+        fired: number;
+        dead(): boolean;
+        now(): number;
+        hurt(amount: number, from?: $bog_gamengine_node | null): number;
+        heal(amount: number): number;
+        die(from?: $bog_gamengine_node | null): void;
+        revive(): number;
+        ready(time?: number): boolean;
+        fire(time?: number): number;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_demo_legion_unit extends $bog_gamengine_nav_agent {
+        camp(next?: number): number;
+        brain(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
+        foes(next?: readonly $bog_gamengine_demo_legion_unit[]): readonly $bog_gamengine_demo_legion_unit[];
+        sound(next?: $bog_gamengine_sound | null): $bog_gamengine_sound | null;
+        flash(next?: $bog_gamengine_particle | null): $bog_gamengine_particle | null;
+        home(next?: Float32Array | null): Float32Array<ArrayBufferLike> | null;
+        dead(next?: boolean): boolean;
+        fight(next?: $bog_gamengine_combat | null): $bog_gamengine_combat | null;
+        damage(next?: number): number;
+        reach(next?: number): number;
+        sight(next?: number): number;
+        roam(next?: number): number;
+        scan_rate(next?: number): number;
+        radius(): number;
+        props(): readonly $bog_gamengine_prop[];
+        order_on: boolean;
+        mode_now: string;
+        foe_now: $bog_gamengine_demo_legion_unit | null;
+        foe_dist: number;
+        scan_left: number;
+        roam_left: number;
+        seed: number;
+        hp(): number;
+        health_max(): number;
+        mode(): string;
+        mode_set(mode: string): void;
+        has_foe(): boolean;
+        in_reach(): boolean;
+        lost_foe(): boolean;
+        busy(): boolean;
+        resting(): boolean;
+        rand(): number;
+        aim(x: number, y: number, z?: number): Float32Array<ArrayBuffer>;
+        wound(hurt: number): void;
+        die(): void;
+        reset(at: Float32Array): void;
+        scan(dt: number): void;
+        chase(): void;
+        wander(dt: number): void;
+        strike(dt: number): void;
+        step(dt: number): void;
+    }
+}
+
+declare namespace $ {
+    type $bog_gamengine_brain_bt_status = 'ok' | 'fail' | 'run';
+    class $bog_gamengine_brain_bt_node extends $bog_gamengine_node {
+        status_now: $bog_gamengine_brain_bt_status;
+        tick(dt: number, brain: $bog_gamengine_brain_bt): $bog_gamengine_brain_bt_status;
+        kid(at: number): $bog_gamengine_brain_bt_node | null;
+    }
+    class $bog_gamengine_brain_bt extends $bog_gamengine_brain_bt_node {
+        is_brain(): boolean;
+        owner_now: $bog_gamengine_node | null;
+        owner(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
+        status(next?: $bog_gamengine_brain_bt_status): $bog_gamengine_brain_bt_status;
+        props(): readonly $bog_gamengine_prop[];
+        cond(name: string): boolean;
+        tick(dt: number, brain: $bog_gamengine_brain_bt): $bog_gamengine_brain_bt_status;
+        step(dt: number): void;
+    }
+    class $bog_gamengine_brain_bt_seq extends $bog_gamengine_brain_bt_node {
+        at: number;
+        tick(dt: number, brain: $bog_gamengine_brain_bt): "ok" | "fail" | "run";
+    }
+    class $bog_gamengine_brain_bt_sel extends $bog_gamengine_brain_bt_node {
+        at: number;
+        tick(dt: number, brain: $bog_gamengine_brain_bt): "ok" | "fail" | "run";
+    }
+    class $bog_gamengine_brain_bt_par extends $bog_gamengine_brain_bt_node {
+        tick(dt: number, brain: $bog_gamengine_brain_bt): $bog_gamengine_brain_bt_status;
+    }
+    class $bog_gamengine_brain_bt_inv extends $bog_gamengine_brain_bt_node {
+        tick(dt: number, brain: $bog_gamengine_brain_bt): "ok" | "fail" | "run";
+    }
+    class $bog_gamengine_brain_bt_wait extends $bog_gamengine_brain_bt_node {
+        elapsed: number;
+        seconds(next?: number): number;
+        props(): readonly $bog_gamengine_prop[];
+        tick(dt: number, brain: $bog_gamengine_brain_bt): "ok" | "run";
+    }
+    class $bog_gamengine_brain_bt_cond extends $bog_gamengine_brain_bt_node {
+        when(next?: string): string;
+        props(): readonly $bog_gamengine_prop[];
+        tick(dt: number, brain: $bog_gamengine_brain_bt): "ok" | "fail";
+    }
+    class $bog_gamengine_brain_bt_act extends $bog_gamengine_brain_bt_node {
+        tick(dt: number, brain: $bog_gamengine_brain_bt): $bog_gamengine_brain_bt_status;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_demo_legion_act extends $bog_gamengine_brain_bt_act {
+        mode(): string;
+        tick(dt: number, brain: $bog_gamengine_brain_bt): "ok" | "fail";
+    }
+}
+
+declare namespace $ {
+
+	type $mol_labeler__title_bog_gamengine_demo_legion_1 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_labeler['title'] >
+	>
+	type $mol_labeler__content_bog_gamengine_demo_legion_2 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_labeler['content'] >
+	>
+	type $mol_labeler__title_bog_gamengine_demo_legion_3 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_labeler['title'] >
+	>
+	type $mol_labeler__content_bog_gamengine_demo_legion_4 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_labeler['content'] >
+	>
+	type $mol_labeler__title_bog_gamengine_demo_legion_5 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_labeler['title'] >
+	>
+	type $mol_labeler__content_bog_gamengine_demo_legion_6 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_labeler['content'] >
+	>
+	type $mol_check_box__title_bog_gamengine_demo_legion_7 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_check_box['title'] >
+	>
+	type $mol_check_box__checked_bog_gamengine_demo_legion_8 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['paused'] >
+		,
+		ReturnType< $mol_check_box['checked'] >
+	>
+	type $bog_gamengine_draw__scene_bog_gamengine_demo_legion_9 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Scene'] >
+		,
+		ReturnType< $bog_gamengine_draw['scene'] >
+	>
+	type $bog_gamengine_draw__cam_bog_gamengine_demo_legion_10 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Cam'] >
+		,
+		ReturnType< $bog_gamengine_draw['cam'] >
+	>
+	type $bog_gamengine_draw__event_bog_gamengine_demo_legion_11 = $mol_type_enforce<
+		({ 
+			pointerdown( next?: ReturnType< $bog_gamengine_demo_legion['pointer_down'] > ): ReturnType< $bog_gamengine_demo_legion['pointer_down'] >,
+			pointermove( next?: ReturnType< $bog_gamengine_demo_legion['pointer_move'] > ): ReturnType< $bog_gamengine_demo_legion['pointer_move'] >,
+			pointerup( next?: ReturnType< $bog_gamengine_demo_legion['pointer_up'] > ): ReturnType< $bog_gamengine_demo_legion['pointer_up'] >,
+			pointerleave( next?: ReturnType< $bog_gamengine_demo_legion['pointer_leave'] > ): ReturnType< $bog_gamengine_demo_legion['pointer_leave'] >,
+			wheel( next?: ReturnType< $bog_gamengine_demo_legion['wheel'] > ): ReturnType< $bog_gamengine_demo_legion['wheel'] >,
+			contextmenu( next?: ReturnType< $bog_gamengine_demo_legion['menu'] > ): ReturnType< $bog_gamengine_demo_legion['menu'] >,
+		}) 
+		,
+		ReturnType< $bog_gamengine_draw['event'] >
+	>
+	type $mol_view__style_bog_gamengine_demo_legion_12 = $mol_type_enforce<
+		({ 
+			'left': ReturnType< $bog_gamengine_demo_legion['band_left'] >,
+			'top': ReturnType< $bog_gamengine_demo_legion['band_top'] >,
+			'width': ReturnType< $bog_gamengine_demo_legion['band_width'] >,
+			'height': ReturnType< $bog_gamengine_demo_legion['band_height'] >,
+		}) 
+		,
+		ReturnType< $mol_view['style'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_legion_13 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['dots'] >
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_legion_14 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_button_major__title_bog_gamengine_demo_legion_15 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_button_major['title'] >
+	>
+	type $mol_button_major__click_bog_gamengine_demo_legion_16 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['restart'] >
+		,
+		ReturnType< $mol_button_major['click'] >
+	>
+	type $mol_page__title_bog_gamengine_demo_legion_17 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['end_title'] >
+		,
+		ReturnType< $mol_page['title'] >
+	>
+	type $mol_page__body_bog_gamengine_demo_legion_18 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_page['body'] >
+	>
+	type $mol_page__foot_bog_gamengine_demo_legion_19 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_page['foot'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_legion_20 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['field'] >
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_legion_21 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_legion_22 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type __bog_gamengine_demo_legion_23 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_legion['mine_dead'] >[0]
+		,
+		Parameters< $bog_gamengine_demo_legion['Mine'] >[0]
+	>
+	type __bog_gamengine_demo_legion_24 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_legion['mine_dead'] >[1]
+		,
+		Parameters< $bog_gamengine_demo_legion['Mine'] >[0]
+	>
+	type __bog_gamengine_demo_legion_25 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_legion['foe_dead'] >[0]
+		,
+		Parameters< $bog_gamengine_demo_legion['Foe'] >[0]
+	>
+	type __bog_gamengine_demo_legion_26 = $mol_type_enforce<
+		Parameters< $bog_gamengine_demo_legion['foe_dead'] >[1]
+		,
+		Parameters< $bog_gamengine_demo_legion['Foe'] >[0]
+	>
+	type $mol_view__style_bog_gamengine_demo_legion_27 = $mol_type_enforce<
+		({ 
+			'left': ReturnType< $bog_gamengine_demo_legion['dot_left'] >,
+			'top': ReturnType< $bog_gamengine_demo_legion['dot_top'] >,
+			'background': ReturnType< $bog_gamengine_demo_legion['dot_back'] >,
+		}) 
+		,
+		ReturnType< $mol_view['style'] >
+	>
+	type $bog_gamengine_phys_tile__map_bog_gamengine_demo_legion_28 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['map'] >
+		,
+		ReturnType< $bog_gamengine_phys_tile['map'] >
+	>
+	type $bog_gamengine_phys_tile__solid_bog_gamengine_demo_legion_29 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_phys_tile['solid'] >
+	>
+	type $bog_gamengine_nav_grid__tile_bog_gamengine_demo_legion_30 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Tile'] >
+		,
+		ReturnType< $bog_gamengine_nav_grid['tile'] >
+	>
+	type $bog_gamengine_nav_grid__pad_bog_gamengine_demo_legion_31 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_nav_grid['pad'] >
+	>
+	type $bog_gamengine_atlas__uris_bog_gamengine_demo_legion_32 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $bog_gamengine_atlas['uris'] >
+	>
+	type $bog_gamengine_atlas__size_bog_gamengine_demo_legion_33 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_atlas['size'] >
+	>
+	type $bog_gamengine_sound__listener_bog_gamengine_demo_legion_34 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Cam'] >
+		,
+		ReturnType< $bog_gamengine_sound['listener'] >
+	>
+	type $bog_gamengine_sound__range_bog_gamengine_demo_legion_35 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_sound['range'] >
+	>
+	type $bog_gamengine_sound__uris_bog_gamengine_demo_legion_36 = $mol_type_enforce<
+		({ 
+			'hit': string,
+			'order': string,
+		}) 
+		,
+		ReturnType< $bog_gamengine_sound['uris'] >
+	>
+	type $bog_gamengine_point__cam_bog_gamengine_demo_legion_37 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Cam'] >
+		,
+		ReturnType< $bog_gamengine_point['cam'] >
+	>
+	type $bog_gamengine_point__width_bog_gamengine_demo_legion_38 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['draw_width'] >
+		,
+		ReturnType< $bog_gamengine_point['width'] >
+	>
+	type $bog_gamengine_point__height_bog_gamengine_demo_legion_39 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['draw_height'] >
+		,
+		ReturnType< $bog_gamengine_point['height'] >
+	>
+	type $bog_gamengine_point__scale_bog_gamengine_demo_legion_40 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['draw_dpr'] >
+		,
+		ReturnType< $bog_gamengine_point['scale'] >
+	>
+	type $bog_gamengine_scene__clock_bog_gamengine_demo_legion_41 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Clock'] >
+		,
+		ReturnType< $bog_gamengine_scene['clock'] >
+	>
+	type $bog_gamengine_scene__cam_bog_gamengine_demo_legion_42 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Cam'] >
+		,
+		ReturnType< $bog_gamengine_scene['cam'] >
+	>
+	type $bog_gamengine_scene__kids_bog_gamengine_demo_legion_43 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['nodes'] >
+		,
+		ReturnType< $bog_gamengine_scene['kids'] >
+	>
+	type $bog_gamengine_scene__batches_bog_gamengine_demo_legion_44 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['batches'] >
+		,
+		ReturnType< $bog_gamengine_scene['batches'] >
+	>
+	type $bog_gamengine_cam_flat__height_bog_gamengine_demo_legion_45 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_cam_flat['height'] >
+	>
+	type $bog_gamengine_cam_flat__zoom_bog_gamengine_demo_legion_46 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['cam_zoom'] >
+		,
+		ReturnType< $bog_gamengine_cam_flat['zoom'] >
+	>
+	type $bog_gamengine_cam_flat__zoom_min_bog_gamengine_demo_legion_47 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_cam_flat['zoom_min'] >
+	>
+	type $bog_gamengine_cam_flat__zoom_max_bog_gamengine_demo_legion_48 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_cam_flat['zoom_max'] >
+	>
+	type $bog_gamengine_cam_flat__pos_bog_gamengine_demo_legion_49 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['cam_pos'] >
+		,
+		ReturnType< $bog_gamengine_cam_flat['pos'] >
+	>
+	type $bog_gamengine_cam_flat__bounds_bog_gamengine_demo_legion_50 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['cam_bounds'] >
+		,
+		ReturnType< $bog_gamengine_cam_flat['bounds'] >
+	>
+	type $bog_gamengine_cam_edge__cam_bog_gamengine_demo_legion_51 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Cam'] >
+		,
+		ReturnType< $bog_gamengine_cam_edge['cam'] >
+	>
+	type $bog_gamengine_cam_edge__width_bog_gamengine_demo_legion_52 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['draw_width'] >
+		,
+		ReturnType< $bog_gamengine_cam_edge['width'] >
+	>
+	type $bog_gamengine_cam_edge__height_bog_gamengine_demo_legion_53 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['draw_height'] >
+		,
+		ReturnType< $bog_gamengine_cam_edge['height'] >
+	>
+	type $bog_gamengine_cam_edge__speed_bog_gamengine_demo_legion_54 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_cam_edge['speed'] >
+	>
+	type $bog_gamengine_tilemap__tile_bog_gamengine_demo_legion_55 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Tile'] >
+		,
+		ReturnType< $bog_gamengine_tilemap['tile'] >
+	>
+	type $bog_gamengine_tilemap__atlas_bog_gamengine_demo_legion_56 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_tilemap['atlas'] >
+	>
+	type $bog_gamengine_tilemap__palette_bog_gamengine_demo_legion_57 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['palette'] >
+		,
+		ReturnType< $bog_gamengine_tilemap['palette'] >
+	>
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_legion_58 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Sprite_shader'] >
+		,
+		ReturnType< $bog_gamengine_batch['shader'] >
+	>
+	type $bog_gamengine_batch__atlas_bog_gamengine_demo_legion_59 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_batch['atlas'] >
+	>
+	type $bog_gamengine_batch__source_bog_gamengine_demo_legion_60 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['tilemap_pool'] >
+		,
+		ReturnType< $bog_gamengine_batch['source'] >
+	>
+	type $bog_gamengine_particle__atlas_bog_gamengine_demo_legion_61 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_particle['atlas'] >
+	>
+	type $bog_gamengine_particle__frame_bog_gamengine_demo_legion_62 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_particle['frame'] >
+	>
+	type $bog_gamengine_particle__rate_bog_gamengine_demo_legion_63 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_particle['rate'] >
+	>
+	type $bog_gamengine_particle__life_bog_gamengine_demo_legion_64 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['flash_life'] >
+		,
+		ReturnType< $bog_gamengine_particle['life'] >
+	>
+	type $bog_gamengine_particle__speed_bog_gamengine_demo_legion_65 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['flash_speed'] >
+		,
+		ReturnType< $bog_gamengine_particle['speed'] >
+	>
+	type $bog_gamengine_particle__spread_bog_gamengine_demo_legion_66 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_particle['spread'] >
+	>
+	type $bog_gamengine_particle__size_bog_gamengine_demo_legion_67 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['flash_size'] >
+		,
+		ReturnType< $bog_gamengine_particle['size'] >
+	>
+	type $bog_gamengine_particle__color_bog_gamengine_demo_legion_68 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['flash_color'] >
+		,
+		ReturnType< $bog_gamengine_particle['color'] >
+	>
+	type $bog_gamengine_batch__shader_bog_gamengine_demo_legion_69 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Sprite_shader'] >
+		,
+		ReturnType< $bog_gamengine_batch['shader'] >
+	>
+	type $bog_gamengine_batch__atlas_bog_gamengine_demo_legion_70 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_batch['atlas'] >
+	>
+	type $bog_gamengine_batch__source_bog_gamengine_demo_legion_71 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['flash_pool'] >
+		,
+		ReturnType< $bog_gamengine_batch['source'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_legion_72 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_legion_73 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__pos_bog_gamengine_demo_legion_74 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['res_pos'] >
+		,
+		ReturnType< $bog_gamengine_sprite['pos'] >
+	>
+	type $bog_gamengine_sprite__size_bog_gamengine_demo_legion_75 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['res_size'] >
+		,
+		ReturnType< $bog_gamengine_sprite['size'] >
+	>
+	type $bog_gamengine_demo_legion_unit__camp_bog_gamengine_demo_legion_76 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['camp'] >
+	>
+	type $bog_gamengine_demo_legion_unit__grid_bog_gamengine_demo_legion_77 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Grid'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['grid'] >
+	>
+	type $bog_gamengine_demo_legion_unit__sound_bog_gamengine_demo_legion_78 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Sound'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['sound'] >
+	>
+	type $bog_gamengine_demo_legion_unit__flash_bog_gamengine_demo_legion_79 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Flash'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['flash'] >
+	>
+	type $bog_gamengine_demo_legion_unit__others_bog_gamengine_demo_legion_80 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['mine_alive'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['others'] >
+	>
+	type $bog_gamengine_demo_legion_unit__foes_bog_gamengine_demo_legion_81 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['foe_alive'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['foes'] >
+	>
+	type $bog_gamengine_demo_legion_unit__brain_bog_gamengine_demo_legion_82 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Brain'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['brain'] >
+	>
+	type $bog_gamengine_demo_legion_unit__fight_bog_gamengine_demo_legion_83 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Mine_fight'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['fight'] >
+	>
+	type $bog_gamengine_demo_legion_unit__kids_bog_gamengine_demo_legion_84 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['mine_kids'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['kids'] >
+	>
+	type $bog_gamengine_demo_legion_unit__speed_bog_gamengine_demo_legion_85 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['speed'] >
+	>
+	type $bog_gamengine_demo_legion_unit__pos_bog_gamengine_demo_legion_86 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['mine_pos'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['pos'] >
+	>
+	type $bog_gamengine_sprite__parent_bog_gamengine_demo_legion_87 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Mine'] >
+		,
+		ReturnType< $bog_gamengine_sprite['parent'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_legion_88 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_legion_89 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__size_bog_gamengine_demo_legion_90 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['unit_size'] >
+		,
+		ReturnType< $bog_gamengine_sprite['size'] >
+	>
+	type $bog_gamengine_sprite__tint_bog_gamengine_demo_legion_91 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['mine_tint'] >
+		,
+		ReturnType< $bog_gamengine_sprite['tint'] >
+	>
+	type $bog_gamengine_combat__owner_bog_gamengine_demo_legion_92 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Mine'] >
+		,
+		ReturnType< $bog_gamengine_combat['owner'] >
+	>
+	type $bog_gamengine_combat__health_max_bog_gamengine_demo_legion_93 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_combat['health_max'] >
+	>
+	type $bog_gamengine_combat__rate_bog_gamengine_demo_legion_94 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_combat['rate'] >
+	>
+	type $bog_gamengine_brain_fsm__owner_bog_gamengine_demo_legion_95 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Mine'] >
+		,
+		ReturnType< $bog_gamengine_brain_fsm['owner'] >
+	>
+	type $bog_gamengine_brain_fsm__kids_bog_gamengine_demo_legion_96 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['brain_kids'] >
+		,
+		ReturnType< $bog_gamengine_brain_fsm['kids'] >
+	>
+	type $bog_gamengine_brain_state__name_bog_gamengine_demo_legion_97 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_brain_state['name'] >
+	>
+	type $bog_gamengine_brain_state__next_bog_gamengine_demo_legion_98 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['idle_next'] >
+		,
+		ReturnType< $bog_gamengine_brain_state['next'] >
+	>
+	type $bog_gamengine_brain_state__name_bog_gamengine_demo_legion_99 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_brain_state['name'] >
+	>
+	type $bog_gamengine_brain_state__next_bog_gamengine_demo_legion_100 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['move_next'] >
+		,
+		ReturnType< $bog_gamengine_brain_state['next'] >
+	>
+	type $bog_gamengine_brain_state__name_bog_gamengine_demo_legion_101 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_brain_state['name'] >
+	>
+	type $bog_gamengine_brain_state__next_bog_gamengine_demo_legion_102 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['attack_next'] >
+		,
+		ReturnType< $bog_gamengine_brain_state['next'] >
+	>
+	type $bog_gamengine_brain_state__name_bog_gamengine_demo_legion_103 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_brain_state['name'] >
+	>
+	type $bog_gamengine_demo_legion_unit__camp_bog_gamengine_demo_legion_104 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['camp'] >
+	>
+	type $bog_gamengine_demo_legion_unit__grid_bog_gamengine_demo_legion_105 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Grid'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['grid'] >
+	>
+	type $bog_gamengine_demo_legion_unit__sound_bog_gamengine_demo_legion_106 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Sound'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['sound'] >
+	>
+	type $bog_gamengine_demo_legion_unit__flash_bog_gamengine_demo_legion_107 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Flash'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['flash'] >
+	>
+	type $bog_gamengine_demo_legion_unit__others_bog_gamengine_demo_legion_108 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['foe_alive'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['others'] >
+	>
+	type $bog_gamengine_demo_legion_unit__foes_bog_gamengine_demo_legion_109 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['mine_alive'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['foes'] >
+	>
+	type $bog_gamengine_demo_legion_unit__brain_bog_gamengine_demo_legion_110 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Tree'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['brain'] >
+	>
+	type $bog_gamengine_demo_legion_unit__fight_bog_gamengine_demo_legion_111 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Foe_fight'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['fight'] >
+	>
+	type $bog_gamengine_demo_legion_unit__kids_bog_gamengine_demo_legion_112 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['foe_kids'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['kids'] >
+	>
+	type $bog_gamengine_demo_legion_unit__home_bog_gamengine_demo_legion_113 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['foe_home'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['home'] >
+	>
+	type $bog_gamengine_demo_legion_unit__speed_bog_gamengine_demo_legion_114 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['speed'] >
+	>
+	type $bog_gamengine_demo_legion_unit__pos_bog_gamengine_demo_legion_115 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['foe_pos'] >
+		,
+		ReturnType< $bog_gamengine_demo_legion_unit['pos'] >
+	>
+	type $bog_gamengine_sprite__parent_bog_gamengine_demo_legion_116 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Foe'] >
+		,
+		ReturnType< $bog_gamengine_sprite['parent'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_legion_117 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_legion_118 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__size_bog_gamengine_demo_legion_119 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['unit_size'] >
+		,
+		ReturnType< $bog_gamengine_sprite['size'] >
+	>
+	type $bog_gamengine_combat__owner_bog_gamengine_demo_legion_120 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Foe'] >
+		,
+		ReturnType< $bog_gamengine_combat['owner'] >
+	>
+	type $bog_gamengine_combat__health_max_bog_gamengine_demo_legion_121 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_combat['health_max'] >
+	>
+	type $bog_gamengine_combat__rate_bog_gamengine_demo_legion_122 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_combat['rate'] >
+	>
+	type $bog_gamengine_brain_bt__owner_bog_gamengine_demo_legion_123 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['Foe'] >
+		,
+		ReturnType< $bog_gamengine_brain_bt['owner'] >
+	>
+	type $bog_gamengine_brain_bt__kids_bog_gamengine_demo_legion_124 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['tree_kids'] >
+		,
+		ReturnType< $bog_gamengine_brain_bt['kids'] >
+	>
+	type $bog_gamengine_brain_bt_sel__kids_bog_gamengine_demo_legion_125 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['plan_kids'] >
+		,
+		ReturnType< $bog_gamengine_brain_bt_sel['kids'] >
+	>
+	type $bog_gamengine_brain_bt_seq__kids_bog_gamengine_demo_legion_126 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['fight_kids'] >
+		,
+		ReturnType< $bog_gamengine_brain_bt_seq['kids'] >
+	>
+	type $bog_gamengine_brain_bt_cond__when_bog_gamengine_demo_legion_127 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_brain_bt_cond['when'] >
+	>
+	type $bog_gamengine_demo_legion_act__mode_bog_gamengine_demo_legion_128 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_demo_legion_act['mode'] >
+	>
+	type $bog_gamengine_brain_bt_seq__kids_bog_gamengine_demo_legion_129 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_legion['hunt_kids'] >
+		,
+		ReturnType< $bog_gamengine_brain_bt_seq['kids'] >
+	>
+	type $bog_gamengine_brain_bt_cond__when_bog_gamengine_demo_legion_130 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_brain_bt_cond['when'] >
+	>
+	type $bog_gamengine_demo_legion_act__mode_bog_gamengine_demo_legion_131 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_demo_legion_act['mode'] >
+	>
+	type $bog_gamengine_demo_legion_act__mode_bog_gamengine_demo_legion_132 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_demo_legion_act['mode'] >
+	>
+	export class $bog_gamengine_demo_legion extends $mol_page {
+		mine_count( ): string
+		Mine_count( ): $mol_labeler
+		foe_count( ): string
+		Foe_count( ): $mol_labeler
+		sel_count( ): string
+		Sel_count( ): $mol_labeler
+		paused( next?: boolean ): boolean
+		Pause_switch( ): $mol_check_box
+		stat( ): ReturnType< ReturnType< $bog_gamengine_demo_legion['Draw'] >['stat'] >
+		draw_width( ): ReturnType< ReturnType< $bog_gamengine_demo_legion['Draw'] >['width'] >
+		draw_height( ): ReturnType< ReturnType< $bog_gamengine_demo_legion['Draw'] >['height'] >
+		draw_dpr( ): ReturnType< ReturnType< $bog_gamengine_demo_legion['Draw'] >['dpr'] >
+		pointer_down( next?: any ): any
+		pointer_move( next?: any ): any
+		pointer_up( next?: any ): any
+		pointer_leave( next?: any ): any
+		wheel( next?: any ): any
+		menu( next?: any ): any
+		Draw( ): $bog_gamengine_draw
+		band_left( ): string
+		band_top( ): string
+		band_width( ): string
+		band_height( ): string
+		Band( ): $mol_view
+		dots( ): readonly(any)[]
+		Minimap( ): $mol_view
+		end_title( ): string
+		end_hint( ): string
+		End_hint( ): $mol_view
+		restart( next?: any ): any
+		Again( ): $mol_button_major
+		End( ): $mol_page
+		field( ): readonly(any)[]
+		Field( ): $mol_view
+		legion_stat( ): string
+		Legion_stat( ): $mol_view
+		Stat( ): $mol_view
+		dot_left( id: any): string
+		dot_top( id: any): string
+		dot_back( id: any): string
+		nodes( ): readonly(any)[]
+		batches( ): readonly(any)[]
+		cam_zoom( next?: number ): number
+		cam_pos( next?: Float32Array ): Float32Array
+		cam_bounds( ): Float32Array
+		palette( ): Record<string, any>
+		Sprite_shader( ): $bog_gamengine_shader_sprite
+		tilemap_pool( ): any
+		flash_life( ): Float32Array
+		flash_speed( ): Float32Array
+		flash_size( ): Float32Array
+		flash_color( ): Float32Array
+		flash_pool( ): any
+		res_pos( id: any): Float32Array
+		res_size( ): Float32Array
+		mine_alive( ): readonly(any)[]
+		foe_alive( ): readonly(any)[]
+		mine_kids( id: any): readonly(any)[]
+		mine_pos( id: any, next?: Float32Array ): Float32Array
+		mine_dead( id: any, next?: ReturnType< ReturnType< $bog_gamengine_demo_legion['Mine'] >['dead'] > ): ReturnType< ReturnType< $bog_gamengine_demo_legion['Mine'] >['dead'] >
+		unit_size( ): Float32Array
+		mine_tint( id: any): Float32Array
+		brain_kids( id: any): readonly(any)[]
+		idle_next( ): readonly(any)[]
+		move_next( ): readonly(any)[]
+		attack_next( ): readonly(any)[]
+		foe_kids( id: any): readonly(any)[]
+		foe_home( id: any): Float32Array
+		foe_pos( id: any, next?: Float32Array ): Float32Array
+		foe_dead( id: any, next?: ReturnType< ReturnType< $bog_gamengine_demo_legion['Foe'] >['dead'] > ): ReturnType< ReturnType< $bog_gamengine_demo_legion['Foe'] >['dead'] >
+		tree_kids( id: any): readonly(any)[]
+		plan_kids( id: any): readonly(any)[]
+		fight_kids( id: any): readonly(any)[]
+		hunt_kids( id: any): readonly(any)[]
+		title( ): string
+		key_map( ): Record<string, any>
+		tools( ): readonly(any)[]
+		body( ): readonly(any)[]
+		foot( ): readonly(any)[]
+		Dot( id: any): $mol_view
+		map( ): string
+		Tile( ): $bog_gamengine_phys_tile
+		Grid( ): $bog_gamengine_nav_grid
+		Atlas( ): $bog_gamengine_atlas
+		Sound( ): $bog_gamengine_sound
+		Point( ): $bog_gamengine_point
+		Clock( ): $bog_gamengine_clock
+		Scene( ): $bog_gamengine_scene
+		Cam( ): $bog_gamengine_cam_flat
+		Edge( ): $bog_gamengine_cam_edge
+		Squad( ): $bog_gamengine_nav_squad
+		Tilemap( ): $bog_gamengine_tilemap
+		Tilemap_batch( ): $bog_gamengine_batch
+		Flash( ): $bog_gamengine_particle
+		Flash_batch( ): $bog_gamengine_batch
+		Res( id: any): $bog_gamengine_sprite
+		Mine( id: any): $bog_gamengine_demo_legion_unit
+		Mine_sprite( id: any): $bog_gamengine_sprite
+		Mine_fight( id: any): $bog_gamengine_combat
+		Brain( id: any): $bog_gamengine_brain_fsm
+		Idle( id: any): $bog_gamengine_brain_state
+		Move( id: any): $bog_gamengine_brain_state
+		Attack( id: any): $bog_gamengine_brain_state
+		Fallen( id: any): $bog_gamengine_brain_state
+		Foe( id: any): $bog_gamengine_demo_legion_unit
+		Foe_sprite( id: any): $bog_gamengine_sprite
+		Foe_fight( id: any): $bog_gamengine_combat
+		Tree( id: any): $bog_gamengine_brain_bt
+		Plan( id: any): $bog_gamengine_brain_bt_sel
+		Fight( id: any): $bog_gamengine_brain_bt_seq
+		Near( id: any): $bog_gamengine_brain_bt_cond
+		Strike( id: any): $bog_gamengine_demo_legion_act
+		Hunt( id: any): $bog_gamengine_brain_bt_seq
+		Seen( id: any): $bog_gamengine_brain_bt_cond
+		Rush( id: any): $bog_gamengine_demo_legion_act
+		Roam( id: any): $bog_gamengine_demo_legion_act
+	}
+	
+}
+
+//# sourceMappingURL=legion.view.tree.d.ts.map
+declare namespace $.$$ {
+    class $bog_gamengine_demo_legion extends $.$bog_gamengine_demo_legion {
+        key_map(): {
+            space: (state?: boolean) => boolean;
+            escape: (state?: boolean) => boolean;
+        };
+        paused(next?: boolean): boolean;
+        palette(): {
+            '#': string;
+            '.': string;
+            A: string;
+            B: string;
+            o: string;
+        };
+        tilemap_pool(): $bog_gamengine_tilemap_pool;
+        flash_pool(): $bog_gamengine_particle_pool;
+        flash_life(): Float32Array<ArrayBuffer>;
+        flash_speed(): Float32Array<ArrayBuffer>;
+        flash_size(): Float32Array<ArrayBuffer>;
+        flash_color(): Float32Array<ArrayBuffer>;
+        unit_size(): Float32Array<ArrayBuffer>;
+        res_size(): Float32Array<ArrayBuffer>;
+        cam_bounds(): Float32Array<ArrayBuffer>;
+        cam_pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        cell(x: number, y: number): Float32Array<ArrayBufferLike>;
+        res_ids(): readonly string[];
+        res_pos(id: string): Float32Array<ArrayBufferLike>;
+        resources(): $bog_gamengine_sprite[];
+        count_max(): number;
+        unit_ids(): readonly string[];
+        base(char: string): readonly [number, number];
+        start_at(id: string, from: number): Float32Array<ArrayBufferLike>;
+        mine_start(id: string): Float32Array<ArrayBufferLike>;
+        foe_start(id: string): Float32Array<ArrayBufferLike>;
+        foe_home(id: string): Float32Array<ArrayBufferLike>;
+        mine_pos(id: string, next?: Float32Array): Float32Array<ArrayBufferLike>;
+        foe_pos(id: string, next?: Float32Array): Float32Array<ArrayBufferLike>;
+        mine_kids(id: string): $bog_gamengine_brain_fsm[];
+        foe_kids(id: string): $bog_gamengine_brain_bt[];
+        brain_kids(id: string): $bog_gamengine_brain_state[];
+        idle_next(): readonly $bog_gamengine_brain_fsm_next[];
+        move_next(): readonly $bog_gamengine_brain_fsm_next[];
+        attack_next(): readonly $bog_gamengine_brain_fsm_next[];
+        tree_kids(id: string): $bog_gamengine_brain_bt_sel[];
+        plan_kids(id: string): ($bog_gamengine_brain_bt_seq | $bog_gamengine_demo_legion_act)[];
+        fight_kids(id: string): ($bog_gamengine_demo_legion_act | $bog_gamengine_brain_bt_cond)[];
+        hunt_kids(id: string): ($bog_gamengine_demo_legion_act | $bog_gamengine_brain_bt_cond)[];
+        mine_live_ids(): string[];
+        foe_live_ids(): string[];
+        mine_alive(): $bog_gamengine_demo_legion_unit[];
+        foe_alive(): $bog_gamengine_demo_legion_unit[];
+        sel(next?: readonly string[]): readonly string[];
+        sel_live(): readonly string[];
+        mine_tint(id: string): Float32Array<ArrayBuffer>;
+        sprites(): $bog_gamengine_sprite[];
+        nodes(): ($bog_gamengine_sprite | $bog_gamengine_tilemap | $bog_gamengine_cam_flat | $bog_gamengine_particle | $bog_gamengine_demo_legion_unit | $bog_gamengine_cam_edge)[];
+        batches(): $bog_gamengine_batch[];
+        drag(next?: readonly number[] | null): readonly number[] | null;
+        band_box(): readonly [number, number, number, number];
+        band_left(): string;
+        band_top(): string;
+        band_width(): string;
+        band_height(): string;
+        pointer_down(event?: PointerEvent): PointerEvent | null;
+        pointer_move(event?: PointerEvent): PointerEvent | null;
+        pointer_up(event?: PointerEvent): PointerEvent | null;
+        pointer_leave(event?: PointerEvent): PointerEvent | null;
+        wheel(event?: WheelEvent): WheelEvent | null;
+        menu(event?: MouseEvent): MouseEvent | null;
+        spot(x: number, y: number): Float32Array<ArrayBufferLike>;
+        box_ids: number[];
+        choose(): void;
+        command(x: number, y: number): void;
+        map_tick(): number;
+        dot_ids(): readonly string[];
+        dot_unit(id: string): $bog_gamengine_demo_legion_unit;
+        dot_index(id: string): number;
+        dot_at(id: string, axis: number): number;
+        dot_left(id: string): string;
+        dot_top(id: string): string;
+        dot_back(id: string): "#5a9ce8" | "#dc5a50";
+        dots(): $mol_view[];
+        over(): boolean;
+        field(): ($mol_view | $mol_page)[];
+        end_title(): "Победа" | "Лагерь пал";
+        end_hint(): string;
+        restart(next?: any): null;
+        mine_count(): string;
+        foe_count(): string;
+        sel_count(): string;
+        legion_stat(): string;
+    }
+}
+
+declare namespace $.$$ {
+}
+
+declare namespace $ {
     class $bog_gamengine_demo_spin extends $bog_gamengine_node {
         tint(): Float32Array<ArrayBuffer>;
         step(dt: number): void;
@@ -8291,6 +10856,9 @@ declare namespace $ {
 		Flat( ): $bog_gamengine_demo_flat
 		Room( ): $bog_gamengine_demo_room
 		Boxes( ): $bog_gamengine_demo_boxes
+		Jumper( ): $bog_gamengine_demo_jumper
+		Shooter( ): $bog_gamengine_demo_shooter
+		Legion( ): $bog_gamengine_demo_legion
 		paused( next?: ReturnType< ReturnType< $bog_gamengine_demo['Clock'] >['paused'] > ): ReturnType< ReturnType< $bog_gamengine_demo['Clock'] >['paused'] >
 		Batch( ): $bog_gamengine_batch
 		cam_deep_pos( ): Float32Array
@@ -8302,6 +10870,9 @@ declare namespace $ {
 			'flat': ReturnType< $bog_gamengine_demo['Flat'] >,
 			'room': ReturnType< $bog_gamengine_demo['Room'] >,
 			'boxes': ReturnType< $bog_gamengine_demo['Boxes'] >,
+			'jumper': ReturnType< $bog_gamengine_demo['Jumper'] >,
+			'shooter': ReturnType< $bog_gamengine_demo['Shooter'] >,
+			'legion': ReturnType< $bog_gamengine_demo['Legion'] >,
 		}) 
 		Clock( ): $bog_gamengine_clock
 		Scene( ): $bog_gamengine_scene

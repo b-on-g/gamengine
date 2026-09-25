@@ -3927,99 +3927,6 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    class $bog_gamengine_combat extends $mol_object2 {
-        owner_now = null;
-        owner(next) {
-            if (next !== undefined)
-                this.owner_now = next;
-            return this.owner_now;
-        }
-        health_max(next = 100) {
-            return next;
-        }
-        armor(next = 0) {
-            return next;
-        }
-        rate(next = 1) {
-            return next;
-        }
-        health(next) {
-            return next ?? this.health_max();
-        }
-        props() {
-            return [
-                { name: 'health', kind: 'number', get: () => this.health(), set: next => this.health(Number(next)) },
-                { name: 'health_max', kind: 'number', get: () => this.health_max(), set: next => this.health_max(Number(next)) },
-                { name: 'rate', kind: 'number', get: () => this.rate(), set: next => this.rate(Number(next)) },
-            ];
-        }
-        dead_on = false;
-        fired = -Infinity;
-        dead() {
-            return this.dead_on || this.health() <= 0;
-        }
-        now() {
-            const clock = this.owner()?.clock();
-            if (clock)
-                return clock.time();
-            return this.$.$mol_state_time.now(0) / 1000;
-        }
-        hurt(amount, from) {
-            if (this.dead())
-                return this.health();
-            const taken = Math.max(0, amount - this.armor());
-            const left = Math.max(0, this.health() - taken);
-            this.health(left);
-            if (left > 0)
-                return left;
-            this.dead_on = true;
-            this.die(from ?? null);
-            return left;
-        }
-        heal(amount) {
-            if (this.dead())
-                return this.health();
-            const full = Math.min(this.health_max(), this.health() + Math.max(0, amount));
-            this.health(full);
-            return full;
-        }
-        die(from) {
-            const owner = this.owner();
-            owner?.die?.(from);
-        }
-        revive() {
-            this.dead_on = false;
-            this.health(this.health_max());
-            this.fired = -Infinity;
-            return this.health();
-        }
-        ready(time = this.now()) {
-            return time - this.fired >= 1 / this.rate();
-        }
-        fire(time = this.now()) {
-            this.fired = time;
-            return time;
-        }
-    }
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_combat.prototype, "health_max", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_combat.prototype, "armor", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_combat.prototype, "rate", null);
-    __decorate([
-        $mol_mem
-    ], $bog_gamengine_combat.prototype, "health", null);
-    $.$bog_gamengine_combat = $bog_gamengine_combat;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
     function owned() {
         const owner = new class extends $bog_gamengine_node {
             deaths = 0;
@@ -9378,6 +9285,1025 @@ var $;
             $mol_assert_equal(second.count, 0);
             body.destructor();
             $mol_assert_equal(first.count, 0);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    const map = ['..o.', '..=.', 'E..F', '####'].join('\n');
+    function level_test() {
+        const tile = new $bog_gamengine_phys_tile;
+        tile.map(map);
+        tile.solid('#=');
+        const level = new $bog_gamengine_demo_jumper_level;
+        level.tile(tile);
+        return level;
+    }
+    $mol_test({
+        'level map gives coins, enemies, flag and size'() {
+            const level = level_test();
+            $mol_assert_equal(level.width(), 4);
+            $mol_assert_equal(level.height(), 4);
+            $mol_assert_equal(level.ids('o').join(), '2_0');
+            $mol_assert_equal(level.ids('E').join(), '0_2');
+            $mol_assert_equal(level.ids('F').join(), '3_2');
+        },
+        'level start is the lowest free cell over the solid one'() {
+            const level = level_test();
+            $mol_assert_equal(level.start().join(), '0,2');
+            $mol_assert_equal(level.start_pos()[0], 0.5);
+            $mol_assert_equal(level.start_pos()[1], -2.5);
+        },
+        'level tells ground from platform and sky'() {
+            const level = level_test();
+            $mol_assert_equal(level.frame(0, 3), 'ground');
+            $mol_assert_equal(level.frame(2, 1), 'platform');
+            $mol_assert_equal(level.frame(0, 0), 'sky');
+            $mol_assert_equal(level.solid(2, 1), true);
+            $mol_assert_equal(level.solid(2, 0), false);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    class $bog_gamengine_brain_fsm_test_owner extends $bog_gamengine_node {
+        tired(next = false) {
+            return next;
+        }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'tired', kind: 'flag', get: () => this.tired(), set: next => this.tired(Boolean(next)) },
+            ];
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_brain_fsm_test_owner.prototype, "tired", null);
+    class $bog_gamengine_brain_fsm_test_state extends $bog_gamengine_brain_state {
+        enters = 0;
+        exits = 0;
+        enter() {
+            ++this.enters;
+        }
+        exit() {
+            ++this.exits;
+        }
+    }
+    class $bog_gamengine_brain_fsm_test_always extends $bog_gamengine_brain_fsm {
+        cond(name) {
+            return name === 'always';
+        }
+    }
+    function fsm_test_make(fsm = new $bog_gamengine_brain_fsm, when = 'tired') {
+        const owner = new $bog_gamengine_brain_fsm_test_owner;
+        const idle = new $bog_gamengine_brain_fsm_test_state;
+        idle.name('idle');
+        idle.next([{ to: 'rest', when }]);
+        const rest = new $bog_gamengine_brain_fsm_test_state;
+        rest.name('rest');
+        fsm.kids([idle, rest]);
+        fsm.owner(owner);
+        return { owner, idle, rest, fsm };
+    }
+    class $bog_gamengine_brain_fsm_test_time extends $mol_state_time {
+        static stamp(next = 0) {
+            return next;
+        }
+        static now(precision) {
+            return this.stamp();
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_brain_fsm_test_time, "stamp", null);
+    class $bog_gamengine_brain_fsm_test_walker extends $bog_gamengine_node {
+        seen = '';
+        stopped = false;
+        Brain = new $bog_gamengine_brain_fsm;
+        stop() {
+            return this.stopped;
+        }
+        kids() {
+            return [this.Brain];
+        }
+        step(dt) {
+            this.seen = this.Brain.state();
+        }
+    }
+    function fsm_test_walker() {
+        const walker = new $bog_gamengine_brain_fsm_test_walker;
+        const walk = new $bog_gamengine_brain_state;
+        walk.name('walk');
+        walk.next([{ to: 'stop', when: 'stop' }]);
+        const stop = new $bog_gamengine_brain_state;
+        stop.name('stop');
+        walker.Brain.kids([walk, stop]);
+        return walker;
+    }
+    $mol_test({
+        'owner set on a bare machine does not loop through ownership'() {
+            const host = new $bog_gamengine_node;
+            const brain = new $bog_gamengine_brain_fsm;
+            brain.owner(host);
+            $mol_assert_equal(brain.owner(), host);
+            $mol_assert_equal(brain.$, brain.$);
+        },
+        'condition comes from a method of the owner'() {
+            const walker = fsm_test_walker();
+            walker.Brain.owner(walker);
+            walker.Brain.step(0.016);
+            $mol_assert_equal(walker.Brain.state(), 'walk');
+            walker.stopped = true;
+            walker.Brain.step(0.016);
+            $mol_assert_equal(walker.Brain.state(), 'stop');
+        },
+        'state knows the owner of its machine'() {
+            const { owner, idle } = fsm_test_make();
+            $mol_assert_equal(idle.owner(), owner);
+            $mol_assert_equal(new $bog_gamengine_brain_state().owner(), null);
+        },
+        'machine switches state before its owner steps in the same frame'($) {
+            $.$mol_state_time = $bog_gamengine_brain_fsm_test_time;
+            const walker = fsm_test_walker();
+            const scene = new $bog_gamengine_scene;
+            scene.$ = $;
+            scene.kids = () => [walker];
+            $bog_gamengine_brain_fsm_test_time.stamp(0);
+            scene.step();
+            $bog_gamengine_brain_fsm_test_time.stamp(16);
+            scene.step();
+            $mol_assert_equal(walker.seen, 'walk');
+            walker.stopped = true;
+            $bog_gamengine_brain_fsm_test_time.stamp(32);
+            scene.step();
+            $mol_assert_equal(walker.seen, 'stop');
+        },
+        'state is the first one before the flag and the second is not entered'() {
+            const { idle, rest, fsm } = fsm_test_make();
+            fsm.step(0.016);
+            fsm.step(0.016);
+            $mol_assert_equal(fsm.state(), 'idle');
+            $mol_assert_equal(idle.enters, 1);
+            $mol_assert_equal(rest.enters, 0);
+        },
+        'flag of the owner switches state with one exit and one enter'() {
+            const { owner, idle, rest, fsm } = fsm_test_make();
+            fsm.step(0.016);
+            owner.tired(true);
+            fsm.step(0.016);
+            fsm.step(0.016);
+            $mol_assert_equal(fsm.state(), 'rest');
+            $mol_assert_equal(idle.exits, 1);
+            $mol_assert_equal(rest.enters, 1);
+        },
+        'condition overridden by descendant switches without owner props'() {
+            const { rest, fsm } = fsm_test_make(new $bog_gamengine_brain_fsm_test_always, 'always');
+            fsm.step(0.016);
+            $mol_assert_equal(fsm.state(), 'rest');
+            $mol_assert_equal(rest.enters, 1);
+        },
+        'props end with state text'() {
+            const { fsm } = fsm_test_make();
+            const prop = fsm.props().at(-1);
+            $mol_assert_equal(prop.name, 'state');
+            $mol_assert_equal(prop.kind, 'text');
+            $mol_assert_equal(prop.get(), 'idle');
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function enemy_test() {
+        const tile = new $bog_gamengine_phys_tile;
+        tile.map('....\n.==.\n....');
+        tile.solid('#=');
+        const brain = new $bog_gamengine_brain_fsm;
+        const right = new $bog_gamengine_brain_state;
+        right.name('right');
+        right.next([{ to: 'left', when: 'edge_right' }]);
+        const left = new $bog_gamengine_brain_state;
+        left.name('left');
+        left.next([{ to: 'right', when: 'edge_left' }]);
+        brain.kids([right, left]);
+        const enemy = new $bog_gamengine_demo_jumper_enemy;
+        enemy.tile(tile);
+        enemy.brain(brain);
+        enemy.pos(new Float32Array([1.5, -0.6, 0]));
+        brain.owner(enemy);
+        return { enemy, brain };
+    }
+    $mol_test({
+        'enemy in the middle of the platform goes right'() {
+            const { enemy, brain } = enemy_test();
+            brain.step(0.1);
+            enemy.step(0.1);
+            $mol_assert_equal(enemy.edge_right(), false);
+            $mol_assert_ok(enemy.vel()[0] > 0);
+        },
+        'enemy at the platform edge turns back'() {
+            const { enemy, brain } = enemy_test();
+            brain.step(0.1);
+            enemy.pos(new Float32Array([2.5, -0.6, 0]));
+            $mol_assert_equal(enemy.edge_right(), true);
+            brain.step(0.1);
+            $mol_assert_equal(brain.state(), 'left');
+            enemy.step(0.1);
+            $mol_assert_ok(enemy.vel()[0] < 0);
+            $mol_assert_equal(enemy.face_left(), true);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function hero_test(y) {
+        const tile = new $bog_gamengine_phys_tile;
+        tile.map('....\n####');
+        const key = new $bog_gamengine_key;
+        key.bind({ jump: ['space'], left: ['A'], right: ['D'] });
+        const input = new $bog_gamengine_input;
+        input.key(key);
+        const hero = new $bog_gamengine_demo_jumper_hero;
+        hero.input(input);
+        hero.start(new Float32Array([0.5, -0.6, 0]));
+        hero.pos(new Float32Array([0.5, y, 0]));
+        hero.vel(new Float32Array([0, -1, 0]));
+        const phys = new $bog_gamengine_phys;
+        phys.tile(tile);
+        phys.bodies([hero]);
+        phys.step(1 / 60);
+        return { hero, key };
+    }
+    $mol_test({
+        'hero standing on the ground jumps up'() {
+            const { hero, key } = hero_test(-0.6);
+            $mol_assert_equal(hero.on_ground(), true);
+            key.pressed('space', true);
+            hero.step(1 / 60);
+            $mol_assert_ok(hero.vel()[1] > 0);
+        },
+        'hero in the air does not jump'() {
+            const { hero, key } = hero_test(-0.3);
+            $mol_assert_equal(hero.on_ground(), false);
+            key.pressed('space', true);
+            hero.step(1 / 60);
+            $mol_assert_ok(hero.vel()[1] < 0);
+        },
+        'hero touching a coin takes it once'() {
+            const { hero } = hero_test(-0.6);
+            const coin = new $bog_gamengine_demo_jumper_item;
+            coin.role('coin');
+            hero.hit(coin);
+            hero.hit(coin);
+            $mol_assert_equal(coin.taken(), true);
+            $mol_assert_equal(hero.coins(), 1);
+        },
+        'hero touching a spike loses a life and starts over'() {
+            const { hero } = hero_test(-0.6);
+            const spike = new $bog_gamengine_demo_jumper_item;
+            spike.role('spike');
+            hero.hit(spike);
+            $mol_assert_equal(hero.lives(), 2);
+            $mol_assert_equal(hero.pos()[1], hero.start()[1]);
+        },
+        'hero reaching the flag wins and stands still'() {
+            const { hero, key } = hero_test(-0.6);
+            const flag = new $bog_gamengine_demo_jumper_item;
+            flag.role('flag');
+            hero.hit(flag);
+            $mol_assert_equal(hero.won(), true);
+            key.pressed('D', true);
+            hero.step(1 / 60);
+            $mol_assert_equal(hero.vel()[0], 0);
+        },
+        'hero falling on an enemy kills it, touching aside loses a life'() {
+            const stomp = hero_test(-0.6).hero;
+            const enemy = new $bog_gamengine_demo_jumper_enemy;
+            enemy.pos(new Float32Array([0.5, -1.4, 0]));
+            stomp.vel(new Float32Array([0, -5, 0]));
+            stomp.hit(enemy);
+            $mol_assert_equal(enemy.dead(), true);
+            $mol_assert_ok(stomp.vel()[1] > 0);
+            const side = hero_test(-0.6).hero;
+            const walker = new $bog_gamengine_demo_jumper_enemy;
+            walker.pos(new Float32Array([1.2, -0.6, 0]));
+            side.hit(walker);
+            $mol_assert_equal(walker.dead(), false);
+            $mol_assert_equal(side.lives(), 2);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    const map = [
+        '#####',
+        '#.E.#',
+        '#.P.#',
+        '#####',
+    ].join('\n');
+    $mol_test({
+        'arena measures the map by rows and the longest row'() {
+            const arena = new $bog_gamengine_demo_shooter_arena;
+            arena.map(map);
+            $mol_assert_equal(arena.width(), 5);
+            $mol_assert_equal(arena.height(), 4);
+        },
+        'walls are every cell with the wall sign'() {
+            const arena = new $bog_gamengine_demo_shooter_arena;
+            arena.map(map);
+            $mol_assert_equal(arena.wall_ids().length, 14);
+            $mol_assert_equal(arena.wall(0, 0), true);
+            $mol_assert_equal(arena.wall(2, 1), false);
+        },
+        'target ids keep the cell coordinates'() {
+            const arena = new $bog_gamengine_demo_shooter_arena;
+            arena.map(map);
+            $mol_assert_equal(arena.target_ids(), ['2_1']);
+            $mol_assert_equal([...arena.xy('2_1', new Int32Array(2))], [2, 1]);
+        },
+        'cell position lands in the middle of the cell at the asked height'() {
+            const arena = new $bog_gamengine_demo_shooter_arena;
+            arena.map(map);
+            $mol_assert_equal([...arena.pos_of('2_1', 0.5)], [2.5, 0.5, 1.5]);
+        },
+        'start position comes from the start sign'() {
+            const arena = new $bog_gamengine_demo_shooter_arena;
+            arena.map(map);
+            $mol_assert_equal([...arena.start_pos(0.5)], [2.5, 0.5, 2.5]);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function walker_test_world() {
+        const world = new $bog_gamengine_phys3;
+        world.add($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3));
+        return world;
+    }
+    function walker_test_box(world, sx, sy, sz, x, y, z, rot) {
+        return world.index_of(world.add($bog_gamengine_phys3.shape_box, new Float32Array([sx, sy, sz]), 0, new Float32Array([x, y, z]), rot));
+    }
+    function walker_test_key(...held) {
+        const key = new $bog_gamengine_key;
+        key.bind({
+            forward: ['W'],
+            back: ['S'],
+            left: ['A'],
+            right: ['D'],
+            jump: ['Space'],
+        });
+        for (const name of held)
+            key.pressed(name, true);
+        return key;
+    }
+    function walker_test_walker(world, key, y = 0.9) {
+        const walker = new $bog_gamengine_phys3_walker;
+        walker.phys3(world);
+        const input = new $bog_gamengine_input;
+        input.key(key);
+        walker.input(input);
+        walker.pos(new Float32Array([0, y, 0]));
+        return walker;
+    }
+    function walker_test_run(walker, steps) {
+        for (let k = 0; k < steps; ++k)
+            walker.step(1 / 60);
+        return walker.pos();
+    }
+    function walker_test_around(axis, angle) {
+        return $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array(axis), angle);
+    }
+    function walker_test_near(actual, expected, eps) {
+        if (!(Math.abs(actual - expected) < eps))
+            $mol_fail(new Error(`${actual} is not near ${expected}`));
+    }
+    $mol_test({
+        'stands as a capsule body a ray can see'() {
+            const world = walker_test_world();
+            const walker = walker_test_walker(world, walker_test_key(), 3);
+            walker_test_run(walker, 120);
+            const out = new Float32Array(7);
+            const i = new $bog_gamengine_phys3_cast().ray(world, new Float32Array([0, 0.9, 6]), new Float32Array([0, 0, -1]), 20, out);
+            $mol_assert_equal(i, world.index_of(walker.handle_last));
+            walker_test_near(out[0], 5.7, 0.05);
+        },
+        'own body neither blocks nor is pushed by its walk'() {
+            const world = walker_test_world();
+            const walker = walker_test_walker(world, walker_test_key('W'));
+            const pos = walker_test_run(walker, 60);
+            walker_test_near(pos[2], -4, 1e-3);
+            const body = world.pos_of(walker.handle_last);
+            walker_test_near(body[2], pos[2], 1e-6);
+            walker_test_near(body[1], pos[1], 1e-6);
+        },
+        'falls and stands on the floor with center at half height'() {
+            const walker = walker_test_walker(walker_test_world(), walker_test_key(), 3);
+            const pos = walker_test_run(walker, 120);
+            $mol_assert_ok(walker.grounded);
+            walker_test_near(pos[1], 0.9, 0.01);
+        },
+        'walks forward a second at speed'() {
+            const walker = walker_test_walker(walker_test_world(), walker_test_key('W'));
+            const pos = walker_test_run(walker, 60);
+            walker_test_near(pos[2], -4, 1e-3);
+            walker_test_near(pos[0], 0, 1e-3);
+            $mol_assert_ok(walker.grounded);
+        },
+        'box wall ahead stops at its face minus radius'() {
+            const world = walker_test_world();
+            walker_test_box(world, 2, 1, 0.25, 0, 1, -3);
+            const walker = walker_test_walker(world, walker_test_key('W'));
+            const pos = walker_test_run(walker, 90);
+            walker_test_near(pos[2], -2.45, 0.01);
+            walker_test_near(pos[1], 0.9, 0.01);
+        },
+        'wall at 45 degrees slides along it'() {
+            const world = walker_test_world();
+            walker_test_box(world, 4, 1, 0.25, 0, 1, -3, walker_test_around([0, 1, 0], Math.PI / 4));
+            const walker = walker_test_walker(world, walker_test_key('W'));
+            const pos = walker_test_run(walker, 60);
+            $mol_assert_ok(pos[0] > 0.3);
+            $mol_assert_ok(pos[2] < -2.5);
+        },
+        'step 0.3 high is climbed'() {
+            const world = walker_test_world();
+            walker_test_box(world, 1, 0.15, 0.5, 0, 0.15, -2);
+            const walker = walker_test_walker(world, walker_test_key('W'));
+            const pos = walker_test_run(walker, 30);
+            $mol_assert_ok(pos[2] < -1.9);
+            walker_test_near(pos[1], 1.2, 0.02);
+            $mol_assert_ok(walker.grounded);
+        },
+        'step 0.5 high blocks'() {
+            const world = walker_test_world();
+            walker_test_box(world, 1, 0.25, 0.5, 0, 0.25, -2);
+            const walker = walker_test_walker(world, walker_test_key('W'));
+            const pos = walker_test_run(walker, 60);
+            walker_test_near(pos[2], -1.2, 0.02);
+            walker_test_near(pos[1], 0.9, 0.01);
+        },
+        'jump lifts and returns to the floor'() {
+            const key = walker_test_key();
+            const walker = walker_test_walker(walker_test_world(), key);
+            walker_test_run(walker, 1);
+            key.pressed('Space', true);
+            walker_test_run(walker, 1);
+            key.pressed('Space', false);
+            $mol_assert_ok(!walker.grounded);
+            $mol_assert_ok(walker_test_run(walker, 20)[1] > 1.5);
+            const pos = walker_test_run(walker, 100);
+            $mol_assert_ok(walker.grounded);
+            walker_test_near(pos[1], 0.9, 0.01);
+        },
+        'slope of 30 degrees is walked up'() {
+            const world = walker_test_world();
+            walker_test_box(world, 2, 0.25, 3, 0, 0, -4, walker_test_around([1, 0, 0], Math.PI / 6));
+            const walker = walker_test_walker(world, walker_test_key('W'));
+            const pos = walker_test_run(walker, 90);
+            $mol_assert_ok(pos[1] > 1.5);
+            $mol_assert_ok(pos[2] < -4.5);
+            $mol_assert_ok(walker.grounded);
+        },
+        'slope of 60 degrees is a wall'() {
+            const world = walker_test_world();
+            walker_test_box(world, 2, 0.25, 3, 0, 0, -4, walker_test_around([1, 0, 0], Math.PI / 3));
+            const walker = walker_test_walker(world, walker_test_key('W'));
+            const pos = walker_test_run(walker, 120);
+            walker_test_near(pos[1], 0.9, 0.02);
+            $mol_assert_ok(pos[2] > -3.8);
+        },
+        'yaw field turns the walk and shows up in rot'() {
+            const world = walker_test_world();
+            const walker = walker_test_walker(world, walker_test_key('W'));
+            walker.yaw = Math.PI / 2;
+            const pos = walker_test_run(walker, 60);
+            walker_test_near(walker.rot()[1], Math.PI / 2, 1e-6);
+            walker_test_near(pos[0], -4, 1e-3);
+            walker_test_near(pos[2], 0, 1e-3);
+        },
+        'no input and standing keeps pos reference'() {
+            const walker = walker_test_walker(walker_test_world(), walker_test_key());
+            walker_test_run(walker, 2);
+            const pos = walker.pos();
+            walker.step(1 / 60);
+            $mol_assert_equal(walker.pos(), pos);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function world_of() {
+        const world = new $bog_gamengine_demo_shooter_phys;
+        world.place($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3), 0);
+        return world;
+    }
+    function target_at(world, at) {
+        const target = new $bog_gamengine_demo_shooter_target;
+        target.phys3(world);
+        target.start(at);
+        target.index();
+        return target;
+    }
+    function player_at(world, at) {
+        const player = new $bog_gamengine_demo_shooter_player;
+        player.phys3(world);
+        player.pos(at);
+        return player;
+    }
+    $mol_test({
+        'the body lands where the start says'() {
+            const world = world_of();
+            const target = target_at(world, new Float32Array([3, 0.5, 5]));
+            $mol_assert_equal([...target.pos()], [3, 0.5, 5]);
+        },
+        'patrol walks along X until a wall turns it back'() {
+            const world = world_of();
+            world.place($bog_gamengine_phys3.shape_box, new Float32Array([0.5, 1, 0.5]), 0, new Float32Array([2, 1, 0]), 0);
+            const target = target_at(world, new Float32Array([0, 0.9, 0]));
+            for (let i = 0; i < 15; ++i)
+                target.step(0.1);
+            $mol_assert_equal(target.pos()[0] > 0, true);
+            $mol_assert_equal(target.way, -1);
+        },
+        'patrol never turns back on its own body'() {
+            const world = world_of();
+            const target = target_at(world, new Float32Array([0, 0.9, 0]));
+            for (let i = 0; i < 5; ++i)
+                target.step(0.1);
+            $mol_assert_equal(target.way, 1);
+        },
+        'a seen player takes damage'() {
+            const world = world_of();
+            const target = target_at(world, new Float32Array([0, 0.9, 0]));
+            const player = player_at(world, new Float32Array([0, 0.85, -5]));
+            target.player(player);
+            target.aim(world, 0.016);
+            $mol_assert_equal(target.seen, true);
+            $mol_assert_equal(player.health(), 94);
+        },
+        'a wall on the line of sight saves the player'() {
+            const world = world_of();
+            world.place($bog_gamengine_phys3.shape_box, new Float32Array([2, 2, 0.5]), 0, new Float32Array([0, 1, -2]), 0);
+            const target = target_at(world, new Float32Array([0, 0.9, 0]));
+            const player = player_at(world, new Float32Array([0, 0.85, -5]));
+            target.player(player);
+            target.aim(world, 0.016);
+            $mol_assert_equal(target.seen, false);
+            $mol_assert_equal(player.health(), 100);
+        },
+        'a player further than the reach is left alone'() {
+            const world = world_of();
+            const target = target_at(world, new Float32Array([0, 0.9, 0]));
+            const player = player_at(world, new Float32Array([0, 0.85, -40]));
+            target.player(player);
+            target.aim(world, 0.016);
+            $mol_assert_equal(target.seen, false);
+            $mol_assert_equal(player.health(), 100);
+        },
+        'the second shot waits for the delay'() {
+            const world = world_of();
+            const target = target_at(world, new Float32Array([0, 0.9, 0]));
+            const player = player_at(world, new Float32Array([0, 0.85, -5]));
+            target.player(player);
+            target.aim(world, 0.016);
+            target.aim(world, 0.016);
+            $mol_assert_equal(player.health(), 94);
+        },
+        'a dead target goes ghost and leaves the arena after the fade'() {
+            const world = world_of();
+            const target = target_at(world, new Float32Array([0, 0.9, 0]));
+            target.hurt(2, new Float32Array([0, 0, -1]), 7);
+            $mol_assert_equal(target.alive(), false);
+            for (let i = 0; i < 3; ++i)
+                target.step(1);
+            $mol_assert_equal(target.done, true);
+            $mol_assert_equal(world.flags[target.index()] & $bog_gamengine_phys3.flag_ghost, $bog_gamengine_phys3.flag_ghost);
+            $mol_assert_equal(target.pos()[1], -1000);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function world_of() {
+        const world = new $bog_gamengine_demo_shooter_phys;
+        world.place($bog_gamengine_phys3.shape_plane, new Float32Array([0, 1, 0]), 0, new Float32Array(3), 0);
+        return world;
+    }
+    function player_of(world) {
+        const player = new $bog_gamengine_demo_shooter_player;
+        player.phys3(world);
+        player.pos(new Float32Array([0, 0.85, 0]));
+        return player;
+    }
+    function target_of(world, at) {
+        const target = new $bog_gamengine_demo_shooter_target;
+        target.phys3(world);
+        target.start(at);
+        target.index();
+        return target;
+    }
+    $mol_test({
+        'aim looks along minus Z while the head is straight'() {
+            const player = player_of(world_of());
+            const dir = player.aim();
+            $mol_assert_equal(Math.abs(dir[0]) < 1e-6, true);
+            $mol_assert_equal(dir[1], 0);
+            $mol_assert_equal(dir[2], -1);
+        },
+        'quarter turn left aims along minus X'() {
+            const player = player_of(world_of());
+            player.yaw = Math.PI / 2;
+            const dir = player.aim();
+            $mol_assert_equal(dir[0].toFixed(4), '-1.0000');
+            $mol_assert_equal(Math.abs(dir[2]) < 1e-6, true);
+        },
+        'eye sits above the capsule center by half the height less the drop'() {
+            const player = player_of(world_of());
+            const eye = player.eye();
+            $mol_assert_equal(eye[1].toFixed(2), (0.85 + player.height() / 2 - 0.15).toFixed(2));
+        },
+        'a shot into a target ahead takes its health down'() {
+            const world = world_of();
+            const player = player_of(world);
+            const target = target_of(world, new Float32Array([0, 0.9, -3]));
+            player.targets([target]);
+            $mol_assert_equal(player.fire(), target);
+            $mol_assert_equal(target.health(), 1);
+        },
+        'a wall between the eye and the target eats the shot'() {
+            const world = world_of();
+            const player = player_of(world);
+            world.place($bog_gamengine_phys3.shape_box, new Float32Array([2, 2, 0.5]), 0, new Float32Array([0, 1, -1.5]), 0);
+            const target = target_of(world, new Float32Array([0, 0.9, -3]));
+            player.targets([target]);
+            $mol_assert_equal(player.fire(), null);
+            $mol_assert_equal(target.health(), 2);
+        },
+        'the next shot waits for the delay'() {
+            const world = world_of();
+            const player = player_of(world);
+            const target = target_of(world, new Float32Array([0, 0.9, -3]));
+            player.targets([target]);
+            player.fire();
+            $mol_assert_equal(player.fire(), null);
+            $mol_assert_equal(target.health(), 1);
+        },
+        'the last shot pushes the target and makes it fall'() {
+            const world = world_of();
+            const player = player_of(world);
+            const target = target_of(world, new Float32Array([0, 0.9, -3]));
+            player.targets([target]);
+            for (let i = 0; i < 2; ++i) {
+                player.wait = 0;
+                player.fire();
+            }
+            $mol_assert_equal(target.alive(), false);
+            $mol_assert_equal(world.inv_mass[target.index()] > 0, true);
+            $mol_assert_equal(world.vel[target.index() * 3 + 2] < 0, true);
+        },
+        'damage taken lands in health and ends at zero'() {
+            const player = player_of(world_of());
+            player.hurt(40);
+            $mol_assert_equal(player.health(), 60);
+            player.hurt(100);
+            $mol_assert_equal(player.health(), 0);
+            $mol_assert_equal(player.dead(), true);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    $mol_test({
+        'pointer at the left edge pans the camera left'() {
+            const cam = new $bog_gamengine_cam_flat;
+            const edge = new $bog_gamengine_cam_edge;
+            edge.cam(cam);
+            edge.width(800);
+            edge.height(600);
+            edge.edge(50);
+            edge.speed(10);
+            edge.aim(0, 300);
+            edge.step(0.1);
+            $mol_assert_equal(cam.pos()[0], -1);
+            $mol_assert_equal(cam.pos()[1], 0);
+        },
+        'pointer in the middle leaves the camera alone'() {
+            const cam = new $bog_gamengine_cam_flat;
+            const edge = new $bog_gamengine_cam_edge;
+            edge.cam(cam);
+            edge.width(800);
+            edge.height(600);
+            edge.aim(400, 300);
+            edge.step(0.1);
+            $mol_assert_equal(cam.pos()[0], 0);
+        },
+        'pointer away from the panel stops the pan'() {
+            const cam = new $bog_gamengine_cam_flat;
+            const edge = new $bog_gamengine_cam_edge;
+            edge.cam(cam);
+            edge.width(800);
+            edge.height(600);
+            edge.aim(799, 300);
+            edge.step(0.1);
+            const moved = cam.pos()[0];
+            $mol_assert_ok(moved > 0);
+            edge.away();
+            edge.step(0.1);
+            $mol_assert_equal(cam.pos()[0], moved);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    $mol_test({
+        'ten agents get ten distinct passable goals around a wall'() {
+            const tile = new $bog_gamengine_phys_tile;
+            tile.map([
+                '####################',
+                '#..................#',
+                '#..................#',
+                '#..................#',
+                '#........####......#',
+                '#........####......#',
+                '#..................#',
+                '#..................#',
+                '#..................#',
+                '####################',
+            ].join('\n'));
+            const grid = new $bog_gamengine_nav_grid;
+            grid.tile(tile);
+            const squad = new $bog_gamengine_nav_squad;
+            const agents = [];
+            for (let i = 0; i < 10; ++i)
+                agents.push(new $bog_gamengine_nav_agent);
+            squad.order(agents, 10.5, -4.5, grid);
+            $mol_assert_equal(squad.count, 10);
+            for (let i = 0; i < agents.length; ++i) {
+                const goal = agents[i].target();
+                $mol_assert_not(grid.solid_at(goal[0], goal[1]));
+                for (let k = 0; k < i; ++k) {
+                    const other = agents[k].target();
+                    $mol_assert_ok(Math.hypot(goal[0] - other[0], goal[1] - other[1]) > 0.1);
+                }
+            }
+        },
+        'second order allocates nothing'() {
+            const squad = new $bog_gamengine_nav_squad;
+            const agents = [];
+            for (let i = 0; i < 10; ++i)
+                agents.push(new $bog_gamengine_nav_agent);
+            squad.order(agents, 0, 0);
+            const spots = squad.spots;
+            const first = agents[0].target()[0];
+            squad.order(agents, 5, 5);
+            $mol_assert_equal(squad.spots, spots);
+            $mol_assert_ok(Math.abs(agents[0].target()[0] - first - 5) < 1e-6);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function $bog_gamengine_demo_legion_unit_pair() {
+        const tile = new $bog_gamengine_phys_tile;
+        tile.map([
+            '#####',
+            '#...#',
+            '#...#',
+            '#...#',
+            '#####',
+        ].join('\n'));
+        const grid = new $bog_gamengine_nav_grid;
+        grid.tile(tile);
+        const mine = new $bog_gamengine_demo_legion_unit;
+        mine.camp(0);
+        mine.grid(grid);
+        const foe = new $bog_gamengine_demo_legion_unit;
+        foe.camp(1);
+        foe.grid(grid);
+        for (const unit of [mine, foe]) {
+            const fight = new $bog_gamengine_combat;
+            fight.owner(unit);
+            fight.health_max(40);
+            fight.rate(0.7);
+            unit.fight(fight);
+        }
+        mine.foes([foe]);
+        foe.foes([mine]);
+        mine.pos(new Float32Array([1.5, -1.5, 0]));
+        foe.pos(new Float32Array([3.5, -3.5, 0]));
+        const clock = new $bog_gamengine_clock;
+        const scene = new $bog_gamengine_scene;
+        scene.clock(clock);
+        scene.kids([mine, foe]);
+        return { tile, grid, mine, foe, clock, scene };
+    }
+    $mol_test({
+        'order sends the unit toward the goal'() {
+            const { mine } = $bog_gamengine_demo_legion_unit_pair();
+            mine.mode_set('move');
+            mine.aim(3.5, -3.5);
+            const before = mine.pos()[0];
+            for (let i = 0; i < 10; ++i)
+                mine.step(0.05);
+            $mol_assert_ok(mine.pos()[0] > before);
+        },
+        'foe in sight becomes the target, out of sight does not'() {
+            const { mine, foe } = $bog_gamengine_demo_legion_unit_pair();
+            mine.sight(10);
+            mine.step(0.05);
+            $mol_assert_equal(mine.has_foe(), true);
+            mine.sight(1);
+            mine.scan_left = 0;
+            mine.step(0.05);
+            $mol_assert_equal(mine.has_foe(), false);
+        },
+        'attack drains health by the rate and kills'() {
+            const { mine, foe, clock } = $bog_gamengine_demo_legion_unit_pair();
+            foe.pos(new Float32Array([2, -1.5, 0]));
+            mine.damage(10);
+            mine.fight().rate(1);
+            mine.mode_set('attack');
+            for (let i = 0; i < 3; ++i) {
+                clock.time(i);
+                mine.step(0.1);
+            }
+            $mol_assert_equal(foe.hp(), 10);
+            clock.time(3);
+            mine.step(0.1);
+            $mol_assert_equal(foe.dead(), true);
+        },
+        'dead unit stops moving'() {
+            const { mine } = $bog_gamengine_demo_legion_unit_pair();
+            mine.mode_set('move');
+            mine.aim(3.5, -3.5);
+            mine.die();
+            const at = mine.pos()[0];
+            for (let i = 0; i < 10; ++i)
+                mine.step(0.05);
+            $mol_assert_equal(mine.pos()[0], at);
+            $mol_assert_equal(mine.shown(), false);
+        },
+        'reset brings the unit back to full health at the start'() {
+            const { mine } = $bog_gamengine_demo_legion_unit_pair();
+            mine.wound(mine.health_max());
+            $mol_assert_equal(mine.dead(), true);
+            mine.reset(new Float32Array([1.5, -1.5, 0]));
+            $mol_assert_equal(mine.dead(), false);
+            $mol_assert_equal(mine.hp(), mine.health_max());
+        },
+        'patrol picks a goal around home and skips walls'() {
+            const { mine, grid } = $bog_gamengine_demo_legion_unit_pair();
+            mine.home(new Float32Array([2.5, -2.5, 0]));
+            mine.roam(6);
+            mine.mode_set('patrol');
+            mine.step(0.05);
+            $mol_assert_equal(grid.solid_at(mine.goal[0], mine.goal[1]), false);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_brain_bt_test_owner extends $bog_gamengine_node {
+        alive(next = false) {
+            return next;
+        }
+        props() {
+            return [
+                ...super.props(),
+                { name: 'alive', kind: 'flag', get: () => this.alive(), set: next => this.alive(Boolean(next)) },
+            ];
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_brain_bt_test_owner.prototype, "alive", null);
+    class $bog_gamengine_brain_bt_test_walker extends $bog_gamengine_node {
+        close = false;
+        near() {
+            return this.close;
+        }
+    }
+    class $bog_gamengine_brain_bt_test_act extends $bog_gamengine_brain_bt_act {
+        ticks = 0;
+        result = 'ok';
+        tick(dt, brain) {
+            ++this.ticks;
+            return this.status_now = this.result;
+        }
+    }
+    function bt_test_act(result = 'ok') {
+        const act = new $bog_gamengine_brain_bt_test_act;
+        act.result = result;
+        return act;
+    }
+    function bt_test_root(kid) {
+        const root = new $bog_gamengine_brain_bt;
+        root.kids([kid]);
+        return root;
+    }
+    $mol_test({
+        'seq does not tick the action while waiting and ticks it with ok after 0.1 s'() {
+            const wait = new $bog_gamengine_brain_bt_wait;
+            wait.seconds(0.1);
+            const act = bt_test_act();
+            const seq = new $bog_gamengine_brain_bt_seq;
+            seq.kids([wait, act]);
+            const root = bt_test_root(seq);
+            root.step(0.05);
+            $mol_assert_equal(act.ticks, 0);
+            $mol_assert_equal(root.status(), 'run');
+            root.step(0.05);
+            $mol_assert_equal(act.ticks, 1);
+            $mol_assert_equal(root.status(), 'ok');
+        },
+        'sel picks the second when the first fails'() {
+            const first = bt_test_act('fail');
+            const second = bt_test_act();
+            const sel = new $bog_gamengine_brain_bt_sel;
+            sel.kids([first, second]);
+            const root = bt_test_root(sel);
+            root.step(0.016);
+            $mol_assert_equal(first.ticks, 1);
+            $mol_assert_equal(second.ticks, 1);
+            $mol_assert_equal(root.status(), 'ok');
+        },
+        'inv turns ok into fail'() {
+            const inv = new $bog_gamengine_brain_bt_inv;
+            inv.kids([bt_test_act()]);
+            const root = bt_test_root(inv);
+            root.step(0.016);
+            $mol_assert_equal(root.status(), 'fail');
+        },
+        'par waits for all kids'() {
+            const slow = bt_test_act('run');
+            const par = new $bog_gamengine_brain_bt_par;
+            par.kids([slow, bt_test_act()]);
+            const root = bt_test_root(par);
+            root.step(0.016);
+            $mol_assert_equal(root.status(), 'run');
+            slow.result = 'ok';
+            root.step(0.016);
+            $mol_assert_equal(root.status(), 'ok');
+        },
+        'cond follows a method of the owner'() {
+            const owner = new $bog_gamengine_brain_bt_test_walker;
+            const cond = new $bog_gamengine_brain_bt_cond;
+            cond.when('near');
+            const root = bt_test_root(cond);
+            root.owner(owner);
+            root.step(0.016);
+            $mol_assert_equal(root.status(), 'fail');
+            owner.close = true;
+            root.step(0.016);
+            $mol_assert_equal(root.status(), 'ok');
+        },
+        'cond follows the flag of the owner'() {
+            const owner = new $bog_gamengine_brain_bt_test_owner;
+            const cond = new $bog_gamengine_brain_bt_cond;
+            cond.when('alive');
+            const root = bt_test_root(cond);
+            root.owner(owner);
+            root.step(0.016);
+            $mol_assert_equal(root.status(), 'fail');
+            owner.alive(true);
+            root.step(0.016);
+            $mol_assert_equal(root.status(), 'ok');
         },
     });
 })($ || ($ = {}));
