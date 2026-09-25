@@ -172,6 +172,32 @@ namespace $ {
 			$mol_assert_equal( $bog_gamengine_look_refuse( shifts ), [] )
 		},
 
+		'shifted frame is refused as framing and hides the colour lines behind itself'() {
+			const shifts = $bog_gamengine_look_shifts(
+				'test',
+				$bog_gamengine_look_test_shot({ size: [ 850, 600 ], spots: { floor: [ 60, 60, 60, 255 ] } }),
+				$bog_gamengine_look_test_shot({ size: [ 851, 600 ] }),
+			)
+			const refuse = $bog_gamengine_look_refuse( shifts )
+			$mol_assert_equal( refuse.length, 2 )
+			$mol_assert_ok( refuse[ 0 ].includes( 'кадрирование' ) )
+			$mol_assert_ok( refuse[ 1 ].includes( 'координаты точек' ) )
+		},
+
+		'frame of the same size says nothing on its own'() {
+			$mol_assert_equal( $bog_gamengine_look_shifts(
+				'test',
+				$bog_gamengine_look_test_shot({ size: [ 851, 600 ] }),
+				$bog_gamengine_look_test_shot({ size: [ 851, 600 ] }),
+			), [] )
+		},
+
+		'every recorded soft scene keeps the size of its frame'() {
+			for( const scene of $bog_gamengine_look_scenes ) {
+				$mol_assert_ok( Boolean( $bog_gamengine_look_base.soft[ scene.name ].size ) )
+			}
+		},
+
 		'single number past the envelope is refused on its own'() {
 			const shifts = $bog_gamengine_look_shifts(
 				'test',

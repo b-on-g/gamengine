@@ -1,7 +1,7 @@
 namespace $ {
 
 	export type $bog_gamengine_look_base_keep = {
-		readonly [ scene: string ]: $bog_gamengine_look_shot
+		readonly [ scene: string ]: $bog_gamengine_look_sized
 	}
 
 	export const $bog_gamengine_look_machine = {
@@ -28,7 +28,7 @@ namespace $ {
 
 		soft: {
 			flat: {
-				median: 61, low: 58, high: 108, dark: 0.0599, blown: 0, sat: 43.24,
+				median: 61, low: 58, high: 108, dark: 0.0599, blown: 0, sat: 43.24, size: [ 851, 600 ],
 				spots: {
 					wall: [ 199, 84, 45, 255 ],
 					floor: [ 59, 59, 65, 255 ],
@@ -38,7 +38,7 @@ namespace $ {
 				},
 			},
 			room: {
-				median: 68, low: 11, high: 98, dark: 0.3871, blown: 0, sat: 29.84,
+				median: 68, low: 11, high: 98, dark: 0.3871, blown: 0, sat: 29.84, size: [ 851, 552 ],
 				spots: {
 					lit: [ 196, 113, 88, 255 ],
 					shade: [ 148, 90, 77, 255 ],
@@ -48,7 +48,7 @@ namespace $ {
 				},
 			},
 			shine: {
-				median: 70, low: 11, high: 128, dark: 0.3773, blown: 0, sat: 32.11,
+				median: 70, low: 11, high: 128, dark: 0.3773, blown: 0, sat: 32.11, size: [ 851, 552 ],
 				spots: {
 					lit: [ 220, 152, 126, 255 ],
 					shade: [ 177, 109, 92, 255 ],

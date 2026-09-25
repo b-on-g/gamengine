@@ -45,6 +45,13 @@ namespace $ {
 			}
 		},
 
+		'every game keeps the size of its frame in the soft signature'() {
+			for( const game of Object.keys( $bog_gamengine_demo_look_games ) ) {
+				const it = $bog_gamengine_demo_look_of( game )
+				for( const scene of it.scenes ) $mol_assert_ok( Boolean( it.base.soft[ scene.name ].size ) )
+			}
+		},
+
 		'every game of the demo has a signature of its own page'() {
 			const games = Object.keys( $bog_gamengine_demo_look_games )
 			$mol_assert_equal( games.length, new Set( games.map( game => $bog_gamengine_demo_look_of( game ).page ) ).size )

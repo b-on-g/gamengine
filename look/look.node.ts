@@ -136,6 +136,8 @@ namespace $ {
 		}
 	}
 
+	export const $bog_gamengine_look_frame = 'кадр'
+
 	export const $bog_gamengine_look_tol = {
 		level: 1,
 		share: 0.005,
@@ -202,6 +204,10 @@ namespace $ {
 		return out as readonly string[]
 	}
 
+	export type $bog_gamengine_look_sized = $bog_gamengine_look_shot & {
+		readonly size?: readonly [ number, number ]
+	}
+
 	export type $bog_gamengine_look_shift = {
 		readonly name: string
 		readonly gap: number
@@ -216,8 +222,8 @@ namespace $ {
 
 	export function $bog_gamengine_look_shifts(
 		scene: string,
-		now: $bog_gamengine_look_shot,
-		base: $bog_gamengine_look_shot,
+		now: $bog_gamengine_look_sized,
+		base: $bog_gamengine_look_sized,
 		env = $bog_gamengine_look_env,
 	) {
 
@@ -226,6 +232,17 @@ namespace $ {
 		const put = ( name: string, fresh: number | string, kept: number | string, gap: number, limit: number, fading: boolean )=> {
 			if( !gap ) return
 			out.push({ name, gap, limit, fading, line: `${ scene }: ${ name } ${ fresh } против ${ kept }` })
+		}
+
+		if( now.size && base.size ) {
+			put(
+				$bog_gamengine_look_frame,
+				now.size.join( 'x' ),
+				base.size.join( 'x' ),
+				Math.max( Math.abs( now.size[ 0 ] - base.size[ 0 ] ), Math.abs( now.size[ 1 ] - base.size[ 1 ] ) ),
+				0,
+				false,
+			)
 		}
 
 		for( const name of [ 'median', 'low', 'high' ] as const ) {
@@ -263,6 +280,16 @@ namespace $ {
 	) {
 
 		const out = [] as string[]
+
+		const framed = shifts.filter( one => one.name === $bog_gamengine_look_frame )
+		if( framed.length ) {
+			for( const shift of framed ) out.push( `${ shift.line }: сдвинулось кадрирование, а не цвет` )
+			out.push(
+				'точки заданы долями холста, поэтому они уехали на соседние пиксели и могут смотреть на другие поверхности:'
+				+ ' пересъёмка обязана заново проверить координаты точек, а не переписать числа'
+			)
+			return out as readonly string[]
+		}
 
 		for( const shift of shifts ) {
 			if( shift.gap > shift.limit ) {

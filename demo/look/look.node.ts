@@ -28,7 +28,7 @@ namespace $ {
 				commit: '050ed25',
 				soft: {
 					level: {
-						median: 204, low: 172, high: 204, dark: 0, blown: 0, sat: 71.79,
+						median: 204, low: 172, high: 204, dark: 0, blown: 0, sat: 71.79, size: [ 851, 600 ],
 						spots: {
 							sky: [ 161, 214, 230, 255 ],
 							ground: [ 143, 86, 45, 255 ],
@@ -71,7 +71,7 @@ namespace $ {
 				commit: '050ed25',
 				soft: {
 					arena: {
-						median: 60, low: 12, high: 127, dark: 0.3517, blown: 0, sat: 50.06,
+						median: 60, low: 12, high: 127, dark: 0.3517, blown: 0, sat: 50.06, size: [ 851, 600 ],
 						spots: {
 							wall: [ 198, 95, 61, 255 ],
 							target: [ 178, 25, 25, 255 ],
@@ -117,7 +117,7 @@ namespace $ {
 				commit: '050ed25',
 				soft: {
 					field: {
-						median: 65, low: 56, high: 111, dark: 0, blown: 0, sat: 17.9,
+						median: 65, low: 56, high: 111, dark: 0, blown: 0, sat: 17.9, size: [ 851, 600 ],
 						spots: {
 							grass: [ 54, 70, 57, 255 ],
 							wall: [ 103, 97, 95, 255 ],
