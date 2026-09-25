@@ -42308,9 +42308,10 @@ var $;
             const spots = [];
             for (const klass of this.decls().values()) {
                 for (const line of klass.kids) {
-                    if (line.type !== 'kids' && line.type !== 'parts')
+                    const list = line.kids[0];
+                    if (list?.type !== '/')
                         continue;
-                    for (const kid of line.kids[0]?.kids ?? []) {
+                    for (const kid of list.kids) {
                         if (kid.kids[0]?.type === name)
                             spots.push(kid);
                     }
@@ -60070,6 +60071,16 @@ var $;
             $mol_assert_ok(doc.source().includes('palette *'));
             $mol_assert_ok(doc.source().includes('\\######'));
             $mol_assert_ok(doc.source().includes('Phys $bog_gamengine_phys'));
+        },
+        'drop of a body takes it out of the list of the world too'($) {
+            const doc = open($, $bog_gamengine_studio_sample);
+            $mol_assert_ok(doc.source().includes('bodies /\n\t\t\t<= Hero\n'));
+            doc.drop('Hero_look');
+            doc.drop('Hero');
+            $mol_assert_not(doc.source().includes('<= Hero'));
+            $mol_assert_ok(doc.source().includes('Phys $bog_gamengine_phys'));
+            $mol_assert_ok(titles(doc).includes('Карта'));
+            $mol_assert_ok(titles(doc).includes('Монета'));
         },
         'drop of an unknown node fails with its path'($) {
             const doc = open($, $bog_gamengine_studio_sample);
