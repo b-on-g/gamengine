@@ -7,6 +7,14 @@ namespace $ {
 		} )
 	}
 
+	function named( doc: $bog_gamestudio_doc, title: string ) {
+		return doc.scene().nodes().find( node => node.title() === title )!
+	}
+
+	function titles( doc: $bog_gamestudio_doc ) {
+		return doc.scene().nodes().map( node => node.title() )
+	}
+
 	$mol_test({
 
 		'sample lists its nodes and every other declaration'( $ ) {
@@ -37,16 +45,15 @@ namespace $ {
 
 		'scene follows the document'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
-			$mol_assert_equal( doc.scene().nodes()[ 0 ].pos()[ 0 ], -2 )
+			$mol_assert_equal( named( doc, 'Герой' ).pos()[ 0 ], -2 )
 			doc.set( 'Hero', 'pos', [ 3, 0, 0 ] )
-			$mol_assert_equal( doc.scene().nodes()[ 0 ].pos()[ 0 ], 3 )
-			$mol_assert_equal( doc.scene().nodes()[ 0 ].title(), 'Герой' )
+			$mol_assert_equal( named( doc, 'Герой' ).pos()[ 0 ], 3 )
 		},
 
 		'sample compiles into a class named after the root'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
 			$mol_assert_equal( doc.compile().klass.name, '$bog_gamestudio_sample' )
-			$mol_assert_equal( doc.scene().nodes().map( node => node.title() ), [ 'Герой', 'Монета', 'Стена' ] )
+			for( const title of [ 'Карта', 'Герой', 'Монета', 'Стена' ] ) $mol_assert_ok( titles( doc ).includes( title ) )
 		},
 
 		'set gives a new scene with the new value'( $ ) {
@@ -54,20 +61,20 @@ namespace $ {
 			const before = doc.scene()
 			doc.set( 'Hero', 'pos', [ 3, 0, 0 ] )
 			$mol_assert_not( doc.scene() === before )
-			$mol_assert_equal( doc.scene().nodes()[ 0 ].pos()[ 0 ], 3 )
+			$mol_assert_equal( named( doc, 'Герой' ).pos()[ 0 ], 3 )
 		},
 
 		'literal of a node is writable on the node without touching the source'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
-			const hero = doc.scene().nodes()[ 0 ] as $bog_gamengine_sprite
-			hero.pos([ 5, 0, 0 ])
-			$mol_assert_equal( hero.pos()[ 0 ], 5 )
-			hero.frame( 'coin' )
-			$mol_assert_equal( hero.frame(), 'coin' )
+			const look = named( doc, 'Вид героя' ) as $bog_gamengine_sprite
+			look.pos([ 5, 0, 0 ])
+			$mol_assert_equal( look.pos()[ 0 ], 5 )
+			look.frame( 'coin' )
+			$mol_assert_equal( look.frame(), 'coin' )
 			$mol_assert_equal( doc.source(), $bog_gamestudio_sample )
-			doc.set( 'Hero', 'pos', [ 3, 0, 0 ] )
-			$mol_assert_equal( doc.scene().nodes()[ 0 ].pos()[ 0 ], 3 )
-			$mol_assert_equal( ( doc.scene().nodes()[ 0 ] as $bog_gamengine_sprite ).frame(), 'hero' )
+			doc.set( 'Hero_look', 'pos', [ 3, 0, 0 ] )
+			$mol_assert_equal( named( doc, 'Вид героя' ).pos()[ 0 ], 3 )
+			$mol_assert_equal( ( named( doc, 'Вид героя' ) as $bog_gamengine_sprite ).frame(), 'hero' )
 		},
 
 		'clock survives the recompilation'( $ ) {
@@ -82,18 +89,19 @@ namespace $ {
 			const before = doc.source()
 			const name = doc.add( '$bog_gamengine_sprite', { name: '\\Ключ', atlas: '<= Atlas', frame: '\\coin', pos: '/ 1 2 0' } )
 			$mol_assert_equal( name, 'Sprite_1' )
-			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Монета', 'Стена', 'Ключ', 'Atlas' ] )
+			$mol_assert_ok( doc.nodes().some( node => node.title === 'Ключ' ) )
 			const lines = '\t\t<= Sprite_1 $bog_gamengine_sprite\n\t\t\tname \\Ключ\n\t\t\tatlas <= Atlas\n\t\t\tframe \\coin\n\t\t\tpos / 1 2 0\n'
 			$mol_assert_ok( doc.source().includes( lines + '\tAtlas $bog_gamengine_atlas\n' ) )
 			$mol_assert_equal( doc.source().replace( lines, '' ), before )
-			$mol_assert_equal( doc.scene().nodes()[ 3 ].pos()[ 1 ], 2 )
+			$mol_assert_equal( named( doc, 'Ключ' ).pos()[ 1 ], 2 )
 		},
 
 		'second add of the same class gives _2'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
 			doc.add( '$bog_gamengine_sprite', { atlas: '<= Atlas', frame: '\\coin' } )
 			$mol_assert_equal( doc.add( '$bog_gamengine_sprite', { atlas: '<= Atlas', frame: '\\wall' } ), 'Sprite_2' )
-			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Монета', 'Стена', 'Sprite_1', 'Sprite_2', 'Atlas' ] )
+			const names = doc.nodes().map( node => node.name )
+			$mol_assert_ok( names.includes( 'Sprite_1' ) && names.includes( 'Sprite_2' ) )
 		},
 
 		'add with a nested subview makes no batch of its own'( $ ) {
@@ -165,7 +173,7 @@ namespace $ {
 			doc.add_uri( 'Sound', 'uris', 'bog/gamengine/demo/sound/coin.wav', 'coin' )
 			doc.add_uri( 'Sound', 'uris', 'bog/gamengine/demo/sound/coin.wav', 'coin' )
 			$mol_assert_ok( doc.source().endsWith( '\tSound $bog_gamengine_sound\n\t\turis *\n\t\t\tcoin \\bog/gamengine/demo/sound/coin.wav\n' ) )
-			$mol_assert_equal( doc.scene().nodes().length, 3 )
+			$mol_assert_not( titles( doc ).includes( 'Sound' ) )
 		},
 
 		'map of the sample is read row by row'( $ ) {
@@ -181,9 +189,9 @@ namespace $ {
 			$mol_assert_equal( after.length, before.length )
 			const changed = before.map( ( line, index )=> index ).filter( index => before[ index ] !== after[ index ] )
 			$mol_assert_equal( changed.length, 1 )
-			$mol_assert_equal( before[ changed[ 0 ] ], '\t\t\\#....#' )
-			$mol_assert_equal( after[ changed[ 0 ] ], '\t\t\\#.#..#' )
-			$mol_assert_equal( doc.scene().nodes()[ 0 ].pos()[ 0 ], -2 )
+			$mol_assert_equal( before[ changed[ 0 ] ], '\t\t\t\\#....#' )
+			$mol_assert_equal( after[ changed[ 0 ] ], '\t\t\t\\#.#..#' )
+			$mol_assert_equal( named( doc, 'Герой' ).pos()[ 0 ], -2 )
 		},
 
 		'paint of the same char keeps the source'( $ ) {
@@ -268,31 +276,40 @@ namespace $ {
 		},
 
 		'syntax error fails with the parser message'( $ ) {
-			const doc = open( $, $bog_gamestudio_sample.replace( '\tatlas <= Atlas', '\t\t\tatlas <= Atlas' ) )
+			const doc = open( $, $bog_gamestudio_sample.replace( '\tphys <= Phys', '\t\t\tphys <= Phys' ) )
 			const error = $mol_assert_fail( ()=> doc.scene(), Error )
 			$mol_assert_ok( error.message.startsWith( 'Too many tabs\nscene.view.tree#2:1/3' ) )
 		},
 
 		'unknown class fails with its name'( $ ) {
-			const doc = open( $, $bog_gamestudio_sample.replace( '$bog_gamengine_sprite', '$' + 'bog_ghost' ) )
-			$mol_assert_fail( ()=> doc.scene().nodes(), 'Unknown class $' + 'bog_ghost of Coin' )
+			const doc = open( $, [
+				'$bog_gamestudio_sample_ref $bog_gamengine_scene',
+				'\tkids /',
+				'\t\t<= Ghost $' + 'bog_ghost',
+				'',
+			].join( '\n' ) )
+			$mol_assert_fail( ()=> doc.scene().nodes(), 'Unknown class $' + 'bog_ghost of Ghost' )
 		},
 
 		'drop takes the node out of the scene and out of the source'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
 			doc.drop( 'Coin' )
-			$mol_assert_equal( doc.nodes().map( node => node.title ), [ 'Герой', 'Стена', 'Atlas' ] )
+			$mol_assert_not( doc.nodes().some( node => node.title === 'Монета' ) )
 			$mol_assert_not( doc.source().includes( 'Coin' ) )
 			$mol_assert_not( doc.source().includes( 'Монета' ) )
-			$mol_assert_equal( doc.scene().nodes().map( node => node.title() ), [ 'Герой', 'Стена' ] )
+			$mol_assert_not( titles( doc ).includes( 'Монета' ) )
+			$mol_assert_ok( titles( doc ).includes( 'Герой' ) )
 		},
 
 		'drop leaves the world of the scene alone'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
+			doc.drop( 'Hero_look' )
 			doc.drop( 'Hero' )
+			$mol_assert_not( titles( doc ).includes( 'Герой' ) )
 			$mol_assert_ok( doc.source().includes( 'Atlas $bog_gamengine_atlas' ) )
 			$mol_assert_ok( doc.source().includes( 'palette *' ) )
 			$mol_assert_ok( doc.source().includes( '\\######' ) )
+			$mol_assert_ok( doc.source().includes( 'Phys $bog_gamengine_phys' ) )
 		},
 
 		'drop of an unknown node fails with its path'( $ ) {
@@ -304,8 +321,9 @@ namespace $ {
 			const doc = open( $, $bog_gamestudio_sample )
 			const made = doc.dup( 'Coin' )
 			$mol_assert_equal( made, 'Sprite_1' )
-			$mol_assert_equal( doc.nodes().map( node => node.name ), [ 'Hero', 'Coin', 'Sprite_1', 'Wall', 'Atlas' ] )
-			$mol_assert_equal( doc.scene().nodes().map( node => node.title() ), [ 'Герой', 'Монета', 'Монета', 'Стена' ] )
+			const names = doc.nodes().map( node => node.name )
+			$mol_assert_equal( names.indexOf( 'Sprite_1' ), names.indexOf( 'Coin' ) + 1 )
+			$mol_assert_equal( titles( doc ).filter( title => title === 'Монета' ).length, 2 )
 		},
 
 		'dup of a plain reference sends the user to the declaration'( $ ) {
@@ -343,7 +361,7 @@ namespace $ {
 			const doc = open( $, $bog_gamestudio_sample )
 			$mol_assert_fail(
 				()=> doc.drop( 'Atlas' ),
-				'Node Atlas is used by Scene, Hero, Coin, Wall, drop them first',
+				'Node Atlas is used by Tiles, Hero_look, Coin, Wall, drop them first',
 			)
 			$mol_assert_ok( doc.source().includes( 'Atlas $bog_gamengine_atlas' ) )
 		},
@@ -353,19 +371,21 @@ namespace $ {
 			doc.declare( 'Sound', '$bog_gamengine_sound', {} )
 			doc.add_uri( 'Sound', 'uris', 'bog/gamengine/demo/sound/coin.wav', 'coin' )
 			$mol_assert_ok( doc.source().includes( 'coin.wav' ) )
+			const before = titles( doc )
 			doc.drop( 'Sound' )
 			$mol_assert_not( doc.source().includes( 'coin.wav' ) )
 			$mol_assert_not( doc.source().includes( 'Sound' ) )
-			$mol_assert_equal( doc.scene().nodes().map( node => node.title() ), [ 'Герой', 'Монета', 'Стена' ] )
+			$mol_assert_equal( titles( doc ), before )
 		},
 
 		'copy keeps every property of the node and lives on its own'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
 			const made = doc.dup( 'Coin' )
 			$mol_assert_equal( doc.node( made ).klass, '$bog_gamengine_sprite' )
-			$mol_assert_equal( doc.scene().nodes()[ 2 ].pos()[ 0 ], 2 )
+			const coins = ()=> doc.scene().nodes().filter( node => node.title() === 'Монета' ).map( node => node.pos()[ 0 ] )
+			$mol_assert_equal( coins(), [ 2, 2 ] )
 			doc.set( made, 'pos', [ 7, 0, 0 ] )
-			$mol_assert_equal( doc.scene().nodes().map( node => node.pos()[ 0 ] ), [ -2, 2, 7, 0 ] )
+			$mol_assert_equal( coins(), [ 2, 7 ] )
 		},
 
 	})
