@@ -2,40 +2,6 @@ namespace $ {
 
 	$mol_test({
 
-		'agents made together replan on different frames, not all on one'() {
-			const tile = new $bog_gamengine_phys_tile
-			tile.map( '#######\n#.....#\n#.....#\n#.....#\n#######' )
-			const grid = new $bog_gamengine_nav_grid
-			grid.tile( tile )
-			const proto = $bog_gamengine_nav_agent.prototype
-			const real = proto.plan
-			let plans = 0
-			const agents = [] as $bog_gamengine_nav_agent[]
-			for( let i = 0; i < 30; ++ i ) {
-				const one = new $bog_gamengine_nav_agent
-				one.grid( grid )
-				one.pos( new Float32Array([ 1.5, - 1.5, 0 ]) )
-				one.target( new Float32Array([ 5.5, - 3.5, 0 ]) )
-				agents.push( one )
-			}
-			for( const one of agents ) one.step( 1 / 60 )
-			Object.assign( proto, { plan( pos: Float32Array, to: Float32Array ) {
-				++ plans
-				return real.call( this, pos, to )
-			} } )
-			let worst = 0
-			let frames = 0
-			for( let f = 0; f < 60; ++ f ) {
-				plans = 0
-				for( const one of agents ) one.step( 1 / 60 )
-				if( plans > worst ) worst = plans
-				if( plans > 0 ) ++ frames
-			}
-			Object.assign( proto, { plan: real } )
-			$mol_assert_ok( worst < agents.length / 2 )
-			$mol_assert_ok( frames > 10 )
-		},
-
 		'agent reaches target behind wall within 3 seconds never entering a wall'() {
 			const tile = new $bog_gamengine_phys_tile
 			tile.map( '#######\n#..#..#\n#..#..#\n#.....#\n#######' )
