@@ -19,6 +19,16 @@ namespace $ {
 		return Math.round( value * 1e6 ) / 1e6
 	}
 
+	function $bog_gamengine_text_test_other( kind: string, was: unknown ) {
+		if( kind === 'vec3' || kind === 'euler' ) return [ 1, 2, 3 ]
+		if( kind === 'vec4' ) return [ 0.25, 0.5, 0.75, 1 ]
+		if( kind === 'number' ) return Number( was ) + 1
+		if( kind === 'flag' ) return !was
+		if( kind === 'text' ) return was === 'center' ? 'right' : 'center'
+		if( kind === 'node' ) return null
+		return null
+	}
+
 	$mol_test({
 
 		'string of two chars gives two glyphs'() {
@@ -57,6 +67,35 @@ namespace $ {
 			$mol_assert_equal( text.pool().count, 2 )
 			text.value( 'aba' )
 			$mol_assert_equal( text.pool().count, 3 )
+		},
+
+		'every drawing prop of the text is watched, and the idle ones are named'() {
+			const idle = [ 'role', 'tint' ]
+			const known = new $bog_gamengine_text().props().map( prop => prop.name )
+			$mol_assert_equal( known, [ 'pos', 'rot', 'scale', 'tint', 'role', 'value', 'height', 'align', 'color', 'billboard' ] )
+			for( const name of known ) {
+				const text = $bog_gamengine_text_test_make( 'ab' )
+				const prop = text.props().find( one => one.name === name )!
+				const version = text.pool().version
+				prop.set( $bog_gamengine_text_test_other( prop.kind, prop.get() ) as never )
+				text.emit()
+				if( idle.includes( name ) ) $mol_assert_equal( text.pool().version, version )
+				else $mol_assert_equal( text.pool().version > version, true )
+			}
+		},
+
+		'swapped font and swapped atlas both redraw the string'() {
+			const text = $bog_gamengine_text_test_make( 'ab' )
+			const version = text.pool().version
+			text.atlas( $bog_gamengine_text_test_atlas([ 'b', 'a' ]) )
+			text.emit()
+			$mol_assert_equal( text.pool().version > version, true )
+			const after = text.pool().version
+			const font = new $bog_gamengine_text_font
+			font.family( 'serif' )
+			text.font( font )
+			text.emit()
+			$mol_assert_equal( text.pool().version > after, true )
 		},
 
 		'pool version grows only when the input changes'() {

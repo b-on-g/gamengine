@@ -79,58 +79,28 @@ namespace $ {
 			]
 		}
 
-		done_map = null as string | null
-		done_size = NaN
-		done_palette = null as Record< string, string > | null
-		done_world = new Float32Array( 16 )
-		done_tint = new Float32Array( 4 )
-		done_origin = new Float32Array( 2 )
-
-		fresh(
-			map: string,
-			world: Float32Array,
-			size: number,
-			palette: Record< string, string >,
-			tint: Float32Array,
-			origin: Float32Array,
-		) {
-			let same = map === this.done_map && size === this.done_size && palette === this.done_palette
-			const done_origin = this.done_origin
-			for( let i = 0; i < 2; ++i ) {
-				if( origin[ i ] !== done_origin[ i ] ) same = false
-				done_origin[ i ] = origin[ i ]
-			}
-			const done_world = this.done_world
-			for( let i = 0; i < 16; ++i ) {
-				if( world[ i ] !== done_world[ i ] ) same = false
-				done_world[ i ] = world[ i ]
-			}
-			const done_tint = this.done_tint
-			for( let i = 0; i < 4; ++i ) {
-				if( tint[ i ] !== done_tint[ i ] ) same = false
-				done_tint[ i ] = tint[ i ]
-			}
-			this.done_map = map
-			this.done_size = size
-			this.done_palette = palette
-			return same
-		}
+		watch = new $bog_gamengine_watch
 
 		cell = new Float32Array( 3 )
 
 		emit() {
 			const pool = this.pool()
-			const tile = this.tile()
-			const world = this.world()
-			const size = this.size()
-			const palette = this.palette()
-			const tint = this.tint()
-			const atlas = this.atlas()
+			const watch = this.watch.open()
+			const tile = watch.of( this.tile() )
 			if( !tile ) {
 				pool.count = 0
 				return 0
 			}
-			if( this.fresh( tile.map(), world, size, palette, tint, tile.origin() ) ) return pool.count
+			const world = watch.of( this.world() )
+			const size = watch.of( this.size() )
+			const palette = watch.of( this.palette() )
+			const tint = watch.of( this.tint() )
+			const atlas = watch.of( this.atlas() )
+			watch.of( tile.map() )
+			watch.of( tile.plane() )
+			watch.of( tile.origin() )
+			watch.of( atlas?.names() ?? null )
+			if( watch.fresh() ) return pool.count
 
 			const rows = tile.rows()
 			let need = 0

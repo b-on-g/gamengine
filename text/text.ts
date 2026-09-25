@@ -104,39 +104,23 @@ namespace $ {
 		}
 
 		axes = new Float32Array( 16 )
-		done_world = new Float32Array( 16 )
-		done_color = new Float32Array( 4 )
-		done_value = null as string | null
-		done_height = NaN
-		done_align = ''
-
-		fresh( value: string, axes: Float32Array, height: number, align: string, color: Float32Array ) {
-			let same = value === this.done_value && height === this.done_height && align === this.done_align
-			const done_world = this.done_world
-			for( let i = 0; i < 16; ++i ) {
-				if( axes[ i ] !== done_world[ i ] ) same = false
-				done_world[ i ] = axes[ i ]
-			}
-			const done_color = this.done_color
-			for( let i = 0; i < 4; ++i ) {
-				if( color[ i ] !== done_color[ i ] ) same = false
-				done_color[ i ] = color[ i ]
-			}
-			this.done_value = value
-			this.done_height = height
-			this.done_align = align
-			return same
-		}
+		watch = new $bog_gamengine_watch
 
 		emit() {
 			const pool = this.pool_own()
-			const value = this.value()
-			const world = this.world()
-			const height = this.height()
-			const align = this.align()
-			const color = this.color()
-			const billboard = this.billboard()
+			const watch = this.watch.open()
+			const value = watch.of( this.value() )
+			const world = watch.of( this.world() )
+			const height = watch.of( this.height() )
+			const align = watch.of( this.align() )
+			const color = watch.of( this.color() )
+			const billboard = watch.of( this.billboard() )
 			const cam = billboard ? this.scene()?.cam() ?? null : null
+			watch.of( cam?.world() ?? null )
+			const font = watch.of( this.font() )
+			const names = watch.of( this.atlas()?.names() ?? null )
+			if( watch.fresh() ) return pool.count
+			++ pool.version
 
 			const axes = this.axes
 			if( cam ) {
@@ -159,12 +143,7 @@ namespace $ {
 				for( let k = 0; k < 16; ++k ) axes[ k ] = world[ k ]
 			}
 
-			if( this.fresh( value, axes, height, align, color ) ) return pool.count
-			++ pool.version
-
 			pool.fit( value.length )
-			const font = this.font()
-			const names = this.atlas()?.names() ?? null
 			const unknown = names?.get( '?' ) ?? 0
 			const trans = pool.trans
 			const tint = pool.tint
