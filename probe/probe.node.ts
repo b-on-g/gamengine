@@ -107,7 +107,7 @@ namespace $ {
 			]
 			const cell_seen = ( text, char )=> {
 				const cell = cell_of( text, char )
-				return cell ? screen_of([ cell[ 0 ] + 0.5, - cell[ 1 ] - 0.5 ]) : null
+				return cell ? screen_of( map_spot( text, cell ) ) : null
 			}
 			const hero_seen = screen_of( spot_of( source_now(), 'Hero' ) || [ 0, 0 ] )
 			const hero_x = hero_seen[ 0 ]
@@ -239,7 +239,7 @@ namespace $ {
 			const map_rows = rows_of( editor.value )
 			for( let y = 0; y < map_rows.length; ++ y ) for( let x = 0; x < map_rows[ y ].length; ++ x ) {
 				if( map_rows[ y ][ x ] !== '.' ) continue
-				const spot = [ x + 0.5, - y - 0.5 ]
+				const spot = map_spot( editor.value, [ x, y ] )
 				const seen = screen_of( spot )
 				if( seen[ 0 ] > ppu / 2 && seen[ 0 ] < canvas.width - ppu / 2 && seen[ 1 ] > ppu / 2 && seen[ 1 ] < canvas.height - ppu / 2 ) floors.push( spot )
 			}
@@ -351,10 +351,19 @@ namespace $ {
 	}
 
 	export const $bog_gamestudio_probe_spot_script = `
-		const spot_of = ( text, name )=> {
+		const block_of = ( text, name )=> {
 			const tail = text.split( '<= ' + name + ' $' )[ 1 ] || ''
-			const found = tail.match( /pos \\/ (-?[\\d.]+) (-?[\\d.]+)/ )
+			const next = tail.search( /\\n\\t\\t<= / )
+			return next < 0 ? tail : tail.slice( 0, next )
+		}
+		const spot_of = ( text, name )=> {
+			const found = block_of( text, name ).match( /pos \\/ (-?[\\d.]+) (-?[\\d.]+)/ )
 			return found ? [ Number( found[ 1 ] ), Number( found[ 2 ] ) ] : null
+		}
+		const map_spot = ( text, cell )=> {
+			const named = text.match( /<= (\\w+) \\$bog_gamengine_tilemap/ )
+			const base = named && spot_of( text, named[ 1 ] ) || [ 0, 0 ]
+			return [ base[ 0 ] + cell[ 0 ] + 0.5, base[ 1 ] - cell[ 1 ] - 0.5 ]
 		}
 		const rows_of = text => {
 			const map = ( text.match( /map \\\\\\n(?:[ \\t]*\\\\.*\\n)+/ ) || [ '' ] )[ 0 ]
@@ -379,27 +388,22 @@ namespace $ {
 		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
 		if( !canvas() || !editor ) return { ready: false }
 		const map_of = ()=> ( editor.value.match( /map \\\\\\n(?:[ \\t]*\\\\.*\\n)+/ ) || [ '' ] )[ 0 ]
+		${ $bog_gamestudio_probe_spot_script }
 		const tab = async title => {
 			const hit = [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === title )
 			if( hit ) hit.click()
 			await wait( 8 )
 			return Boolean( hit )
 		}
-		const floor_cell = ()=> {
-			const rows = ( map_of().match( /\\\\[.#]+/g ) || [] ).map( row => row.slice( 1 ) )
-			for( let y = 0; y < rows.length; ++ y ) {
-				const x = rows[ y ].indexOf( '.' )
-				if( x >= 0 ) return [ x, y ]
-			}
-			return null
-		}
+		const floor_cell = ()=> cell_of( editor.value, '.' )
 		const paint = async ( cx, cy )=> {
 			const node = canvas()
 			const box = node.getBoundingClientRect()
 			const dpr = devicePixelRatio
 			const ppu = node.height / 6
-			const x = node.width / 2 + ( cx + 0.5 ) * ppu
-			const y = node.height / 2 + ( cy + 0.5 ) * ppu
+			const spot = map_spot( editor.value, [ cx, cy ] )
+			const x = node.width / 2 + spot[ 0 ] * ppu
+			const y = node.height / 2 - spot[ 1 ] * ppu
 			const before = map_of()
 			for( const kind of [ 'pointerdown', 'pointerup' ] ) node.dispatchEvent( new PointerEvent( kind, {
 				bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: kind === 'pointerup' ? 0 : 1,
@@ -499,8 +503,9 @@ namespace $ {
 			clientX: rect().left + x / dpr, clientY: rect().top + y / dpr,
 		} ) )
 		const click_cell = async ( cx, cy )=> {
-			const x = canvas.width / 2 + ( cx + 0.5 ) * ppu
-			const y = canvas.height / 2 + ( cy + 0.5 ) * ppu
+			const spot = map_spot( source(), [ cx, cy ] )
+			const x = canvas.width / 2 + spot[ 0 ] * ppu
+			const y = canvas.height / 2 - spot[ 1 ] * ppu
 			pointer( 'pointerdown', x, y )
 			pointer( 'pointerup', x, y )
 			await wait( 6 )
