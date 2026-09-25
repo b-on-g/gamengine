@@ -300,6 +300,23 @@ namespace $ {
 		`
 	}
 
+	export const $bog_gamestudio_probe_spot_script = `
+		const spot_of = ( text, name )=> {
+			const tail = text.split( '<= ' + name + ' $' )[ 1 ] || ''
+			const found = tail.match( /pos \\/ (-?[\\d.]+) (-?[\\d.]+)/ )
+			return found ? [ Number( found[ 1 ] ), Number( found[ 2 ] ) ] : null
+		}
+		const cell_of = ( text, char )=> {
+			const map = ( text.match( /map \\\\\\n(?:[ \\t]*\\\\.*\\n)+/ ) || [ '' ] )[ 0 ]
+			const rows = ( map.match( /\\\\[^\\n]+/g ) || [] ).map( row => row.slice( 1 ) )
+			for( let y = 0; y < rows.length; ++ y ) {
+				const x = rows[ y ].indexOf( char )
+				if( x >= 0 ) return [ x, y ]
+			}
+			return null
+		}
+	`
+
 	export const $bog_gamestudio_probe_tabs_ok = 'кисть красит после каждого переключения вкладок левой колонки'
 
 	export const $bog_gamestudio_probe_tabs_script = `
@@ -446,6 +463,7 @@ namespace $ {
 		const checked = el => el && el.getAttribute( 'mol_check_checked' ) === 'true'
 		const drop = document.querySelector( '[bog_gamestudio_app_drop]' )
 		const placing = ()=> drop ? drop.getAttribute( 'bog_gamestudio_app_placing' ) : null
+		${ $bog_gamestudio_probe_spot_script }
 
 		await wait( 20 )
 
@@ -469,7 +487,9 @@ namespace $ {
 		const placing_after_brush = placing()
 		const map_before = map_of()
 		const sprites_before = sprites()
-		await click_cell( 1, 1 )
+		const floor = cell_of( source(), '.' )
+		if( !floor ) return { webgl: true, fail: 'в карте нет клетки пола' }
+		await click_cell( floor[ 0 ], floor[ 1 ] )
 		const map_after = map_of()
 		const sprites_after = sprites()
 
@@ -480,7 +500,8 @@ namespace $ {
 		const tool_after_asset = checked( [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === 'Клетка' ) )
 		const map_mid = map_of()
 		const sprites_mid = sprites()
-		await click_cell( 2, 2 )
+		const floor_more = cell_of( source(), '.' )
+		await click_cell( floor_more ? floor_more[ 0 ] : 2, floor_more ? floor_more[ 1 ] : 2 )
 		const map_end = map_of()
 		const sprites_end = sprites()
 
@@ -559,74 +580,80 @@ namespace $ {
 
 	export const $bog_gamestudio_probe_grid_drag = 83
 
-	export const $bog_gamestudio_probe_grid_script = `
-		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
-		const canvas = document.querySelector( 'canvas' )
-		const gl = canvas && canvas.getContext( 'webgl2' )
-		if( !gl ) return { webgl: false }
-		const pixel = ( x, y )=> {
-			const out = new Uint8Array( 4 )
-			gl.readPixels( x | 0, y | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
-			return Array.from( out )
-		}
-		const dark = px => px[ 0 ] < 40 && px[ 1 ] < 40 && px[ 2 ] < 40
-		let waited = 0
-		while( waited < 600 && dark( pixel( canvas.width / 2, canvas.height / 2 ) ) ) { await frame(); ++ waited }
-		const at = ( x, y )=> pixel( x, canvas.height - 1 - y )
-		${ $bog_gamestudio_probe_arrow_script }
-		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
-		const coin_x_of = ()=> {
-			const tail = editor.value.split( '<= Coin' )[ 1 ] || ''
-			const found = tail.match( /pos \\/ (-?[\\d.]+)/ )
-			return found ? Number( found[ 1 ] ) : NaN
-		}
-		const rect = canvas.getBoundingClientRect()
-		const dpr = devicePixelRatio
-		const ppu = canvas.height / 6
-		const coin_x = canvas.width / 2 + 2 * ppu
-		const coin_y = canvas.height / 2
-		const pointer = ( type, x, y )=> canvas.dispatchEvent( new PointerEvent( type, {
-			bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: type === 'pointerup' ? 0 : 1,
-			clientX: rect.left + x / dpr, clientY: rect.top + y / dpr,
-		} ) )
-		pointer( 'pointerdown', coin_x, coin_y )
-		pointer( 'pointerup', coin_x, coin_y )
-		await frame()
-		await frame()
-		const grid = document.querySelector( '[bog_gamestudio_app_grid]' )
-		const grid_on = grid ? grid.getAttribute( 'mol_check_checked' ) : null
-		const drag = async ()=> {
-			const seen = canvas.width / 2 + coin_x_of() * ppu
-			const arrow = arrow_at( at, seen, coin_y )
-			if( !arrow ) return null
+	export function $bog_gamestudio_probe_grid_script( snap: boolean ) {
+		return `
+			const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
+			const wait = async n => { for( let i = 0; i < n; ++ i ) await frame() }
+			const canvas = document.querySelector( 'canvas' )
+			const gl = canvas && canvas.getContext( 'webgl2' )
+			if( !gl ) return { webgl: false }
+			const pixel = ( x, y )=> {
+				const out = new Uint8Array( 4 )
+				gl.readPixels( x | 0, y | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
+				return Array.from( out )
+			}
+			const at = ( x, y )=> pixel( x, canvas.height - 1 - y )
+			${ $bog_gamestudio_probe_spot_script }
+			const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+			if( !editor ) return { webgl: true, fail: 'нет исходника' }
+			const hero_at = ()=> spot_of( editor.value, 'Hero' )
+			const dpr = devicePixelRatio
+			const ppu = canvas.height / 6
+			const pointer = ( type, x, y )=> {
+				const rect = canvas.getBoundingClientRect()
+				canvas.dispatchEvent( new PointerEvent( type, {
+					bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: type === 'pointerup' ? 0 : 1,
+					clientX: rect.left + x / dpr, clientY: rect.top + y / dpr,
+				} ) )
+			}
+			await wait( 20 )
+			const start_spot = hero_at()
+			if( !start_spot ) return { webgl: true, fail: 'в документе нет узла Hero с позицией' }
+			const seen = ()=> {
+				const spot = hero_at()
+				return [ canvas.width / 2 + spot[ 0 ] * ppu, canvas.height / 2 - spot[ 1 ] * ppu ]
+			}
+			const spot_screen = seen()
+			if( spot_screen[ 0 ] < 0 || spot_screen[ 0 ] > canvas.width ) return { webgl: true, fail: 'узел вне холста, сценарию нужен видимый узел' }
+			const grid = document.querySelector( '[bog_gamestudio_app_grid]' )
+			if( !grid ) return { webgl: true, fail: 'нет галки «К сетке»' }
+			const want = ${ snap ? 'true' : 'false' }
+			if( ( grid.getAttribute( 'mol_check_checked' ) === 'true' ) !== want ) grid.click()
+			await wait( 6 )
+			const snapping = grid.getAttribute( 'mol_check_checked' ) === 'true'
+			pointer( 'pointerdown', spot_screen[ 0 ], spot_screen[ 1 ] )
+			pointer( 'pointerup', spot_screen[ 0 ], spot_screen[ 1 ] )
+			await wait( 8 )
+			let arrow = null
+			for( let dx = ${ $bog_gamestudio_probe_gizmo_from }; dx < 90 && !arrow; ++ dx ) for( let dy = -3; dy <= 3; ++ dy ) {
+				const px = at( spot_screen[ 0 ] + dx, spot_screen[ 1 ] + dy )
+				if( px[ 0 ] > 200 && px[ 1 ] < 100 && px[ 2 ] < 100 ) { arrow = [ spot_screen[ 0 ] + dx, spot_screen[ 1 ] + dy ]; break }
+			}
+			if( !arrow ) return { webgl: true, fail: 'стрелка гизмо не нашлась у выбранного узла', snapping }
 			pointer( 'pointerdown', arrow[ 0 ], arrow[ 1 ] )
-			pointer( 'pointermove', arrow[ 0 ] - ${ $bog_gamestudio_probe_grid_drag } / 2, arrow[ 1 ] )
-			await frame()
-			pointer( 'pointermove', arrow[ 0 ] - ${ $bog_gamestudio_probe_grid_drag }, arrow[ 1 ] )
-			await frame()
+			await wait( 6 )
+			for( let step = 1; step <= 4; ++ step ) {
+				pointer( 'pointermove', arrow[ 0 ] - ${ $bog_gamestudio_probe_grid_drag } * step / 4, arrow[ 1 ] )
+				await wait( 6 )
+			}
 			pointer( 'pointerup', arrow[ 0 ] - ${ $bog_gamestudio_probe_grid_drag }, arrow[ 1 ] )
-			await frame()
-			await frame()
-			return coin_x_of()
-		}
-		const start = coin_x_of()
-		const snapped = await drag()
-		if( grid ) grid.click()
-		await frame()
-		await frame()
-		const grid_off = grid ? grid.getAttribute( 'mol_check_checked' ) : null
-		const free = await drag()
-		return { webgl: true, waited, ppu, grid: Boolean( grid ), grid_on, grid_off, start, snapped, free, step: - ${ $bog_gamestudio_probe_grid_drag } / ppu }
-	`
+			await wait( 12 )
+			const now = hero_at()
+			return {
+				webgl: true, snapping, ppu,
+				start: start_spot[ 0 ],
+				moved: now ? now[ 0 ] : null,
+				step: - ${ $bog_gamestudio_probe_grid_drag } / ppu,
+			}
+		`
+	}
 
 	export type $bog_gamestudio_probe_grid_result = {
 		readonly webgl: boolean
-		readonly grid?: boolean
-		readonly grid_on?: string | null
-		readonly grid_off?: string | null
+		readonly fail?: string
+		readonly snapping?: boolean
 		readonly start?: number
-		readonly snapped?: number | null
-		readonly free?: number | null
+		readonly moved?: number | null
 		readonly step?: number
 		readonly ppu?: number
 	}
@@ -640,36 +667,47 @@ namespace $ {
 
 		const started = Date.now()
 
-		const got = await $bog_probe_run({
+		const take = async ( snap: boolean )=> await $bog_probe_run({
 			root,
 			flags,
 			page: $bog_gamestudio_probe_page,
 			ready: $bog_gamestudio_probe_ready,
-			script: $bog_gamestudio_probe_grid_script,
+			script: $bog_gamestudio_probe_grid_script( snap ),
 			width: 1600,
 			height: 800,
 		}) as $bog_gamestudio_probe_grid_result | typeof $bog_probe_skip
 
-		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
+		const snapped = await take( true )
+		if( snapped === $bog_probe_skip ) return say( $bog_probe_skip )
+		const free = await take( false )
+		if( free === $bog_probe_skip ) return say( $bog_probe_skip )
 
-		say( `${ flags.join( ' ' ) || 'без флагов' }: ${ Date.now() - started } мс, ${ JSON.stringify( got ) }` )
+		say( `${ flags.join( ' ' ) || 'без флагов' }: ${ Date.now() - started } мс, с галкой ${ JSON.stringify( snapped ) }, без галки ${ JSON.stringify( free ) }` )
 
-		const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( got ) }` ) )
+		const fail = ( reason: string )=> $mol_fail( new Error( reason ) )
 
-		if( !got.webgl ) return fail( 'нет webgl2' )
-		if( !got.grid ) return fail( 'галки «К сетке» нет в шапке холста' )
-		if( got.grid_on !== 'true' ) return fail( 'галка «К сетке» выключена по умолчанию' )
-		if( got.grid_off === 'true' ) return fail( 'клик не снял галку «К сетке»' )
-		if( typeof got.snapped !== 'number' || Number.isNaN( got.snapped ) ) return fail( 'перенос с галкой не дошёл до исходника' )
-		if( typeof got.free !== 'number' || Number.isNaN( got.free ) ) return fail( 'перенос без галки не дошёл до исходника' )
-		if( got.snapped === got.start ) return fail( 'перенос с галкой не сдвинул узел' )
+		for( const got of [ snapped, free ] ) {
+			if( !got.webgl ) return fail( 'нет webgl2' )
+			if( got.fail ) return fail( got.fail )
+			if( typeof got.moved !== 'number' ) return fail( `перенос не дошёл до исходника: ${ JSON.stringify( got ) }` )
+		}
 
-		const half = got.snapped / $bog_gamestudio_app_grid_step
-		if( Math.abs( half - Math.round( half ) ) > 1e-9 ) return fail( `с галкой ${ got.snapped } не кратно ${ $bog_gamestudio_app_grid_step }` )
+		if( !snapped.snapping ) return fail( 'галка «К сетке» не включилась' )
+		if( free.snapping ) return fail( 'галка «К сетке» не снялась' )
+		if( snapped.moved === snapped.start ) return fail( 'перенос с галкой не сдвинул узел' )
 
-		const moved = got.free - got.snapped
-		if( Math.abs( moved - got.step! ) > 0.01 ) return fail( `без галки сдвиг ${ moved } вместо ${ got.step }` )
-		if( Number( got.free.toFixed( 3 ) ) !== got.free ) return fail( `без галки ${ got.free } с хвостом длиннее тысячной` )
+		const half = snapped.moved! / $bog_gamestudio_app_grid_step
+		if( Math.abs( half - Math.round( half ) ) > 1e-9 ) {
+			return fail( `с галкой ${ snapped.moved } не кратно ${ $bog_gamestudio_app_grid_step }` )
+		}
+
+		const shift = free.moved! - free.start!
+		if( Math.abs( shift ) < 0.05 ) return fail( `без галки узел не сдвинулся: ${ JSON.stringify( free ) }` )
+		const free_half = free.moved! / $bog_gamestudio_app_grid_step
+		if( Math.abs( free_half - Math.round( free_half ) ) < 1e-9 ) {
+			return fail( `без галки ${ free.moved } всё равно кратно ${ $bog_gamestudio_app_grid_step }` )
+		}
+		if( Number( free.moved!.toFixed( 3 ) ) !== free.moved ) return fail( `без галки ${ free.moved } с хвостом длиннее тысячной` )
 
 		return say( $bog_gamestudio_probe_grid_ok )
 	}
