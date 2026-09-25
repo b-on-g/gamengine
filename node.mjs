@@ -10553,8 +10553,14 @@ var $;
         tint(next) {
             return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1, 1, 1]);
         }
-        billboard(next = false) {
-            return next;
+        billboard(next) {
+            return next ?? '';
+        }
+        billboard_kind() {
+            const kind = this.billboard();
+            if (kind === '' || kind === 'cylinder' || kind === 'sphere')
+                return kind;
+            return $mol_fail(new Error(`Billboard kind ${kind} is unknown, known: cylinder, sphere`));
         }
         shader(next) {
             return next ?? null;
@@ -10611,7 +10617,7 @@ var $;
         }
         trans() {
             const rot = this.rot();
-            const yaw = this.billboard() ? this.cam_yaw() : rot[1];
+            const yaw = this.billboard_kind() === 'cylinder' ? this.cam_yaw() : rot[1];
             return $mol_3d_mat4.multiply($mol_3d_mat4.translation(this.pos()), $mol_3d_mat4.rotation([0, 0, 1], rot[2]), $mol_3d_mat4.rotation([0, 1, 0], yaw), $mol_3d_mat4.rotation([1, 0, 0], rot[0]), $mol_3d_mat4.scaling(this.scale()));
         }
         world() {
@@ -19123,7 +19129,7 @@ var $;
                 { name: 'size', kind: 'vec2', get: () => this.size(), set: next => this.size(next) },
                 { name: 'clip', kind: 'text', get: () => this.clip(), set: next => this.clip(next) },
                 { name: 'fps', kind: 'number', get: () => this.fps(), set: next => this.fps(next) },
-                { name: 'billboard', kind: 'flag', get: () => this.billboard(), set: next => this.billboard(next) },
+                { name: 'billboard', kind: 'text', get: () => this.billboard(), set: next => this.billboard(next) },
             ];
         }
         radius() {
@@ -20273,7 +20279,7 @@ var $;
                 { name: 'gravity', kind: 'vec3', get: () => this.gravity(), set: next => this.gravity(next) },
                 { name: 'size', kind: 'vec2', get: () => this.size(), set: next => this.size(next) },
                 { name: 'frame', kind: 'frame', get: () => this.frame(), set: next => this.frame(next) },
-                { name: 'billboard', kind: 'flag', get: () => this.billboard(), set: next => this.billboard(next) },
+                { name: 'billboard', kind: 'text', get: () => this.billboard(), set: next => this.billboard(next) },
                 { name: 'world_space', kind: 'flag', get: () => this.world_space(), set: next => this.world_space(next) },
             ];
         }
@@ -20441,7 +20447,7 @@ var $;
             const color = this.color();
             const layers = this.layers();
             const basis = this.basis;
-            const cam = this.billboard() ? this.scene()?.cam() ?? null : null;
+            const cam = this.billboard_kind() === 'sphere' ? this.scene()?.cam() ?? null : null;
             if (cam) {
                 $bog_gamengine_vec_mat4_basis(basis, cam.world(), 3);
             }
@@ -20787,7 +20793,7 @@ var $;
                 { name: 'height', kind: 'number', get: () => this.height(), set: next => this.height(next) },
                 { name: 'align', kind: 'text', get: () => this.align(), set: next => this.align(next) },
                 { name: 'color', kind: 'vec4', get: () => this.color(), set: next => this.color(next) },
-                { name: 'billboard', kind: 'flag', get: () => this.billboard(), set: next => this.billboard(next) },
+                { name: 'billboard', kind: 'text', get: () => this.billboard(), set: next => this.billboard(next) },
             ];
         }
         width() {
@@ -20827,8 +20833,8 @@ var $;
             const height = watch.of(this.height());
             const align = watch.of(this.align());
             const color = watch.of(this.color());
-            const billboard = watch.of(this.billboard());
-            const cam = billboard ? this.scene()?.cam() ?? null : null;
+            const billboard = watch.of(this.billboard_kind());
+            const cam = billboard === 'sphere' ? this.scene()?.cam() ?? null : null;
             watch.of(cam?.world() ?? null);
             const font = this.font();
             watch.of(font.family());
@@ -21905,7 +21911,7 @@ var $;
                 { name: 'normal_frame', kind: 'frame', get: () => this.normal_frame(), set: next => this.normal_frame(next) },
                 { name: 'size', kind: 'vec3', get: () => this.size(), set: next => this.size(next) },
                 { name: 'material', kind: 'vec4', get: () => this.material(), set: next => this.material(next) },
-                { name: 'billboard', kind: 'flag', get: () => this.billboard(), set: next => this.billboard(next) },
+                { name: 'billboard', kind: 'text', get: () => this.billboard(), set: next => this.billboard(next) },
             ];
         }
         layer() {
@@ -27748,7 +27754,7 @@ var $;
 			(obj.spread) = () => (0.6);
 			(obj.size) = () => ((this.spark_size()));
 			(obj.color) = () => ((this.spark_color()));
-			(obj.billboard) = () => (true);
+			(obj.billboard) = () => ("sphere");
 			return obj;
 		}
 		Floor(){

@@ -10544,8 +10544,14 @@ var $;
         tint(next) {
             return next ? $bog_gamengine_node_vec(next) : new Float32Array([1, 1, 1, 1]);
         }
-        billboard(next = false) {
-            return next;
+        billboard(next) {
+            return next ?? '';
+        }
+        billboard_kind() {
+            const kind = this.billboard();
+            if (kind === '' || kind === 'cylinder' || kind === 'sphere')
+                return kind;
+            return $mol_fail(new Error(`Billboard kind ${kind} is unknown, known: cylinder, sphere`));
         }
         shader(next) {
             return next ?? null;
@@ -10602,7 +10608,7 @@ var $;
         }
         trans() {
             const rot = this.rot();
-            const yaw = this.billboard() ? this.cam_yaw() : rot[1];
+            const yaw = this.billboard_kind() === 'cylinder' ? this.cam_yaw() : rot[1];
             return $mol_3d_mat4.multiply($mol_3d_mat4.translation(this.pos()), $mol_3d_mat4.rotation([0, 0, 1], rot[2]), $mol_3d_mat4.rotation([0, 1, 0], yaw), $mol_3d_mat4.rotation([1, 0, 0], rot[0]), $mol_3d_mat4.scaling(this.scale()));
         }
         world() {
@@ -19114,7 +19120,7 @@ var $;
                 { name: 'size', kind: 'vec2', get: () => this.size(), set: next => this.size(next) },
                 { name: 'clip', kind: 'text', get: () => this.clip(), set: next => this.clip(next) },
                 { name: 'fps', kind: 'number', get: () => this.fps(), set: next => this.fps(next) },
-                { name: 'billboard', kind: 'flag', get: () => this.billboard(), set: next => this.billboard(next) },
+                { name: 'billboard', kind: 'text', get: () => this.billboard(), set: next => this.billboard(next) },
             ];
         }
         radius() {
@@ -20264,7 +20270,7 @@ var $;
                 { name: 'gravity', kind: 'vec3', get: () => this.gravity(), set: next => this.gravity(next) },
                 { name: 'size', kind: 'vec2', get: () => this.size(), set: next => this.size(next) },
                 { name: 'frame', kind: 'frame', get: () => this.frame(), set: next => this.frame(next) },
-                { name: 'billboard', kind: 'flag', get: () => this.billboard(), set: next => this.billboard(next) },
+                { name: 'billboard', kind: 'text', get: () => this.billboard(), set: next => this.billboard(next) },
                 { name: 'world_space', kind: 'flag', get: () => this.world_space(), set: next => this.world_space(next) },
             ];
         }
@@ -20432,7 +20438,7 @@ var $;
             const color = this.color();
             const layers = this.layers();
             const basis = this.basis;
-            const cam = this.billboard() ? this.scene()?.cam() ?? null : null;
+            const cam = this.billboard_kind() === 'sphere' ? this.scene()?.cam() ?? null : null;
             if (cam) {
                 $bog_gamengine_vec_mat4_basis(basis, cam.world(), 3);
             }
@@ -20778,7 +20784,7 @@ var $;
                 { name: 'height', kind: 'number', get: () => this.height(), set: next => this.height(next) },
                 { name: 'align', kind: 'text', get: () => this.align(), set: next => this.align(next) },
                 { name: 'color', kind: 'vec4', get: () => this.color(), set: next => this.color(next) },
-                { name: 'billboard', kind: 'flag', get: () => this.billboard(), set: next => this.billboard(next) },
+                { name: 'billboard', kind: 'text', get: () => this.billboard(), set: next => this.billboard(next) },
             ];
         }
         width() {
@@ -20818,8 +20824,8 @@ var $;
             const height = watch.of(this.height());
             const align = watch.of(this.align());
             const color = watch.of(this.color());
-            const billboard = watch.of(this.billboard());
-            const cam = billboard ? this.scene()?.cam() ?? null : null;
+            const billboard = watch.of(this.billboard_kind());
+            const cam = billboard === 'sphere' ? this.scene()?.cam() ?? null : null;
             watch.of(cam?.world() ?? null);
             const font = this.font();
             watch.of(font.family());
@@ -21896,7 +21902,7 @@ var $;
                 { name: 'normal_frame', kind: 'frame', get: () => this.normal_frame(), set: next => this.normal_frame(next) },
                 { name: 'size', kind: 'vec3', get: () => this.size(), set: next => this.size(next) },
                 { name: 'material', kind: 'vec4', get: () => this.material(), set: next => this.material(next) },
-                { name: 'billboard', kind: 'flag', get: () => this.billboard(), set: next => this.billboard(next) },
+                { name: 'billboard', kind: 'text', get: () => this.billboard(), set: next => this.billboard(next) },
             ];
         }
         layer() {
@@ -27739,7 +27745,7 @@ var $;
 			(obj.spread) = () => (0.6);
 			(obj.size) = () => ((this.spark_size()));
 			(obj.color) = () => ((this.spark_color()));
-			(obj.billboard) = () => (true);
+			(obj.billboard) = () => ("sphere");
 			return obj;
 		}
 		Floor(){
@@ -52372,6 +52378,157 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    $mol_test({
+        'add writes sum into out'() {
+            const out = new Float32Array(2);
+            const res = $bog_gamengine_vec_add(out, new Float32Array([1, 2]), new Float32Array([3, 5]));
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [4, 7]);
+        },
+        'sub writes difference into out shared with a'() {
+            const a = new Float32Array([5, 7, 9]);
+            const res = $bog_gamengine_vec_sub(a, a, new Float32Array([1, 2, 3]));
+            $mol_assert_equal(res, a);
+            $mol_assert_equal([...a], [4, 5, 6]);
+        },
+        'scale multiplies by scalar'() {
+            const out = new Float32Array(3);
+            const res = $bog_gamengine_vec_scale(out, new Float32Array([1, -2, 3]), 2);
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [2, -4, 6]);
+        },
+        'len is euclidean length'() {
+            $mol_assert_equal($bog_gamengine_vec_len(new Float32Array([3, 4])), 5);
+            $mol_assert_equal($bog_gamengine_vec_len(new Float32Array([2, 3, 6])), 7);
+        },
+        'norm gives unit vector'() {
+            const out = new Float32Array(2);
+            const res = $bog_gamengine_vec_norm(out, new Float32Array([0, -5]));
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [0, -1]);
+        },
+        'dot is scalar product'() {
+            $mol_assert_equal($bog_gamengine_vec_dot(new Float32Array([1, 2, 3]), new Float32Array([4, 5, 6])), 32);
+        },
+        'cross of x and y is z'() {
+            const out = new Float32Array(3);
+            const res = $bog_gamengine_vec_cross(out, new Float32Array([1, 0, 0]), new Float32Array([0, 1, 0]));
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [0, 0, 1]);
+        },
+        'lerp interpolates into out shared with b'() {
+            const b = new Float32Array([10, 20]);
+            const res = $bog_gamengine_vec_lerp(b, new Float32Array([0, 0]), b, 0.25);
+            $mol_assert_equal(res, b);
+            $mol_assert_equal([...b], [2.5, 5]);
+        },
+        'mat4_apply multiplies column-major matrix by vec4'() {
+            const out = new Float32Array(4);
+            const m = $mol_3d_mat4.translation([10, 20, 30]);
+            const res = $bog_gamengine_vec_mat4_apply(out, m, new Float32Array([1, 2, 3, 1]));
+            $mol_assert_equal(res, out);
+            $mol_assert_equal([...out], [11, 22, 33, 1]);
+        },
+        'quat_rotate by half pi around Y sends x to minus z'() {
+            const q = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 1, 0]), Math.PI / 2);
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), q, new Float32Array([1, 0, 0]));
+            $mol_assert_ok(Math.abs(out[0]) < 1e-6);
+            $mol_assert_ok(Math.abs(out[1]) < 1e-6);
+            $mol_assert_ok(Math.abs(out[2] + 1) < 1e-6);
+        },
+        'quat_mul of two quarter turns around Y is a half turn'() {
+            const q = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 1, 0]), Math.PI / 2);
+            const qq = $bog_gamengine_vec_quat_mul(new Float32Array(4), q, q);
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), qq, new Float32Array([1, 0, 0]));
+            $mol_assert_ok(Math.abs(out[0] + 1) < 1e-6);
+            $mol_assert_ok(Math.abs(out[2]) < 1e-6);
+        },
+        'quat_identity leaves vector as is'() {
+            const q = $bog_gamengine_vec_quat_identity(new Float32Array(4));
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), q, new Float32Array([1, 2, 3]));
+            $mol_assert_equal([...out], [1, 2, 3]);
+        },
+        'quat_normalize gives unit length'() {
+            const out = $bog_gamengine_vec_quat_normalize(new Float32Array(4), new Float32Array([0, 3, 0, 4]));
+            $mol_assert_ok(Math.abs(out[1] - 0.6) < 1e-6);
+            $mol_assert_ok(Math.abs(out[3] - 0.8) < 1e-6);
+        },
+        'quat_from_euler to_mat4 matches mat4 translation rotation ZYX scaling for random angles'() {
+            for (let trial = 0; trial < 20; ++trial) {
+                const x = (Math.random() - 0.5) * 6;
+                const y = (Math.random() - 0.5) * 6;
+                const z = (Math.random() - 0.5) * 6;
+                const pos = new Float32Array([1, 2, 3]);
+                const scale = new Float32Array([1, 2, 0.5]);
+                const q = $bog_gamengine_vec_quat_from_euler(new Float32Array(4), x, y, z);
+                const out = $bog_gamengine_vec_quat_to_mat4(new Float32Array(16), q, pos, scale);
+                const ref = $mol_3d_mat4.multiply($mol_3d_mat4.translation(pos), $mol_3d_mat4.rotation([0, 0, 1], z), $mol_3d_mat4.rotation([0, 1, 0], y), $mol_3d_mat4.rotation([1, 0, 0], x), $mol_3d_mat4.scaling(scale));
+                for (let i = 0; i < 16; ++i)
+                    $mol_assert_ok(Math.abs(out[i] - ref[i]) < 1e-5);
+            }
+        },
+        'quat_to_euler inverts from_euler'() {
+            const q = $bog_gamengine_vec_quat_from_euler(new Float32Array(4), 0.3, -0.5, 1.2);
+            const out = $bog_gamengine_vec_quat_to_euler(new Float32Array(3), q);
+            $mol_assert_ok(Math.abs(out[0] - 0.3) < 1e-6);
+            $mol_assert_ok(Math.abs(out[1] + 0.5) < 1e-6);
+            $mol_assert_ok(Math.abs(out[2] - 1.2) < 1e-6);
+        },
+        'mat4_basis normalizes the three columns, which scale makes visible'() {
+            const m = new Float32Array([
+                2, 0, 0, 0,
+                0, 0, 3, 0,
+                0, -4, 0, 0,
+                7, 8, 9, 1,
+            ]);
+            const out = $bog_gamengine_vec_mat4_basis(new Float32Array(16), m, 4);
+            $mol_assert_equal([out[0], out[1], out[2]], [1, 0, 0]);
+            $mol_assert_equal([out[4], out[5], out[6]], [0, 0, 1]);
+            $mol_assert_equal([out[8], out[9], out[10]], [0, -1, 0]);
+        },
+        'mat4_basis with stride three packs columns tight and clobbers nothing'() {
+            const m = new Float32Array([
+                2, 0, 0, 0,
+                0, 0, 3, 0,
+                0, -4, 0, 0,
+                7, 8, 9, 1,
+            ]);
+            const out = $bog_gamengine_vec_mat4_basis(new Float32Array(9).fill(5), m, 3);
+            $mol_assert_equal([...out], [1, 0, 0, 0, 0, 1, 0, -1, 0]);
+        },
+        'mat4_basis leaves the translation of the matrix alone'() {
+            const m = new Float32Array(16);
+            m[0] = 1;
+            m[5] = 1;
+            m[10] = 1;
+            m[12] = 7;
+            m[13] = 8;
+            m[14] = 9;
+            m[15] = 1;
+            const out = $bog_gamengine_vec_mat4_basis(new Float32Array(16), m, 4);
+            $mol_assert_equal([out[12], out[13], out[14], out[15]], [0, 0, 0, 0]);
+            $mol_assert_equal([m[12], m[13], m[14]], [7, 8, 9]);
+        },
+        'mat4_basis of a zero column gives zero instead of dividing by it'() {
+            const out = $bog_gamengine_vec_mat4_basis(new Float32Array(9), new Float32Array(16), 3);
+            $mol_assert_equal([...out], [0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        },
+        'quat_integrate one second at half pi around Y turns x to minus z'() {
+            const q = $bog_gamengine_vec_quat_identity(new Float32Array(4));
+            const ang = new Float32Array([0, Math.PI / 2, 0]);
+            for (let i = 0; i < 60; ++i)
+                $bog_gamengine_vec_quat_integrate(q, q, ang, 1 / 60);
+            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), q, new Float32Array([1, 0, 0]));
+            $mol_assert_ok(Math.abs(out[0]) < 1e-3);
+            $mol_assert_ok(Math.abs(out[2] + 1) < 1e-3);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     class $bog_gamengine_node_test_hero extends $bog_gamengine_node {
     }
     function node_test_prop(node, name) {
@@ -52456,13 +52613,85 @@ var $;
             cam.rot(new Float32Array([0, Math.PI / 2, 0]));
             scene.cam(cam);
             const node = new $bog_gamengine_node;
-            node.billboard(true);
+            node.billboard('cylinder');
             scene.kids([node]);
             const trans = node.trans();
             const to_cam = [-Math.sin(Math.PI / 2), 0, -Math.cos(Math.PI / 2)];
             const normal = [trans[8], trans[9], trans[10]];
             const dot = -(normal[0] * to_cam[0] + normal[1] * to_cam[1] + normal[2] * to_cam[2]);
             $mol_assert_ok(Math.abs(dot - 1) < 1e-6);
+        },
+        'cylinder stands upright under a tipped camera, sphere leans with it'() {
+            const make = (kind, rot) => {
+                const scene = new $bog_gamengine_scene;
+                const cam = new $bog_gamengine_cam;
+                cam.rot(new Float32Array(rot));
+                scene.cam(cam);
+                const node = new $bog_gamengine_node;
+                node.billboard(kind);
+                scene.kids([node]);
+                const up = new Float32Array(9);
+                if (kind === 'sphere') {
+                    $bog_gamengine_vec_mat4_basis(up, cam.world(), 3);
+                    return [up[3], up[4], up[5]].map(v => Math.round(v * 1e4) / 1e4);
+                }
+                const world = node.world();
+                return [world[4], world[5], world[6]].map(v => Math.round(v * 1e4) / 1e4);
+            };
+            const level = [0, 0, 0];
+            $mol_assert_equal(make('cylinder', level), make('sphere', level));
+            for (const rot of [[-Math.PI / 4, 0, 0], [0, 0, Math.PI / 6]]) {
+                $mol_assert_equal(make('cylinder', rot), [0, 1, 0]);
+                $mol_assert_unique(make('cylinder', rot), make('sphere', rot));
+            }
+        },
+        'unknown billboard kind falls at the place that reads it, not silently off'() {
+            const node = new $bog_gamengine_node;
+            node.billboard('sphre');
+            $mol_assert_fail(() => node.trans(), 'Billboard kind sphre is unknown, known: cylinder, sphere');
+        },
+        'billboard kind set by a tree literal is checked too, the accessor is overridden there'() {
+            const node = new $bog_gamengine_node;
+            Object.assign(node, { billboard: () => 'sphre' });
+            $mol_assert_fail(() => node.trans(), 'Billboard kind sphre is unknown, known: cylinder, sphere');
+        },
+        'empty billboard stays a plain node without falling'() {
+            const node = new $bog_gamengine_node;
+            $mol_assert_equal(node.billboard_kind(), '');
+            $mol_assert_ok(node.trans().length === 16);
+        },
+        'sphere does not order the cylindrical turn, so the camera leaves its trans alone'() {
+            const scene = new $bog_gamengine_scene;
+            const cam = new $bog_gamengine_cam;
+            cam.rot(new Float32Array([0, Math.PI / 2, 0]));
+            scene.cam(cam);
+            const spun = new $bog_gamengine_node;
+            spun.billboard('sphere');
+            const plain = new $bog_gamengine_node;
+            scene.kids([spun, plain]);
+            $mol_assert_equal([...spun.trans()], [...plain.trans()]);
+            const turned = new $bog_gamengine_node;
+            turned.billboard('cylinder');
+            scene.kids([spun, plain, turned]);
+            $mol_assert_unique([...turned.trans()], [...plain.trans()]);
+        },
+        'cylinder keeps its own pitch and roll, sphere keeps none of its rotation'() {
+            const scene = new $bog_gamengine_scene;
+            const cam = new $bog_gamengine_cam;
+            cam.rot(new Float32Array([0, Math.PI / 2, 0]));
+            scene.cam(cam);
+            const node = new $bog_gamengine_node;
+            node.billboard('cylinder');
+            node.rot(new Float32Array([0, 0, Math.PI / 2]));
+            const plain = new $bog_gamengine_node;
+            plain.billboard('cylinder');
+            scene.kids([node, plain]);
+            const up = (one) => {
+                const trans = one.trans();
+                return [trans[4], trans[5], trans[6]].map(v => Math.round(v * 1e4) / 1e4);
+            };
+            $mol_assert_equal(up(plain), [0, 1, 0]);
+            $mol_assert_unique(up(node), up(plain));
         },
         'node without billboard keeps its own yaw'() {
             const scene = new $bog_gamengine_scene;
@@ -53481,157 +53710,6 @@ var $;
             phys.step(1 / 60);
             $mol_assert_equal(phys.samples, 1);
             $mol_assert_ok(phys.step_ms() >= 0);
-        },
-    });
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
-    $mol_test({
-        'add writes sum into out'() {
-            const out = new Float32Array(2);
-            const res = $bog_gamengine_vec_add(out, new Float32Array([1, 2]), new Float32Array([3, 5]));
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [4, 7]);
-        },
-        'sub writes difference into out shared with a'() {
-            const a = new Float32Array([5, 7, 9]);
-            const res = $bog_gamengine_vec_sub(a, a, new Float32Array([1, 2, 3]));
-            $mol_assert_equal(res, a);
-            $mol_assert_equal([...a], [4, 5, 6]);
-        },
-        'scale multiplies by scalar'() {
-            const out = new Float32Array(3);
-            const res = $bog_gamengine_vec_scale(out, new Float32Array([1, -2, 3]), 2);
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [2, -4, 6]);
-        },
-        'len is euclidean length'() {
-            $mol_assert_equal($bog_gamengine_vec_len(new Float32Array([3, 4])), 5);
-            $mol_assert_equal($bog_gamengine_vec_len(new Float32Array([2, 3, 6])), 7);
-        },
-        'norm gives unit vector'() {
-            const out = new Float32Array(2);
-            const res = $bog_gamengine_vec_norm(out, new Float32Array([0, -5]));
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [0, -1]);
-        },
-        'dot is scalar product'() {
-            $mol_assert_equal($bog_gamengine_vec_dot(new Float32Array([1, 2, 3]), new Float32Array([4, 5, 6])), 32);
-        },
-        'cross of x and y is z'() {
-            const out = new Float32Array(3);
-            const res = $bog_gamengine_vec_cross(out, new Float32Array([1, 0, 0]), new Float32Array([0, 1, 0]));
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [0, 0, 1]);
-        },
-        'lerp interpolates into out shared with b'() {
-            const b = new Float32Array([10, 20]);
-            const res = $bog_gamengine_vec_lerp(b, new Float32Array([0, 0]), b, 0.25);
-            $mol_assert_equal(res, b);
-            $mol_assert_equal([...b], [2.5, 5]);
-        },
-        'mat4_apply multiplies column-major matrix by vec4'() {
-            const out = new Float32Array(4);
-            const m = $mol_3d_mat4.translation([10, 20, 30]);
-            const res = $bog_gamengine_vec_mat4_apply(out, m, new Float32Array([1, 2, 3, 1]));
-            $mol_assert_equal(res, out);
-            $mol_assert_equal([...out], [11, 22, 33, 1]);
-        },
-        'quat_rotate by half pi around Y sends x to minus z'() {
-            const q = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 1, 0]), Math.PI / 2);
-            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), q, new Float32Array([1, 0, 0]));
-            $mol_assert_ok(Math.abs(out[0]) < 1e-6);
-            $mol_assert_ok(Math.abs(out[1]) < 1e-6);
-            $mol_assert_ok(Math.abs(out[2] + 1) < 1e-6);
-        },
-        'quat_mul of two quarter turns around Y is a half turn'() {
-            const q = $bog_gamengine_vec_quat_from_axis(new Float32Array(4), new Float32Array([0, 1, 0]), Math.PI / 2);
-            const qq = $bog_gamengine_vec_quat_mul(new Float32Array(4), q, q);
-            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), qq, new Float32Array([1, 0, 0]));
-            $mol_assert_ok(Math.abs(out[0] + 1) < 1e-6);
-            $mol_assert_ok(Math.abs(out[2]) < 1e-6);
-        },
-        'quat_identity leaves vector as is'() {
-            const q = $bog_gamengine_vec_quat_identity(new Float32Array(4));
-            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), q, new Float32Array([1, 2, 3]));
-            $mol_assert_equal([...out], [1, 2, 3]);
-        },
-        'quat_normalize gives unit length'() {
-            const out = $bog_gamengine_vec_quat_normalize(new Float32Array(4), new Float32Array([0, 3, 0, 4]));
-            $mol_assert_ok(Math.abs(out[1] - 0.6) < 1e-6);
-            $mol_assert_ok(Math.abs(out[3] - 0.8) < 1e-6);
-        },
-        'quat_from_euler to_mat4 matches mat4 translation rotation ZYX scaling for random angles'() {
-            for (let trial = 0; trial < 20; ++trial) {
-                const x = (Math.random() - 0.5) * 6;
-                const y = (Math.random() - 0.5) * 6;
-                const z = (Math.random() - 0.5) * 6;
-                const pos = new Float32Array([1, 2, 3]);
-                const scale = new Float32Array([1, 2, 0.5]);
-                const q = $bog_gamengine_vec_quat_from_euler(new Float32Array(4), x, y, z);
-                const out = $bog_gamengine_vec_quat_to_mat4(new Float32Array(16), q, pos, scale);
-                const ref = $mol_3d_mat4.multiply($mol_3d_mat4.translation(pos), $mol_3d_mat4.rotation([0, 0, 1], z), $mol_3d_mat4.rotation([0, 1, 0], y), $mol_3d_mat4.rotation([1, 0, 0], x), $mol_3d_mat4.scaling(scale));
-                for (let i = 0; i < 16; ++i)
-                    $mol_assert_ok(Math.abs(out[i] - ref[i]) < 1e-5);
-            }
-        },
-        'quat_to_euler inverts from_euler'() {
-            const q = $bog_gamengine_vec_quat_from_euler(new Float32Array(4), 0.3, -0.5, 1.2);
-            const out = $bog_gamengine_vec_quat_to_euler(new Float32Array(3), q);
-            $mol_assert_ok(Math.abs(out[0] - 0.3) < 1e-6);
-            $mol_assert_ok(Math.abs(out[1] + 0.5) < 1e-6);
-            $mol_assert_ok(Math.abs(out[2] - 1.2) < 1e-6);
-        },
-        'mat4_basis normalizes the three columns, which scale makes visible'() {
-            const m = new Float32Array([
-                2, 0, 0, 0,
-                0, 0, 3, 0,
-                0, -4, 0, 0,
-                7, 8, 9, 1,
-            ]);
-            const out = $bog_gamengine_vec_mat4_basis(new Float32Array(16), m, 4);
-            $mol_assert_equal([out[0], out[1], out[2]], [1, 0, 0]);
-            $mol_assert_equal([out[4], out[5], out[6]], [0, 0, 1]);
-            $mol_assert_equal([out[8], out[9], out[10]], [0, -1, 0]);
-        },
-        'mat4_basis with stride three packs columns tight and clobbers nothing'() {
-            const m = new Float32Array([
-                2, 0, 0, 0,
-                0, 0, 3, 0,
-                0, -4, 0, 0,
-                7, 8, 9, 1,
-            ]);
-            const out = $bog_gamengine_vec_mat4_basis(new Float32Array(9).fill(5), m, 3);
-            $mol_assert_equal([...out], [1, 0, 0, 0, 0, 1, 0, -1, 0]);
-        },
-        'mat4_basis leaves the translation of the matrix alone'() {
-            const m = new Float32Array(16);
-            m[0] = 1;
-            m[5] = 1;
-            m[10] = 1;
-            m[12] = 7;
-            m[13] = 8;
-            m[14] = 9;
-            m[15] = 1;
-            const out = $bog_gamengine_vec_mat4_basis(new Float32Array(16), m, 4);
-            $mol_assert_equal([out[12], out[13], out[14], out[15]], [0, 0, 0, 0]);
-            $mol_assert_equal([m[12], m[13], m[14]], [7, 8, 9]);
-        },
-        'mat4_basis of a zero column gives zero instead of dividing by it'() {
-            const out = $bog_gamengine_vec_mat4_basis(new Float32Array(9), new Float32Array(16), 3);
-            $mol_assert_equal([...out], [0, 0, 0, 0, 0, 0, 0, 0, 0]);
-        },
-        'quat_integrate one second at half pi around Y turns x to minus z'() {
-            const q = $bog_gamengine_vec_quat_identity(new Float32Array(4));
-            const ang = new Float32Array([0, Math.PI / 2, 0]);
-            for (let i = 0; i < 60; ++i)
-                $bog_gamengine_vec_quat_integrate(q, q, ang, 1 / 60);
-            const out = $bog_gamengine_vec_quat_rotate(new Float32Array(3), q, new Float32Array([1, 0, 0]));
-            $mol_assert_ok(Math.abs(out[0]) < 1e-3);
-            $mol_assert_ok(Math.abs(out[2] + 1) < 1e-3);
         },
     });
 })($ || ($ = {}));
@@ -54771,6 +54849,28 @@ var $;
             world.step(0);
             $mol_assert_equal(world.pool().trans[12], 5);
         },
+        'unknown billboard kind on an emitter falls instead of dropping the billboard'() {
+            const emitter = $bog_gamengine_particle_test_emitter(0, 10);
+            Object.assign(emitter, { billboard: () => 'sphre' });
+            $mol_assert_fail(() => emitter.burst(1), 'Billboard kind sphre is unknown, known: cylinder, sphere');
+        },
+        'cylinder emitter keeps the plain basis, sphere takes the camera one'() {
+            const build = (kind) => {
+                const scene = new $bog_gamengine_scene;
+                const cam = new $bog_gamengine_cam;
+                cam.rot(new Float32Array([-Math.PI / 4, 0, 0]));
+                scene.cam(cam);
+                const emitter = $bog_gamengine_particle_test_emitter(0, 10);
+                emitter.billboard(kind);
+                emitter.speed(new Float32Array([0, 0]));
+                scene.kids([emitter]);
+                emitter.burst(1);
+                emitter.pool();
+                return [...emitter.basis].map(v => Math.round(v * 1e4) / 1e4);
+            };
+            $mol_assert_equal(build('cylinder'), [1, 0, 0, 0, 1, 0, 0, 0, 1]);
+            $mol_assert_unique(build('sphere'), build('cylinder'));
+        },
         'billboard basis is the camera basis under pitch and under roll'() {
             for (const rot of [[-Math.PI / 4, 0, 0], [0, 0, Math.PI / 6], [-0.3, 0.7, 0.2]]) {
                 const scene = new $bog_gamengine_scene;
@@ -54779,7 +54879,7 @@ var $;
                 cam.rot(new Float32Array(rot));
                 scene.cam(cam);
                 const emitter = $bog_gamengine_particle_test_emitter(0, 10);
-                emitter.billboard(true);
+                emitter.billboard('sphere');
                 emitter.speed(new Float32Array([0, 0]));
                 scene.kids([emitter]);
                 emitter.burst(1);
@@ -54804,7 +54904,7 @@ var $;
             cam.rot(new Float32Array([0, Math.PI / 2, 0]));
             scene.cam(cam);
             const emitter = $bog_gamengine_particle_test_emitter(0, 10);
-            emitter.billboard(true);
+            emitter.billboard('sphere');
             emitter.speed(new Float32Array([0, 0]));
             scene.kids([emitter]);
             emitter.burst(1);
@@ -57696,7 +57796,9 @@ var $;
     function $bog_gamengine_text_test_round(value) {
         return Math.round(value * 1e6) / 1e6;
     }
-    function $bog_gamengine_text_test_other(kind, was) {
+    function $bog_gamengine_text_test_other(name, kind, was) {
+        if (name === 'billboard')
+            return was === 'sphere' ? 'cylinder' : 'sphere';
         if (kind === 'vec3' || kind === 'euler')
             return [1, 2, 3];
         if (kind === 'vec4')
@@ -57752,13 +57854,34 @@ var $;
                 const text = $bog_gamengine_text_test_make('ab');
                 const prop = text.props().find(one => one.name === name);
                 const version = text.pool().version;
-                prop.set($bog_gamengine_text_test_other(prop.kind, prop.get()));
+                prop.set($bog_gamengine_text_test_other(name, prop.kind, prop.get()));
                 text.emit();
                 if (idle.includes(name))
                     $mol_assert_equal(text.pool().version, version);
                 else
                     $mol_assert_equal(text.pool().version > version, true);
             }
+        },
+        'unknown billboard kind on a text falls instead of drawing it flat'() {
+            const text = $bog_gamengine_text_test_make('a');
+            Object.assign(text, { billboard: () => 'sphre' });
+            $mol_assert_fail(() => text.pool(), 'Billboard kind sphre is unknown, known: cylinder, sphere');
+        },
+        'cylinder text keeps world up under a pitched camera, sphere does not'() {
+            const build = (kind) => {
+                const text = $bog_gamengine_text_test_make('a');
+                text.height(1);
+                const cam = new $bog_gamengine_cam;
+                const scene = new $bog_gamengine_scene;
+                scene.cam(cam);
+                scene.kids([text]);
+                text.billboard(kind);
+                cam.rot(new Float32Array([-Math.PI / 4, 0, 0]));
+                const trans = text.pool().trans;
+                return [trans[4], trans[5], trans[6]].map($bog_gamengine_text_test_round);
+            };
+            $mol_assert_equal(build('cylinder'), [0, 1, 0]);
+            $mol_assert_unique(build('sphere'), build('cylinder'));
         },
         'billboard glyph axes are the camera basis under pitch and under roll'() {
             for (const rot of [[-Math.PI / 4, 0, 0], [0, 0, Math.PI / 6], [-0.3, 0.7, 0.2]]) {
@@ -57768,7 +57891,7 @@ var $;
                 const scene = new $bog_gamengine_scene;
                 scene.cam(cam);
                 scene.kids([text]);
-                text.billboard(true);
+                text.billboard('sphere');
                 cam.scale(new Float32Array([2, 2, 2]));
                 cam.rot(new Float32Array(rot));
                 const view = cam.world();
@@ -57792,7 +57915,7 @@ var $;
             const scene = new $bog_gamengine_scene;
             scene.cam(cam);
             scene.kids([text]);
-            text.billboard(true);
+            text.billboard('sphere');
             cam.rot(new Float32Array([0, 0, 0]));
             const version = text.pool().version;
             const world = [...text.world()];

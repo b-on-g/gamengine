@@ -3935,6 +3935,7 @@ declare namespace $ { }
 
 declare namespace $ {
     type $bog_gamengine_prop_kind = 'vec2' | 'vec3' | 'vec4' | 'number' | 'flag' | 'text' | 'frame' | 'euler' | 'list' | 'nodes' | 'node' | 'point';
+    type $bog_gamengine_billboard = '' | 'cylinder' | 'sphere';
     type $bog_gamengine_prop = {
         name: string;
         kind: $bog_gamengine_prop_kind;
@@ -3964,7 +3965,8 @@ declare namespace $ {
         rot(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         scale(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         tint(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
-        billboard(next?: boolean): boolean;
+        billboard(next?: $bog_gamengine_billboard): string;
+        billboard_kind(): $bog_gamengine_billboard;
         shader(next?: $bog_gamengine_shader | null): $bog_gamengine_shader | null;
         parent(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
         kids(next?: readonly $bog_gamengine_node[]): readonly $bog_gamengine_node[];
@@ -9410,7 +9412,7 @@ declare namespace $ {
 		ReturnType< $bog_gamengine_particle['color'] >
 	>
 	type $bog_gamengine_particle__billboard_bog_gamengine_demo_shooter_66 = $mol_type_enforce<
-		boolean
+		string
 		,
 		ReturnType< $bog_gamengine_particle['billboard'] >
 	>
