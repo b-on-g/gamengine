@@ -1,0 +1,240 @@
+$bog_gamengine_demo_legion $mol_page
+	title \Легион
+	key_map *
+	tools /
+		<= Mine_count $mol_labeler
+			title \Свои
+			content / <= mine_count \
+		<= Foe_count $mol_labeler
+			title \Враги
+			content / <= foe_count \
+		<= Sel_count $mol_labeler
+			title \Выбрано
+			content / <= sel_count \
+		<= Pause_switch $mol_check_box
+			title \Пауза
+			checked? <=> paused? false
+	body /
+		<= Field $mol_view
+			sub <= field /
+				<= Draw $bog_gamengine_draw
+					scene <= Scene
+					cam <= Cam
+					stat => stat
+					width => draw_width
+					height => draw_height
+					dpr => draw_dpr
+					event *
+						pointerdown? <=> pointer_down? null
+						pointermove? <=> pointer_move? null
+						pointerup? <=> pointer_up? null
+						pointerleave? <=> pointer_leave? null
+						wheel? <=> wheel? null
+						contextmenu? <=> menu? null
+				<= Band $mol_view
+					style *
+						left <= band_left \0px
+						top <= band_top \0px
+						width <= band_width \0px
+						height <= band_height \0px
+				<= Minimap $mol_view
+					sub <= dots /
+				<= End $mol_page
+					title <= end_title \
+					body /
+						<= End_hint $mol_view
+							sub / <= end_hint \
+					foot /
+						<= Again $mol_button_major
+							title \Ещё раз
+							click? <=> restart? null
+	foot /
+		<= Legion_stat $mol_view
+			sub / <= legion_stat \
+		<= Stat $mol_view
+			sub / <= stat
+	Dot* $mol_view
+		style *
+			left <= dot_left* \0%
+			top <= dot_top* \0%
+			background <= dot_back* \#fff
+	map \
+		\########################################
+		\#......................................#
+		\#..................##.o................#
+		\#.......##.........##.........##.......#
+		\#.......##.o.......##.......o.##.......#
+		\#..................##..................#
+		\#..................##..................#
+		\#.....#########....##....#########.....#
+		\#.....#########....##....#########.....#
+		\#..................##..................#
+		\#..................##..................#
+		\#......................................#
+		\#.............##........##.............#
+		\#.............##........##.............#
+		\#.............##...o....##.............#
+		\#...A.........##........##.........B...#
+		\#.............##....o...##.............#
+		\#.............##........##.............#
+		\#......................................#
+		\#..................##..................#
+		\#..................##..................#
+		\#.....#########....##....#########.....#
+		\#.....#########....##....#########.....#
+		\#..................##..................#
+		\#..................##..................#
+		\#.......##.o.......##.......o.##.......#
+		\#.......##.........##.........##.......#
+		\#................o.##..................#
+		\#......................................#
+		\########################################
+	Tile $bog_gamengine_phys_tile
+		map <= map
+		solid \#
+	Grid $bog_gamengine_nav_grid
+		tile <= Tile
+		pad 0.2
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/legion/atlas/mine.png
+			\bog/gamengine/demo/legion/atlas/foe.png
+			\bog/gamengine/demo/legion/atlas/floor.png
+			\bog/gamengine/demo/legion/atlas/wall.png
+			\bog/gamengine/demo/legion/atlas/res.png
+		size 64
+	Sound $bog_gamengine_sound
+		listener <= Cam
+		range 24
+		uris *
+			hit \bog/gamengine/demo/legion/sound/hit.wav
+			order \bog/gamengine/demo/legion/sound/order.wav
+	Point $bog_gamengine_point
+		cam <= Cam
+		width <= draw_width
+		height <= draw_height
+		scale <= draw_dpr
+	Clock $bog_gamengine_clock
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		cam <= Cam
+		kids <= nodes /
+		batches <= batches /
+	Cam $bog_gamengine_cam_flat
+		height 22
+		zoom? <=> cam_zoom? 1
+		zoom_min 0.6
+		zoom_max 3
+		pos? <=> cam_pos? Float32Array
+		bounds <= cam_bounds Float32Array
+	Edge $bog_gamengine_cam_edge
+		cam <= Cam
+		width <= draw_width
+		height <= draw_height
+		speed 14
+	Squad $bog_gamengine_nav_squad
+	Tilemap $bog_gamengine_tilemap
+		tile <= Tile
+		atlas <= Atlas
+		palette <= palette *
+	Tilemap_batch $bog_gamengine_batch
+		shader <= Sprite_shader $bog_gamengine_shader_sprite
+		atlas <= Atlas
+		source <= tilemap_pool null
+	Flash $bog_gamengine_particle
+		atlas <= Atlas
+		frame \res
+		rate 0
+		life <= flash_life Float32Array
+		speed <= flash_speed Float32Array
+		spread 3.15
+		size <= flash_size Float32Array
+		color <= flash_color Float32Array
+	Flash_batch $bog_gamengine_batch
+		shader <= Sprite_shader
+		atlas <= Atlas
+		source <= flash_pool null
+	Res* $bog_gamengine_sprite
+		atlas <= Atlas
+		frame \res
+		pos <= res_pos* Float32Array
+		size <= res_size Float32Array
+	Mine* $bog_gamengine_demo_legion_unit
+		camp 0
+		grid <= Grid
+		sound <= Sound
+		flash <= Flash
+		others <= mine_alive /
+		foes <= foe_alive /
+		brain <= Brain*
+		fight <= Mine_fight*
+		kids <= mine_kids* /
+		speed 3.4
+		pos? <=> mine_pos*? Float32Array
+		dead? => mine_dead*?
+	Mine_sprite* $bog_gamengine_sprite
+		parent <= Mine*
+		atlas <= Atlas
+		frame \mine
+		size <= unit_size Float32Array
+		tint <= mine_tint* Float32Array
+	Mine_fight* $bog_gamengine_combat
+		owner <= Mine*
+		health_max 40
+		rate 0.7
+	Brain* $bog_gamengine_brain_fsm
+		owner <= Mine*
+		kids <= brain_kids* /
+	Idle* $bog_gamengine_brain_state
+		name \idle
+		next <= idle_next /
+	Move* $bog_gamengine_brain_state
+		name \move
+		next <= move_next /
+	Attack* $bog_gamengine_brain_state
+		name \attack
+		next <= attack_next /
+	Fallen* $bog_gamengine_brain_state
+		name \dead
+	Foe* $bog_gamengine_demo_legion_unit
+		camp 1
+		grid <= Grid
+		sound <= Sound
+		flash <= Flash
+		others <= foe_alive /
+		foes <= mine_alive /
+		brain <= Tree*
+		fight <= Foe_fight*
+		kids <= foe_kids* /
+		home <= foe_home* Float32Array
+		speed 2.9
+		pos? <=> foe_pos*? Float32Array
+		dead? => foe_dead*?
+	Foe_sprite* $bog_gamengine_sprite
+		parent <= Foe*
+		atlas <= Atlas
+		frame \foe
+		size <= unit_size Float32Array
+	Foe_fight* $bog_gamengine_combat
+		owner <= Foe*
+		health_max 40
+		rate 0.7
+	Tree* $bog_gamengine_brain_bt
+		owner <= Foe*
+		kids <= tree_kids* /
+	Plan* $bog_gamengine_brain_bt_sel
+		kids <= plan_kids* /
+	Fight* $bog_gamengine_brain_bt_seq
+		kids <= fight_kids* /
+	Near* $bog_gamengine_brain_bt_cond
+		when \in_reach
+	Strike* $bog_gamengine_demo_legion_act
+		mode \attack
+	Hunt* $bog_gamengine_brain_bt_seq
+		kids <= hunt_kids* /
+	Seen* $bog_gamengine_brain_bt_cond
+		when \has_foe
+	Rush* $bog_gamengine_demo_legion_act
+		mode \move
+	Roam* $bog_gamengine_demo_legion_act
+		mode \patrol

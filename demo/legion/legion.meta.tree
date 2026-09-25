@@ -1,0 +1,7 @@
+deploy \/bog/gamengine/demo/legion/atlas/mine.png
+deploy \/bog/gamengine/demo/legion/atlas/foe.png
+deploy \/bog/gamengine/demo/legion/atlas/floor.png
+deploy \/bog/gamengine/demo/legion/atlas/wall.png
+deploy \/bog/gamengine/demo/legion/atlas/res.png
+deploy \/bog/gamengine/demo/legion/sound/hit.wav
+deploy \/bog/gamengine/demo/legion/sound/order.wav

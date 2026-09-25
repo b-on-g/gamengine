@@ -38,6 +38,8 @@ namespace $.$$ {
 
 		Shooter: spread,
 
+		Legion: spread,
+
 	} )
 
 }

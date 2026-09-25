@@ -10,6 +10,7 @@ namespace $.$$ {
 				this.Boxes().Key().keys(),
 				this.Jumper().Key().keys(),
 				this.Shooter().Key().keys(),
+				this.Legion().key_map(),
 			]
 			const keys: Record< string, ( state?: boolean )=> boolean > = {}
 			for( const map of maps ) {

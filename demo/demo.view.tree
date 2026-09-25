@@ -29,6 +29,7 @@ $bog_gamengine_demo $mol_book2_catalog
 		boxes <= Boxes $bog_gamengine_demo_boxes
 		jumper <= Jumper $bog_gamengine_demo_jumper
 		shooter <= Shooter $bog_gamengine_demo_shooter
+		legion <= Legion $bog_gamengine_demo_legion
 	Clock $bog_gamengine_clock
 		paused? => paused?
 	Scene $bog_gamengine_scene
