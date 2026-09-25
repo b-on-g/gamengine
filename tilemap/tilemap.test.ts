@@ -62,6 +62,20 @@ namespace $ {
 			$mol_assert_equal( box[ 4 ], 0 )
 		},
 
+		'shifted grid moves the drawing and the box with it'() {
+			const node = $bog_gamengine_tilemap_test_make()
+			const tile = node.tile()!
+			tile.origin([ 5, - 4 ])
+			$mol_assert_equal( node.emit(), 6 )
+			const pos = tile.cell_pos( 0, 0, new Float32Array( 3 ) )
+			$mol_assert_equal( [ pos[ 0 ], pos[ 1 ] ], [ 5.5, - 4.5 ] )
+			const trans = node.pool().trans
+			$mol_assert_equal( [ trans[ 12 ], trans[ 13 ] ], [ pos[ 0 ], pos[ 1 ] ] )
+			const box = node.aabb()
+			$mol_assert_equal( [ box[ 0 ], box[ 1 ] ], [ 5, - 4 - tile.height() ] )
+			$mol_assert_equal( [ box[ 3 ], box[ 4 ] ], [ 5 + tile.width(), - 4 ] )
+		},
+
 	})
 
 }

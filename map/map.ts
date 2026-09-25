@@ -15,6 +15,12 @@ namespace $ {
 		}
 
 		@ $mol_mem
+		origin( next?: ArrayLike< number > ): Float32Array {
+			if( !next ) return new Float32Array( 2 )
+			return next instanceof Float32Array ? next : new Float32Array( next )
+		}
+
+		@ $mol_mem
 		rows() {
 			return this.map().split( '\n' ) as readonly string[]
 		}
@@ -83,15 +89,16 @@ namespace $ {
 
 		place( cx: number, cy: number, lift: number, out: Float32Array ) {
 			const plane = this.plane()
+			const origin = this.origin()
 			if( plane === 'xz' ) {
-				out[ 0 ] = cx
+				out[ 0 ] = origin[ 0 ] + cx
 				out[ 1 ] = lift
-				out[ 2 ] = cy
+				out[ 2 ] = origin[ 1 ] + cy
 				return out
 			}
 			if( plane === 'xy' ) {
-				out[ 0 ] = cx
-				out[ 1 ] = - cy
+				out[ 0 ] = origin[ 0 ] + cx
+				out[ 1 ] = origin[ 1 ] - cy
 				out[ 2 ] = lift
 				return out
 			}

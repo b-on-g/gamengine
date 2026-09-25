@@ -20,8 +20,9 @@ namespace $ {
 		}
 
 		cell_at( wx: number, wy: number, out: Int32Array ) {
-			out[ 0 ] = Math.floor( wx )
-			out[ 1 ] = Math.floor( - wy )
+			const origin = this.origin()
+			out[ 0 ] = Math.floor( wx - origin[ 0 ] )
+			out[ 1 ] = Math.floor( origin[ 1 ] - wy )
 			return out
 		}
 

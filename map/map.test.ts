@@ -56,6 +56,16 @@ namespace $ {
 			$mol_assert_equal( [ ... map.spot_pos( '2_1', 0.5, new Float32Array( 3 ) ) ], [ 2.5, 0.5, 1.5 ] )
 		},
 
+		'origin moves the whole grid on both planes'() {
+			const map = $bog_gamengine_map_test_make()
+			map.origin([ 4, - 3 ])
+			$mol_assert_equal( [ ... map.pos( 0, 0, 0, new Float32Array( 3 ) ) ], [ 4.5, - 3.5, 0 ] )
+			$mol_assert_equal( [ ... map.pos( 2, 1, 0, new Float32Array( 3 ) ) ], [ 6.5, - 4.5, 0 ] )
+			const ground = $bog_gamengine_map_test_make( 'xz' )
+			ground.origin([ 4, 3 ])
+			$mol_assert_equal( [ ... ground.pos( 2, 1, 0.5, new Float32Array( 3 ) ) ], [ 6.5, 0.5, 4.5 ] )
+		},
+
 		'center sits in the middle of the map on both planes'() {
 			$mol_assert_equal( [ ... $bog_gamengine_map_test_make().center( 0, new Float32Array( 3 ) ) ], [ 2.5, - 2, 0 ] )
 			$mol_assert_equal( [ ... $bog_gamengine_map_test_make( 'xz' ).center( 0, new Float32Array( 3 ) ) ], [ 2.5, 0, 2 ] )

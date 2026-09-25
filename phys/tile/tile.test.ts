@@ -97,6 +97,19 @@ namespace $ {
 			$mol_assert_equal( tile.cell( at[ 0 ], at[ 1 ] ), true )
 		},
 
+		'shifted grid keeps drawing and passability on the same cell'() {
+			const tile = $bog_gamengine_phys_tile_test_make()
+			tile.origin([ 5, - 4 ])
+			const pos = tile.cell_pos( 1, 1, new Float32Array( 3 ) )
+			$mol_assert_equal( [ pos[ 0 ], pos[ 1 ] ], [ 6.5, - 5.5 ] )
+			const at = tile.cell_at( pos[ 0 ], pos[ 1 ], new Int32Array( 2 ) )
+			$mol_assert_equal( [ at[ 0 ], at[ 1 ] ], [ 1, 1 ] )
+			$mol_assert_equal( tile.solid_at( pos[ 0 ], pos[ 1 ] ), false )
+			const wall = tile.cell_pos( 0, 1, new Float32Array( 3 ) )
+			$mol_assert_equal( tile.solid_at( wall[ 0 ], wall[ 1 ] ), true )
+			$mol_assert_equal( tile.solid_at( 1.5, - 1.5 ), true )
+		},
+
 		'solid at a point uses the same cell as cell at'() {
 			const tile = $bog_gamengine_phys_tile_test_make()
 			const pos = tile.cell_pos( 1, 1, new Float32Array( 3 ) )

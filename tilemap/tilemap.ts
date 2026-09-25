@@ -84,9 +84,22 @@ namespace $ {
 		done_palette = null as Record< string, string > | null
 		done_world = new Float32Array( 16 )
 		done_tint = new Float32Array( 4 )
+		done_origin = new Float32Array( 2 )
 
-		fresh( map: string, world: Float32Array, size: number, palette: Record< string, string >, tint: Float32Array ) {
+		fresh(
+			map: string,
+			world: Float32Array,
+			size: number,
+			palette: Record< string, string >,
+			tint: Float32Array,
+			origin: Float32Array,
+		) {
 			let same = map === this.done_map && size === this.done_size && palette === this.done_palette
+			const done_origin = this.done_origin
+			for( let i = 0; i < 2; ++i ) {
+				if( origin[ i ] !== done_origin[ i ] ) same = false
+				done_origin[ i ] = origin[ i ]
+			}
 			const done_world = this.done_world
 			for( let i = 0; i < 16; ++i ) {
 				if( world[ i ] !== done_world[ i ] ) same = false
@@ -117,7 +130,7 @@ namespace $ {
 				pool.count = 0
 				return 0
 			}
-			if( this.fresh( tile.map(), world, size, palette, tint ) ) return pool.count
+			if( this.fresh( tile.map(), world, size, palette, tint, tile.origin() ) ) return pool.count
 
 			const rows = tile.rows()
 			let need = 0
@@ -181,10 +194,11 @@ namespace $ {
 			const world = this.world()
 			const size = this.size()
 			const half = size / 2
-			const left = 0.5 - half
-			const right = tile.width() - 0.5 + half
-			const top = - 0.5 + half
-			const bottom = - tile.height() + 0.5 - half
+			const origin = tile.origin()
+			const left = origin[ 0 ] + 0.5 - half
+			const right = origin[ 0 ] + tile.width() - 0.5 + half
+			const top = origin[ 1 ] - 0.5 + half
+			const bottom = origin[ 1 ] - tile.height() + 0.5 - half
 			for( let k = 0; k < 3; ++k ) {
 				box[ k ] = Infinity
 				box[ k + 3 ] = - Infinity
