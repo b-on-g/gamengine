@@ -1,0 +1,12 @@
+deploy \/bog/gamengine/demo/jumper/atlas/hero.png
+deploy \/bog/gamengine/demo/jumper/atlas/hero_1.png
+deploy \/bog/gamengine/demo/jumper/atlas/enemy.png
+deploy \/bog/gamengine/demo/jumper/atlas/coin.png
+deploy \/bog/gamengine/demo/jumper/atlas/spike.png
+deploy \/bog/gamengine/demo/jumper/atlas/flag.png
+deploy \/bog/gamengine/demo/jumper/atlas/ground.png
+deploy \/bog/gamengine/demo/jumper/atlas/platform.png
+deploy \/bog/gamengine/demo/jumper/atlas/sky.png
+deploy \/bog/gamengine/demo/jumper/sound/jump.wav
+deploy \/bog/gamengine/demo/jumper/sound/coin.wav
+deploy \/bog/gamengine/demo/jumper/sound/death.wav

@@ -1,6 +1,6 @@
 namespace $ {
 
-	export class $bog_jumper_hero extends $bog_gamengine_phys_body {
+	export class $bog_gamengine_demo_jumper_hero extends $bog_gamengine_phys_body {
 
 		@ $mol_mem
 		input( next?: $bog_gamengine_input | null ) {
@@ -137,7 +137,7 @@ namespace $ {
 			this.face_left( false )
 		}
 
-		take( item: $bog_jumper_item ) {
+		take( item: $bog_gamengine_demo_jumper_item ) {
 			const role = item.role()
 			if( role === 'coin' ) {
 				if( item.taken() ) return
@@ -150,7 +150,7 @@ namespace $ {
 			if( role === 'flag' ) this.won( true )
 		}
 
-		clash( enemy: $bog_jumper_enemy ) {
+		clash( enemy: $bog_gamengine_demo_jumper_enemy ) {
 			if( enemy.dead() ) return
 			const vel = this.vel()
 			if( vel[ 1 ] < 0 && this.pos()[ 1 ] > enemy.pos()[ 1 ] + 0.2 ) {
@@ -166,8 +166,8 @@ namespace $ {
 
 		hit( other: $bog_gamengine_phys_body | null ) {
 			if( !other || this.frozen() ) return
-			if( other instanceof $bog_jumper_item ) return this.take( other )
-			if( other instanceof $bog_jumper_enemy ) this.clash( other )
+			if( other instanceof $bog_gamengine_demo_jumper_item ) return this.take( other )
+			if( other instanceof $bog_gamengine_demo_jumper_enemy ) this.clash( other )
 		}
 
 	}

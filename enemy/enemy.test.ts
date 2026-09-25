@@ -12,7 +12,7 @@ namespace $ {
 		left.name( 'left' )
 		left.next([ { to: 'right', when: 'edge_left' } ])
 		brain.kids([ right, left ])
-		const enemy = new $bog_jumper_enemy
+		const enemy = new $bog_gamengine_demo_jumper_enemy
 		enemy.tile( tile )
 		enemy.brain( brain )
 		enemy.pos( new Float32Array([ 1.5, -0.6, 0 ]) )

@@ -1,6 +1,6 @@
 namespace $ {
 
-	export class $bog_jumper_enemy extends $bog_gamengine_phys_body {
+	export class $bog_gamengine_demo_jumper_enemy extends $bog_gamengine_phys_body {
 
 		@ $mol_mem
 		tile( next?: $bog_gamengine_phys_tile | null ) {

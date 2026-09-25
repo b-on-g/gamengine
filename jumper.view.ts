@@ -1,10 +1,6 @@
 namespace $.$$ {
 
-	export class $bog_jumper_app extends $.$bog_jumper_app {
-
-		key_map() {
-			return this.Key().keys()
-		}
+	export class $bog_gamengine_demo_jumper extends $.$bog_gamengine_demo_jumper {
 
 		@ $mol_mem
 		cell_ids() {

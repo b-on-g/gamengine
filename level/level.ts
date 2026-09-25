@@ -1,6 +1,6 @@
 namespace $ {
 
-	export class $bog_jumper_level extends $mol_object2 {
+	export class $bog_gamengine_demo_jumper_level extends $mol_object2 {
 
 		@ $mol_mem
 		tile( next?: $bog_gamengine_phys_tile | null ) {

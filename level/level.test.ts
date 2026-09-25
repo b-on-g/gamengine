@@ -6,7 +6,7 @@ namespace $ {
 		const tile = new $bog_gamengine_phys_tile
 		tile.map( map )
 		tile.solid( '#=' )
-		const level = new $bog_jumper_level
+		const level = new $bog_gamengine_demo_jumper_level
 		level.tile( tile )
 		return level
 	}

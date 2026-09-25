@@ -7,7 +7,7 @@ namespace $ {
 		key.bind({ jump: [ 'space' ], left: [ 'A' ], right: [ 'D' ] })
 		const input = new $bog_gamengine_input
 		input.key( key )
-		const hero = new $bog_jumper_hero
+		const hero = new $bog_gamengine_demo_jumper_hero
 		hero.input( input )
 		hero.start( new Float32Array([ 0.5, -0.6, 0 ]) )
 		hero.pos( new Float32Array([ 0.5, y, 0 ]) )
@@ -39,7 +39,7 @@ namespace $ {
 
 		'hero touching a coin takes it once'() {
 			const { hero } = hero_test( -0.6 )
-			const coin = new $bog_jumper_item
+			const coin = new $bog_gamengine_demo_jumper_item
 			coin.role( 'coin' )
 			hero.hit( coin )
 			hero.hit( coin )
@@ -49,7 +49,7 @@ namespace $ {
 
 		'hero touching a spike loses a life and starts over'() {
 			const { hero } = hero_test( -0.6 )
-			const spike = new $bog_jumper_item
+			const spike = new $bog_gamengine_demo_jumper_item
 			spike.role( 'spike' )
 			hero.hit( spike )
 			$mol_assert_equal( hero.lives(), 2 )
@@ -58,7 +58,7 @@ namespace $ {
 
 		'hero reaching the flag wins and stands still'() {
 			const { hero, key } = hero_test( -0.6 )
-			const flag = new $bog_jumper_item
+			const flag = new $bog_gamengine_demo_jumper_item
 			flag.role( 'flag' )
 			hero.hit( flag )
 			$mol_assert_equal( hero.won(), true )
@@ -69,14 +69,14 @@ namespace $ {
 
 		'hero falling on an enemy kills it, touching aside loses a life'() {
 			const stomp = hero_test( -0.6 ).hero
-			const enemy = new $bog_jumper_enemy
+			const enemy = new $bog_gamengine_demo_jumper_enemy
 			enemy.pos( new Float32Array([ 0.5, -1.4, 0 ]) )
 			stomp.vel( new Float32Array([ 0, -5, 0 ]) )
 			stomp.hit( enemy )
 			$mol_assert_equal( enemy.dead(), true )
 			$mol_assert_ok( stomp.vel()[ 1 ] > 0 )
 			const side = hero_test( -0.6 ).hero
-			const walker = new $bog_jumper_enemy
+			const walker = new $bog_gamengine_demo_jumper_enemy
 			walker.pos( new Float32Array([ 1.2, -0.6, 0 ]) )
 			side.hit( walker )
 			$mol_assert_equal( walker.dead(), false )

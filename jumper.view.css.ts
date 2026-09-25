@@ -1,6 +1,6 @@
 namespace $.$$ {
 
-	$mol_style_define( $bog_jumper_app, {
+	$mol_style_define( $bog_gamengine_demo_jumper, {
 
 		flex: {
 			grow: 1,

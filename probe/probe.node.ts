@@ -1,14 +1,14 @@
 namespace $ {
 
-	export const $bog_jumper_probe_page = 'bog/jumper/app/-/index.html'
+	export const $bog_gamengine_demo_jumper_probe_page = 'bog/gamengine/demo/-/index.html#!demo=jumper'
 
-	export const $bog_jumper_probe_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0`
+	export const $bog_gamengine_demo_jumper_probe_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0`
 
-	export const $bog_jumper_probe_ok = 'герой стоит на земле, прыгает и садится обратно, идёт вправо и берёт монету, центр не чёрный'
+	export const $bog_gamengine_demo_jumper_probe_ok = 'герой стоит на земле, прыгает и садится обратно, идёт вправо и берёт монету, центр не чёрный'
 
-	export const $bog_jumper_probe_flags = [ '--use-angle=swiftshader' ] as const
+	export const $bog_gamengine_demo_jumper_probe_flags = [ '--use-angle=swiftshader' ] as const
 
-	export const $bog_jumper_probe_script = `
+	export const $bog_gamengine_demo_jumper_probe_script = `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 		const canvas = document.querySelector( 'canvas' )
 		const gl = canvas && canvas.getContext( 'webgl2' )
@@ -56,30 +56,30 @@ namespace $ {
 		}
 	`
 
-	export type $bog_jumper_probe_hero = {
+	export type $bog_gamengine_demo_jumper_probe_hero = {
 		readonly x: number
 		readonly y: number
 		readonly lives: number
 		readonly coins: number
 	}
 
-	export type $bog_jumper_probe_result = {
+	export type $bog_gamengine_demo_jumper_probe_result = {
 		readonly webgl: boolean
 		readonly loaded: boolean
-		readonly start?: $bog_jumper_probe_hero
+		readonly start?: $bog_gamengine_demo_jumper_probe_hero
 		readonly top?: number
-		readonly land?: $bog_jumper_probe_hero | null
-		readonly moved?: $bog_jumper_probe_hero | null
-		readonly rest?: $bog_jumper_probe_hero | null
+		readonly land?: $bog_gamengine_demo_jumper_probe_hero | null
+		readonly moved?: $bog_gamengine_demo_jumper_probe_hero | null
+		readonly rest?: $bog_gamengine_demo_jumper_probe_hero | null
 		readonly low?: number
 		readonly high?: number
 		readonly center?: readonly [ number, number, number, number ]
 		readonly size?: readonly [ number, number ]
 	}
 
-	export async function $bog_jumper_probe_check(
+	export async function $bog_gamengine_demo_jumper_probe_check(
 		root = $node.process.cwd(),
-		flags: readonly string[] = $bog_jumper_probe_flags,
+		flags: readonly string[] = $bog_gamengine_demo_jumper_probe_flags,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
@@ -89,12 +89,12 @@ namespace $ {
 		const got = await $bog_probe_run({
 			root,
 			flags,
-			page: $bog_jumper_probe_page,
-			ready: $bog_jumper_probe_ready,
-			script: $bog_jumper_probe_script,
+			page: $bog_gamengine_demo_jumper_probe_page,
+			ready: $bog_gamengine_demo_jumper_probe_ready,
+			script: $bog_gamengine_demo_jumper_probe_script,
 			width: 1024,
 			height: 768,
-		}) as $bog_jumper_probe_result | typeof $bog_probe_skip
+		}) as $bog_gamengine_demo_jumper_probe_result | typeof $bog_probe_skip
 
 		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
 
@@ -113,7 +113,7 @@ namespace $ {
 		const [ r, g, b ] = got.center!
 		if( r < 40 && g < 40 && b < 40 ) return fail( 'центр чёрный, уровень не нарисован' )
 
-		return say( $bog_jumper_probe_ok )
+		return say( $bog_gamengine_demo_jumper_probe_ok )
 	}
 
 }
