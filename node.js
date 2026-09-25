@@ -11980,6 +11980,36 @@ var $;
             }
             return out;
         }
+        line_free(x0, y0, x1, y1, pad, per, solid) {
+            const plane = this.plane();
+            if (plane !== 'xy' && plane !== 'xz') {
+                return $mol_fail(new Error(`Map plane ${plane} is unknown, known: xy, xz`));
+            }
+            const down = plane === 'xy';
+            const origin = this.origin();
+            const ox = origin[0];
+            const ov = origin[1];
+            const width = this.width();
+            const height = this.height();
+            const dx = x1 - x0;
+            const dv = y1 - y0;
+            const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dv)) * per);
+            for (let i = 0; i <= steps; ++i) {
+                const t = steps === 0 ? 0 : i / steps;
+                const x = x0 + dx * t;
+                const v = y0 + dv * t;
+                for (let k = 0; k < 4; ++k) {
+                    const sx = Math.floor((k & 1 ? x + pad : x - pad) - ox);
+                    const sv = k & 2 ? v + pad : v - pad;
+                    const sy = Math.floor(down ? ov - sv : sv - ov);
+                    if (sx < 0 || sy < 0 || sx >= width || sy >= height)
+                        return false;
+                    if (solid[sy * width + sx])
+                        return false;
+                }
+            }
+            return true;
+        }
         cell_pos(x, y, out) {
             return this.pos(x, y, 0, out);
         }
@@ -19405,24 +19435,10 @@ var $;
             return count;
         }
         visible(x0, y0, x1, y1) {
-            const pad = this.pad();
-            const dx = x1 - x0;
-            const dy = y1 - y0;
-            const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) * 4);
-            for (let i = 0; i <= steps; ++i) {
-                const t = steps === 0 ? 0 : i / steps;
-                const x = x0 + dx * t;
-                const y = y0 + dy * t;
-                if (this.solid_at(x - pad, y - pad))
-                    return false;
-                if (this.solid_at(x + pad, y - pad))
-                    return false;
-                if (this.solid_at(x - pad, y + pad))
-                    return false;
-                if (this.solid_at(x + pad, y + pad))
-                    return false;
-            }
-            return true;
+            const tile = this.tile();
+            if (!tile)
+                return false;
+            return tile.line_free(x0, y0, x1, y1, this.pad(), 4, this.solid());
         }
         smooth(path, count, out) {
             if (count === 0)

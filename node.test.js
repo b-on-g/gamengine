@@ -11971,6 +11971,36 @@ var $;
             }
             return out;
         }
+        line_free(x0, y0, x1, y1, pad, per, solid) {
+            const plane = this.plane();
+            if (plane !== 'xy' && plane !== 'xz') {
+                return $mol_fail(new Error(`Map plane ${plane} is unknown, known: xy, xz`));
+            }
+            const down = plane === 'xy';
+            const origin = this.origin();
+            const ox = origin[0];
+            const ov = origin[1];
+            const width = this.width();
+            const height = this.height();
+            const dx = x1 - x0;
+            const dv = y1 - y0;
+            const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dv)) * per);
+            for (let i = 0; i <= steps; ++i) {
+                const t = steps === 0 ? 0 : i / steps;
+                const x = x0 + dx * t;
+                const v = y0 + dv * t;
+                for (let k = 0; k < 4; ++k) {
+                    const sx = Math.floor((k & 1 ? x + pad : x - pad) - ox);
+                    const sv = k & 2 ? v + pad : v - pad;
+                    const sy = Math.floor(down ? ov - sv : sv - ov);
+                    if (sx < 0 || sy < 0 || sx >= width || sy >= height)
+                        return false;
+                    if (solid[sy * width + sx])
+                        return false;
+                }
+            }
+            return true;
+        }
         cell_pos(x, y, out) {
             return this.pos(x, y, 0, out);
         }
@@ -19396,24 +19426,10 @@ var $;
             return count;
         }
         visible(x0, y0, x1, y1) {
-            const pad = this.pad();
-            const dx = x1 - x0;
-            const dy = y1 - y0;
-            const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) * 4);
-            for (let i = 0; i <= steps; ++i) {
-                const t = steps === 0 ? 0 : i / steps;
-                const x = x0 + dx * t;
-                const y = y0 + dy * t;
-                if (this.solid_at(x - pad, y - pad))
-                    return false;
-                if (this.solid_at(x + pad, y - pad))
-                    return false;
-                if (this.solid_at(x - pad, y + pad))
-                    return false;
-                if (this.solid_at(x + pad, y + pad))
-                    return false;
-            }
-            return true;
+            const tile = this.tile();
+            if (!tile)
+                return false;
+            return tile.line_free(x0, y0, x1, y1, this.pad(), 4, this.solid());
         }
         smooth(path, count, out) {
             if (count === 0)
@@ -53116,6 +53132,56 @@ var $;
             const wall = tile.cell_pos(0, 1, new Float32Array(3));
             $mol_assert_equal(tile.solid_at(wall[0], wall[1]), true);
             $mol_assert_equal(tile.solid_at(1.5, -1.5), true);
+        },
+        'line free answers exactly what the per sample walk answered'() {
+            for (const [map, plane] of [
+                ['#####\n#...#\n#.#.#\n#...#\n#####', 'xy'],
+                ['#####\n#...#\n#.#.#\n#...#\n#####', 'xz'],
+                ['#..#\n##\n#\n#..##', 'xy'],
+            ]) {
+                const tile = new $bog_gamengine_phys_tile;
+                tile.map(map);
+                tile.plane(plane);
+                tile.origin([3, -2]);
+                const width = tile.width();
+                const height = tile.height();
+                const solid = tile.cells(new Uint8Array(width * height), width, height);
+                const pad = 0.3;
+                const walk = (x0, y0, x1, y1) => {
+                    const dx = x1 - x0;
+                    const dv = y1 - y0;
+                    const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dv)) * 4);
+                    const at = new Int32Array(2);
+                    for (let i = 0; i <= steps; ++i) {
+                        const t = steps === 0 ? 0 : i / steps;
+                        const x = x0 + dx * t;
+                        const v = y0 + dv * t;
+                        for (let k = 0; k < 4; ++k) {
+                            tile.cell_at(k & 1 ? x + pad : x - pad, k & 2 ? v + pad : v - pad, at);
+                            if (at[0] < 0 || at[1] < 0 || at[0] >= width || at[1] >= height)
+                                return false;
+                            if (solid[at[1] * width + at[0]])
+                                return false;
+                        }
+                    }
+                    return true;
+                };
+                for (let a = 0; a < 6; ++a) {
+                    for (let b = 0; b < 6; ++b) {
+                        const x0 = 3 + a * 0.9;
+                        const y0 = plane === 'xy' ? -2 - b * 0.9 : -2 + b * 0.9;
+                        const x1 = 3 + b * 0.7 + 0.5;
+                        const y1 = plane === 'xy' ? -2 - a * 0.7 - 0.5 : -2 + a * 0.7 + 0.5;
+                        $mol_assert_equal(tile.line_free(x0, y0, x1, y1, pad, 4, solid), walk(x0, y0, x1, y1));
+                    }
+                }
+            }
+        },
+        'line free on an unknown plane falls instead of guessing'() {
+            const tile = new $bog_gamengine_phys_tile;
+            tile.map('###\n#.#\n###');
+            tile.plane('zx');
+            $mol_assert_fail(() => tile.line_free(0.5, -0.5, 2.5, -2.5, 0.3, 4, new Uint8Array(9)), 'Map plane zx is unknown, known: xy, xz');
         },
         'cells fills in bulk exactly what cell answers one by one'() {
             for (const map of [

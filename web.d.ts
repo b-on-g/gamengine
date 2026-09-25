@@ -4338,6 +4338,7 @@ declare namespace $ {
         solid(next?: string): string;
         cell(x: number, y: number): boolean;
         cells(out: Uint8Array, width: number, height: number): Uint8Array<ArrayBufferLike>;
+        line_free(x0: number, y0: number, x1: number, y1: number, pad: number, per: number, solid: Uint8Array): boolean;
         cell_pos(x: number, y: number, out: Float32Array): Float32Array<ArrayBufferLike>;
         cell_at(wx: number, wv: number, out: Int32Array): Int32Array<ArrayBufferLike>;
         spot: Float32Array<ArrayBuffer>;
