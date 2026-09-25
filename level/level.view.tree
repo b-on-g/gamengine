@@ -1,48 +1,59 @@
-$bog_crumb2_level $bog_gamengine_studio_sample_map
-	atlas <= Atlas
-	map \
-		\############
-		\#....##....#
-		\#.##....##.#
-		\#.#......#.#
-		\#....##....#
-		\#.#......#.#
-		\#.##....##.#
-		\#.....#....#
-		\############
-	palette *
-		# \wall
-		. \floor
+$bog_crumb2_level $bog_gamengine_scene
+	phys <= Phys $bog_gamengine_phys
+		tile <= Tile
+		bodies /
+			<= Hero
+	Tile $bog_gamengine_phys_tile
+		map \
+			\######
+			\#..#.#
+			\#..#.#
+			\#.#..#
+			\######
 	kids /
-		<= Walker_1 $bog_gamengine_phys_walker
-			name \Ходок
-			size <= Walker_1_size Float32Array
-			pos? <=> Walker_1_pos? Float32Array
+		<= Tiles $bog_gamengine_tilemap
+			name \Карта
+			tile <= Tile
+			atlas <= Atlas
+			palette *
+				# \wall
+				. \floor
+		<= Hero $bog_gamengine_phys_walker
+			name \Герой
+			pos? <=> Hero_pos? Float32Array
+			size? <=> Hero_size? Float32Array
+			speed 3
+			role \hero
+		<= Coin $bog_gamengine_sprite
+			name \Монета
+			atlas <= Atlas
+			frame \coin
+			pos? <=> Coin_pos? Float32Array
+			role \crumb
 		<= Sprite_1 $bog_gamengine_sprite
 			name \coin
 			atlas <= Atlas
 			frame \coin
-			pos <= Sprite_1_pos Float32Array
+			pos? <=> Sprite_1_pos? Float32Array
+			role \crumb
 		<= Sprite_2 $bog_gamengine_sprite
 			name \coin
 			atlas <= Atlas
 			frame \coin
-			pos <= Sprite_2_pos Float32Array
+			pos? <=> Sprite_2_pos? Float32Array
+			role \crumb
 		<= Sprite_3 $bog_gamengine_sprite
 			name \coin
 			atlas <= Atlas
 			frame \coin
-			pos <= Sprite_3_pos Float32Array
+			pos? <=> Sprite_3_pos? Float32Array
+			role \crumb
 		<= Sprite_4 $bog_gamengine_sprite
 			name \coin
 			atlas <= Atlas
 			frame \coin
-			pos <= Sprite_4_pos Float32Array
-		<= Sprite_5 $bog_gamengine_sprite
-			name \coin
-			atlas <= Atlas
-			frame \coin
-			pos <= Sprite_5_pos Float32Array
+			pos? <=> Sprite_4_pos? Float32Array
+			role \crumb
 	Atlas $bog_gamengine_atlas
 		uris /
 			\bog/gamengine/demo/atlas/hero.png
@@ -50,10 +61,3 @@ $bog_crumb2_level $bog_gamengine_studio_sample_map
 			\bog/gamengine/demo/atlas/wall.png
 			\bog/gamengine/demo/atlas/floor.png
 		size 64
-	Tile $bog_gamengine_phys_tile
-		map <= map
-	Phys $bog_gamengine_phys
-		tile <= Tile
-		bodies /
-			<= Walker_1
-	phys <= Phys

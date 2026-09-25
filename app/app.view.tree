@@ -13,22 +13,20 @@ $bog_crumb2_app $mol_page
 		<= Pause_switch $mol_check_box
 			title \Пауза
 			checked? <=> paused? false
-	body /
-		<= Field $mol_view
-			sub <= field /
-				<= Draw $bog_gamengine_draw
-					scene <= Scene
-					cam <= Cam
-					stat => stat
-				<= End $mol_page
-					title <= end_title \
-					body /
-						<= End_hint $mol_view
-							sub / <= end_hint \
-					foot /
-						<= Again $mol_button_major
-							title \Ещё раз
-							click? <=> restart? null
+	body <= field /
+		<= Draw $bog_gamengine_draw
+			scene <= Scene
+			cam <= Cam
+			stat => stat
+		<= End $mol_page
+			title <= end_title \
+			body /
+				<= End_hint $mol_view
+					sub / <= end_hint \
+			foot /
+				<= Again $mol_button_major
+					title \Ещё раз
+					click? <=> restart? null
 	foot /
 		<= Hero_stat $mol_view
 			sub / <= hero_str \
@@ -59,7 +57,7 @@ $bog_crumb2_app $mol_page
 		clock <= Clock
 		input <= Input
 		cam <= Cam
-		kids <= nodes /
+		auto_nodes <= nodes /
 	Rule $bog_crumb2_rule
 		hero <= hero null
 		crumbs <= crumbs /

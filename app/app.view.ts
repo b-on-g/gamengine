@@ -18,13 +18,11 @@ namespace $.$$ {
 		}
 
 		hero() {
-			return this.Scene().Walker_1()
+			return this.Scene().by_role_one( 'hero' ) as $bog_gamengine_phys_walker
 		}
 
-		@ $mol_mem
 		crumbs() {
-			const level = this.Scene()
-			return [ level.Sprite_1(), level.Sprite_2(), level.Sprite_3(), level.Sprite_4(), level.Sprite_5() ]
+			return this.Scene().by_role( 'crumb' )
 		}
 
 		@ $mol_mem
@@ -76,7 +74,7 @@ namespace $.$$ {
 		restart( next?: any ) {
 			if( next === undefined ) return null
 			this.Rule().restart()
-			this.hero().pos( new Float32Array([ 1, -1.5, 0 ]) )
+			this.hero().pos( new Float32Array([ 1.5, -1.5, 0 ]) )
 			this.hero().vel( new Float32Array( 3 ) )
 			this.Clock().time( 0 )
 			return null
