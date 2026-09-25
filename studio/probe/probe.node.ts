@@ -972,6 +972,56 @@ namespace $ {
 		readonly mates: number
 	}
 
+	export const $bog_gamengine_studio_probe_alone_ok = 'редактор с мастером в адресе поднялся, объявил свой ленд и показал документ'
+
+	export async function $bog_gamengine_studio_probe_alone(
+		root = $node.process.cwd(),
+		flags: readonly string[] = $bog_gamengine_studio_probe_flags,
+	) {
+
+		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
+
+		const bin = $bog_probe_chrome_bin()
+		if( !bin ) return say( $bog_probe_skip )
+
+		const started = Date.now()
+		const site = await new $bog_probe_static( String( $node.path.resolve( root ) ) ).open()
+		const window = await $bog_gamengine_studio_probe_window( bin, flags, 1600, 800 )
+
+		try {
+
+			const page = site.uri( $bog_gamengine_studio_probe_live_page )
+
+			await window.browser.open_page(
+				`${ page }#!demo=studio/master=${ $bog_gamengine_studio_probe_master }`,
+				$bog_gamengine_studio_probe_live_ready,
+				60000,
+			)
+
+			const head = await window.browser.evaluate(
+				$bog_gamengine_studio_probe_head_script, 15000,
+			) as $bog_gamengine_studio_probe_head
+
+			const source = await window.browser.evaluate(
+				`return document.querySelector( '[bog_gamengine_studio_source] textarea' )?.value?.length ?? -1`, 15000,
+			) as number
+
+			say( `${ Date.now() - started } мс, ${ JSON.stringify( head ) }, исходник ${ source } знаков` )
+
+			if( !head.me ) return $mol_fail( new Error( 'редактор не показал свой id' ) )
+			if( !head.land ) return $mol_fail( new Error( 'редактор не показал ленд документа' ) )
+			if( !( source > 0 ) ) return $mol_fail( new Error( 'редактор не показал документ' ) )
+
+			return say( $bog_gamengine_studio_probe_alone_ok )
+
+		} finally {
+			window.browser.close()
+			site.close()
+			try { $node.fs.rmSync( window.profile, { recursive: true, force: true } ) } catch( error ) {}
+		}
+
+	}
+
 	export function $bog_gamengine_studio_probe_master_alive( port = 9090 ) {
 		return new Promise< boolean >( done => {
 			const socket = $node.net.connect( port, '127.0.0.1' )

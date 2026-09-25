@@ -27,9 +27,19 @@ namespace $ {
 			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_studio_probe_keep_ok ) )
 		},
 
-		'second editor sees the scene edit of the first through a land within 500 ms'() {
-			const out = $bog_probe_test( 'bog/gamengine/studio/probe/-/node.js', 'bog_gamengine_studio_probe_live' )
-			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_studio_probe_no_master, $bog_gamengine_studio_probe_live_ok ) )
+		'editor asked for a master comes up on its own, declares its land and shows the document'() {
+			const out = $bog_probe_test( 'bog/gamengine/studio/probe/-/node.js', 'bog_gamengine_studio_probe_alone' )
+			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_studio_probe_alone_ok ) )
+		},
+
+		'skipping the live scenario, passing it and coming up alone are three different sayings'() {
+			const said: readonly string[] = [
+				$bog_gamengine_studio_probe_no_master,
+				$bog_gamengine_studio_probe_live_ok,
+				$bog_gamengine_studio_probe_alone_ok,
+			]
+			for( const one of said ) $mol_assert_ok( one.length > 0 )
+			$mol_assert_equal( new Set( said ).size, said.length )
 		},
 
 	})
