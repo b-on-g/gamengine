@@ -8,7 +8,7 @@ namespace $.$$ {
 		[ 3.5, -4.5 ],
 	] as const
 
-	export class $bog_crumb_app extends $.$bog_crumb_app {
+	export class $bog_gamengine_demo_crumb extends $.$bog_gamengine_demo_crumb {
 
 		key_map() {
 			return {

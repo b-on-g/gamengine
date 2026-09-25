@@ -1,6 +1,6 @@
 namespace $ {
 
-	export class $bog_crumb_rule extends $bog_gamengine_node {
+	export class $bog_gamengine_demo_crumb_rule extends $bog_gamengine_node {
 
 		@ $mol_mem
 		hero( next?: $bog_gamengine_node | null ) {

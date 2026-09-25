@@ -4,13 +4,13 @@ namespace $.$$ {
 		{
 			id: 'crumb_rule',
 			title: 'Правило крошек',
-			klass: '$bog_crumb_rule',
+			klass: '$bog_gamengine_demo_crumb_rule',
 			props: { name: '\\Правило', reach: '0.6', limit: '40' },
 			world: '',
 		},
 	]
 
-	export class $bog_crumb_studio extends $.$bog_crumb_studio {
+	export class $bog_gamengine_demo_crumb_studio extends $.$bog_gamengine_demo_crumb_studio {
 
 		@ $mol_mem
 		Kit() {

@@ -1,6 +1,6 @@
 namespace $ {
 
-	export class $bog_crumb_hero extends $bog_gamengine_phys_body {
+	export class $bog_gamengine_demo_crumb_hero extends $bog_gamengine_phys_body {
 
 		@ $mol_mem
 		input( next?: $bog_gamengine_input | null ) {

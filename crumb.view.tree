@@ -1,8 +1,6 @@
-$bog_crumb_app $mol_page
+$bog_gamengine_demo_crumb $mol_page
 	title \Крошки
-	plugins /
-		<= Control $mol_keyboard_state
-			key <= key_map *
+	key_map *
 	tools /
 		<= Left_label $mol_labeler
 			title \Осталось
@@ -85,7 +83,7 @@ $bog_crumb_app $mol_page
 		tile <= Tile
 		atlas <= Atlas
 		palette <= palette *
-	Hero $bog_crumb_hero
+	Hero $bog_gamengine_demo_crumb_hero
 		input <= Input
 		pos? <=> hero_pos? Float32Array
 	Hero_sprite $bog_gamengine_sprite
@@ -98,7 +96,7 @@ $bog_crumb_app $mol_page
 		frame \coin
 		pos <= crumb_pos* Float32Array
 		size <= crumb_size Float32Array
-	Rule $bog_crumb_rule
+	Rule $bog_gamengine_demo_crumb_rule
 		hero <= Hero
 		crumbs <= crumbs /
 		limit 40
