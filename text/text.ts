@@ -96,11 +96,7 @@ namespace $ {
 		}
 
 		width() {
-			const value = this.value()
-			const font = this.font()
-			let total = 0
-			for( let i = 0; i < value.length; ++i ) total += font.advance( value[ i ] )
-			return total * this.height()
+			return this.font().total( this.value() ) * this.height()
 		}
 
 		box_local() {
@@ -125,6 +121,7 @@ namespace $ {
 		}
 
 		axes = new Float32Array( 16 )
+		steps = new Float64Array( 0 )
 		watch = new $bog_gamengine_watch
 
 		emit() {
@@ -168,14 +165,16 @@ namespace $ {
 			const aabb = pool.aabb
 			const radius = height * $bog_gamengine_batch_scale_max( axes ) * Math.SQRT1_2
 
+			if( this.steps.length < value.length ) this.steps = new Float64Array( value.length )
+			const steps = font.advances( value, this.steps )
 			let total = 0
-			for( let i = 0; i < value.length; ++i ) total += font.advance( value[ i ] )
+			for( let i = 0; i < value.length; ++i ) total += steps[ i ]
 			let pen = align === 'center' ? - total * height / 2 : align === 'right' ? - total * height : 0
 
 			let count = 0
 			for( let i = 0; i < value.length; ++i ) {
 				const char = value[ i ]
-				const step = font.advance( char ) * height
+				const step = steps[ i ] * height
 				const dx = pen + step / 2
 				pen += step
 				if( char === ' ' ) continue

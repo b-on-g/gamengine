@@ -5,6 +5,8 @@ namespace $ {
 		advance: ReadonlyMap< string, number >
 	}
 
+	export const $bog_gamengine_text_font_advance_miss = 0.6
+
 	export const $bog_gamengine_text_font_chars =
 		' !"#%&\'()*+,-./0123456789:;<=>?@'
 		+ 'ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_'
@@ -87,7 +89,24 @@ namespace $ {
 		}
 
 		advance( char: string ) {
-			return this.glyphs().advance.get( char ) ?? 0.6
+			return this.glyphs().advance.get( char ) ?? $bog_gamengine_text_font_advance_miss
+		}
+
+		advances( value: string, out: Float64Array ) {
+			const advance = this.glyphs().advance
+			for( let i = 0; i < value.length; ++ i ) {
+				out[ i ] = advance.get( value[ i ] ) ?? $bog_gamengine_text_font_advance_miss
+			}
+			return out
+		}
+
+		total( value: string ) {
+			const advance = this.glyphs().advance
+			let sum = 0
+			for( let i = 0; i < value.length; ++ i ) {
+				sum += advance.get( value[ i ] ) ?? $bog_gamengine_text_font_advance_miss
+			}
+			return sum
 		}
 
 	}
