@@ -4,9 +4,13 @@ namespace $ {
 
 	export const $bog_gamengine_demo_jumper_probe_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0`
 
-	export const $bog_gamengine_demo_jumper_probe_ok = 'герой стоит на земле, прыгает и садится обратно, идёт вправо и берёт монету, центр не чёрный'
+	export const $bog_gamengine_demo_jumper_probe_ok = 'герой стоит на земле, прыгает и садится обратно, идёт вправо и берёт монету, центр не чёрный, узлы сцены шагают сами без ввода'
 
 	export const $bog_gamengine_demo_jumper_probe_flags = [ '--use-angle=swiftshader' ] as const
+
+	export const $bog_gamengine_demo_jumper_probe_stir_frames = 30
+
+	export const $bog_gamengine_demo_jumper_probe_stir_gap = 0.05
 
 	export const $bog_gamengine_demo_jumper_probe_script = `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
@@ -48,10 +52,39 @@ namespace $ {
 		key( 68, 'keyup' )
 		for( let i = 0; i < 10; ++ i ) await frame()
 		const rest = read()
+		const page = $$.$bog_gamengine_demo.Root( 0 ).Jumper()
+		const spots = ()=> {
+			const out = {}
+			for( const node of page.Scene().nodes() ) {
+				const world = node.world()
+				out[ String( node ) ] = [ world[ 12 ], world[ 13 ], world[ 14 ] ]
+			}
+			return out
+		}
+		const stir_from = spots()
+		for( let i = 0; i < ${ $bog_gamengine_demo_jumper_probe_stir_frames }; ++ i ) await frame()
+		const stir_to = spots()
+		const gaps = Object.keys( stir_from ).filter( key => stir_to[ key ] ).map( key => ({
+			who: key,
+			gap: Math.max( ... stir_to[ key ].map( ( one, i )=> Math.abs( one - stir_from[ key ][ i ] ) ) ),
+		}) )
+		const stirred = gaps.filter( one => one.gap > ${ $bog_gamengine_demo_jumper_probe_stir_gap } )
+		const stepped = new Set( Object.keys( stir_from ) )
+		const drawn = page.Batch().nodes().map( node => String( node ) )
+		const strays = drawn.filter( key => !stepped.has( key ) )
+		const stir = {
+			nodes: gaps.length,
+			moved: stirred.length,
+			max: gaps.reduce( ( most, one )=> Math.max( most, one.gap ), 0 ),
+			who: stirred.map( one => one.who ).slice( 0, 4 ),
+			drawn: drawn.length,
+			strays: strays.length,
+			stray: strays.slice( 0, 4 ),
+		}
 		const pixel = new Uint8Array( 4 )
 		gl.readPixels( canvas.width / 2 | 0, canvas.height / 2 | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel )
 		return {
-			webgl: true, loaded: true, start, top, land, moved, rest, low, high,
+			webgl: true, loaded: true, start, top, land, moved, rest, low, high, stir,
 			center: Array.from( pixel ), size: [ canvas.width, canvas.height ],
 		}
 	`
@@ -73,6 +106,15 @@ namespace $ {
 		readonly rest?: $bog_gamengine_demo_jumper_probe_hero | null
 		readonly low?: number
 		readonly high?: number
+		readonly stir?: {
+			readonly nodes: number
+			readonly moved: number
+			readonly max: number
+			readonly who: readonly string[]
+			readonly drawn: number
+			readonly strays: number
+			readonly stray: readonly string[]
+		}
 		readonly center?: readonly [ number, number, number, number ]
 		readonly size?: readonly [ number, number ]
 	}
@@ -110,6 +152,16 @@ namespace $ {
 		if( Math.abs( got.high! - got.low! ) > 0.2 ) return fail( 'герой проваливается на бегу' )
 		if( !( got.moved.coins > got.start.coins ) ) return fail( 'проход по монете не увеличил счётчик' )
 		if( got.rest && got.rest.lives !== got.start.lives ) return fail( 'герой потерял жизнь на ровном месте' )
+		if( !got.stir || !( got.stir.nodes > 0 ) ) return fail( 'сцена не отдала ни одного узла' )
+		if( !( got.stir.drawn > 0 ) ) return fail( 'батч не отдал ни одного узла' )
+		if( got.stir.strays > 0 ) return fail(
+			`${ got.stir.strays } из ${ got.stir.drawn } рисуемых узлов сцена не шагает: ${ got.stir.stray.join( ', ' ) }`
+		)
+		if( !( got.stir.moved > 0 ) ) return fail(
+			`за ${ $bog_gamengine_demo_jumper_probe_stir_frames } кадров без ввода ни один из ${ got.stir.nodes } узлов`
+			+ ` не сдвинулся дальше ${ $bog_gamengine_demo_jumper_probe_stir_gap }, самый резвый прошёл ${ got.stir.max }:`
+			+ ' узлы рисуются, но не шагают'
+		)
 		const [ r, g, b ] = got.center!
 		if( r < 40 && g < 40 && b < 40 ) return fail( 'центр чёрный, уровень не нарисован' )
 
