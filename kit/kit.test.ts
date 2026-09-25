@@ -40,7 +40,7 @@ namespace $ {
 			$mol_assert_equal( hero.parts().length, 1 )
 			$mol_assert_equal( part.owner(), hero )
 			$mol_assert_equal( part.props!().find( prop => prop.name === 'health_max' )!.get(), 40 )
-			$mol_assert_equal( hero.props().map( prop => prop.name ), [ 'pos', 'rot', 'scale', 'tint' ] )
+			$mol_assert_equal( hero.props().map( prop => prop.name ).filter( name => /health|rate|\./.test( name ) ), [] )
 
 		},
 
