@@ -155,7 +155,7 @@ namespace $ {
 	export function $bog_gamengine_pack_assets( pack_dir: string ): $bog_gamengine_pack_assets_item[] {
 		const uris = new Set< string >()
 		for( const meta of $bog_gamengine_pack_assets_metas( pack_dir ) ) {
-			const tree = $mol_tree2_from_string( String( $node.fs.readFileSync( meta, 'utf8' ) ), meta )
+			const tree = $$.$mol_tree2_from_string( String( $node.fs.readFileSync( meta, 'utf8' ) ), meta )
 			for( const path of tree.select( 'deploy', null ).kids ) {
 				if( path.value ) uris.add( path.value.replace( /^\/+/, '' ) )
 			}
