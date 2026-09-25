@@ -21,9 +21,19 @@ namespace $ {
 		readonly title: string
 		readonly klass: string
 		readonly props: Readonly< Record< string, string > >
+		readonly binds?: Readonly< Record< string, string > >
 		readonly world: string
 		readonly part?: boolean
 	}
+
+	export const $bog_gamestudio_kit_field = [
+		'\\',
+		'\t\\......',
+		'\t\\......',
+		'\t\\......',
+		'\t\\......',
+		'\t\\......',
+	].join( '\n' )
 
 	export const $bog_gamestudio_kit_worlds: Readonly< Record< string, $bog_gamestudio_kit_world > > = {
 		phys: {
@@ -44,9 +54,29 @@ namespace $ {
 			list: '',
 			ref: 'grid',
 		},
+		tile: {
+			prop: '',
+			node: 'Tile',
+			klass: '$bog_gamengine_phys_tile',
+			props: { map: $bog_gamestudio_kit_field },
+			binds: {},
+			list: '',
+			ref: 'tile',
+		},
 	}
 
 	export const $bog_gamestudio_kit_items: readonly $bog_gamestudio_kit_item[] = [
+		{
+			id: 'map',
+			title: 'Карта',
+			klass: '$bog_gamengine_tilemap',
+			props: {
+				name: '\\Карта',
+				palette: [ '*', '\t# \\wall', '\t. \\floor' ].join( '\n' ),
+			},
+			binds: { atlas: 'Atlas' },
+			world: 'tile',
+		},
 		{
 			id: 'walker',
 			title: 'Ходок',
@@ -119,6 +149,11 @@ namespace $ {
 
 		const props = { ... item.props, pos } as Record< string, string >
 		if( world?.ref ) props[ world.ref ] = `<= ${ world.node }`
+		const bound = Object.keys( item.binds ?? {} )
+		for( let i = 0; i < bound.length; ++i ) {
+			const node = item.binds![ bound[ i ] ]
+			if( known.indexOf( node ) >= 0 ) props[ bound[ i ] ] = `<= ${ node }`
+		}
 
 		return {
 			decls,
@@ -197,8 +232,9 @@ namespace $ {
 		return bind.kids[ 0 ]?.type ?? ''
 	}
 
-	export function $bog_gamestudio_kit_bind( doc: $bog_gamestudio_doc, owner: string, prop: string, name: string ) {
+	export function $bog_gamestudio_kit_bind( doc: $bog_gamestudio_doc, owner: string, prop: string, name: string, klass = '' ) {
 		if( !doc.decls().get( owner ) ) return false
+		if( klass && doc.decls().get( name )?.type !== klass ) return false
 		$bog_gamestudio_kit_clear( doc, owner, prop )
 		return $bog_gamestudio_kit_line( doc, owner, `${ prop } <= ${ name }` )
 	}

@@ -73,6 +73,132 @@ namespace $ {
 			$mol_assert_equal( world.binds.tile, 'Tile' )
 		},
 
+		'map of the palette gives a bare scene a tile and cells to paint on'( $ ) {
+
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( '$bog_gamestudio_sample $bog_gamengine_scene\n\tkids /\n' )
+
+			const kit = new $bog_gamestudio_kit
+			const name = $bog_gamestudio_kit_apply( doc, kit.item( 'map' )!, '/ 0 0 0' )
+			const source = doc.source()
+
+			$mol_assert_ok( source.includes( '$bog_gamengine_tilemap' ) )
+			$mol_assert_ok( source.includes( 'Tile $bog_gamengine_phys_tile' ) )
+			$mol_assert_ok( source.includes( 'tile <= Tile' ) )
+			$mol_assert_equal( source.includes( 'atlas <=' ), false )
+
+			const scene = doc.scene()
+			const tiles = scene.nodes().find( one => one instanceof $bog_gamengine_tilemap ) as $bog_gamengine_tilemap
+			$mol_assert_ok( tiles.emit() > 0 )
+			$mol_assert_equal( tiles.atlas(), null )
+			$mol_assert_ok( scene.nodes().some( one => one instanceof $bog_gamengine_tilemap && one.tile() ) )
+			$mol_assert_equal( $bog_gamestudio_kit_bound( doc, name, 'atlas' ), '' )
+
+		},
+
+		'brush paints into the map that the palette has just placed'( $ ) {
+
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( '$bog_gamestudio_sample $bog_gamengine_scene\n\tkids /\n' )
+
+			const kit = new $bog_gamestudio_kit
+			$bog_gamestudio_kit_apply( doc, kit.item( 'map' )!, '/ 0 0 0' )
+			doc.paint( 2, 1, '#' )
+
+			const tiles = doc.scene().nodes().find( one => one instanceof $bog_gamengine_tilemap ) as $bog_gamengine_tilemap
+			$mol_assert_equal( tiles.tile()!.char( 2, 1 ), '#' )
+			$mol_assert_equal( tiles.tile()!.cell( 2, 1 ), true )
+			$mol_assert_ok( tiles.emit() > 0 )
+
+		},
+
+		'map of the palette takes the tile that is already in the document'( $ ) {
+
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( [
+				'$bog_gamestudio_sample $bog_gamengine_scene',
+				'\tTile $bog_gamengine_phys_tile',
+				'\t\tmap \\',
+				'\t\t\t\\####',
+				'\tkids /',
+				'',
+			].join( '\n' ) )
+
+			const kit = new $bog_gamestudio_kit
+			$bog_gamestudio_kit_apply( doc, kit.item( 'map' )!, '/ 0 0 0' )
+			const source = doc.source()
+
+			$mol_assert_equal( source.match( /\$bog_gamengine_phys_tile/g )!.length, 1 )
+			$mol_assert_ok( source.includes( 'tile <= Tile' ) )
+			$mol_assert_ok( source.includes( '\\####' ) )
+
+		},
+
+		'map of the palette binds the atlas only when the document has one'( $ ) {
+
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( [
+				'$bog_gamestudio_sample $bog_gamengine_scene',
+				'\tkids /',
+				'\tAtlas $bog_gamengine_atlas',
+				'\t\turis /',
+				'\t\t\t\\bog/gamengine/demo/atlas/wall.png',
+				'\t\t\t\\bog/gamengine/demo/atlas/floor.png',
+				'\t\tsize 64',
+				'',
+			].join( '\n' ) )
+
+			const kit = new $bog_gamestudio_kit
+			const name = $bog_gamestudio_kit_apply( doc, kit.item( 'map' )!, '/ 0 0 0' )
+
+			$mol_assert_ok( doc.source().includes( 'atlas <= Atlas' ) )
+			$mol_assert_equal( $bog_gamestudio_kit_bound( doc, name, 'atlas' ), 'Atlas' )
+
+			const tiles = doc.scene().nodes().find( one => one instanceof $bog_gamengine_tilemap ) as $bog_gamengine_tilemap
+			$mol_assert_ok( Boolean( tiles.atlas() ) )
+			const count = tiles.emit()
+			$mol_assert_ok( count > 0 )
+			$mol_assert_equal( tiles.pool().layer[ 0 ], tiles.atlas()!.layer( 'floor' ) )
+
+		},
+
+		'atlas of a tilemap is a reference in the panel, empty until it is bound'() {
+			const tiles = new $bog_gamengine_tilemap
+			const prop = tiles.props().find( one => one.name === 'atlas' )!
+			$mol_assert_equal( prop.kind, 'node' )
+			$mol_assert_equal( prop.klass, '$bog_gamengine_atlas' )
+			$mol_assert_equal( prop.get(), null )
+		},
+
+		'reference of a wrong class is refused instead of being written'( $ ) {
+
+			const doc = new $bog_gamestudio_doc
+			doc.$ = $
+			doc.source_own( [
+				'$bog_gamestudio_sample $bog_gamengine_scene',
+				'\tkids /',
+				'\t\t<= Walker_1 $bog_gamengine_phys_walker',
+				'\tAtlas $bog_gamengine_atlas',
+				'\t\turis /',
+				'\t\t\t\\bog/gamengine/demo/atlas/wall.png',
+				'\t\tsize 64',
+				'',
+			].join( '\n' ) )
+
+			const kit = new $bog_gamestudio_kit
+			const name = $bog_gamestudio_kit_apply( doc, kit.item( 'map' )!, '/ 0 0 0' )
+
+			$mol_assert_equal( $bog_gamestudio_kit_bind( doc, name, 'atlas', 'Walker_1', '$bog_gamengine_atlas' ), false )
+			$mol_assert_equal( doc.source().includes( 'atlas <= Walker_1' ), false )
+			$mol_assert_equal( $bog_gamestudio_kit_bind( doc, name, 'atlas', 'Atlas', '$bog_gamengine_atlas' ), true )
+			$mol_assert_equal( $bog_gamestudio_kit_bound( doc, name, 'atlas' ), 'Atlas' )
+
+		},
+
 		'no world of the palette declares a tile or leans on a map of the root'() {
 			const kit = new $bog_gamestudio_kit
 			for( const id of [ 'walker', 'body', 'agent' ] ) {
