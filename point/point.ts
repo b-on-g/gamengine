@@ -6,6 +6,8 @@ namespace $ {
 
 	export const $bog_gamengine_point_grab = 0.5
 
+	export const $bog_gamengine_point_depth = 1e-6
+
 	export class $bog_gamengine_point extends $mol_object2 {
 
 		@ $mol_mem
@@ -171,6 +173,7 @@ namespace $ {
 
 			let best: $bog_gamengine_node | null = null
 			let best_t = Infinity
+			let best_room = Infinity
 
 			for( let n = 0; n < nodes.length; ++ n ) {
 
@@ -182,6 +185,7 @@ namespace $ {
 				let tmin = - Infinity
 				let tmax = Infinity
 				let hit = true
+				let room = 1
 
 				for( let i = 0; i < 3; ++ i ) {
 					const wide = box[ i ] <= box[ i + 3 ]
@@ -189,6 +193,7 @@ namespace $ {
 					const half = Math.max( wide ? ( box[ i + 3 ] - box[ i ] ) / 2 : 0, grab )
 					const lo = mid - half
 					const hi = mid + half
+					room *= hi - lo
 					const o = origin[ i ]
 					const d = dir[ i ]
 					if( d === 0 ) {
@@ -215,8 +220,11 @@ namespace $ {
 
 				if( !hit || tmax < 0 ) continue
 				const t = tmin < 0 ? 0 : tmin
-				if( t < best_t ) {
+				const nearer = t < best_t - $bog_gamengine_point_depth
+				const tighter = t < best_t + $bog_gamengine_point_depth && room < best_room
+				if( nearer || tighter ) {
 					best_t = t
+					best_room = room
 					best = node
 				}
 

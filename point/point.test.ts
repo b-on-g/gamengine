@@ -14,6 +14,13 @@ namespace $ {
 		return point
 	}
 
+	function sized_node( size: readonly number[], pos: readonly number[] = [ 0, 0, 0 ] ) {
+		const node = new $bog_gamengine_node as $bog_gamengine_node & { size(): Float32Array }
+		node.size = ()=> $bog_gamengine_node_vec( size )
+		node.pos( $bog_gamengine_node_vec( pos ) )
+		return node
+	}
+
 	function deep_point() {
 		const cam = new $bog_gamengine_cam_deep
 		cam.pos( new Float32Array([ 0, 0, 5 ]) )
@@ -71,6 +78,23 @@ namespace $ {
 			const at = new Float32Array( 3 )
 			point.screen( at, second.pos() )
 			$mol_assert_equal( point.pick( [ first, second ], at[ 0 ], at[ 1 ] ), second )
+		},
+
+		'ground layer under a small node does not shadow it at the same depth'() {
+			const point = flat_point()
+			const ground = sized_node( [ 12, 10, 0 ] )
+			const coin = sized_node( [ 1, 1, 0 ], [ 3, 1, 0 ] )
+			const at = point.screen( new Float32Array( 3 ), coin.pos() )
+			$mol_assert_equal( point.pick( [ ground, coin ], at[ 0 ], at[ 1 ] ), coin )
+			$mol_assert_equal( point.pick( [ coin, ground ], at[ 0 ], at[ 1 ] ), coin )
+		},
+
+		'click beside the small node still takes the ground layer'() {
+			const point = flat_point()
+			const ground = sized_node( [ 12, 10, 0 ] )
+			const coin = sized_node( [ 1, 1, 0 ], [ 3, 1, 0 ] )
+			const at = point.screen( new Float32Array( 3 ), new Float32Array([ -3, -2, 0 ]) )
+			$mol_assert_equal( point.pick( [ ground, coin ], at[ 0 ], at[ 1 ] ), ground )
 		},
 
 		'box over the middle of five nodes gives three of them'() {
