@@ -485,6 +485,7 @@ namespace $.$$ {
 			return `mine ${ this.mine_live_ids().length } | foes ${ this.foe_live_ids().length }`
 				+ ` | sel ${ ids.length } | at ${ ( x / div ).toFixed( 2 ) } × ${ ( y / div ).toFixed( 2 ) }`
 				+ ` | nodes ${ this.Scene().nodes().length } | atlas 1`
+				+ ` | peak ${ this.Draw().peak().toFixed( 1 ) } ms`
 		}
 
 	}

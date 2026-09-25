@@ -21,6 +21,7 @@ $bog_gamengine_draw $mol_view
 	passes /
 		<= Tone
 	stat \
+	peak 0
 	report *
 		tick 0
 		fill 0

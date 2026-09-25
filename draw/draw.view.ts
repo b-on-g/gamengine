@@ -895,6 +895,13 @@ namespace $.$$ {
 			}
 		}
 
+		peak() {
+			const size = Math.min( this.samples, stat_window )
+			let worst = 0
+			for( let i = 0; i < size; ++ i ) if( this.ticks[ i ] > worst ) worst = this.ticks[ i ]
+			return worst
+		}
+
 		@ $mol_mem
 		stat() {
 			const frame = this.scene().clock().frame()

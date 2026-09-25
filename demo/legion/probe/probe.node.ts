@@ -10,6 +10,8 @@ namespace $ {
 
 	export const $bog_gamengine_demo_legion_probe_tick_max = 8
 
+	export const $bog_gamengine_demo_legion_probe_peak_max = 24
+
 	export const $bog_gamengine_demo_legion_probe_script = `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 		const canvas = document.querySelector( 'canvas' )
@@ -25,6 +27,10 @@ namespace $ {
 		}
 		const tick = ()=> {
 			const found = document.body.innerText.match( /tick ([\\d.]+) ms/ )
+			return found ? Number( found[ 1 ] ) : NaN
+		}
+		const peak = ()=> {
+			const found = document.body.innerText.match( /peak ([\\d.]+) ms/ )
 			return found ? Number( found[ 1 ] ) : NaN
 		}
 		let ready = null
@@ -49,7 +55,8 @@ namespace $ {
 		for( let i = 0; i < 120; ++ i ) await frame()
 		const moved = read()
 		const ticks = []
-		for( let i = 0; i < 60; ++ i ) { await frame(); ticks.push( tick() ) }
+		const peaks = []
+		for( let i = 0; i < 60; ++ i ) { await frame(); ticks.push( tick() ); peaks.push( peak() ) }
 		const after = read()
 		const pixel = new Uint8Array( 4 )
 		gl.readPixels( canvas.width / 2 | 0, canvas.height / 2 | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel )
@@ -58,6 +65,7 @@ namespace $ {
 			webgl: true, loaded: true, start, picked, moved, after, dots,
 			band: band_box ? [ band_box.width, band_box.height ] : null,
 			tick: ticks.reduce( ( sum, one )=> sum + one, 0 ) / ticks.length,
+			peak: peaks.reduce( ( worst, one )=> one > worst ? one : worst, 0 ),
 			center: Array.from( pixel ), size: [ canvas.width, canvas.height ],
 		}
 	`
@@ -82,6 +90,7 @@ namespace $ {
 		readonly dots?: number
 		readonly band?: readonly [ number, number ] | null
 		readonly tick?: number
+		readonly peak?: number
 		readonly center?: readonly [ number, number, number, number ]
 		readonly size?: readonly [ number, number ]
 	}
@@ -123,16 +132,24 @@ namespace $ {
 
 		const [ r, g, b ] = got.center!
 		if( r < 25 && g < 25 && b < 25 ) return fail( 'центр чёрный, карта не нарисована' )
+		if( !Number.isFinite( got.peak! ) ) return fail( 'страница не печатает peak, худший кадр не с чем сверить' )
+		if( !( got.peak! < $bog_gamengine_demo_legion_probe_peak_max ) ) {
+			return fail( `худший кадр дороже ${ $bog_gamengine_demo_legion_probe_peak_max } мс` )
+		}
+
 		const mine = !$node.process.env[ $bog_probe_need ]
 		if( mine && !( got.tick! < $bog_gamengine_demo_legion_probe_tick_max ) ) {
-			return fail( `кадр дороже ${ $bog_gamengine_demo_legion_probe_tick_max } мс` )
+			return fail( `средний кадр дороже ${ $bog_gamengine_demo_legion_probe_tick_max } мс` )
 		}
 		if( !mine ) return say(
-			`${ $bog_gamengine_demo_legion_probe_ok }, tick ${ got.tick!.toFixed( 2 ) } мс,`
-			+ ` бюджет кадра не сверялся: прогон не на машине, где он назначен`
+			`${ $bog_gamengine_demo_legion_probe_ok }, худший кадр ${ got.peak!.toFixed( 1 ) } мс,`
+			+ ` средний ${ got.tick!.toFixed( 2 ) } мс не сверялся: прогон не на машине, где он назначен`
 		)
 
-		return say( `${ $bog_gamengine_demo_legion_probe_ok }, tick ${ got.tick!.toFixed( 2 ) } мс` )
+		return say(
+			`${ $bog_gamengine_demo_legion_probe_ok }, худший кадр ${ got.peak!.toFixed( 1 ) } мс,`
+			+ ` средний ${ got.tick!.toFixed( 2 ) } мс`
+		)
 	}
 
 }
