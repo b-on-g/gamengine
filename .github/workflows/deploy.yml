@@ -32,12 +32,15 @@ jobs:
     # CI объявляет, что браузер здесь обязателен: без него пробы падают, а не пропускаются.
     # studio/pair и net/pair в списке нет намеренно — им нужен мастер Базы на 9090, которого на
     # раннере не будет, и их пропуск сошёл бы за успех. Как прогнать руками — в их README.
+    # demo/shooter/look и demo/legion/look тоже намеренно: подпись на раннере всё равно не
+    # сверяется, а файлы у трёх подписей почти одинаковые и ломаются вместе с движковым look,
+    # который в списке стоит. Одного экземпляра, demo/jumper/look, хватает на компиляцию.
     - uses: hyoo-ru/mam_build@master2
       env:
         CI: true
       with:
         package: 'bog/gamengine'
-        modules: 'demo probe look demo/jumper/probe demo/shooter/probe demo/legion/probe studio/probe pack'
+        modules: 'demo probe look net/probe demo/jumper/probe demo/jumper/look demo/shooter/probe demo/legion/probe studio/probe pack'
 
     - uses: hyoo-ru/gh-deploy@v4.4.1
       if: github.ref == 'refs/heads/main'
