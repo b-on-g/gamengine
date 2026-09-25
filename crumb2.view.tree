@@ -1,8 +1,6 @@
-$bog_crumb2_app $mol_page
-	title \Крошки
-	plugins /
-		<= Control $mol_keyboard_state
-			key <= key_map *
+$bog_gamengine_demo_crumb2 $mol_page
+	title \Крошки мышью
+	key_map *
 	tools /
 		<= Left_label $mol_labeler
 			title \Осталось
@@ -53,12 +51,12 @@ $bog_crumb2_app $mol_page
 	Cam $bog_gamengine_cam_flat
 		height 11
 		pos <= cam_pos Float32Array
-	Scene $bog_crumb2_level
+	Scene $bog_gamengine_demo_crumb2_level
 		clock <= Clock
 		input <= Input
 		cam <= Cam
 		auto_nodes <= nodes /
-	Rule $bog_crumb2_rule
+	Rule $bog_gamengine_demo_crumb2_rule
 		hero <= hero null
 		crumbs <= crumbs /
 		limit 40

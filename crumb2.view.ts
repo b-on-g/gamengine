@@ -1,6 +1,6 @@
 namespace $.$$ {
 
-	export class $bog_crumb2_app extends $.$bog_crumb2_app {
+	export class $bog_gamengine_demo_crumb2 extends $.$bog_gamengine_demo_crumb2 {
 
 		key_map() {
 			return {

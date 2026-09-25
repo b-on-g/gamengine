@@ -1,6 +1,6 @@
 namespace $ {
 
-	function $bog_crumb2_rule_stage( spots: readonly ( readonly number[] )[] ) {
+	function $bog_gamengine_demo_crumb2_rule_stage( spots: readonly ( readonly number[] )[] ) {
 		const hero = new $bog_gamengine_node
 		hero.pos( new Float32Array([ 0, 0, 0 ]) )
 		const crumbs = spots.map( spot => {
@@ -8,7 +8,7 @@ namespace $ {
 			crumb.pos( new Float32Array([ spot[ 0 ], spot[ 1 ], 0 ]) )
 			return crumb
 		} )
-		const rule = new $bog_crumb2_rule
+		const rule = new $bog_gamengine_demo_crumb2_rule
 		rule.hero( hero )
 		rule.crumbs( crumbs )
 		return { hero, crumbs, rule }
@@ -17,7 +17,7 @@ namespace $ {
 	$mol_test({
 
 		'crumb under the hero is taken and hidden'() {
-			const { hero, crumbs, rule } = $bog_crumb2_rule_stage([ [ 0.2, 0 ], [ 5, 5 ] ])
+			const { hero, crumbs, rule } = $bog_gamengine_demo_crumb2_rule_stage([ [ 0.2, 0 ], [ 5, 5 ] ])
 			rule.step( 0.1 )
 			$mol_assert_equal( rule.taken(), 1 )
 			$mol_assert_equal( crumbs[ 0 ].hidden, true )
@@ -27,7 +27,7 @@ namespace $ {
 		},
 
 		'all crumbs taken is a win'() {
-			const { hero, rule } = $bog_crumb2_rule_stage([ [ 0.2, 0 ], [ 3, 0 ] ])
+			const { hero, rule } = $bog_gamengine_demo_crumb2_rule_stage([ [ 0.2, 0 ], [ 3, 0 ] ])
 			rule.step( 0.1 )
 			$mol_assert_equal( rule.won(), false )
 			hero.pos( new Float32Array([ 3, 0, 0 ]) )
@@ -38,7 +38,7 @@ namespace $ {
 		},
 
 		'time over without all crumbs is a loss'() {
-			const { rule } = $bog_crumb2_rule_stage([ [ 5, 5 ] ])
+			const { rule } = $bog_gamengine_demo_crumb2_rule_stage([ [ 5, 5 ] ])
 			rule.limit( 2 )
 			rule.step( 1 )
 			$mol_assert_equal( rule.lost(), false )
@@ -49,7 +49,7 @@ namespace $ {
 		},
 
 		'restart brings the crumbs back'() {
-			const { crumbs, rule } = $bog_crumb2_rule_stage([ [ 0.2, 0 ] ])
+			const { crumbs, rule } = $bog_gamengine_demo_crumb2_rule_stage([ [ 0.2, 0 ] ])
 			rule.step( 0.1 )
 			$mol_assert_equal( rule.won(), true )
 			rule.restart()

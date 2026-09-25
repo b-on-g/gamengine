@@ -1,6 +1,6 @@
 namespace $.$$ {
 
-	export class $bog_crumb2_level extends $.$bog_crumb2_level {
+	export class $bog_gamengine_demo_crumb2_level extends $.$bog_gamengine_demo_crumb2_level {
 
 		@ $mol_mem
 		Hero_pos( next?: Float32Array ) {

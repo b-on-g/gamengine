@@ -1,6 +1,6 @@
 namespace $.$$ {
 
-	$mol_style_define( $bog_crumb2_app, {
+	$mol_style_define( $bog_gamengine_demo_crumb2, {
 
 		Draw: {
 			flex: {

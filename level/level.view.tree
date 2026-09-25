@@ -1,4 +1,4 @@
-$bog_crumb2_level $bog_gamengine_scene
+$bog_gamengine_demo_crumb2_level $bog_gamengine_scene
 	phys <= Phys $bog_gamengine_phys
 		tile <= Tile
 		bodies /
