@@ -72,6 +72,29 @@ namespace $ {
 		'\t\tsize 64',
 	].join( '\n' ) + '\n'
 
+	export const $bog_gamengine_studio_sample_shift = [
+		'$bog_gamengine_studio_sample_shift $bog_gamengine_scene',
+		'\tTile $bog_gamengine_phys_tile',
+		'\t\torigin / 4 -3',
+		'\t\tmap \\',
+		'\t\t\t\\######',
+		'\t\t\t\\#....#',
+		'\t\t\t\\######',
+		'\tkids /',
+		'\t\t<= Tiles $bog_gamengine_tilemap',
+		'\t\t\tname \\Карта',
+		'\t\t\ttile <= Tile',
+		'\t\t\tatlas <= Atlas',
+		'\t\t\tpalette *',
+		'\t\t\t\t# \\wall',
+		'\t\t\t\t. \\floor',
+		'\tAtlas $bog_gamengine_atlas',
+		'\t\turis /',
+		'\t\t\t\\bog/gamengine/demo/atlas/wall.png',
+		'\t\t\t\\bog/gamengine/demo/atlas/floor.png',
+		'\t\tsize 64',
+	].join( '\n' ) + '\n'
+
 	export const $bog_gamengine_studio_sample_brain = [
 		'$bog_gamengine_studio_sample_brain $bog_gamengine_scene',
 		'\tkids /',

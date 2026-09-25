@@ -97,6 +97,30 @@ namespace $ {
 
 		},
 
+		'map of the palette puts the click into the grid, not into the node'( $ ) {
+
+			const doc = new $bog_gamengine_studio_doc
+			doc.$ = $
+			doc.source_own( '$bog_gamengine_studio_sample $bog_gamengine_scene\n\tkids /\n' )
+
+			const kit = new $bog_gamengine_studio_kit
+			$bog_gamengine_studio_kit_apply( doc, kit.item( 'map' )!, '/ 6.5 -4.5 0' )
+
+			$mol_assert_ok( doc.source().includes( 'origin / 6 -4' ) )
+			$mol_assert_equal( doc.source().includes( 'pos /' ), false )
+
+			const tiles = doc.scene().nodes().find( one => one instanceof $bog_gamengine_tilemap ) as $bog_gamengine_tilemap
+			const tile = tiles.tile()!
+			$mol_assert_equal( [ ... tiles.pos() ], [ 0, 0, 0 ] )
+			$mol_assert_equal( [ ... tile.origin() ], [ 6, - 4 ] )
+
+			const pos = tile.cell_pos( 0, 0, new Float32Array( 3 ) )
+			$mol_assert_equal( [ pos[ 0 ], pos[ 1 ] ], [ 6.5, - 4.5 ] )
+			const at = tile.cell_at( pos[ 0 ], pos[ 1 ], new Int32Array( 2 ) )
+			$mol_assert_equal( [ at[ 0 ], at[ 1 ] ], [ 0, 0 ] )
+
+		},
+
 		'brush paints into the map that the palette has just placed'( $ ) {
 
 			const doc = new $bog_gamengine_studio_doc

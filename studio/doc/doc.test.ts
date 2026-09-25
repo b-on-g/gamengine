@@ -184,6 +184,81 @@ namespace $ {
 			$mol_assert_equal( doc.map().map( row => row.join( '' ) ), [ '######', '#....#', '#..#.#', '#....#', '######' ] )
 		},
 
+		'paint past the right edge grows the map and leaves the grid where it was'( $ ) {
+			const doc = open( $, $bog_gamengine_studio_sample_shift )
+			$mol_assert_equal( doc.map_origin(), [ 4, - 3 ] )
+			const tile = ()=> ( named( doc, 'Карта' ) as $bog_gamengine_tilemap ).tile()!
+			const before = tile().cell_pos( 1, 1, new Float32Array( 3 ) )
+			$mol_assert_equal( [ before[ 0 ], before[ 1 ] ], [ 5.5, - 4.5 ] )
+			doc.paint( 6, 1, '#' )
+			$mol_assert_equal( doc.map().map( row => row.join( '' ) ), [ '#######', '#....##', '#######' ] )
+			$mol_assert_equal( doc.map_origin(), [ 4, - 3 ] )
+			const after = tile().cell_pos( 1, 1, new Float32Array( 3 ) )
+			$mol_assert_equal( [ after[ 0 ], after[ 1 ] ], [ before[ 0 ], before[ 1 ] ] )
+		},
+
+		'paint past the bottom edge grows the map down and leaves the grid where it was'( $ ) {
+			const doc = open( $, $bog_gamengine_studio_sample_shift )
+			const tile = ()=> ( named( doc, 'Карта' ) as $bog_gamengine_tilemap ).tile()!
+			const before = tile().cell_pos( 1, 1, new Float32Array( 3 ) )
+			doc.paint( 1, 4, '.' )
+			$mol_assert_equal( doc.map().map( row => row.join( '' ) ), [
+				'######', '#....#', '######', '######', '#.####',
+			] )
+			$mol_assert_equal( doc.map_origin(), [ 4, - 3 ] )
+			const after = tile().cell_pos( 1, 1, new Float32Array( 3 ) )
+			$mol_assert_equal( [ after[ 0 ], after[ 1 ] ], [ before[ 0 ], before[ 1 ] ] )
+		},
+
+		'growth keeps passability on the very cells that are drawn'( $ ) {
+			const doc = open( $, $bog_gamengine_studio_sample_shift )
+			doc.paint( 7, 4, '.' )
+			const tiles = named( doc, 'Карта' ) as $bog_gamengine_tilemap
+			const tile = tiles.tile()!
+			$mol_assert_equal( [ tile.width(), tile.height() ], [ 8, 5 ] )
+			$mol_assert_equal( tiles.emit(), tile.width() * tile.height() )
+			const trans = tiles.pool().trans
+			const drawn = new Set< string >()
+			for( let i = 0; i < tiles.pool().count; ++ i ) drawn.add( `${ trans[ i * 16 + 12 ] } ${ trans[ i * 16 + 13 ] }` )
+			const pos = new Float32Array( 3 )
+			const at = new Int32Array( 2 )
+			for( let y = 0; y < tile.height(); ++ y ) {
+				for( let x = 0; x < tile.width(); ++ x ) {
+					tile.cell_pos( x, y, pos )
+					$mol_assert_ok( drawn.has( `${ pos[ 0 ] } ${ pos[ 1 ] }` ) )
+					tile.cell_at( pos[ 0 ], pos[ 1 ], at )
+					$mol_assert_equal( [ at[ 0 ], at[ 1 ] ], [ x, y ] )
+					$mol_assert_equal( tile.solid_at( pos[ 0 ], pos[ 1 ] ), tile.cell( x, y ) )
+				}
+			}
+			$mol_assert_equal( tile.solid_at( 11.5, - 7.5 ), false )
+			$mol_assert_equal( tile.cell( 7, 4 ), false )
+		},
+
+		'paint past the left top corner shifts the grid so the cells stay where they were drawn'( $ ) {
+			const doc = open( $, $bog_gamengine_studio_sample_shift )
+			const tile = ()=> ( named( doc, 'Карта' ) as $bog_gamengine_tilemap ).tile()!
+			const before = tile().cell_pos( 1, 1, new Float32Array( 3 ) )
+			doc.paint( - 2, - 1, '.' )
+			$mol_assert_equal( doc.map_origin(), [ 2, - 2 ] )
+			$mol_assert_equal( doc.map().map( row => row.join( '' ) ), [
+				'.#######', '########', '###....#', '########',
+			] )
+			const moved = tile()
+			const after = moved.cell_pos( 3, 2, new Float32Array( 3 ) )
+			$mol_assert_equal( [ after[ 0 ], after[ 1 ] ], [ before[ 0 ], before[ 1 ] ] )
+			const at = moved.cell_at( before[ 0 ], before[ 1 ], new Int32Array( 2 ) )
+			$mol_assert_equal( [ at[ 0 ], at[ 1 ] ], [ 3, 2 ] )
+			$mol_assert_equal( moved.solid_at( before[ 0 ], before[ 1 ] ), false )
+		},
+
+		'paint far outside the map is ignored instead of growing it to the moon'( $ ) {
+			const doc = open( $, $bog_gamengine_studio_sample_shift )
+			const before = doc.source()
+			doc.paint( 400, 400, '#' )
+			$mol_assert_equal( doc.source(), before )
+		},
+
 		'paint changes exactly one char of exactly one source line'( $ ) {
 			const doc = open( $, $bog_gamengine_studio_sample )
 			doc.set( 'Hero', 'pos', [ -2, 0, 0 ] )
@@ -202,8 +277,17 @@ namespace $ {
 			const doc = open( $, $bog_gamengine_studio_sample )
 			doc.paint( 0, 0, '#' )
 			$mol_assert_equal( doc.source(), $bog_gamengine_studio_sample )
+		},
+
+		'paint below and right of the map grows it in both directions at once'( $ ) {
+			const doc = open( $, $bog_gamengine_studio_sample )
 			doc.paint( 9, 9, '#' )
-			$mol_assert_equal( doc.source(), $bog_gamengine_studio_sample )
+			const rows = doc.map()
+			$mol_assert_equal( rows.length, 10 )
+			$mol_assert_equal( rows[ 0 ].length, 10 )
+			$mol_assert_equal( rows[ 9 ][ 9 ], '#' )
+			$mol_assert_equal( rows[ 1 ].join( '' ).slice( 0, 6 ), '#....#' )
+			$mol_assert_equal( doc.map_origin(), [ 0, 0 ] )
 		},
 
 		'rect paints a rectangle'( $ ) {

@@ -14,6 +14,7 @@ namespace $ {
 		readonly binds: Readonly< Record< string, string > >
 		readonly list: string
 		readonly ref: string
+		readonly grid?: boolean
 	}
 
 	export type $bog_gamengine_studio_kit_item = {
@@ -62,6 +63,7 @@ namespace $ {
 			binds: {},
 			list: '',
 			ref: 'tile',
+			grid: true,
 		},
 	}
 
@@ -121,6 +123,13 @@ namespace $ {
 		readonly join: $bog_gamengine_studio_kit_join | null
 	}
 
+	export function $bog_gamengine_studio_kit_origin_of( pos: string ) {
+		const nums = pos.trim().split( /\s+/ ).slice( 1 ).map( Number )
+		const x = Math.floor( Number.isFinite( nums[ 0 ] ) ? nums[ 0 ] : 0 )
+		const y = Math.ceil( Number.isFinite( nums[ 1 ] ) ? nums[ 1 ] : 0 )
+		return `/ ${ x } ${ y }`
+	}
+
 	export function $bog_gamengine_studio_kit_plan_of(
 		item: $bog_gamengine_studio_kit_item,
 		known: readonly string[],
@@ -140,6 +149,7 @@ namespace $ {
 					const node = world.binds[ bound[ i ] ]
 					if( known.indexOf( node ) >= 0 ) props[ bound[ i ] ] = `<= ${ node }`
 				}
+				if( world.grid ) props.origin = $bog_gamengine_studio_kit_origin_of( pos )
 				decls.push({ node: world.node, klass: world.klass, props })
 			}
 			if( world.prop && root_props.indexOf( world.prop ) < 0 ) {
@@ -147,7 +157,8 @@ namespace $ {
 			}
 		}
 
-		const props = { ... item.props, pos } as Record< string, string >
+		const props = { ... item.props } as Record< string, string >
+		if( !world?.grid ) props.pos = pos
 		if( world?.ref ) props[ world.ref ] = `<= ${ world.node }`
 		const bound = Object.keys( item.binds ?? {} )
 		for( let i = 0; i < bound.length; ++i ) {

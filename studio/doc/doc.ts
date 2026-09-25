@@ -1,5 +1,7 @@
 namespace $ {
 
+	export const $bog_gamengine_studio_doc_grow_max = 32
+
 	export type $bog_gamengine_studio_doc_value = string | number | boolean | readonly number[]
 
 	export type $bog_gamengine_studio_doc_row = Readonly< Record< string, string > >
@@ -256,28 +258,78 @@ namespace $ {
 			return this.map_lines().map( line => [ ...line.value ] as readonly string[] ) as readonly ( readonly string[] )[]
 		}
 
+		map_origin() {
+			const owner = this.map_owner()
+			const line = owner?.kids.find( kid => kid.type === 'origin' )
+			const nums = line?.kids[ 0 ] ? this.numbers( this.flat( line.kids[ 0 ] ) ) : null
+			return [ Number( nums?.[ 0 ] ?? 0 ), Number( nums?.[ 1 ] ?? 0 ) ] as readonly [ number, number ]
+		}
+
+		map_fill() {
+			const count = new Map< string, number >()
+			for( const row of this.map() ) for( const char of row ) count.set( char, ( count.get( char ) ?? 0 ) + 1 )
+			let fill = ' '
+			let most = 0
+			for( const [ char, times ] of count ) {
+				if( times <= most ) continue
+				most = times
+				fill = char
+			}
+			return fill
+		}
+
 		paint_all( cells: readonly ( readonly [ number, number ] )[], char: string ) {
 			const lines = this.map_lines()
-			const rows = this.map()
-			const edits = new Map< number, string[] >()
+			if( !lines.length ) return
+			const rows = this.map().map( row => [ ...row ] )
+			const fill = this.map_fill()
+			const grow = $bog_gamengine_studio_doc_grow_max
+			let width = 0
+			for( const row of rows ) width = Math.max( width, row.length )
+			let left = 0
+			let top = 0
+			let right = 0
+			let bottom = 0
 			for( const [ x, y ] of cells ) {
-				const row = rows[ y ]
-				if( !row || x < 0 || x >= row.length ) continue
-				let chars = edits.get( y )
-				if( !chars ) edits.set( y, chars = [ ...row ] )
-				chars[ x ] = char
+				if( - x > grow || - y > grow || x - width >= grow || y - rows.length >= grow ) continue
+				left = Math.max( left, - x )
+				top = Math.max( top, - y )
+				right = Math.max( right, x + 1 - width )
+				bottom = Math.max( bottom, y + 1 - rows.length )
 			}
-			const source = this.source().split( '\n' )
-			let changed = false
-			for( const [ y, chars ] of edits ) {
-				const text = chars.join( '' )
-				if( text === rows[ y ].join( '' ) ) continue
-				const at = lines[ y ].span.row - 1
-				const cut = source[ at ].indexOf( '\\' )
-				source[ at ] = source[ at ].slice( 0, cut + 1 ) + text
+			const wide = width + left + right
+			for( const row of rows ) {
+				while( row.length < width ) row.push( fill )
+				for( let i = 0; i < left; ++ i ) row.unshift( fill )
+				while( row.length < wide ) row.push( fill )
+			}
+			for( let i = 0; i < top; ++ i ) rows.unshift( new Array( wide ).fill( fill ) )
+			for( let i = 0; i < bottom; ++ i ) rows.push( new Array( wide ).fill( fill ) )
+			let changed = left > 0 || top > 0 || right > 0 || bottom > 0
+			for( const [ x, y ] of cells ) {
+				const row = rows[ y + top ]
+				const at = x + left
+				if( !row || at < 0 || at >= row.length ) continue
+				if( row[ at ] === char ) continue
+				row[ at ] = char
 				changed = true
 			}
-			if( changed ) this.source( source.join( '\n' ) )
+			if( !changed ) return
+			const source = this.source().split( '\n' )
+			const first = lines[ 0 ].span.row - 1
+			const last = lines[ lines.length - 1 ].span.row - 1
+			const head = source[ first ].slice( 0, source[ first ].indexOf( '\\' ) )
+			const painted = rows.map( row => head + '\\' + row.join( '' ) )
+			const origin_line = this.map_owner()?.kids.find( kid => kid.type === 'origin' ) ?? null
+			const origin_at = origin_line ? origin_line.span.row - 1 : - 1
+			source.splice( first, last - first + 1, ... painted )
+			if( left > 0 || top > 0 ) {
+				const origin = this.map_origin()
+				const shifted = `${ head.slice( 0, - 1 ) }origin / ${ this.token( origin[ 0 ] - left ) } ${ this.token( origin[ 1 ] + top ) }`
+				if( origin_at < 0 ) source.splice( first - 1, 0, shifted )
+				else source[ origin_at > last ? origin_at + painted.length - ( last - first + 1 ) : origin_at ] = shifted
+			}
+			this.source( source.join( '\n' ) )
 		}
 
 		paint( x: number, y: number, char: string ) {
