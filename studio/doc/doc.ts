@@ -429,8 +429,9 @@ namespace $ {
 			const spots = [] as $mol_tree2[]
 			for( const klass of this.decls().values() ) {
 				for( const line of klass.kids ) {
-					if( line.type !== 'kids' && line.type !== 'parts' ) continue
-					for( const kid of line.kids[ 0 ]?.kids ?? [] ) {
+					const list = line.kids[ 0 ]
+					if( list?.type !== '/' ) continue
+					for( const kid of list.kids ) {
 						if( kid.kids[ 0 ]?.type === name ) spots.push( kid )
 					}
 				}

@@ -316,6 +316,17 @@ namespace $ {
 			$mol_assert_ok( doc.source().includes( 'Phys $bog_gamengine_phys' ) )
 		},
 
+		'drop of a body takes it out of the list of the world too'( $ ) {
+			const doc = open( $, $bog_gamengine_studio_sample )
+			$mol_assert_ok( doc.source().includes( 'bodies /\n\t\t\t<= Hero\n' ) )
+			doc.drop( 'Hero_look' )
+			doc.drop( 'Hero' )
+			$mol_assert_not( doc.source().includes( '<= Hero' ) )
+			$mol_assert_ok( doc.source().includes( 'Phys $bog_gamengine_phys' ) )
+			$mol_assert_ok( titles( doc ).includes( 'Карта' ) )
+			$mol_assert_ok( titles( doc ).includes( 'Монета' ) )
+		},
+
 		'drop of an unknown node fails with its path'( $ ) {
 			const doc = open( $, $bog_gamengine_studio_sample )
 			$mol_assert_fail( ()=> doc.drop( 'Ghost' ), 'Node Ghost is neither placed nor declared' )
