@@ -69,6 +69,13 @@ namespace $ {
 			return [
 				... super.props(),
 				{ name: 'size', kind: 'number', get: ()=> this.size(), set: next => this.size( next as number ) },
+				{
+					name: 'atlas',
+					kind: 'node',
+					klass: '$bog_gamengine_atlas',
+					get: ()=> this.atlas(),
+					set: next => this.atlas( next as $bog_gamengine_atlas | null ),
+				},
 			]
 		}
 
