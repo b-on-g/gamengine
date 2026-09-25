@@ -32,11 +32,9 @@ jobs:
     # CI объявляет, что браузер здесь обязателен: без него пробы падают, а не пропускаются.
     # studio/pair и net/pair в списке нет намеренно — им нужен мастер Базы на 9090, которого на
     # раннере не будет, и их пропуск сошёл бы за успех. Как прогнать руками — в их README.
-    # demo/shooter/look и demo/legion/look тоже намеренно: подпись на раннере всё равно не
-    # сверяется, а файлы у трёх подписей почти одинаковые и ломаются вместе с движковым look,
-    # который в списке стоит. Одного экземпляра, demo/jumper/look, хватает на компиляцию.
-    # Остаток, названный явно: исходники этих двух не компилируются нигде — лечится сведением
-    # трёх подписей в один модуль с параметром, это задача, а не строка списка.
+    # Подписи трёх игр сведены в demo/look: данные лежат словарём по имени демо, и один модуль
+    # в списке компилирует все три. Сверка картинки всё равно только местная, в CI от подписи
+    # проверяется компиляция.
     # net/stand, net/lobby, demo/shooter/gen, studio/case, brain/act/move, save стоят здесь не ради
     # своих тестов, а ради ТАЙПЧЕКА: модуль проверяется, если он в этом списке или он зависимость
     # чего-то из списка. Шесть имён закрывают пятнадцать модулей из восемнадцати, которые иначе не
@@ -48,7 +46,7 @@ jobs:
         CI: true
       with:
         package: 'bog/gamengine'
-        modules: 'demo probe look net/probe net/stand net/lobby demo/jumper/probe demo/jumper/look demo/shooter/probe demo/shooter/gen demo/legion/probe studio/probe studio/case brain/act/move save pack'
+        modules: 'demo probe look net/probe net/stand net/lobby demo/jumper/probe demo/look demo/shooter/probe demo/shooter/gen demo/legion/probe studio/probe studio/case brain/act/move save pack'
 
     - uses: hyoo-ru/gh-deploy@v4.4.1
       if: github.ref == 'refs/heads/main'
