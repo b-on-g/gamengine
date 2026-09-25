@@ -62,22 +62,26 @@ namespace $ {
 			$mol_assert_equal( kit.title( 'walker' ), 'Ходок' )
 		},
 
-		'body of the palette asks for the phys world with a tile mate'() {
+		'body of the palette asks for the phys world and binds a tile only if there is one'() {
 			const kit = new $bog_gamestudio_kit
 			const world = kit.world( 'body' )!
 			$mol_assert_equal( world.prop, 'phys' )
 			$mol_assert_equal( world.node, 'Phys' )
 			$mol_assert_equal( world.klass, '$bog_gamengine_phys' )
 			$mol_assert_equal( world.list, 'bodies' )
-			$mol_assert_equal( world.props.tile, '<= Tile' )
-			$mol_assert_equal( world.mates.length, 1 )
-			$mol_assert_equal( world.mates[ 0 ].node, 'Tile' )
-			$mol_assert_equal( world.mates[ 0 ].klass, '$bog_gamengine_phys_tile' )
+			$mol_assert_equal( world.props.tile, undefined )
+			$mol_assert_equal( world.binds.tile, 'Tile' )
 		},
 
-		'tile of the phys world takes the map of the scene itself'() {
+		'no world of the palette declares a tile or leans on a map of the root'() {
 			const kit = new $bog_gamestudio_kit
-			$mol_assert_equal( kit.world( 'walker' )!.mates[ 0 ].props.map, '<= map' )
+			for( const id of [ 'walker', 'body', 'agent' ] ) {
+				const world = kit.world( id )!
+				$mol_assert_equal( Object.values( world.props ).indexOf( '<= map' ), -1 )
+				$mol_assert_equal( world.binds.tile, 'Tile' )
+				const plan = $bog_gamestudio_kit_plan_of( kit.item( id )!, [], [], '/ 0.5 -0.5 0' )
+				$mol_assert_equal( plan.decls.some( one => one.klass === '$bog_gamengine_phys_tile' ), false )
+			}
 		},
 
 		'walker is the engine primitive and asks for no input wiring'() {
@@ -95,11 +99,12 @@ namespace $ {
 			$mol_assert_equal( kit.item( 'body' )!.props.name, '\\Тело' )
 		},
 
-		'empty scene gets the tile, the world and a line on the root'() {
+		'empty scene gets the world and a line on the root'() {
 			const kit = new $bog_gamestudio_kit
 			const plan = $bog_gamestudio_kit_plan_of( kit.item( 'walker' )!, [], [ 'map', 'palette' ], '/ 1.5 -1.5 0' )
-			$mol_assert_equal( plan.decls.map( one => one.node ), [ 'Tile', 'Phys' ] )
-			$mol_assert_equal( plan.decls[ 1 ].props.bodies, '/' )
+			$mol_assert_equal( plan.decls.map( one => one.node ), [ 'Phys' ] )
+			$mol_assert_equal( plan.decls[ 0 ].props.bodies, '/' )
+			$mol_assert_equal( plan.decls[ 0 ].props.tile, undefined )
 			$mol_assert_equal( plan.root, [ 'phys <= Phys' ] )
 			$mol_assert_equal( plan.klass, '$bog_gamengine_phys_walker' )
 			$mol_assert_equal( plan.props.pos, '/ 1.5 -1.5 0' )
@@ -114,23 +119,20 @@ namespace $ {
 			$mol_assert_equal( plan.join, { node: 'Phys', prop: 'bodies' } )
 		},
 
-		'half built world is filled up, not doubled'() {
+		'half built world is filled up, not doubled, and takes the tile that is already there'() {
 			const kit = new $bog_gamestudio_kit
 			const plan = $bog_gamestudio_kit_plan_of( kit.item( 'body' )!, [ 'Tile' ], [ 'map' ], '/ 0.5 -0.5 0' )
 			$mol_assert_equal( plan.decls.map( one => one.node ), [ 'Phys' ] )
+			$mol_assert_equal( plan.decls[ 0 ].props.tile, '<= Tile' )
 			$mol_assert_equal( plan.root, [ 'phys <= Phys' ] )
 		},
 
-		'placing a walker into a bare scene writes the world, the tile and the node'( $ ) {
+		'placing a walker into a bare scene of the engine gives a working world'( $ ) {
 
 			const doc = new $bog_gamestudio_doc
 			doc.$ = $
 			doc.source_own( [
-				'$bog_gamestudio_sample $bog_gamestudio_sample_map',
-				'\tmap \\',
-				'\t\t\\####',
-				'\t\t\\#..#',
-				'\t\t\\####',
+				'$bog_gamestudio_sample $bog_gamengine_scene',
 				'\tkids /',
 				'',
 			].join( '\n' ) )
@@ -140,15 +142,22 @@ namespace $ {
 			const source = doc.source()
 
 			$mol_assert_ok( name.length > 0 )
-			$mol_assert_ok( source.includes( '$bog_gamengine_phys_tile' ) )
-			$mol_assert_ok( source.includes( 'map <= map' ) )
 			$mol_assert_ok( source.includes( 'Phys $bog_gamengine_phys' ) )
-			$mol_assert_ok( source.includes( 'tile <= Tile' ) )
 			$mol_assert_ok( source.includes( 'phys <= Phys' ) )
 			$mol_assert_ok( source.includes( '$bog_gamengine_phys_walker' ) )
 			$mol_assert_ok( source.includes( 'pos / 1.5 -1.5 0' ) )
 			$mol_assert_ok( source.includes( `<= ${ name }` ) )
-			$mol_assert_ok( doc.tree().kids.length > 0 )
+			$mol_assert_equal( source.includes( '$bog_gamengine_phys_tile' ), false )
+			$mol_assert_equal( source.includes( 'map <= map' ), false )
+
+			const scene = doc.scene()
+			const phys = scene.phys()!
+			$mol_assert_equal( phys.tile(), null )
+
+			const body = scene.nodes().find( one => one instanceof $bog_gamengine_phys_body ) as $bog_gamengine_phys_body
+			body.vel( new Float32Array([ 1, 0, 0 ]) )
+			phys.step_world( 0.5 )
+			$mol_assert_equal( body.pos()[ 0 ] > 1.5, true )
 
 		},
 
@@ -157,11 +166,12 @@ namespace $ {
 			const doc = new $bog_gamestudio_doc
 			doc.$ = $
 			doc.source_own( [
-				'$bog_gamestudio_sample $bog_gamestudio_sample_map',
-				'\tmap \\',
-				'\t\t\\####',
-				'\t\t\\#..#',
-				'\t\t\\####',
+				'$bog_gamestudio_sample $bog_gamengine_scene',
+				'\tTile $bog_gamengine_phys_tile',
+				'\t\tmap \\',
+				'\t\t\t\\####',
+				'\t\t\t\\#..#',
+				'\t\t\t\\####',
 				'\tkids /',
 				'',
 			].join( '\n' ) )
@@ -174,6 +184,7 @@ namespace $ {
 			$mol_assert_ok( first !== second )
 			$mol_assert_equal( source.match( /Phys \$bog_gamengine_phys/g )!.length, 1 )
 			$mol_assert_equal( source.match( /\$bog_gamengine_phys_tile/g )!.length, 1 )
+			$mol_assert_equal( source.match( /tile <= Tile/g )!.length, 1 )
 			$mol_assert_equal( source.match( /phys <= Phys/g )!.length, 1 )
 			$mol_assert_ok( source.includes( `<= ${ first }` ) )
 			$mol_assert_ok( source.includes( `<= ${ second }` ) )
@@ -190,7 +201,7 @@ namespace $ {
 			$mol_assert_equal( world.ref, 'grid' )
 			$mol_assert_equal( world.prop, '' )
 			const plan = $bog_gamestudio_kit_plan_of( kit.item( 'agent' )!, [], [ 'map' ], '/ 1.5 -1.5 0' )
-			$mol_assert_equal( plan.decls.map( one => one.node ), [ 'Tile', 'Grid' ] )
+			$mol_assert_equal( plan.decls.map( one => one.node ), [ 'Grid' ] )
 			$mol_assert_equal( plan.root, [] )
 			$mol_assert_equal( plan.join, null )
 			$mol_assert_equal( plan.props.grid, '<= Grid' )
@@ -201,11 +212,12 @@ namespace $ {
 			const doc = new $bog_gamestudio_doc
 			doc.$ = $
 			doc.source_own( [
-				'$bog_gamestudio_sample $bog_gamestudio_sample_map',
-				'\tmap \\',
-				'\t\t\\######',
-				'\t\t\\#....#',
-				'\t\t\\######',
+				'$bog_gamestudio_sample $bog_gamengine_scene',
+				'\tTile $bog_gamengine_phys_tile',
+				'\t\tmap \\',
+				'\t\t\t\\######',
+				'\t\t\t\\#....#',
+				'\t\t\t\\######',
 				'\tkids /',
 				'',
 			].join( '\n' ) )
@@ -225,6 +237,7 @@ namespace $ {
 			const agents = scene.nodes().filter( one => one instanceof $bog_gamengine_nav_agent )
 			$mol_assert_equal( agents.length, 2 )
 			$mol_assert_ok( Boolean( ( agents[ 0 ] as $bog_gamengine_nav_agent ).grid() ) )
+			$mol_assert_equal( ( agents[ 0 ] as $bog_gamengine_nav_agent ).grid()!.width(), 6 )
 			$mol_assert_equal(
 				( agents[ 0 ] as $bog_gamengine_nav_agent ).grid(),
 				( agents[ 1 ] as $bog_gamengine_nav_agent ).grid(),

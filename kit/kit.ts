@@ -11,7 +11,7 @@ namespace $ {
 		readonly node: string
 		readonly klass: string
 		readonly props: Readonly< Record< string, string > >
-		readonly mates: readonly $bog_gamestudio_kit_mate[]
+		readonly binds: Readonly< Record< string, string > >
 		readonly list: string
 		readonly ref: string
 	}
@@ -30,10 +30,8 @@ namespace $ {
 			prop: 'phys',
 			node: 'Phys',
 			klass: '$bog_gamengine_phys',
-			props: { tile: '<= Tile', bodies: '/' },
-			mates: [
-				{ node: 'Tile', klass: '$bog_gamengine_phys_tile', props: { map: '<= map' } },
-			],
+			props: { bodies: '/' },
+			binds: { tile: 'Tile' },
 			list: 'bodies',
 			ref: '',
 		},
@@ -41,10 +39,8 @@ namespace $ {
 			prop: '',
 			node: 'Grid',
 			klass: '$bog_gamengine_nav_grid',
-			props: { tile: '<= Tile' },
-			mates: [
-				{ node: 'Tile', klass: '$bog_gamengine_phys_tile', props: { map: '<= map' } },
-			],
+			props: {},
+			binds: { tile: 'Tile' },
 			list: '',
 			ref: 'grid',
 		},
@@ -107,12 +103,14 @@ namespace $ {
 		const root = [] as string[]
 
 		if( world ) {
-			for( let i = 0; i < world.mates.length; ++i ) {
-				const mate = world.mates[ i ]
-				if( known.indexOf( mate.node ) < 0 ) decls.push( mate )
-			}
 			if( known.indexOf( world.node ) < 0 ) {
-				decls.push({ node: world.node, klass: world.klass, props: world.props })
+				const props = { ... world.props } as Record< string, string >
+				const bound = Object.keys( world.binds )
+				for( let i = 0; i < bound.length; ++i ) {
+					const node = world.binds[ bound[ i ] ]
+					if( known.indexOf( node ) >= 0 ) props[ bound[ i ] ] = `<= ${ node }`
+				}
+				decls.push({ node: world.node, klass: world.klass, props })
 			}
 			if( world.prop && root_props.indexOf( world.prop ) < 0 ) {
 				root.push( `${ world.prop } <= ${ world.node }` )
