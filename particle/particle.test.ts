@@ -119,6 +119,24 @@ namespace $ {
 			$mol_assert_equal( world.pool().trans[ 12 ], 5 )
 		},
 
+		'cylinder emitter keeps the plain basis, sphere takes the camera one'() {
+			const build = ( kind: $bog_gamengine_billboard )=> {
+				const scene = new $bog_gamengine_scene
+				const cam = new $bog_gamengine_cam
+				cam.rot( new Float32Array([ - Math.PI / 4, 0, 0 ]) )
+				scene.cam( cam )
+				const emitter = $bog_gamengine_particle_test_emitter( 0, 10 )
+				emitter.billboard( kind )
+				emitter.speed( new Float32Array([ 0, 0 ]) )
+				scene.kids([ emitter ])
+				emitter.burst( 1 )
+				emitter.pool()
+				return [ ... emitter.basis ].map( v => Math.round( v * 1e4 ) / 1e4 )
+			}
+			$mol_assert_equal( build( 'cylinder' ), [ 1, 0, 0, 0, 1, 0, 0, 0, 1 ] )
+			$mol_assert_unique( build( 'sphere' ), build( 'cylinder' ) )
+		},
+
 		'billboard basis is the camera basis under pitch and under roll'() {
 			for( const rot of [ [ - Math.PI / 4, 0, 0 ], [ 0, 0, Math.PI / 6 ], [ - 0.3, 0.7, 0.2 ] ] ) {
 				const scene = new $bog_gamengine_scene
@@ -127,7 +145,7 @@ namespace $ {
 				cam.rot( new Float32Array( rot ) )
 				scene.cam( cam )
 				const emitter = $bog_gamengine_particle_test_emitter( 0, 10 )
-				emitter.billboard( true )
+				emitter.billboard( 'sphere' )
 				emitter.speed( new Float32Array([ 0, 0 ]) )
 				scene.kids([ emitter ])
 				emitter.burst( 1 )
@@ -153,7 +171,7 @@ namespace $ {
 			cam.rot( new Float32Array([ 0, Math.PI / 2, 0 ]) )
 			scene.cam( cam )
 			const emitter = $bog_gamengine_particle_test_emitter( 0, 10 )
-			emitter.billboard( true )
+			emitter.billboard( 'sphere' )
 			emitter.speed( new Float32Array([ 0, 0 ]) )
 			scene.kids([ emitter ])
 			emitter.burst( 1 )

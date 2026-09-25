@@ -91,7 +91,7 @@ namespace $ {
 				{ name: 'height', kind: 'number', get: ()=> this.height(), set: next => this.height( next as number ) },
 				{ name: 'align', kind: 'text', get: ()=> this.align(), set: next => this.align( next as $bog_gamengine_text_align ) },
 				{ name: 'color', kind: 'vec4', get: ()=> this.color(), set: next => this.color( next as ArrayLike< number > ) },
-				{ name: 'billboard', kind: 'flag', get: ()=> this.billboard(), set: next => this.billboard( next as boolean ) },
+				{ name: 'billboard', kind: 'text', get: ()=> this.billboard(), set: next => this.billboard( next as $bog_gamengine_billboard ) },
 			]
 		}
 
@@ -133,7 +133,7 @@ namespace $ {
 			const align = watch.of( this.align() )
 			const color = watch.of( this.color() )
 			const billboard = watch.of( this.billboard() )
-			const cam = billboard ? this.scene()?.cam() ?? null : null
+			const cam = billboard === 'sphere' ? this.scene()?.cam() ?? null : null
 			watch.of( cam?.world() ?? null )
 			const font = this.font()
 			watch.of( font.family() )

@@ -2,6 +2,8 @@ namespace $ {
 
 	export type $bog_gamengine_prop_kind = 'vec2' | 'vec3' | 'vec4' | 'number' | 'flag' | 'text' | 'frame' | 'euler' | 'list' | 'nodes' | 'node' | 'point'
 
+	export type $bog_gamengine_billboard = '' | 'cylinder' | 'sphere'
+
 	export type $bog_gamengine_prop = {
 		name: string
 		kind: $bog_gamengine_prop_kind
@@ -116,8 +118,8 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		billboard( next = false ) {
-			return next
+		billboard( next?: $bog_gamengine_billboard ): string {
+			return next ?? ''
 		}
 
 		@ $mol_mem
@@ -186,7 +188,7 @@ namespace $ {
 		@ $mol_mem
 		trans() {
 			const rot = this.rot()
-			const yaw = this.billboard() ? this.cam_yaw() : rot[ 1 ]
+			const yaw = this.billboard() === 'cylinder' ? this.cam_yaw() : rot[ 1 ]
 			return $mol_3d_mat4.multiply(
 				$mol_3d_mat4.translation( this.pos() ),
 				$mol_3d_mat4.rotation( [ 0, 0, 1 ], rot[ 2 ] ),

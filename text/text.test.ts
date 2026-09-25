@@ -84,6 +84,23 @@ namespace $ {
 			}
 		},
 
+		'cylinder text keeps world up under a pitched camera, sphere does not'() {
+			const build = ( kind: $bog_gamengine_billboard )=> {
+				const text = $bog_gamengine_text_test_make( 'a' )
+				text.height( 1 )
+				const cam = new $bog_gamengine_cam
+				const scene = new $bog_gamengine_scene
+				scene.cam( cam )
+				scene.kids([ text ])
+				text.billboard( kind )
+				cam.rot( new Float32Array([ - Math.PI / 4, 0, 0 ]) )
+				const trans = text.pool().trans
+				return [ trans[ 4 ], trans[ 5 ], trans[ 6 ] ].map( $bog_gamengine_text_test_round )
+			}
+			$mol_assert_equal( build( 'cylinder' ), [ 0, 1, 0 ] )
+			$mol_assert_unique( build( 'sphere' ), build( 'cylinder' ) )
+		},
+
 		'billboard glyph axes are the camera basis under pitch and under roll'() {
 			for( const rot of [ [ - Math.PI / 4, 0, 0 ], [ 0, 0, Math.PI / 6 ], [ - 0.3, 0.7, 0.2 ] ] ) {
 				const text = $bog_gamengine_text_test_make( 'a' )
@@ -92,7 +109,7 @@ namespace $ {
 				const scene = new $bog_gamengine_scene
 				scene.cam( cam )
 				scene.kids([ text ])
-				text.billboard( true )
+				text.billboard( 'sphere' )
 				cam.scale( new Float32Array([ 2, 2, 2 ]) )
 				cam.rot( new Float32Array( rot ) )
 				const view = cam.world()
@@ -117,7 +134,7 @@ namespace $ {
 			const scene = new $bog_gamengine_scene
 			scene.cam( cam )
 			scene.kids([ text ])
-			text.billboard( true )
+			text.billboard( 'sphere' )
 			cam.rot( new Float32Array([ 0, 0, 0 ]) )
 			const version = text.pool().version
 			const world = [ ... text.world() ]

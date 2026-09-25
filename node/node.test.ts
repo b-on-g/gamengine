@@ -103,7 +103,7 @@ namespace $ {
 			scene.cam( cam )
 
 			const node = new $bog_gamengine_node
-			node.billboard( true )
+			node.billboard( 'cylinder' )
 			scene.kids([ node ])
 
 			const trans = node.trans()
@@ -112,6 +112,66 @@ namespace $ {
 			const dot = - ( normal[ 0 ] * to_cam[ 0 ] + normal[ 1 ] * to_cam[ 1 ] + normal[ 2 ] * to_cam[ 2 ] )
 			$mol_assert_ok( Math.abs( dot - 1 ) < 1e-6 )
 
+		},
+
+		'cylinder stands upright under a tipped camera, sphere leans with it'() {
+			const make = ( kind: $bog_gamengine_billboard, rot: readonly number[] )=> {
+				const scene = new $bog_gamengine_scene
+				const cam = new $bog_gamengine_cam
+				cam.rot( new Float32Array( rot ) )
+				scene.cam( cam )
+				const node = new $bog_gamengine_node
+				node.billboard( kind )
+				scene.kids([ node ])
+				const up = new Float32Array( 9 )
+				if( kind === 'sphere' ) {
+					$bog_gamengine_vec_mat4_basis( up, cam.world(), 3 )
+					return [ up[ 3 ], up[ 4 ], up[ 5 ] ].map( v => Math.round( v * 1e4 ) / 1e4 )
+				}
+				const world = node.world()
+				return [ world[ 4 ], world[ 5 ], world[ 6 ] ].map( v => Math.round( v * 1e4 ) / 1e4 )
+			}
+			const level = [ 0, 0, 0 ]
+			$mol_assert_equal( make( 'cylinder', level ), make( 'sphere', level ) )
+			for( const rot of [ [ - Math.PI / 4, 0, 0 ], [ 0, 0, Math.PI / 6 ] ] ) {
+				$mol_assert_equal( make( 'cylinder', rot ), [ 0, 1, 0 ] )
+				$mol_assert_unique( make( 'cylinder', rot ), make( 'sphere', rot ) )
+			}
+		},
+
+		'sphere does not order the cylindrical turn, so the camera leaves its trans alone'() {
+			const scene = new $bog_gamengine_scene
+			const cam = new $bog_gamengine_cam
+			cam.rot( new Float32Array([ 0, Math.PI / 2, 0 ]) )
+			scene.cam( cam )
+			const spun = new $bog_gamengine_node
+			spun.billboard( 'sphere' )
+			const plain = new $bog_gamengine_node
+			scene.kids([ spun, plain ])
+			$mol_assert_equal( [ ... spun.trans() ], [ ... plain.trans() ] )
+			const turned = new $bog_gamengine_node
+			turned.billboard( 'cylinder' )
+			scene.kids([ spun, plain, turned ])
+			$mol_assert_unique( [ ... turned.trans() ], [ ... plain.trans() ] )
+		},
+
+		'cylinder keeps its own pitch and roll, sphere keeps none of its rotation'() {
+			const scene = new $bog_gamengine_scene
+			const cam = new $bog_gamengine_cam
+			cam.rot( new Float32Array([ 0, Math.PI / 2, 0 ]) )
+			scene.cam( cam )
+			const node = new $bog_gamengine_node
+			node.billboard( 'cylinder' )
+			node.rot( new Float32Array([ 0, 0, Math.PI / 2 ]) )
+			const plain = new $bog_gamengine_node
+			plain.billboard( 'cylinder' )
+			scene.kids([ node, plain ])
+			const up = ( one: $bog_gamengine_node )=> {
+				const trans = one.trans()
+				return [ trans[ 4 ], trans[ 5 ], trans[ 6 ] ].map( v => Math.round( v * 1e4 ) / 1e4 )
+			}
+			$mol_assert_equal( up( plain ), [ 0, 1, 0 ] )
+			$mol_assert_unique( up( node ), up( plain ) )
 		},
 
 		'node without billboard keeps its own yaw'() {

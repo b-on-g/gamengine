@@ -60,7 +60,7 @@ namespace $ {
 				{ name: 'normal_frame', kind: 'frame', get: ()=> this.normal_frame(), set: next => this.normal_frame( next as string ) },
 				{ name: 'size', kind: 'vec3', get: ()=> this.size(), set: next => this.size( next as ArrayLike< number > ) },
 				{ name: 'material', kind: 'vec4', get: ()=> this.material(), set: next => this.material( next as ArrayLike< number > ) },
-				{ name: 'billboard', kind: 'flag', get: ()=> this.billboard(), set: next => this.billboard( next as boolean ) },
+				{ name: 'billboard', kind: 'text', get: ()=> this.billboard(), set: next => this.billboard( next as $bog_gamengine_billboard ) },
 			]
 		}
 

@@ -53,7 +53,7 @@ namespace $ {
 				{ name: 'size', kind: 'vec2', get: ()=> this.size(), set: next => this.size( next as ArrayLike< number > ) },
 				{ name: 'clip', kind: 'text', get: ()=> this.clip(), set: next => this.clip( next as string ) },
 				{ name: 'fps', kind: 'number', get: ()=> this.fps(), set: next => this.fps( next as number ) },
-				{ name: 'billboard', kind: 'flag', get: ()=> this.billboard(), set: next => this.billboard( next as boolean ) },
+				{ name: 'billboard', kind: 'text', get: ()=> this.billboard(), set: next => this.billboard( next as $bog_gamengine_billboard ) },
 			]
 		}
 

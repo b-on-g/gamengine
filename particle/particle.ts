@@ -146,7 +146,7 @@ namespace $ {
 				{ name: 'gravity', kind: 'vec3', get: ()=> this.gravity(), set: next => this.gravity( next as ArrayLike< number > ) },
 				{ name: 'size', kind: 'vec2', get: ()=> this.size(), set: next => this.size( next as ArrayLike< number > ) },
 				{ name: 'frame', kind: 'frame', get: ()=> this.frame(), set: next => this.frame( next as string ) },
-				{ name: 'billboard', kind: 'flag', get: ()=> this.billboard(), set: next => this.billboard( next as boolean ) },
+				{ name: 'billboard', kind: 'text', get: ()=> this.billboard(), set: next => this.billboard( next as $bog_gamengine_billboard ) },
 				{ name: 'world_space', kind: 'flag', get: ()=> this.world_space(), set: next => this.world_space( next as boolean ) },
 			]
 		}
@@ -315,7 +315,7 @@ namespace $ {
 			const color = this.color()
 			const layers = this.layers()
 			const basis = this.basis
-			const cam = this.billboard() ? this.scene()?.cam() ?? null : null
+			const cam = this.billboard() === 'sphere' ? this.scene()?.cam() ?? null : null
 			if( cam ) {
 				$bog_gamengine_vec_mat4_basis( basis, cam.world(), 3 )
 			} else {

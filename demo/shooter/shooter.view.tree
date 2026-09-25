@@ -129,7 +129,7 @@ $bog_gamengine_demo_shooter $mol_page
 		spread 0.6
 		size <= spark_size Float32Array
 		color <= spark_color Float32Array
-		billboard true
+		billboard \sphere
 	Floor $bog_gamengine_mesh
 		shape <= Plane $bog_gamengine_shape_plane
 			tile <= floor_tile Float32Array
