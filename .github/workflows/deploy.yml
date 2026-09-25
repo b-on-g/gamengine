@@ -39,39 +39,84 @@ jobs:
     # который может упасть по неизвестной причине, стоит последним — иначе он закроет собой ответы про
     # все, что за ним. net/probe стоял четвёртым, упал на готовности страницы, и pack со подписями в
     # том прогоне не проверялись вовсе. Новое и неуверенное — в конец.
-    # net/stand, net/lobby, demo/shooter/gen, studio/case, brain/act/move, save стоят здесь не ради
-    # своих тестов, а ради ТАЙПЧЕКА: модуль проверяется, если он в этом списке или он зависимость
-    # чего-то из списка. Шесть имён закрывают пятнадцать модулей из восемнадцати, которые иначе не
-    # компилируются в CI вовсе. Цена замерена временем, а не числом тестов: около 14 секунд локально,
-    # порядка тридцати на раннере, при прогоне в десять минут. Большое число тестов у studio/case —
-    # это повторный прогон движковых по замыканию, а не новая работа.
+    # Шесть имён, стоявших здесь только ради ТАЙПЧЕКА, переехали в шаг ниже: net/stand, net/lobby,
+    # demo/shooter/gen, studio/case, brain/act/move, save. В этом списке они стоили 263 секунды
+    # замером по отметкам, потому что `modules:` гонит на каждое имя `npm start` — это `npm update`
+    # и `bundleAll` со сборкой всех веб-целей и прогоном тестового замыкания дочерним процессом.
+    # Тайпчеком из этого была одна цель из двадцати двух. Отдельным шагом те же шесть стоят 96 секунд.
     - uses: hyoo-ru/mam_build@master2
       env:
         CI: true
       with:
         package: 'bog/gamengine'
-        modules: 'demo probe look net/stand net/lobby demo/jumper/probe demo/look demo/shooter/probe demo/shooter/gen demo/legion/probe studio/probe studio/case brain/act/move save pack net/probe'
+        modules: 'demo probe look demo/jumper/probe demo/look demo/shooter/probe demo/legion/probe studio/probe pack net/probe'
 
-    # Замер цены тайпчека без прогона тестов. Шесть имён выше стоят в `modules:` только ради
-    # тайпчека, а `modules:` гонит на каждое имя `npm start`, то есть `npm update` и `bundleAll`
-    # со сборкой всех веб-целей и запуском тестового замыкания дочерним процессом. Аудит —
-    # отдельная цель: `bundleAuditJS` строит свою программу TS и другие бандлы ему не нужны.
-    # Пока шаг стоит ВМЕСТЕ с шестью именами, чтобы сравнить цену, ничего не потеряв: если он
-    # зелёный и дешёвый, имена из `modules:` убираются вторым шагом и поток возвращает 263 секунды.
+    # Тайпчек шести модулей без прогона их тестов. `bundleAuditJS` строит свою программу TS, другие
+    # бандлы ему не нужны, и `.test.ts` из тайпчека НЕ исключаются — покрытие типов то же, уходит
+    # только прогон. Цена линейна по числу имён: своя программа TS на модуль, между модулями она не
+    # переиспользуется, замерено 10-20 секунд на модуль независимо от порядка. Поэтому число печатается
+    # ПО МОДУЛЮ: кто добавит имя, увидит цену своего имени, а не общую сумму.
+    # Шаг утверждает, что покрыл: артефакт удаляется перед прогоном, и каждый модуль обязан написать
+    # свой `node.audit.js` со словами Audit passed. Иначе «модуль перестал тайпчекаться» осталось бы
+    # зелёным — это подмена пропуска успехом, только уровнем выше.
+    # Узловой аудит не видит файлы с тегом `web`. Сегодня их в паке нет, поэтому он строго сильнее
+    # веб-аудита, но это факт про пак, а не свойство MAM, и он проверяется поиском ниже, а не
+    # комментарием: записанное и не прогоняемое правило не охраняет ничего.
     - name: Typecheck without running tests
       env:
         CI: true
       run: |
-        set -euo pipefail
-        start=$SECONDS
-        node bog/gamengine/.github/audit.js \
-          bog/gamengine/net/stand \
-          bog/gamengine/net/lobby \
-          bog/gamengine/demo/shooter/gen \
-          bog/gamengine/studio/case \
-          bog/gamengine/brain/act/move \
-          bog/gamengine/save
-        echo "Аудит шести модулей без тестов: $(( SECONDS - start )) с" >> "$GITHUB_STEP_SUMMARY"
+        set -uo pipefail
+
+        stray=$( find bog/gamengine -path '*/-*' -prune -o -name '*.web*.ts' -print )
+        if [ -n "$stray" ]; then
+          echo "В паке появились файлы с тегом web, а узловой аудит их не видит:"
+          echo "$stray"
+          echo "Верните их модули в modules: или добавьте в этот шаг веб-аудит."
+          exit 1
+        fi
+
+        {
+          echo "### Тайпчек без прогона тестов"
+          echo ""
+          echo "| модуль | сек |"
+          echo "| --- | --- |"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        total=0
+        fail=0
+
+        for mod in \
+          net/stand \
+          net/lobby \
+          demo/shooter/gen \
+          studio/case \
+          brain/act/move \
+          save
+        do
+          art="bog/gamengine/$mod/-/node.audit.js"
+          rm -f "$art"
+          start=$SECONDS
+          node bog/gamengine/.github/audit.js "bog/gamengine/$mod"
+          code=$?
+          spent=$(( SECONDS - start ))
+          total=$(( total + spent ))
+          echo "| \`$mod\` | $spent |" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" -ne 0 ]; then
+            echo "$mod: аудит вышел с кодом $code"
+            fail=1
+          elif [ ! -s "$art" ]; then
+            echo "$mod: аудит не написал $art, значит модуль НЕ проверен"
+            fail=1
+          elif ! grep -q 'Audit passed' "$art"; then
+            echo "$mod: аудит не сказал Audit passed"
+            cat "$art"
+            fail=1
+          fi
+        done
+
+        echo "| **всего** | **$total** |" >> "$GITHUB_STEP_SUMMARY"
+        exit $fail
 
     - uses: hyoo-ru/gh-deploy@v4.4.1
       if: github.ref == 'refs/heads/main'
