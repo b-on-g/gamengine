@@ -3948,6 +3948,12 @@ declare namespace $ {
         props?(): readonly $bog_gamengine_prop[];
     };
     function $bog_gamengine_node_vec(next: ArrayLike<number>): Float32Array<ArrayBufferLike>;
+    const $bog_gamengine_node_reach_states: readonly {
+        readonly size?: readonly number[];
+        readonly scale?: readonly number[];
+        readonly rot?: readonly number[];
+    }[];
+    function $bog_gamengine_node_reach(node: $bog_gamengine_node): number;
     class $bog_gamengine_node extends $mol_object2 {
         name(next?: string): string;
         role(next?: string): string;
@@ -3974,6 +3980,11 @@ declare namespace $ {
         cam_yaw(): number;
         trans(): $mol_3d_mat4;
         world(): $mol_3d_mat4;
+        local_box: Float32Array<ArrayBuffer>;
+        world_box: Float32Array<ArrayBuffer>;
+        box_local(): Float32Array | null;
+        aabb(): Float32Array<ArrayBuffer>;
+        aabb_empty(): boolean;
         step(dt: number): void;
     }
 }
@@ -4132,6 +4143,7 @@ declare namespace $ {
 declare namespace $ {
     class $bog_gamengine_shape extends $mol_3d_shape {
         normals(): Float32Array<ArrayBuffer>;
+        box(): Float32Array<ArrayBuffer>;
         radius(): number;
         count(): number;
         mode(): 'strip' | 'triangles' | 'lines';
@@ -4575,6 +4587,7 @@ declare namespace $ {
     function $bog_gamengine_vec_cross(out: Float32Array, a: Float32Array, b: Float32Array): Float32Array<ArrayBufferLike>;
     function $bog_gamengine_vec_lerp(out: Float32Array, a: Float32Array, b: Float32Array, t: number): Float32Array<ArrayBufferLike>;
     function $bog_gamengine_vec_mat4_apply(out: Float32Array, m: Float32List, v: Float32Array): Float32Array<ArrayBufferLike>;
+    function $bog_gamengine_vec_mat4_basis(out: Float32Array, m: Float32List, stride: number): Float32Array<ArrayBufferLike>;
     function $bog_gamengine_vec_quat_identity(out: Float32Array): Float32Array<ArrayBufferLike>;
     function $bog_gamengine_vec_quat_mul(out: Float32Array, a: Float32Array, b: Float32Array): Float32Array<ArrayBufferLike>;
     function $bog_gamengine_vec_quat_from_axis(out: Float32Array, axis: Float32Array, angle: number): Float32Array<ArrayBufferLike>;
@@ -5299,6 +5312,8 @@ declare namespace $ {
     type $bog_gamengine_point_node = $bog_gamengine_node & {
         size?(): Float32Array;
     };
+    const $bog_gamengine_point_grab = 0.5;
+    const $bog_gamengine_point_depth = 0.000001;
     class $bog_gamengine_point extends $mol_object2 {
         cam(next?: $bog_gamengine_cam | null): $bog_gamengine_cam | null;
         width(next?: number): number;
@@ -5593,6 +5608,17 @@ declare namespace $ {
 }
 
 declare namespace $ {
+    class $bog_gamengine_watch extends $mol_object2 {
+        seen: unknown[];
+        at: number;
+        same: boolean;
+        open(): this;
+        of<Value>(value: Value): Value;
+        fresh(): boolean;
+    }
+}
+
+declare namespace $ {
     class $bog_gamengine_tilemap_pool extends $mol_object2 {
         cap: number;
         count: number;
@@ -5612,13 +5638,7 @@ declare namespace $ {
         atlas(next?: $bog_gamengine_atlas | null): $bog_gamengine_atlas | null;
         size(next?: number): number;
         props(): readonly $bog_gamengine_prop[];
-        done_map: string | null;
-        done_size: number;
-        done_palette: Record<string, string> | null;
-        done_world: Float32Array<ArrayBuffer>;
-        done_tint: Float32Array<ArrayBuffer>;
-        done_origin: Float32Array<ArrayBuffer>;
-        fresh(map: string, world: Float32Array, size: number, palette: Record<string, string>, tint: Float32Array, origin: Float32Array): boolean;
+        watch: $bog_gamengine_watch;
         cell: Float32Array<ArrayBuffer>;
         emit(): number;
         box: Float32Array<ArrayBuffer>;
@@ -5653,6 +5673,7 @@ declare namespace $ {
         frame_now(): string;
         layer(): number;
         uv(): Float32Array<ArrayBuffer>;
+        box_local(): Float32Array<ArrayBuffer>;
         trans(): $mol_3d_mat4;
     }
 }
@@ -5869,13 +5890,9 @@ declare namespace $ {
         color(next?: ArrayLike<number>): Float32Array<ArrayBufferLike>;
         props(): readonly $bog_gamengine_prop[];
         width(): number;
+        box_local(): Float32Array<ArrayBuffer> | null;
         axes: Float32Array<ArrayBuffer>;
-        done_world: Float32Array<ArrayBuffer>;
-        done_color: Float32Array<ArrayBuffer>;
-        done_value: string | null;
-        done_height: number;
-        done_align: string;
-        fresh(value: string, axes: Float32Array, height: number, align: string, color: Float32Array): boolean;
+        watch: $bog_gamengine_watch;
         emit(): number;
     }
 }
@@ -6519,6 +6536,7 @@ declare namespace $ {
         layer(): number;
         normal_layer(): number;
         uv(): Float32Array<ArrayBuffer>;
+        box_local(): Float32Array<ArrayBuffer> | null;
         trans(): $mol_3d_mat4;
     }
 }

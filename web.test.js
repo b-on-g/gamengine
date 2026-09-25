@@ -4858,6 +4858,45 @@ var $;
             $mol_assert_ok(Math.abs(out[1] + 0.5) < 1e-6);
             $mol_assert_ok(Math.abs(out[2] - 1.2) < 1e-6);
         },
+        'mat4_basis normalizes the three columns, which scale makes visible'() {
+            const m = new Float32Array([
+                2, 0, 0, 0,
+                0, 0, 3, 0,
+                0, -4, 0, 0,
+                7, 8, 9, 1,
+            ]);
+            const out = $bog_gamengine_vec_mat4_basis(new Float32Array(16), m, 4);
+            $mol_assert_equal([out[0], out[1], out[2]], [1, 0, 0]);
+            $mol_assert_equal([out[4], out[5], out[6]], [0, 0, 1]);
+            $mol_assert_equal([out[8], out[9], out[10]], [0, -1, 0]);
+        },
+        'mat4_basis with stride three packs columns tight and clobbers nothing'() {
+            const m = new Float32Array([
+                2, 0, 0, 0,
+                0, 0, 3, 0,
+                0, -4, 0, 0,
+                7, 8, 9, 1,
+            ]);
+            const out = $bog_gamengine_vec_mat4_basis(new Float32Array(9).fill(5), m, 3);
+            $mol_assert_equal([...out], [1, 0, 0, 0, 0, 1, 0, -1, 0]);
+        },
+        'mat4_basis leaves the translation of the matrix alone'() {
+            const m = new Float32Array(16);
+            m[0] = 1;
+            m[5] = 1;
+            m[10] = 1;
+            m[12] = 7;
+            m[13] = 8;
+            m[14] = 9;
+            m[15] = 1;
+            const out = $bog_gamengine_vec_mat4_basis(new Float32Array(16), m, 4);
+            $mol_assert_equal([out[12], out[13], out[14], out[15]], [0, 0, 0, 0]);
+            $mol_assert_equal([m[12], m[13], m[14]], [7, 8, 9]);
+        },
+        'mat4_basis of a zero column gives zero instead of dividing by it'() {
+            const out = $bog_gamengine_vec_mat4_basis(new Float32Array(9), new Float32Array(16), 3);
+            $mol_assert_equal([...out], [0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        },
         'quat_integrate one second at half pi around Y turns x to minus z'() {
             const q = $bog_gamengine_vec_quat_identity(new Float32Array(4));
             const ang = new Float32Array([0, Math.PI / 2, 0]);
@@ -5322,6 +5361,19 @@ var $;
             const mesh = new $bog_gamengine_mesh;
             mesh.props().find(prop => prop.name === 'size').set(new Float32Array([2, 3, 4]));
             $mol_assert_equal([...mesh.size()], [2, 3, 4]);
+        },
+        'sphere of the culler holds every corner of the box in every state'() {
+            for (const over of $bog_gamengine_node_reach_states) {
+                const node = new $bog_gamengine_mesh;
+                if (over.size)
+                    node.size(new Float32Array(over.size.slice(0, 3)));
+                if (over.scale)
+                    node.scale(new Float32Array(over.scale));
+                if (over.rot)
+                    node.rot(new Float32Array(over.rot));
+                const sphere = node.radius() * $bog_gamengine_batch_scale_max(node.world());
+                $mol_assert_ok(sphere + 1e-6 >= $bog_gamengine_node_reach(node));
+            }
         },
     });
 })($ || ($ = {}));
@@ -5864,6 +5916,19 @@ var $;
             sprite.props().find(prop => prop.name === 'flip_x').set(true);
             $mol_assert_equal(sprite.flip_x(), true);
         },
+        'sphere of the culler holds every corner of the box in every state'() {
+            for (const over of $bog_gamengine_node_reach_states) {
+                const node = new $bog_gamengine_sprite;
+                if (over.size)
+                    node.size(new Float32Array(over.size.slice(0, 2)));
+                if (over.scale)
+                    node.scale(new Float32Array(over.scale));
+                if (over.rot)
+                    node.rot(new Float32Array(over.rot));
+                const sphere = node.radius() * $bog_gamengine_batch_scale_max(node.world());
+                $mol_assert_ok(sphere + 1e-6 >= $bog_gamengine_node_reach(node));
+            }
+        },
     });
 })($ || ($ = {}));
 
@@ -5979,6 +6044,33 @@ var $;
             world.step(0);
             $mol_assert_equal(world.pool().trans[12], 5);
         },
+        'billboard basis is the camera basis under pitch and under roll'() {
+            for (const rot of [[-Math.PI / 4, 0, 0], [0, 0, Math.PI / 6], [-0.3, 0.7, 0.2]]) {
+                const scene = new $bog_gamengine_scene;
+                const cam = new $bog_gamengine_cam;
+                cam.scale(new Float32Array([2, 2, 2]));
+                cam.rot(new Float32Array(rot));
+                scene.cam(cam);
+                const emitter = $bog_gamengine_particle_test_emitter(0, 10);
+                emitter.billboard(true);
+                emitter.speed(new Float32Array([0, 0]));
+                scene.kids([emitter]);
+                emitter.burst(1);
+                const view = cam.world();
+                const basis = emitter.basis;
+                for (let c = 0; c < 3; ++c) {
+                    const x = view[c * 4];
+                    const y = view[c * 4 + 1];
+                    const z = view[c * 4 + 2];
+                    const k = 1 / Math.sqrt(x * x + y * y + z * z);
+                    const round = (v) => Math.round(v * 1e6) / 1e6;
+                    $mol_assert_equal(round(basis[c * 3]), round(x * k));
+                    $mol_assert_equal(round(basis[c * 3 + 1]), round(y * k));
+                    $mol_assert_equal(round(basis[c * 3 + 2]), round(z * k));
+                    $mol_assert_ok(Math.abs(Math.hypot(basis[c * 3], basis[c * 3 + 1], basis[c * 3 + 2]) - 1) < 1e-5);
+                }
+            }
+        },
         'billboard takes rotation from the scene camera'() {
             const scene = new $bog_gamengine_scene;
             const cam = new $bog_gamengine_cam;
@@ -6012,6 +6104,61 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    $mol_test({
+        'first pass is never fresh'() {
+            const watch = new $bog_gamengine_watch;
+            watch.open();
+            watch.of('a');
+            watch.of(1);
+            $mol_assert_equal(watch.fresh(), false);
+        },
+        'same values in the same order are fresh'() {
+            const watch = new $bog_gamengine_watch;
+            const list = [1, 2];
+            watch.open().of('a');
+            watch.of(list);
+            watch.open().of('a');
+            watch.of(list);
+            $mol_assert_equal(watch.fresh(), true);
+        },
+        'changed value is not fresh'() {
+            const watch = new $bog_gamengine_watch;
+            watch.open().of('a');
+            watch.open().of('b');
+            $mol_assert_equal(watch.fresh(), false);
+        },
+        'value passes through unchanged'() {
+            const watch = new $bog_gamengine_watch;
+            const list = [1];
+            $mol_assert_equal(watch.open().of(list), list);
+            $mol_assert_equal(watch.open().of(7), 7);
+        },
+        'one more watched value than last time is not fresh'() {
+            const watch = new $bog_gamengine_watch;
+            watch.open().of('a');
+            watch.open().of('a');
+            $mol_assert_equal(watch.fresh(), true);
+            watch.open().of('a');
+            watch.of('b');
+            $mol_assert_equal(watch.fresh(), false);
+        },
+        'one fewer watched value than last time is not fresh'() {
+            const watch = new $bog_gamengine_watch;
+            watch.open().of('a');
+            watch.of('b');
+            watch.open().of('a');
+            watch.of('b');
+            $mol_assert_equal(watch.fresh(), true);
+            watch.open().of('a');
+            $mol_assert_equal(watch.fresh(), false);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     function $bog_gamengine_tilemap_test_atlas() {
         const atlas = new $bog_gamengine_atlas;
         atlas.sources(['wall', 'floor'].map(name => ({ name, image: { width: 64, height: 64 } })));
@@ -6027,7 +6174,64 @@ var $;
         node.emit();
         return node;
     }
+    function $bog_gamengine_tilemap_test_mark(node) {
+        const pool = node.pool();
+        const marks = [pool.count];
+        for (let i = 0; i < pool.count; ++i) {
+            for (let k = 0; k < 16; ++k)
+                marks.push(pool.trans[i * 16 + k]);
+            for (let k = 0; k < 4; ++k)
+                marks.push(pool.tint[i * 4 + k]);
+            marks.push(pool.layer[i]);
+        }
+        return marks.join(' ');
+    }
+    function $bog_gamengine_tilemap_test_other(kind, was) {
+        if (kind === 'vec3' || kind === 'euler')
+            return [1, 2, 3];
+        if (kind === 'vec4')
+            return [0.25, 0.5, 0.75, 1];
+        if (kind === 'number')
+            return Number(was) + 1;
+        if (kind === 'text')
+            return 'other';
+        if (kind === 'flag')
+            return !was;
+        if (kind === 'node')
+            return null;
+        return null;
+    }
     $mol_test({
+        'every drawing prop of the tilemap is watched, and the idle ones are named'() {
+            const idle = ['role'];
+            const known = new $bog_gamengine_tilemap().props().map(prop => prop.name);
+            $mol_assert_equal(known, ['pos', 'rot', 'scale', 'tint', 'role', 'size', 'atlas']);
+            for (const name of known) {
+                const node = $bog_gamengine_tilemap_test_make();
+                const prop = node.props().find(one => one.name === name);
+                const before = $bog_gamengine_tilemap_test_mark(node);
+                prop.set($bog_gamengine_tilemap_test_other(prop.kind, prop.get()));
+                node.emit();
+                const after = $bog_gamengine_tilemap_test_mark(node);
+                if (idle.includes(name))
+                    $mol_assert_equal(after, before);
+                else
+                    $mol_assert_equal(after === before, false);
+            }
+        },
+        'every drawing input of the grid is watched too'() {
+            for (const change of [
+                (tile) => tile.map('..#\n#..'),
+                (tile) => tile.plane('xz'),
+                (tile) => tile.origin([3, -4]),
+            ]) {
+                const node = $bog_gamengine_tilemap_test_make();
+                const before = $bog_gamengine_tilemap_test_mark(node);
+                change(node.tile());
+                node.emit();
+                $mol_assert_equal($bog_gamengine_tilemap_test_mark(node) === before, false);
+            }
+        },
         'map of three by two gives an instance per cell'() {
             const node = $bog_gamengine_tilemap_test_make();
             $mol_assert_equal(node.pool().count, 6);
@@ -6064,6 +6268,43 @@ var $;
             $mol_assert_equal(box[1], -tile.height());
             $mol_assert_equal(box[3], tile.width());
             $mol_assert_equal(box[4], 0);
+        },
+        'changed palette relayers the cells'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            const before = $bog_gamengine_tilemap_test_mark(node);
+            node.palette({ '#': 'floor', '.': 'wall' });
+            node.emit();
+            $mol_assert_equal($bog_gamengine_tilemap_test_mark(node) === before, false);
+            $mol_assert_equal(node.pool().layer[0], node.atlas().layer('floor'));
+        },
+        'grid swapped for another one redraws from the new grid'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            const before = $bog_gamengine_tilemap_test_mark(node);
+            const other = new $bog_gamengine_phys_tile;
+            other.map('##\n##');
+            node.tile(other);
+            node.emit();
+            $mol_assert_equal($bog_gamengine_tilemap_test_mark(node) === before, false);
+            $mol_assert_equal(node.pool().count, 4);
+        },
+        'atlas reordered in place relayers the cells without being swapped'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            const atlas = node.atlas();
+            $mol_assert_equal(node.pool().layer[0], 0);
+            atlas.sources(['floor', 'wall'].map(name => ({ name, image: { width: 64, height: 64 } })));
+            node.emit();
+            $mol_assert_equal(atlas.layer('wall'), 1);
+            $mol_assert_equal(node.pool().layer[0], 1);
+        },
+        'swapped atlas relayers the cells instead of keeping the old layers'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            $mol_assert_equal(node.pool().layer[0], 0);
+            const swapped = new $bog_gamengine_atlas;
+            swapped.sources(['floor', 'wall'].map(name => ({ name, image: { width: 64, height: 64 } })));
+            node.atlas(swapped);
+            node.emit();
+            $mol_assert_equal(node.pool().layer[0], swapped.layer('wall'));
+            $mol_assert_equal(node.pool().layer[1], swapped.layer('floor'));
         },
         'shifted grid moves the drawing and the box with it'() {
             const node = $bog_gamengine_tilemap_test_make();
@@ -8056,6 +8297,12 @@ var $;
         point.height(400);
         return point;
     }
+    function sized_node(size, pos = [0, 0, 0]) {
+        const node = new $bog_gamengine_node;
+        node.size = () => $bog_gamengine_node_vec(size);
+        node.pos($bog_gamengine_node_vec(pos));
+        return node;
+    }
     function deep_point() {
         const cam = new $bog_gamengine_cam_deep;
         cam.pos(new Float32Array([0, 0, 5]));
@@ -8106,6 +8353,21 @@ var $;
             const at = new Float32Array(3);
             point.screen(at, second.pos());
             $mol_assert_equal(point.pick([first, second], at[0], at[1]), second);
+        },
+        'ground layer under a small node does not shadow it at the same depth'() {
+            const point = flat_point();
+            const ground = sized_node([12, 10, 0]);
+            const coin = sized_node([1, 1, 0], [3, 1, 0]);
+            const at = point.screen(new Float32Array(3), coin.pos());
+            $mol_assert_equal(point.pick([ground, coin], at[0], at[1]), coin);
+            $mol_assert_equal(point.pick([coin, ground], at[0], at[1]), coin);
+        },
+        'click beside the small node still takes the ground layer'() {
+            const point = flat_point();
+            const ground = sized_node([12, 10, 0]);
+            const coin = sized_node([1, 1, 0], [3, 1, 0]);
+            const at = point.screen(new Float32Array(3), new Float32Array([-3, -2, 0]));
+            $mol_assert_equal(point.pick([ground, coin], at[0], at[1]), ground);
         },
         'box over the middle of five nodes gives three of them'() {
             const point = flat_point();
@@ -8606,6 +8868,21 @@ var $;
     function $bog_gamengine_text_test_round(value) {
         return Math.round(value * 1e6) / 1e6;
     }
+    function $bog_gamengine_text_test_other(kind, was) {
+        if (kind === 'vec3' || kind === 'euler')
+            return [1, 2, 3];
+        if (kind === 'vec4')
+            return [0.25, 0.5, 0.75, 1];
+        if (kind === 'number')
+            return Number(was) + 1;
+        if (kind === 'flag')
+            return !was;
+        if (kind === 'text')
+            return was === 'center' ? 'right' : 'center';
+        if (kind === 'node')
+            return null;
+        return null;
+    }
     $mol_test({
         'string of two chars gives two glyphs'() {
             const text = $bog_gamengine_text_test_make('ab');
@@ -8638,6 +8915,96 @@ var $;
             $mol_assert_equal(text.pool().count, 2);
             text.value('aba');
             $mol_assert_equal(text.pool().count, 3);
+        },
+        'every drawing prop of the text is watched, and the idle ones are named'() {
+            const idle = ['role', 'tint'];
+            const known = new $bog_gamengine_text().props().map(prop => prop.name);
+            $mol_assert_equal(known, ['pos', 'rot', 'scale', 'tint', 'role', 'value', 'height', 'align', 'color', 'billboard']);
+            for (const name of known) {
+                const text = $bog_gamengine_text_test_make('ab');
+                const prop = text.props().find(one => one.name === name);
+                const version = text.pool().version;
+                prop.set($bog_gamengine_text_test_other(prop.kind, prop.get()));
+                text.emit();
+                if (idle.includes(name))
+                    $mol_assert_equal(text.pool().version, version);
+                else
+                    $mol_assert_equal(text.pool().version > version, true);
+            }
+        },
+        'billboard glyph axes are the camera basis under pitch and under roll'() {
+            for (const rot of [[-Math.PI / 4, 0, 0], [0, 0, Math.PI / 6], [-0.3, 0.7, 0.2]]) {
+                const text = $bog_gamengine_text_test_make('a');
+                text.height(1);
+                const cam = new $bog_gamengine_cam;
+                const scene = new $bog_gamengine_scene;
+                scene.cam(cam);
+                scene.kids([text]);
+                text.billboard(true);
+                cam.scale(new Float32Array([2, 2, 2]));
+                cam.rot(new Float32Array(rot));
+                const view = cam.world();
+                const trans = text.pool().trans;
+                for (let c = 0; c < 3; ++c) {
+                    const x = view[c * 4];
+                    const y = view[c * 4 + 1];
+                    const z = view[c * 4 + 2];
+                    const k = 1 / Math.sqrt(x * x + y * y + z * z);
+                    $mol_assert_equal($bog_gamengine_text_test_round(trans[c * 4]), $bog_gamengine_text_test_round(x * k));
+                    $mol_assert_equal($bog_gamengine_text_test_round(trans[c * 4 + 1]), $bog_gamengine_text_test_round(y * k));
+                    $mol_assert_equal($bog_gamengine_text_test_round(trans[c * 4 + 2]), $bog_gamengine_text_test_round(z * k));
+                    const len = Math.hypot(trans[c * 4], trans[c * 4 + 1], trans[c * 4 + 2]);
+                    $mol_assert_ok(Math.abs(len - 1) < 1e-5);
+                }
+            }
+        },
+        'camera tipped in pitch redraws a billboard string though its own world stays'() {
+            const text = $bog_gamengine_text_test_make('ab');
+            const cam = new $bog_gamengine_cam;
+            const scene = new $bog_gamengine_scene;
+            scene.cam(cam);
+            scene.kids([text]);
+            text.billboard(true);
+            cam.rot(new Float32Array([0, 0, 0]));
+            const version = text.pool().version;
+            const world = [...text.world()];
+            const was = $bog_gamengine_text_test_round(text.pool().trans[6]);
+            cam.rot(new Float32Array([Math.PI / 4, 0, 0]));
+            $mol_assert_equal([...text.world()], world);
+            text.emit();
+            $mol_assert_equal(text.pool_own().version > version, true);
+            $mol_assert_equal($bog_gamengine_text_test_round(text.pool_own().trans[6]) === was, false);
+        },
+        'font edited in place redraws the string without being swapped'() {
+            const text = $bog_gamengine_text_test_make('ab');
+            const font = text.font();
+            font.family('sans-serif');
+            font.size(64);
+            const version = text.pool().version;
+            font.size(32);
+            text.emit();
+            $mol_assert_equal(text.pool_own().version > version, true);
+            const after = text.pool_own().version;
+            font.family('serif');
+            text.emit();
+            $mol_assert_equal(text.pool_own().version > after, true);
+            const last = text.pool_own().version;
+            font.chars('ab');
+            text.emit();
+            $mol_assert_equal(text.pool_own().version > last, true);
+        },
+        'swapped font and swapped atlas both redraw the string'() {
+            const text = $bog_gamengine_text_test_make('ab');
+            const version = text.pool().version;
+            text.atlas($bog_gamengine_text_test_atlas(['b', 'a']));
+            text.emit();
+            $mol_assert_equal(text.pool().version > version, true);
+            const after = text.pool().version;
+            const font = new $bog_gamengine_text_font;
+            font.family('serif');
+            text.font(font);
+            text.emit();
+            $mol_assert_equal(text.pool().version > after, true);
         },
         'pool version grows only when the input changes'() {
             const text = $bog_gamengine_text_test_make('ab');
@@ -8878,6 +9245,19 @@ var $;
             mesh.skin(skin);
             mesh.step(0.5);
             $mol_assert_equal(skin.time(), 0.5);
+        },
+        'sphere of the culler holds every corner of the box in every state'() {
+            for (const over of $bog_gamengine_node_reach_states) {
+                const node = new $bog_gamengine_mesh_skin;
+                if (over.size)
+                    node.size(new Float32Array(over.size.slice(0, 3)));
+                if (over.scale)
+                    node.scale(new Float32Array(over.scale));
+                if (over.rot)
+                    node.rot(new Float32Array(over.rot));
+                const sphere = node.radius() * $bog_gamengine_batch_scale_max(node.world());
+                $mol_assert_ok(sphere + 1e-6 >= $bog_gamengine_node_reach(node));
+            }
         },
     });
 })($ || ($ = {}));

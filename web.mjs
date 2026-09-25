@@ -10113,6 +10113,36 @@ var $;
         return next instanceof Float32Array ? next : new Float32Array(next);
     }
     $.$bog_gamengine_node_vec = $bog_gamengine_node_vec;
+    $.$bog_gamengine_node_reach_states = [
+        {},
+        { scale: [3, 3, 3] },
+        { scale: [0.2, 5, 1] },
+        { rot: [0, 0, Math.PI / 6] },
+        { rot: [Math.PI / 6, Math.PI * 2 / 9, 0] },
+        { size: [4, 0.5, 1] },
+        { size: [4, 0.5, 1], rot: [0, 0, Math.PI / 6], scale: [2, 2, 2] },
+    ];
+    function $bog_gamengine_node_reach(node) {
+        const local = node.box_local();
+        if (!local)
+            return 0;
+        const world = node.world();
+        let far = 0;
+        for (let corner = 0; corner < 8; ++corner) {
+            const x = local[corner & 1 ? 3 : 0];
+            const y = local[corner & 2 ? 4 : 1];
+            const z = local[corner & 4 ? 5 : 2];
+            let sum = 0;
+            for (let k = 0; k < 3; ++k) {
+                const axis = world[k] * x + world[4 + k] * y + world[8 + k] * z;
+                sum += axis * axis;
+            }
+            if (sum > far)
+                far = sum;
+        }
+        return Math.sqrt(far);
+    }
+    $.$bog_gamengine_node_reach = $bog_gamengine_node_reach;
     class $bog_gamengine_node extends $mol_object2 {
         name(next = '') {
             return next;
@@ -10221,6 +10251,60 @@ var $;
         world() {
             const parent = this.parent();
             return parent ? $mol_3d_mat4.multiply(parent.world(), this.trans()) : this.trans();
+        }
+        local_box = new Float32Array(6);
+        world_box = new Float32Array(6);
+        box_local() {
+            const self = this;
+            const box = this.local_box;
+            if (typeof self.size === 'function') {
+                const size = self.size();
+                for (let i = 0; i < 3; ++i) {
+                    const half = i < size.length ? size[i] / 2 : 0;
+                    box[i] = -half;
+                    box[i + 3] = half;
+                }
+                return box;
+            }
+            if (typeof self.radius === 'function') {
+                const radius = self.radius();
+                if (!Number.isFinite(radius))
+                    return null;
+                for (let i = 0; i < 3; ++i) {
+                    box[i] = -radius;
+                    box[i + 3] = radius;
+                }
+                return box;
+            }
+            return null;
+        }
+        aabb() {
+            const box = this.world_box;
+            for (let k = 0; k < 3; ++k) {
+                box[k] = Infinity;
+                box[k + 3] = -Infinity;
+            }
+            const local = this.box_local();
+            if (!local)
+                return box;
+            const world = this.world();
+            for (let corner = 0; corner < 8; ++corner) {
+                const x = local[corner & 1 ? 3 : 0];
+                const y = local[corner & 2 ? 4 : 1];
+                const z = local[corner & 4 ? 5 : 2];
+                for (let k = 0; k < 3; ++k) {
+                    const value = world[12 + k] + world[k] * x + world[4 + k] * y + world[8 + k] * z;
+                    if (value < box[k])
+                        box[k] = value;
+                    if (value > box[k + 3])
+                        box[k + 3] = value;
+                }
+            }
+            return box;
+        }
+        aabb_empty() {
+            const box = this.aabb();
+            return !(box[0] <= box[3]);
         }
         step(dt) { }
     }
@@ -10695,6 +10779,24 @@ var $;
                 normals[i * 3 + 2] = 1;
             return normals;
         }
+        box() {
+            const geometry = this.geometry();
+            const box = new Float32Array(6);
+            for (let k = 0; k < 3; ++k) {
+                box[k] = Infinity;
+                box[k + 3] = -Infinity;
+            }
+            for (let i = 0; i + 2 < geometry.length; i += 3) {
+                for (let k = 0; k < 3; ++k) {
+                    const value = geometry[i + k];
+                    if (value < box[k])
+                        box[k] = value;
+                    if (value > box[k + 3])
+                        box[k + 3] = value;
+                }
+            }
+            return box;
+        }
         radius() {
             const geometry = this.geometry();
             let max = 0;
@@ -10715,6 +10817,9 @@ var $;
     __decorate([
         $mol_memo.method
     ], $bog_gamengine_shape.prototype, "normals", null);
+    __decorate([
+        $mol_memo.method
+    ], $bog_gamengine_shape.prototype, "box", null);
     __decorate([
         $mol_memo.method
     ], $bog_gamengine_shape.prototype, "radius", null);
@@ -13462,6 +13567,20 @@ var $;
         return out;
     }
     $.$bog_gamengine_vec_mat4_apply = $bog_gamengine_vec_mat4_apply;
+    function $bog_gamengine_vec_mat4_basis(out, m, stride) {
+        for (let c = 0; c < 3; ++c) {
+            const at = c * stride;
+            const x = m[c * 4];
+            const y = m[c * 4 + 1];
+            const z = m[c * 4 + 2];
+            const k = 1 / (Math.sqrt(x * x + y * y + z * z) || 1);
+            out[at] = x * k;
+            out[at + 1] = y * k;
+            out[at + 2] = z * k;
+        }
+        return out;
+    }
+    $.$bog_gamengine_vec_mat4_basis = $bog_gamengine_vec_mat4_basis;
     function $bog_gamengine_vec_quat_identity(out) {
         out[0] = 0;
         out[1] = 0;
@@ -17031,6 +17150,8 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    $.$bog_gamengine_point_grab = 0.5;
+    $.$bog_gamengine_point_depth = 1e-6;
     class $bog_gamengine_point extends $mol_object2 {
         cam(next) {
             return next === undefined ? null : next;
@@ -17140,15 +17261,16 @@ var $;
                 out.length = 0;
             for (let n = 0; n < nodes.length; ++n) {
                 const node = nodes[n];
-                const world = node.world();
-                const size = typeof node.size === 'function' ? node.size() : null;
-                const half_x = size && size.length > 0 ? size[0] / 2 : 0;
-                const half_y = size && size.length > 1 ? size[1] / 2 : 0;
-                const x = world[12];
-                const y = world[13];
-                if (x + half_x < lo_x || x - half_x > hi_x)
+                const box = node.aabb();
+                const wide = box[0] <= box[3];
+                const world = wide ? null : node.world();
+                const left = wide ? box[0] : world[12];
+                const right = wide ? box[3] : world[12];
+                const bottom = wide ? box[1] : world[13];
+                const top = wide ? box[4] : world[13];
+                if (right < lo_x || left > hi_x)
                     continue;
-                if (y + half_y < lo_y || y - half_y > hi_y)
+                if (top < lo_y || bottom > hi_y)
                     continue;
                 hits.push(nodes[n]);
                 if (out)
@@ -17162,17 +17284,23 @@ var $;
             this.ray(origin, dir, x, y);
             let best = null;
             let best_t = Infinity;
+            let best_room = Infinity;
             for (let n = 0; n < nodes.length; ++n) {
                 const node = nodes[n];
                 const world = node.world();
-                const size = typeof node.size === 'function' ? node.size() : null;
+                const box = node.aabb();
+                const grab = $.$bog_gamengine_point_grab;
                 let tmin = -Infinity;
                 let tmax = Infinity;
                 let hit = true;
+                let room = 1;
                 for (let i = 0; i < 3; ++i) {
-                    const half = size && size.length > i ? size[i] / 2 : 0.5;
-                    const lo = world[12 + i] - half;
-                    const hi = world[12 + i] + half;
+                    const wide = box[i] <= box[i + 3];
+                    const mid = wide ? (box[i] + box[i + 3]) / 2 : world[12 + i];
+                    const half = Math.max(wide ? (box[i + 3] - box[i]) / 2 : 0, grab);
+                    const lo = mid - half;
+                    const hi = mid + half;
+                    room *= hi - lo;
                     const o = origin[i];
                     const d = dir[i];
                     if (d === 0) {
@@ -17201,8 +17329,11 @@ var $;
                 if (!hit || tmax < 0)
                     continue;
                 const t = tmin < 0 ? 0 : tmin;
-                if (t < best_t) {
+                const nearer = t < best_t - $.$bog_gamengine_point_depth;
+                const tighter = t < best_t + $.$bog_gamengine_point_depth && room < best_room;
+                if (nearer || tighter) {
                     best_t = t;
+                    best_room = room;
                     best = node;
                 }
             }
@@ -18002,6 +18133,34 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    class $bog_gamengine_watch extends $mol_object2 {
+        seen = [];
+        at = 0;
+        same = true;
+        open() {
+            this.at = 0;
+            this.same = true;
+            return this;
+        }
+        of(value) {
+            const at = this.at++;
+            if (this.seen[at] !== value) {
+                this.seen[at] = value;
+                this.same = false;
+            }
+            return value;
+        }
+        fresh() {
+            return this.same && this.at === this.seen.length;
+        }
+    }
+    $.$bog_gamengine_watch = $bog_gamengine_watch;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     class $bog_gamengine_tilemap_pool extends $mol_object2 {
         cap = 0;
         count = 0;
@@ -18066,51 +18225,26 @@ var $;
                 },
             ];
         }
-        done_map = null;
-        done_size = NaN;
-        done_palette = null;
-        done_world = new Float32Array(16);
-        done_tint = new Float32Array(4);
-        done_origin = new Float32Array(2);
-        fresh(map, world, size, palette, tint, origin) {
-            let same = map === this.done_map && size === this.done_size && palette === this.done_palette;
-            const done_origin = this.done_origin;
-            for (let i = 0; i < 2; ++i) {
-                if (origin[i] !== done_origin[i])
-                    same = false;
-                done_origin[i] = origin[i];
-            }
-            const done_world = this.done_world;
-            for (let i = 0; i < 16; ++i) {
-                if (world[i] !== done_world[i])
-                    same = false;
-                done_world[i] = world[i];
-            }
-            const done_tint = this.done_tint;
-            for (let i = 0; i < 4; ++i) {
-                if (tint[i] !== done_tint[i])
-                    same = false;
-                done_tint[i] = tint[i];
-            }
-            this.done_map = map;
-            this.done_size = size;
-            this.done_palette = palette;
-            return same;
-        }
+        watch = new $bog_gamengine_watch;
         cell = new Float32Array(3);
         emit() {
             const pool = this.pool();
+            const watch = this.watch.open();
             const tile = this.tile();
-            const world = this.world();
-            const size = this.size();
-            const palette = this.palette();
-            const tint = this.tint();
-            const atlas = this.atlas();
             if (!tile) {
                 pool.count = 0;
                 return 0;
             }
-            if (this.fresh(tile.map(), world, size, palette, tint, tile.origin()))
+            const world = watch.of(this.world());
+            const size = watch.of(this.size());
+            const palette = watch.of(this.palette());
+            const tint = watch.of(this.tint());
+            const atlas = this.atlas();
+            watch.of(tile.map());
+            watch.of(tile.plane());
+            watch.of(tile.origin());
+            watch.of(atlas?.names() ?? null);
+            if (watch.fresh())
                 return pool.count;
             const rows = tile.rows();
             let need = 0;
@@ -18338,6 +18472,16 @@ var $;
         }
         uv() {
             return this.flip_x() ? uv_flip : uv_plain;
+        }
+        box_local() {
+            const box = this.local_box;
+            box[0] = -0.5;
+            box[1] = -0.5;
+            box[2] = 0;
+            box[3] = 0.5;
+            box[4] = 0.5;
+            box[5] = 0;
+            return box;
         }
         trans() {
             const size = this.size();
@@ -19643,16 +19787,7 @@ var $;
             const basis = this.basis;
             const cam = this.billboard() ? this.scene()?.cam() ?? null : null;
             if (cam) {
-                const view = cam.world();
-                for (let c = 0; c < 3; ++c) {
-                    const x = view[c * 4];
-                    const y = view[c * 4 + 1];
-                    const z = view[c * 4 + 2];
-                    const k = 1 / (Math.sqrt(x * x + y * y + z * z) || 1);
-                    basis[c * 3] = x * k;
-                    basis[c * 3 + 1] = y * k;
-                    basis[c * 3 + 2] = z * k;
-                }
+                $bog_gamengine_vec_mat4_basis(basis, cam.world(), 3);
             }
             else {
                 basis.fill(0);
@@ -19991,53 +20126,56 @@ var $;
                 total += font.advance(value[i]);
             return total * this.height();
         }
-        axes = new Float32Array(16);
-        done_world = new Float32Array(16);
-        done_color = new Float32Array(4);
-        done_value = null;
-        done_height = NaN;
-        done_align = '';
-        fresh(value, axes, height, align, color) {
-            let same = value === this.done_value && height === this.done_height && align === this.done_align;
-            const done_world = this.done_world;
-            for (let i = 0; i < 16; ++i) {
-                if (axes[i] !== done_world[i])
-                    same = false;
-                done_world[i] = axes[i];
+        box_local() {
+            let width = 0;
+            try {
+                width = this.width();
             }
-            const done_color = this.done_color;
-            for (let i = 0; i < 4; ++i) {
-                if (color[i] !== done_color[i])
-                    same = false;
-                done_color[i] = color[i];
+            catch (error) {
+                if ($mol_promise_like(error))
+                    return null;
+                return $mol_fail_hidden(error);
             }
-            this.done_value = value;
-            this.done_height = height;
-            this.done_align = align;
-            return same;
-        }
-        emit() {
-            const pool = this.pool_own();
-            const value = this.value();
-            const world = this.world();
+            if (!width)
+                return null;
             const height = this.height();
             const align = this.align();
-            const color = this.color();
-            const billboard = this.billboard();
+            const box = this.local_box;
+            box[0] = align === 'center' ? -width / 2 : align === 'right' ? -width : 0;
+            box[3] = box[0] + width;
+            box[1] = -height / 2;
+            box[4] = height / 2;
+            box[2] = 0;
+            box[5] = 0;
+            return box;
+        }
+        axes = new Float32Array(16);
+        watch = new $bog_gamengine_watch;
+        emit() {
+            const pool = this.pool_own();
+            const watch = this.watch.open();
+            const value = watch.of(this.value());
+            const world = watch.of(this.world());
+            const height = watch.of(this.height());
+            const align = watch.of(this.align());
+            const color = watch.of(this.color());
+            const billboard = watch.of(this.billboard());
             const cam = billboard ? this.scene()?.cam() ?? null : null;
+            watch.of(cam?.world() ?? null);
+            const font = this.font();
+            watch.of(font.family());
+            watch.of(font.size());
+            watch.of(font.chars());
+            const names = watch.of(this.atlas()?.names() ?? null);
+            if (watch.fresh())
+                return pool.count;
+            ++pool.version;
             const axes = this.axes;
             if (cam) {
-                const view = cam.world();
-                for (let c = 0; c < 3; ++c) {
-                    const x = view[c * 4];
-                    const y = view[c * 4 + 1];
-                    const z = view[c * 4 + 2];
-                    const k = 1 / (Math.sqrt(x * x + y * y + z * z) || 1);
-                    axes[c * 4] = x * k;
-                    axes[c * 4 + 1] = y * k;
-                    axes[c * 4 + 2] = z * k;
-                    axes[c * 4 + 3] = 0;
-                }
+                $bog_gamengine_vec_mat4_basis(axes, cam.world(), 4);
+                axes[3] = 0;
+                axes[7] = 0;
+                axes[11] = 0;
                 axes[12] = world[12];
                 axes[13] = world[13];
                 axes[14] = world[14];
@@ -20047,12 +20185,7 @@ var $;
                 for (let k = 0; k < 16; ++k)
                     axes[k] = world[k];
             }
-            if (this.fresh(value, axes, height, align, color))
-                return pool.count;
-            ++pool.version;
             pool.fit(value.length);
-            const font = this.font();
-            const names = this.atlas()?.names() ?? null;
             const unknown = names?.get('?') ?? 0;
             const trans = pool.trans;
             const tint = pool.tint;
@@ -21115,6 +21248,24 @@ var $;
         }
         uv() {
             return uv_plain;
+        }
+        box_local() {
+            let shape = null;
+            try {
+                shape = this.shape();
+            }
+            catch (error) {
+                if ($mol_promise_like(error))
+                    return null;
+                return $mol_fail_hidden(error);
+            }
+            const shown = shape.box();
+            if (!(shown[0] <= shown[3]))
+                return null;
+            const box = this.local_box;
+            for (let k = 0; k < 6; ++k)
+                box[k] = shown[k];
+            return box;
         }
         trans() {
             return $mol_3d_mat4.multiply(super.trans(), $mol_3d_mat4.scaling(this.size()));
@@ -53969,29 +54120,16 @@ var $;
         out[3] = -Infinity;
         let found = false;
         for (let i = 0; i < nodes.length; ++i) {
-            const node = nodes[i];
-            const box = typeof node.aabb === 'function' ? node.aabb() : null;
-            let left = 0;
-            let bottom = 0;
-            let right = 0;
-            let top = 0;
-            if (box) {
-                left = box[0];
-                bottom = box[1];
-                right = box[3];
-                top = box[4];
-            }
-            else {
-                const world = node.world();
-                const size = typeof node.size === 'function' ? node.size() : null;
-                const half_x = size && size.length > 0 ? size[0] / 2 : 0.5;
-                const half_y = size && size.length > 1 ? size[1] / 2 : 0.5;
-                left = world[12] - half_x;
-                right = world[12] + half_x;
-                bottom = world[13] - half_y;
-                top = world[13] + half_y;
-            }
+            const box = nodes[i].aabb();
+            const left = box[0];
+            const bottom = box[1];
+            const right = box[3];
+            const top = box[4];
+            if (!(left <= right) || !(bottom <= top))
+                continue;
             if (!Number.isFinite(left) || !Number.isFinite(bottom))
+                continue;
+            if (!Number.isFinite(right) || !Number.isFinite(top))
                 continue;
             if (left < out[0])
                 out[0] = left;

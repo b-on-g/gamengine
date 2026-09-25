@@ -258,6 +258,7 @@
     "$mol_dom_parse",
     "$bog_gamengine_cam_flat",
     "$bog_gamengine_tilemap",
+    "$bog_gamengine_watch",
     "$bog_gamengine_demo_flat_hero",
     "$bog_gamengine_sprite",
     "$bog_gamengine_nav_grid",
