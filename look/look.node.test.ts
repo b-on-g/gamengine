@@ -11,12 +11,12 @@ namespace $ {
 		return pixels
 	}
 
-	function $bog_gamengine_look_test_shot( over: Partial< $bog_gamengine_look_shot > = {} ) {
+	function $bog_gamengine_look_test_shot( over: Partial< $bog_gamengine_look_take_shot > = {} ) {
 		return {
 			median: 60, low: 20, high: 120, dark: 0.1, blown: 0, sat: 30,
 			spots: { floor: [ 100, 100, 100, 255 ] },
 			... over,
-		} as $bog_gamengine_look_shot
+		} as $bog_gamengine_look_take_shot
 	}
 
 	$mol_test({
@@ -113,9 +113,42 @@ namespace $ {
 			}
 		},
 
+		'known renderer families are told apart from an unknown one'() {
+			$mol_assert_equal( $bog_gamengine_look_family( $bog_gamengine_look_base.soft_env.renderer ), 'soft' )
+			$mol_assert_equal( $bog_gamengine_look_family( $bog_gamengine_look_base.gpu_env.renderer ), 'gpu' )
+			$mol_assert_equal( $bog_gamengine_look_family( 'ANGLE (NVIDIA, GeForce RTX 4090, OpenGL 4.6)' ), '' )
+			$mol_assert_equal( $bog_gamengine_look_family( 'нет webgl2' ), '' )
+		},
+
+		'another backend of the same renderer is a foreign environment'() {
+			const env = $bog_gamengine_look_base.soft_env
+			const same = { renderer: env.renderer, scenes: { flat: $bog_gamengine_look_test_shot({ size: [ 852, 600 ] }) } }
+			const other = { renderer: env.renderer.replace( 'LLVM 10.0.0', 'Subzero' ), scenes: same.scenes }
+			const thin = { renderer: env.renderer, scenes: { flat: $bog_gamengine_look_test_shot({ size: [ 843, 600 ] }) } }
+			const scenes = [ { name: 'flat', spots: {} } ]
+			$mol_assert_equal( $bog_gamengine_look_stranger( same, env, scenes ), [] )
+			$mol_assert_equal( $bog_gamengine_look_stranger( other, env, scenes ).length, 1 )
+			$mol_assert_ok( $bog_gamengine_look_stranger( thin, env, scenes )[ 0 ].includes( '843x600' ) )
+		},
+
+		'written scene passes the floor of a drawn one, a black canvas does not'() {
+			for( const scene of $bog_gamengine_look_scenes ) {
+				const shot = { ... $bog_gamengine_look_base.soft[ scene.name ], size: $bog_gamengine_look_base.soft_env.size[ scene.name ] }
+				$mol_assert_equal( $bog_gamengine_look_empty( scene.name, shot ), [] )
+			}
+			const black = $bog_gamengine_look_stats( $bog_gamengine_look_test_frame([ 0, 0, 0 ], 8, 8 ), 8, 8, {} )
+			const reasons = $bog_gamengine_look_empty( 'flat', { ... black, size: [ 852, 600 ] } )
+			$mol_assert_equal( reasons.length, 3 )
+			$mol_assert_ok( reasons[ 0 ].includes( 'почти чёрная' ) )
+		},
+
 		'scene signature holds against the written one'() {
 			const out = $bog_probe_test( 'bog/gamengine/look/-/node.js', 'bog_gamengine_look_check' )
-			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_look_ok ) )
+			$mol_assert_ok(
+				out.includes( $bog_probe_skip )
+				|| out.includes( $bog_gamengine_look_ok )
+				|| out.includes( $bog_gamengine_look_alive ),
+			)
 		},
 
 	})

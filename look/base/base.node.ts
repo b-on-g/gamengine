@@ -10,6 +10,24 @@ namespace $ {
 
 		commit: 'f1bc287',
 
+		soft_env: {
+			renderer: 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver)',
+			size: {
+				flat: [ 852, 600 ],
+				room: [ 852, 552 ],
+				shine: [ 852, 552 ],
+			},
+		} as $bog_gamengine_look_env,
+
+		gpu_env: {
+			renderer: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
+			size: {
+				flat: [ 852, 600 ],
+				room: [ 852, 552 ],
+				shine: [ 852, 552 ],
+			},
+		} as $bog_gamengine_look_env,
+
 		soft: {
 			flat: {
 				median: 60, low: 58, high: 107, dark: 0.061, blown: 0, sat: 43.2,

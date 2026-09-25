@@ -32,7 +32,7 @@ jobs:
     - uses: hyoo-ru/mam_build@master2
       with:
         package: 'bog/gamengine'
-        modules: 'demo probe demo/jumper/probe demo/shooter/probe demo/legion/probe'
+        modules: 'demo probe look demo/jumper/probe demo/shooter/probe demo/legion/probe'
 
     - uses: hyoo-ru/gh-deploy@v4.4.1
       if: github.ref == 'refs/heads/main'
