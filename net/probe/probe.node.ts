@@ -10,6 +10,8 @@ namespace $ {
 
 	export const $bog_gamengine_net_probe_no_master = 'мастер Базы на 9090 не слушает, проба пропущена'
 
+	export const $bog_gamengine_net_probe_alone_ok = 'окно с мастером в адресе поднялось, объявило комнату и увело героя вправо'
+
 	export const $bog_gamengine_net_probe_limit = 200
 
 	export const $bog_gamengine_net_probe_rounds = 3
@@ -88,6 +90,55 @@ namespace $ {
 		await browser.open()
 		await browser.viewport( width, height )
 		return { browser, profile }
+	}
+
+	export async function $bog_gamengine_net_probe_alone(
+		root = $node.process.cwd(),
+		flags: readonly string[] = $bog_gamengine_net_probe_flags,
+	) {
+
+		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
+
+		const bin = $bog_probe_chrome_bin()
+		if( !bin ) return say( $bog_probe_skip )
+
+		const started = Date.now()
+		const site = await new $bog_probe_static( String( $node.path.resolve( root ) ) ).open()
+		const window = await $bog_gamengine_net_probe_window( bin, flags, 800, 600 )
+
+		try {
+
+			const page = site.uri( $bog_gamengine_net_probe_page )
+
+			await window.browser.open_page(
+				`${ page }#!master=${ $bog_gamengine_net_probe_master }`,
+				$bog_gamengine_net_probe_ready,
+				60000,
+			)
+
+			const head = await window.browser.evaluate(
+				$bog_gamengine_net_probe_head_script, 15000,
+			) as $bog_gamengine_net_probe_head
+
+			const moved = await window.browser.evaluate(
+				$bog_gamengine_net_probe_move_script, 15000,
+			) as $bog_gamengine_net_probe_move
+
+			say( `${ Date.now() - started } мс, ${ JSON.stringify( head ) }, ${ JSON.stringify( moved ) }` )
+
+			if( !head.me ) return $mol_fail( new Error( 'окно не показало свой id' ) )
+			if( !head.land ) return $mol_fail( new Error( 'окно не показало ленд комнаты' ) )
+			if( !moved.start || !moved.moved ) return $mol_fail( new Error( 'окно не показало позицию героя' ) )
+			if( !( moved.moved[ 0 ] > moved.start[ 0 ] ) ) return $mol_fail( new Error( 'герой не поехал вправо на D' ) )
+
+			return say( $bog_gamengine_net_probe_alone_ok )
+
+		} finally {
+			window.browser.close()
+			site.close()
+			try { $node.fs.rmSync( window.profile, { recursive: true, force: true } ) } catch( error ) {}
+		}
+
 	}
 
 	export async function $bog_gamengine_net_probe_check(
