@@ -4,7 +4,7 @@ namespace $ {
 
 	export const $bog_gamestudio_probe_ok = 'четыре колонки в ряд, холст нарисован, правка исходника перерисовала героя, правка в инспекторе переписала исходник, клик по холсту выбрал монету, стрелка гизмо перенесла её в исходнике, клик мимо снял выбор, игра с зажатой D сдвинула героя вправо, стоп вернул его на место и не тронул исходник, пять правок pos героя не мигают и не копят текстуры и буферы, вкладка «Ассеты» показала файлы пака, монета с панели встала на холст по клику и записалась в исходник спрайтом, столб мешем с загрузчиком, звук строкой в Sound, кисть на вкладке «Тайлы» покрасила клетку пола в стену одним символом, заливка перекрасила комнату, Esc снял инструмент'
 
-	export const $bog_gamestudio_probe_moves = [ -2, -1, -2.5, -1.5, -2 ] as const
+	export const $bog_gamestudio_probe_moves = 5
 
 	export const $bog_gamestudio_probe_flags = [ '--use-angle=swiftshader' ] as const
 
@@ -30,11 +30,13 @@ namespace $ {
 		readonly tree_text: string
 		readonly fields_before: string
 		readonly fields_after: string
+		readonly typed: string
 		readonly source_after: string
 		readonly ppu: number
 		readonly fields_coin: string
 		readonly row_coin: string | null
 		readonly arrow: readonly [ number, number ] | null
+		readonly coin_from: readonly [ number, number ]
 		readonly source_moved: string
 		readonly fields_clear: string
 		readonly hero_line_before: string
@@ -93,13 +95,27 @@ namespace $ {
 				gl.readPixels( x | 0, y | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
 				return Array.from( out )
 			}
+			const at = ( x, y )=> pixel( x, canvas.height - 1 - y )
 			const dark = px => px[ 0 ] < 40 && px[ 1 ] < 40 && px[ 2 ] < 40
 			const same = ( a, b )=> a.every( ( v, i )=> Math.abs( v - b[ i ] ) < 8 )
-			const hero_x = canvas.width / 2 - 2 * canvas.height / 6
+			${ $bog_gamestudio_probe_spot_script }
+			const source_now = ()=> document.querySelector( '[bog_gamestudio_app_source] textarea' ).value
+			const ppu = canvas.height / 6
+			const screen_of = spot => [
+				canvas.width / 2 + spot[ 0 ] * ppu,
+				canvas.height / 2 - spot[ 1 ] * ppu,
+			]
+			const cell_seen = ( text, char )=> {
+				const cell = cell_of( text, char )
+				return cell ? screen_of([ cell[ 0 ] + 0.5, - cell[ 1 ] - 0.5 ]) : null
+			}
+			const hero_seen = screen_of( spot_of( source_now(), 'Hero' ) || [ 0, 0 ] )
+			const hero_x = hero_seen[ 0 ]
+			const hero_y = hero_seen[ 1 ]
 			let waited = 0
-			let center = pixel( canvas.width / 2, canvas.height / 2 )
-			while( waited < 600 && dark( center ) ) { await frame(); ++ waited; center = pixel( canvas.width / 2, canvas.height / 2 ) }
-			const hero_before = pixel( hero_x, canvas.height / 2 )
+			let center = at( hero_x, hero_y )
+			while( waited < 600 && dark( center ) ) { await frame(); ++ waited; center = at( hero_x, hero_y ) }
+			const hero_before = at( hero_x, hero_y )
 			const base = (()=>{ ${ $bog_probe_rects_script( selectors ) } })()
 			const type = ( input, text )=> {
 				input.value = text
@@ -124,38 +140,59 @@ namespace $ {
 			let hero_after = hero_before
 			for( let i = 0; i < 120 && same( hero_after, hero_before ); ++ i ) {
 				await frame()
-				hero_after = pixel( hero_x, canvas.height / 2 )
+				hero_after = at( hero_x, hero_y )
 			}
 			const inspect = document.querySelector( '[bog_gamestudio_app_inspect]' )
 			const fields_before = inspect ? inspect.innerText : ''
 			const rows = document.querySelectorAll( '[bog_gamestudio_app_row]' )
 			const tree = document.querySelector( '[bog_gamestudio_app_tree]' )
 			const tree_text = tree ? tree.innerText : ''
-			if( rows[ 0 ] ) rows[ 0 ].click()
+			const row_by = title => Array.from( document.querySelectorAll( '[bog_gamestudio_app_row]' ) ).find( el => el.innerText.trim() === title )
+			const hero_row = row_by( 'Герой' )
+			if( hero_row ) hero_row.click()
 			await frame()
 			await frame()
 			const fields_after = inspect ? inspect.innerText : ''
+			const typed = String( ( spot_of( source_now(), 'Hero' ) || [ 0, 0 ] )[ 0 ] + 1 )
 			const num = document.querySelector( '[bog_gamestudio_app_vec_num] input' )
-			if( num ) type( num, '5' )
+			if( num ) type( num, typed )
 			await frame()
 			await frame()
 			const source_after = editor.value
 			const rect = canvas.getBoundingClientRect()
 			const dpr = devicePixelRatio
-			const ppu = canvas.height / 6
-			const coin_x = canvas.width / 2 + 2 * ppu
-			const coin_y = canvas.height / 2
+			const snap = value => Math.round( value * 2 ) / 2
+			const own_x = - snap( canvas.width / 4 / ppu )
+			const own_y = - snap( canvas.height / 4 / ppu )
+			const coin_seat = row_by( 'Монета' )
+			if( coin_seat ) coin_seat.click()
+			await frame()
+			await frame()
+			const coin_nums = document.querySelectorAll( '[bog_gamestudio_app_vec_num] input' )
+			type( coin_nums[ 0 ], String( own_x ) )
+			type( coin_nums[ 1 ], String( own_y ) )
+			await frame()
+			await frame()
+			const coin_from = spot_of( source_now(), 'Coin' ) || [ 0, 0 ]
+			const coin_seen = screen_of( coin_from )
+			const coin_x = coin_seen[ 0 ]
+			const coin_y = coin_seen[ 1 ]
 			const pointer = ( type, x, y )=> canvas.dispatchEvent( new PointerEvent( type, {
 				bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: type === 'pointerup' ? 0 : 1,
 				clientX: rect.left + x / dpr, clientY: rect.top + y / dpr,
 			} ) )
-			const at = ( x, y )=> pixel( x, canvas.height - 1 - y )
+			const void_seen = screen_of([ own_x, 1 ])
+			pointer( 'pointerdown', void_seen[ 0 ], void_seen[ 1 ] )
+			pointer( 'pointerup', void_seen[ 0 ], void_seen[ 1 ] )
+			await frame()
+			await frame()
 			pointer( 'pointerdown', coin_x, coin_y )
 			pointer( 'pointerup', coin_x, coin_y )
 			await frame()
 			await frame()
 			const fields_coin = inspect ? inspect.innerText : ''
-			const row_coin = rows[ 1 ] ? rows[ 1 ].getAttribute( 'mol_check_checked' ) : null
+			const coin_row = row_by( 'Монета' )
+			const row_coin = coin_row ? coin_row.getAttribute( 'mol_check_checked' ) : null
 			${ $bog_gamestudio_probe_arrow_script }
 			const grid = document.querySelector( '[bog_gamestudio_app_grid]' )
 			if( grid && grid.getAttribute( 'mol_check_checked' ) === 'true' ) grid.click()
@@ -173,14 +210,14 @@ namespace $ {
 				await frame()
 			}
 			const source_moved = editor.value
-			pointer( 'pointerdown', canvas.width / 2 + ppu, canvas.height / 2 - 2 * ppu )
-			pointer( 'pointerup', canvas.width / 2 + ppu, canvas.height / 2 - 2 * ppu )
+			pointer( 'pointerdown', void_seen[ 0 ], void_seen[ 1 ] )
+			pointer( 'pointerup', void_seen[ 0 ], void_seen[ 1 ] )
 			await frame()
 			await frame()
 			const fields_clear = inspect ? inspect.innerText : ''
 			const hero_line = ()=> ( editor.value.match( /Герой[^]*?pos \\/ [^\\n]*/ ) || [ '' ] )[ 0 ]
 			const x_value = ()=> document.querySelector( '[bog_gamestudio_app_vec_num] input' ).value
-			document.querySelector( '[bog_gamestudio_app_row]' ).click()
+			row_by( 'Герой' ).click()
 			await frame()
 			await frame()
 			const hero_line_before = hero_line()
@@ -198,16 +235,26 @@ namespace $ {
 			await frame()
 			const x_stop = x_value()
 			const hero_line_after = hero_line()
+			const floors = []
+			const map_rows = rows_of( editor.value )
+			for( let y = 0; y < map_rows.length; ++ y ) for( let x = 0; x < map_rows[ y ].length; ++ x ) {
+				if( map_rows[ y ][ x ] !== '.' ) continue
+				const spot = [ x + 0.5, - y - 0.5 ]
+				const seen = screen_of( spot )
+				if( seen[ 0 ] > ppu / 2 && seen[ 0 ] < canvas.width - ppu / 2 && seen[ 1 ] > ppu / 2 && seen[ 1 ] < canvas.height - ppu / 2 ) floors.push( spot )
+			}
 			const moves = []
 			let scene_buffers = 0
-			for( const x of ${ JSON.stringify( $bog_gamestudio_probe_moves ) } ) {
+			for( let step = 0; step < ${ $bog_gamestudio_probe_moves } && floors.length; ++ step ) {
+				const spot = floors[ step % floors.length ]
+				const seen = screen_of( spot )
 				const created = buf_created.count
-				type( editor, editor.value.replace( /(Герой[^]*?pos \\/ )[^\\n]*/, '$1' + x + ' 0 0' ) )
+				type( editor, editor.value.replace( /(Герой[^]*?pos \\/ )[^\\n]*/, '$1' + spot[ 0 ] + ' ' + spot[ 1 ] + ' 0' ) )
 				await frame()
-				const first = pixel( canvas.width / 2 + x * ppu, canvas.height / 2 )
+				const first = at( seen[ 0 ], seen[ 1 ] )
 				await frame()
 				if( !scene_buffers ) scene_buffers = buf_created.count - created
-				moves.push({ x, first, pixel: pixel( canvas.width / 2 + x * ppu, canvas.height / 2 ) })
+				moves.push({ x: spot[ 0 ], first, pixel: at( seen[ 0 ], seen[ 1 ] ) })
 			}
 			const textures = { created: tex_created.count, deleted: tex_deleted.count }
 			const buffers = { created: buf_created.count, deleted: buf_deleted.count, scene: scene_buffers }
@@ -218,7 +265,7 @@ namespace $ {
 			const tile_rows = Array.from( document.querySelectorAll( '[bog_gamestudio_app_tile]' ) )
 			const tile_titles = tile_rows.map( el => el.innerText.trim() )
 			const tool = title => Array.from( document.querySelectorAll( '[bog_gamestudio_app_tools] [mol_check]' ) ).find( el => el.innerText.trim() === title )
-			const map_text = ()=> ( editor.value.match( /map \\\\[^]*?\\n\\tpalette/ ) || [ '' ] )[ 0 ]
+			const map_text = ()=> rows_of( editor.value ).join( '\\n' )
 			const diff = ( a, b )=> {
 				let count = 0
 				for( let i = 0; i < Math.max( a.length, b.length ); ++ i ) if( a[ i ] !== b[ i ] ) ++ count
@@ -228,9 +275,11 @@ namespace $ {
 			tool( 'Клетка' ).click()
 			await frame()
 			const map_before = map_text()
-			const wall_pixel = at( canvas.width / 2 + 0.5 * ppu, canvas.height / 2 + 2.5 * ppu )
-			const cell_x = canvas.width / 2 + 1.5 * ppu
-			const cell_y = canvas.height / 2 + 1.5 * ppu
+			const wall_seen = cell_seen( editor.value, '#' ) || [ 0, 0 ]
+			const wall_pixel = at( wall_seen[ 0 ], wall_seen[ 1 ] )
+			const floor_seen = screen_of( floors[ floors.length - 1 ] || [ 0, 0 ] )
+			const cell_x = floor_seen[ 0 ]
+			const cell_y = floor_seen[ 1 ]
 			const cell_before = at( cell_x, cell_y )
 			pointer( 'pointerdown', cell_x, cell_y )
 			pointer( 'pointerup', cell_x, cell_y )
@@ -242,8 +291,9 @@ namespace $ {
 			const map_cell = map_text()
 			tool( 'Заливка' ).click()
 			await frame()
-			pointer( 'pointerdown', cell_x, canvas.height / 2 + 2.5 * ppu )
-			pointer( 'pointerup', cell_x, canvas.height / 2 + 2.5 * ppu )
+			const fill_seen = screen_of( floors[ 0 ] || [ 0, 0 ] )
+			pointer( 'pointerdown', fill_seen[ 0 ], fill_seen[ 1 ] )
+			pointer( 'pointerup', fill_seen[ 0 ], fill_seen[ 1 ] )
 			await frame()
 			await frame()
 			const map_fill = map_text()
@@ -257,8 +307,8 @@ namespace $ {
 			const asset_rows = document.querySelectorAll( '[bog_gamestudio_app_asset_row]' )
 			const asset = file => Array.from( asset_rows ).find( el => el.innerText.trim() === file )
 			const asset_files = Array.from( asset_rows ).map( el => el.innerText.trim() )
-			const drop_x = canvas.width / 2 - ppu
-			const drop_y = canvas.height / 2 + 2 * ppu
+			const drop_x = void_seen[ 0 ]
+			const drop_y = void_seen[ 1 ]
 			const drop_before = at( drop_x, drop_y )
 			asset( 'coin.png' ).click()
 			await frame()
@@ -296,7 +346,7 @@ namespace $ {
 			const status_node = document.querySelector( '[bog_gamestudio_app_status]' )
 			const status = status_node ? status_node.innerText.trim() : ''
 			const mesh_pixel = at( drop_x + 2 * ppu, drop_y )
-			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, source_after, ppu, fields_coin, row_coin, arrow, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after, textures, buffers, images: images.count, moves, tiles, asset_files, drop_before, drop_after, cursor, tab_after, rows_assets, tree_assets, sprite_line, mesh_line, sound_line, status, mesh_pixel }
+			return { ... base, webgl: true, waited, center, hero_before, hero_after, rows: rows.length, tree_text, fields_before, fields_after, typed, source_after, ppu, fields_coin, row_coin, arrow, coin_from, source_moved, fields_clear, hero_line_before, x_before, x_play, x_stop, hero_line_after, textures, buffers, images: images.count, moves, tiles, asset_files, drop_before, drop_after, cursor, tab_after, rows_assets, tree_assets, sprite_line, mesh_line, sound_line, status, mesh_pixel }
 		`
 	}
 
@@ -306,9 +356,12 @@ namespace $ {
 			const found = tail.match( /pos \\/ (-?[\\d.]+) (-?[\\d.]+)/ )
 			return found ? [ Number( found[ 1 ] ), Number( found[ 2 ] ) ] : null
 		}
-		const cell_of = ( text, char )=> {
+		const rows_of = text => {
 			const map = ( text.match( /map \\\\\\n(?:[ \\t]*\\\\.*\\n)+/ ) || [ '' ] )[ 0 ]
-			const rows = ( map.match( /\\\\[^\\n]+/g ) || [] ).map( row => row.slice( 1 ) )
+			return ( map.match( /\\\\[^\\n]+/g ) || [] ).map( row => row.slice( 1 ) )
+		}
+		const cell_of = ( text, char )=> {
+			const rows = rows_of( text )
 			for( let y = 0; y < rows.length; ++ y ) {
 				const x = rows[ y ].indexOf( char )
 				if( x >= 0 ) return [ x, y ]
@@ -747,26 +800,28 @@ namespace $ {
 		if( !$bog_probe_fits( got ) ) return fail( 'страница шире окна' )
 		if( !holst || !( holst.width > 300 ) ) return fail( 'холст уже 300 px' )
 		if( !( holst.height > 300 ) ) return fail( 'холст ниже 300 px' )
-		if( got.center[ 0 ] < 40 && got.center[ 1 ] < 40 && got.center[ 2 ] < 40 ) return fail( 'центр холста чёрный' )
+		if( got.center[ 0 ] < 40 && got.center[ 1 ] < 40 && got.center[ 2 ] < 40 ) return fail( 'герой не нарисован' )
 		if( got.hero_before.every( ( value, index )=> Math.abs( value - got.hero_after[ index ] ) < 8 ) ) return fail( 'замена кадра в исходнике не перерисовала героя' )
-		if( !got.tree_text.startsWith( 'Герой\nМонета\nСтена' ) ) return fail( 'в дереве нет трёх узлов сцены подряд' )
+		const named = [ 'Герой', 'Монета', 'Стена' ].map( name => got.tree_text.indexOf( name ) )
+		if( named.some( ( at, index )=> at < 0 || index > 0 && at < named[ index - 1 ] ) ) return fail( 'в дереве нет трёх узлов сцены по порядку' )
 		if( !( got.rows >= 3 ) ) return fail( 'в дереве меньше трёх строк' )
 		if( got.fields_before.includes( 'pos' ) ) return fail( 'инспектор показал pos до выбора' )
 		if( !got.fields_after.includes( 'pos' ) ) return fail( 'клик по строке «Герой» не показал pos' )
-		if( !got.source_after.includes( 'pos / 5 0 0' ) ) return fail( 'число из инспектора не попало в исходник' )
+		const hero_x = got.source_after.match( /Герой[^]*?pos \/ (\S+)/ )
+		if( !hero_x || hero_x[ 1 ] !== got.typed ) return fail( 'число из инспектора не попало в исходник' )
 		if( !got.fields_coin.includes( 'coin' ) ) return fail( 'клик по монете на холсте не показал её в инспекторе' )
 		if( got.row_coin !== 'true' ) return fail( 'строка «Монета» в дереве не подсвечена' )
 		if( !got.arrow ) return fail( 'справа от монеты нет красной стрелки гизмо' )
 		const moved = got.source_moved.match( /Монета[^]*?pos \/ (\S+) (\S+) (\S+)/ )
 		if( !moved ) return fail( 'в исходнике нет pos монеты' )
-		if( Math.abs( Number( moved[ 1 ] ) - 2 - 80 / got.ppu ) > 0.1 ) return fail( 'x монеты после переноса по стрелке не вырос на 80 px' )
-		if( Number( moved[ 2 ] ) !== 0 ) return fail( 'перенос по стрелке X сдвинул y' )
+		if( Math.abs( Number( moved[ 1 ] ) - got.coin_from[ 0 ] - 80 / got.ppu ) > 0.1 ) return fail( 'x монеты после переноса по стрелке не вырос на 80 px' )
+		if( Number( moved[ 2 ] ) !== got.coin_from[ 1 ] ) return fail( 'перенос по стрелке X сдвинул y' )
 		if( got.fields_clear.includes( 'pos' ) ) return fail( 'клик мимо не снял выбор' )
 		if( !got.hero_line_before ) return fail( 'в исходнике нет pos героя' )
 		if( !( Number( got.x_play ) > Number( got.x_before ) ) ) return fail( 'игра с зажатой D не сдвинула героя вправо' )
 		if( got.x_stop !== got.x_before ) return fail( 'стоп не вернул x героя к исходному' )
 		if( got.hero_line_after !== got.hero_line_before ) return fail( 'игра изменила pos героя в исходнике' )
-		if( got.moves.length !== $bog_gamestudio_probe_moves.length ) return fail( 'правок pos героя не пять' )
+		if( got.moves.length !== $bog_gamestudio_probe_moves ) return fail( 'правок pos героя не пять' )
 		for( const move of got.moves ) {
 			if( move.pixel[ 0 ] < 40 && move.pixel[ 1 ] < 40 && move.pixel[ 2 ] < 40 ) return fail( `после правки pos героя на ${ move.x } его пиксель чёрный через два кадра` )
 		}
