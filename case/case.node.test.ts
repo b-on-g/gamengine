@@ -6,6 +6,32 @@ namespace $ {
 
 	$mol_test({
 
+		'game finds nodes by role, not by the name the editor gave them'( $ ) {
+			const scene = new $$.$bog_gamestudio_case
+			const hero = scene.by_role_one( 'hero' )
+			$mol_assert_equal( hero.title(), 'Герой' )
+			$mol_assert_equal( scene.by_role( 'crumb' ).map( node => node.title() ), [ 'Монета', 'Ключ' ] )
+			$mol_assert_equal( scene.by_role( 'nobody' ), [] )
+		},
+
+		'the same roles live in another document with other declaration names'( $ ) {
+			const doc = $bog_gamestudio_doc.create( doc => {
+				doc.$ = $
+				doc.source( $bog_gamestudio_case_alt_source )
+			} )
+			const scene = doc.scene()
+			$mol_assert_equal( scene.by_role_one( 'hero' ).title(), 'Другой герой' )
+			$mol_assert_equal( scene.by_role( 'crumb' ).length, 2 )
+			$mol_assert_not( doc.source().includes( 'Hero' ) )
+			$mol_assert_not( doc.source().includes( 'Coin' ) )
+		},
+
+		'role asked for one is loud when there is none or many'( $ ) {
+			const scene = new $$.$bog_gamestudio_case
+			$mol_assert_fail( ()=> scene.by_role_one( 'nobody' ), 'Role "nobody" is on 0 nodes, need exactly one' )
+			$mol_assert_fail( ()=> scene.by_role_one( 'crumb' ), 'Role "crumb" is on 2 nodes, need exactly one' )
+		},
+
 		'exported module runs: the scene steps and every vector is writable'( $ ) {
 			const scene = new $$.$bog_gamestudio_case
 			const nodes = scene.nodes()

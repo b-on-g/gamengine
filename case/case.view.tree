@@ -12,6 +12,7 @@ $bog_gamestudio_case $bog_gamestudio_sample_map
 	kids /
 		<= Hero $bog_gamestudio_sample_hero
 			name \Герой
+			role \hero
 			atlas <= Atlas
 			input <= input
 			frame \hero
@@ -19,6 +20,7 @@ $bog_gamestudio_case $bog_gamestudio_sample_map
 			speed 3
 		<= Coin $bog_gamengine_sprite
 			name \Монета
+			role \crumb
 			atlas <= Atlas
 			frame \coin
 			pos? <=> Coin_pos? Float32Array
@@ -31,6 +33,7 @@ $bog_gamestudio_case $bog_gamestudio_sample_map
 			scale? <=> Wall_scale? Float32Array
 		<= Sprite_1 $bog_gamengine_sprite
 			name \Ключ
+			role \crumb
 			atlas <= Atlas
 			frame \coin
 			pos? <=> Sprite_1_pos? Float32Array
