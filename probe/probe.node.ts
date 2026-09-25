@@ -349,28 +349,30 @@ namespace $ {
 
 	export const $bog_gamengine_probe_menu_page = 'bog/gamengine/demo/-/index.html#!demo=quad'
 
-	export const $bog_gamengine_probe_menu_ok = 'меню каталога видно на каждой странице широкого окна'
-
-	export const $bog_gamengine_probe_menu_title = 'Комната'
+	export const $bog_gamengine_probe_menu_ok = 'строки меню каталога раскладываются без наездов на каждой его странице'
 
 	export const $bog_gamengine_probe_menu_dpr = 2
-
-	export const $bog_gamengine_probe_menu_spreads = [ 'flat', 'room', 'boxes', 'quad' ] as const
 
 	export const $bog_gamengine_probe_menu_script = `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 		const book_of = ()=> document.querySelector( '[mol_book2_catalog]' )
+		const box_of = ( node )=> {
+			const box = node.getBoundingClientRect()
+			return [ Math.round( box.left ), Math.round( box.right ), Math.round( box.top ), Math.round( box.bottom ) ]
+		}
+		const here = ()=> ( location.hash.match( /demo=([^&#]*)/ ) || [ '', '' ] )[ 1 ]
+		const rows = ()=> [ ... document.querySelectorAll( '[mol_book2_catalog_menu_link]' ) ].map( item => {
+			const found = ( item.getAttribute( 'href' ) || '' ).match( /demo=([^&#]*)/ )
+			return { text: item.textContent.trim(), spread: found ? found[ 1 ] : here(), box: box_of( item ) }
+		} )
 		const shape = ()=> {
 			const book = book_of()
 			const canvas = document.querySelector( 'canvas' )
-			const link = [ ... document.querySelectorAll( '[mol_book2_catalog_menu_link]' ) ]
-				.find( item => item.textContent.trim() === ${ JSON.stringify( $bog_gamengine_probe_menu_title ) } )
-			const box = link && link.getBoundingClientRect()
 			return [
 				book ? Math.round( book.scrollWidth ) : -1,
 				book ? book.clientWidth : -1,
 				canvas ? canvas.width : 0,
-				box ? Math.round( box.left ) : null,
+				rows().map( row => row.box.join( ' ' ) ).join( ',' ),
 			].join( ' ' )
 		}
 		const settle = async ( cap )=> {
@@ -386,25 +388,25 @@ namespace $ {
 		}
 		await settle( 60 )
 		const book = book_of()
-		if( !book ) return { dpr: devicePixelRatio, inner: innerWidth, pages: [] }
+		if( !book ) return { dpr: devicePixelRatio, inner: innerWidth, spreads: [], pages: [] }
+		const spreads = rows().map( row => row.spread )
 		const pages = []
-		for( const spread of ${ JSON.stringify( $bog_gamengine_probe_menu_spreads ) } ) {
-			location.hash = '#!demo=' + spread
+		for( const spread of spreads ) {
+			location.hash = spread ? '#!demo=' + spread : '#!'
 			const steady = await settle( 120 )
-			const link = [ ... document.querySelectorAll( '[mol_book2_catalog_menu_link]' ) ]
-				.find( item => item.textContent.trim() === ${ JSON.stringify( $bog_gamengine_probe_menu_title ) } )
-			const box = link && link.getBoundingClientRect()
+			const menu = document.querySelector( '[mol_book2_catalog_menu]' )
 			const canvas = document.querySelector( 'canvas' )
 			pages.push({
 				spread,
 				steady,
-				link: box ? [ Math.round( box.left ), Math.round( box.right ) ] : null,
+				rows: rows(),
+				menu: menu ? box_of( menu ) : null,
 				scroll: Math.round( book.scrollWidth ),
 				client: book.clientWidth,
 				canvas: canvas ? canvas.width : 0,
 			})
 		}
-		return { dpr: devicePixelRatio, inner: innerWidth, pages }
+		return { dpr: devicePixelRatio, inner: innerWidth, spreads, pages }
 	`
 
 	export const $bog_gamengine_probe_boxes_script = `
@@ -577,10 +579,19 @@ namespace $ {
 		readonly errors: readonly string[]
 	}
 
+	export type $bog_gamengine_probe_menu_box = readonly [ number, number, number, number ]
+
+	export type $bog_gamengine_probe_menu_row = {
+		readonly text: string
+		readonly spread: string
+		readonly box: $bog_gamengine_probe_menu_box
+	}
+
 	export type $bog_gamengine_probe_menu_page_result = {
 		readonly spread: string
 		readonly steady?: boolean
-		readonly link: readonly [ number, number ] | null
+		readonly rows: readonly $bog_gamengine_probe_menu_row[]
+		readonly menu: $bog_gamengine_probe_menu_box | null
 		readonly scroll: number
 		readonly client: number
 		readonly canvas: number
@@ -589,6 +600,7 @@ namespace $ {
 	export type $bog_gamengine_probe_menu_result = {
 		readonly dpr: number
 		readonly inner: number
+		readonly spreads: readonly string[]
 		readonly pages: readonly $bog_gamengine_probe_menu_page_result[]
 	}
 
@@ -886,13 +898,36 @@ namespace $ {
 		const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( got ) }` ) )
 
 		if( got.dpr !== $bog_gamengine_probe_menu_dpr ) return fail( 'вьюпорт не встал на плотность ретины' )
-		if( got.pages.length !== $bog_gamengine_probe_menu_spreads.length ) return fail( 'обошлись не все страницы каталога' )
+		if( got.spreads.length < 2 ) return fail( 'в меню каталога меньше двух строк, раскладке нечего наезжать' )
+		if( got.pages.length !== got.spreads.length ) return fail( 'обошлись не все страницы, которые меню объявило' )
 
 		for( const page of got.pages ) {
+
 			if( page.steady === false ) return fail( `на странице ${ page.spread } раскладка не устаканилась` )
-			if( !page.link ) return fail( `на странице ${ page.spread } нет ссылки «${ $bog_gamengine_probe_menu_title }»` )
-			if( page.link[ 0 ] < 0 ) return fail( `на странице ${ page.spread } меню уехало за левый край` )
-			if( page.link[ 1 ] > got.inner ) return fail( `на странице ${ page.spread } меню не влезло по ширине` )
+			if( !page.menu ) return fail( `на странице ${ page.spread } нет меню каталога` )
+			if( page.rows.length !== got.spreads.length ) {
+				return fail( `на странице ${ page.spread } строк меню ${ page.rows.length } вместо ${ got.spreads.length }` )
+			}
+
+			for( const row of page.rows ) {
+				const [ left, right ] = row.box
+				if( right - left < 1 || row.box[ 3 ] - row.box[ 2 ] < 1 ) {
+					return fail( `на странице ${ page.spread } строка «${ row.text }» схлопнулась` )
+				}
+				if( left < 0 || right > got.inner ) return fail( `на странице ${ page.spread } строка «${ row.text }» вышла за окно` )
+				if( left < page.menu[ 0 ] || right > page.menu[ 1 ] ) {
+					return fail( `на странице ${ page.spread } строка «${ row.text }» вылезла из меню по ширине` )
+				}
+			}
+
+			for( let one = 0; one < page.rows.length; ++ one ) for( let two = one + 1; two < page.rows.length; ++ two ) {
+				const here = page.rows[ one ].box
+				const there = page.rows[ two ].box
+				const apart = here[ 1 ] <= there[ 0 ] || there[ 1 ] <= here[ 0 ] || here[ 3 ] <= there[ 2 ] || there[ 3 ] <= here[ 2 ]
+				if( apart ) continue
+				return fail( `на странице ${ page.spread } строки «${ page.rows[ one ].text }» и «${ page.rows[ two ].text }» наезжают` )
+			}
+
 			if( page.scroll > page.client + 1 ) return fail( `на странице ${ page.spread } книга шире окна` )
 			if( !( page.canvas > got.inner ) ) return fail( `на странице ${ page.spread } холст не вырос по плотности пикселей` )
 		}

@@ -27,7 +27,7 @@ namespace $ {
 			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_boxes_ok ) )
 		},
 
-		'catalog menu stays in the viewport of a wide window on every spread'() {
+		'catalog menu rows lay out without overlap on every spread the catalog itself declares'() {
 			const out = $bog_probe_test( 'bog/gamengine/probe/-/node.js', 'bog_gamengine_probe_menu_check' )
 			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamengine_probe_menu_ok ) )
 		},
