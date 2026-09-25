@@ -1,0 +1,42 @@
+[
+	{
+		"uri": "bog/gamengine/demo/atlas/coin.png",
+		"kind": "image"
+	},
+	{
+		"uri": "bog/gamengine/demo/atlas/floor.png",
+		"kind": "image"
+	},
+	{
+		"uri": "bog/gamengine/demo/atlas/hero.png",
+		"kind": "image"
+	},
+	{
+		"uri": "bog/gamengine/demo/atlas/hero_1.png",
+		"kind": "image"
+	},
+	{
+		"uri": "bog/gamengine/demo/atlas/hero_2.png",
+		"kind": "image"
+	},
+	{
+		"uri": "bog/gamengine/demo/atlas/wall.png",
+		"kind": "image"
+	},
+	{
+		"uri": "bog/gamengine/demo/icon/hero-192.png",
+		"kind": "image"
+	},
+	{
+		"uri": "bog/gamengine/demo/icon/hero-512.png",
+		"kind": "image"
+	},
+	{
+		"uri": "bog/gamengine/demo/room/model/pillar.glb",
+		"kind": "model"
+	},
+	{
+		"uri": "bog/gamengine/demo/sound/coin.wav",
+		"kind": "sound"
+	}
+]
