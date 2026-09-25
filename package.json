@@ -493,6 +493,13 @@
     "$mol_icon_dots",
     "$bog_gamengine_studio_sample",
     "$bog_gamengine_studio_assets_gltf",
+    "$bog_gamengine_demo_crumb",
+    "$bog_gamengine_demo_crumb_hero",
+    "$bog_gamengine_demo_crumb_rule",
+    "$bog_gamengine_demo_crumb_studio",
+    "$bog_gamengine_demo_crumb2",
+    "$bog_gamengine_demo_crumb2_level",
+    "$bog_gamengine_demo_crumb2_rule",
     "$bog_gamengine_demo_spin"
   ],
   "dependencies": {

@@ -4304,6 +4304,7 @@ declare namespace $ {
     class $bog_gamengine_map extends $mol_object2 {
         map(next?: string): string;
         plane(next?: string): string;
+        origin(next?: ArrayLike<number>): Float32Array;
         rows(): readonly string[];
         width(): number;
         height(): number;
@@ -5614,7 +5615,8 @@ declare namespace $ {
         done_palette: Record<string, string> | null;
         done_world: Float32Array<ArrayBuffer>;
         done_tint: Float32Array<ArrayBuffer>;
-        fresh(map: string, world: Float32Array, size: number, palette: Record<string, string>, tint: Float32Array): boolean;
+        done_origin: Float32Array<ArrayBuffer>;
+        fresh(map: string, world: Float32Array, size: number, palette: Record<string, string>, tint: Float32Array, origin: Float32Array): boolean;
         cell: Float32Array<ArrayBuffer>;
         emit(): number;
         box: Float32Array<ArrayBuffer>;
@@ -49457,6 +49459,7 @@ declare namespace $ {
 }
 
 declare namespace $ {
+    const $bog_gamengine_studio_doc_grow_max = 32;
     type $bog_gamengine_studio_doc_value = string | number | boolean | readonly number[];
     type $bog_gamengine_studio_doc_row = Readonly<Record<string, string>>;
     type $bog_gamengine_studio_doc_kind = 'node' | 'part' | 'own';
@@ -49503,6 +49506,8 @@ declare namespace $ {
         map_owner(): $mol_tree2 | null;
         map_lines(): readonly $mol_tree2[];
         map(): readonly (readonly string[])[];
+        map_origin(): readonly [number, number];
+        map_fill(): string;
         paint_all(cells: readonly (readonly [number, number])[], char: string): void;
         paint(x: number, y: number, char: string): void;
         rect(x0: number, y0: number, x1: number, y1: number, char: string): void;
@@ -49627,6 +49632,7 @@ declare namespace $ {
         readonly binds: Readonly<Record<string, string>>;
         readonly list: string;
         readonly ref: string;
+        readonly grid?: boolean;
     };
     type $bog_gamengine_studio_kit_item = {
         readonly id: string;
@@ -49651,6 +49657,7 @@ declare namespace $ {
         readonly props: Readonly<Record<string, string>>;
         readonly join: $bog_gamengine_studio_kit_join | null;
     };
+    function $bog_gamengine_studio_kit_origin_of(pos: string): string;
     function $bog_gamengine_studio_kit_plan_of(item: $bog_gamengine_studio_kit_item, known: readonly string[], root_props: readonly string[], pos: string): $bog_gamengine_studio_kit_plan;
     function $bog_gamengine_studio_kit_line(doc: $bog_gamengine_studio_doc, owner: string, line: string): boolean;
     function $bog_gamengine_studio_kit_join(doc: $bog_gamengine_studio_doc, owner: string, prop: string, name: string): boolean;
@@ -49690,6 +49697,7 @@ declare namespace $ {
 declare namespace $ {
     const $bog_gamengine_studio_sample: string;
     const $bog_gamengine_studio_sample_tiles: string;
+    const $bog_gamengine_studio_sample_shift: string;
     const $bog_gamengine_studio_sample_brain: string;
     const $bog_gamengine_studio_sample_nest: string;
     const $bog_gamengine_studio_sample_prefab: string;
@@ -51220,6 +51228,839 @@ declare namespace $.$$ {
 }
 
 declare namespace $ {
+    class $bog_gamengine_demo_crumb_hero extends $bog_gamengine_phys_body {
+        input(next?: $bog_gamengine_input | null): $bog_gamengine_input | null;
+        speed(next?: number): number;
+        size(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        step(dt: number): void;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_demo_crumb_rule extends $bog_gamengine_node {
+        hero(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
+        crumbs(next?: readonly $bog_gamengine_node[]): readonly $bog_gamengine_node[];
+        reach(next?: number): number;
+        limit(next?: number): number;
+        taken(next?: number): number;
+        spent(next?: number): number;
+        props(): readonly $bog_gamengine_prop[];
+        left(): number;
+        rest(): number;
+        won(): boolean;
+        lost(): boolean;
+        over(): boolean;
+        restart(): void;
+        step(dt: number): void;
+    }
+}
+
+declare namespace $ {
+
+	type $mol_labeler__title_bog_gamengine_demo_crumb_1 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_labeler['title'] >
+	>
+	type $mol_labeler__content_bog_gamengine_demo_crumb_2 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_labeler['content'] >
+	>
+	type $mol_labeler__title_bog_gamengine_demo_crumb_3 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_labeler['title'] >
+	>
+	type $mol_labeler__content_bog_gamengine_demo_crumb_4 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_labeler['content'] >
+	>
+	type $mol_check_box__title_bog_gamengine_demo_crumb_5 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_check_box['title'] >
+	>
+	type $mol_check_box__checked_bog_gamengine_demo_crumb_6 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['paused'] >
+		,
+		ReturnType< $mol_check_box['checked'] >
+	>
+	type $bog_gamengine_draw__scene_bog_gamengine_demo_crumb_7 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Scene'] >
+		,
+		ReturnType< $bog_gamengine_draw['scene'] >
+	>
+	type $bog_gamengine_draw__cam_bog_gamengine_demo_crumb_8 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Cam'] >
+		,
+		ReturnType< $bog_gamengine_draw['cam'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_crumb_9 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_button_major__title_bog_gamengine_demo_crumb_10 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_button_major['title'] >
+	>
+	type $mol_button_major__click_bog_gamengine_demo_crumb_11 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['restart'] >
+		,
+		ReturnType< $mol_button_major['click'] >
+	>
+	type $mol_page__title_bog_gamengine_demo_crumb_12 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['end_title'] >
+		,
+		ReturnType< $mol_page['title'] >
+	>
+	type $mol_page__body_bog_gamengine_demo_crumb_13 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_page['body'] >
+	>
+	type $mol_page__foot_bog_gamengine_demo_crumb_14 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_page['foot'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_crumb_15 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['field'] >
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_crumb_16 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $bog_gamengine_phys__bodies_bog_gamengine_demo_crumb_17 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['bodies'] >
+		,
+		ReturnType< $bog_gamengine_phys['bodies'] >
+	>
+	type $bog_gamengine_phys__tile_bog_gamengine_demo_crumb_18 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Tile'] >
+		,
+		ReturnType< $bog_gamengine_phys['tile'] >
+	>
+	type $bog_gamengine_phys_tile__map_bog_gamengine_demo_crumb_19 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['map'] >
+		,
+		ReturnType< $bog_gamengine_phys_tile['map'] >
+	>
+	type $bog_gamengine_phys_tile__solid_bog_gamengine_demo_crumb_20 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_phys_tile['solid'] >
+	>
+	type $bog_gamengine_atlas__uris_bog_gamengine_demo_crumb_21 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $bog_gamengine_atlas['uris'] >
+	>
+	type $bog_gamengine_atlas__size_bog_gamengine_demo_crumb_22 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_atlas['size'] >
+	>
+	type $bog_gamengine_clock__paused_bog_gamengine_demo_crumb_23 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['paused'] >
+		,
+		ReturnType< $bog_gamengine_clock['paused'] >
+	>
+	type $bog_gamengine_key__bind_bog_gamengine_demo_crumb_24 = $mol_type_enforce<
+		({ 
+			'left': readonly(any)[],
+			'right': readonly(any)[],
+			'up': readonly(any)[],
+			'down': readonly(any)[],
+		}) 
+		,
+		ReturnType< $bog_gamengine_key['bind'] >
+	>
+	type $bog_gamengine_input__key_bog_gamengine_demo_crumb_25 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Key'] >
+		,
+		ReturnType< $bog_gamengine_input['key'] >
+	>
+	type $bog_gamengine_cam_flat__height_bog_gamengine_demo_crumb_26 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_cam_flat['height'] >
+	>
+	type $bog_gamengine_cam_flat__pos_bog_gamengine_demo_crumb_27 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['cam_pos'] >
+		,
+		ReturnType< $bog_gamengine_cam_flat['pos'] >
+	>
+	type $bog_gamengine_scene__clock_bog_gamengine_demo_crumb_28 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Clock'] >
+		,
+		ReturnType< $bog_gamengine_scene['clock'] >
+	>
+	type $bog_gamengine_scene__input_bog_gamengine_demo_crumb_29 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Input'] >
+		,
+		ReturnType< $bog_gamengine_scene['input'] >
+	>
+	type $bog_gamengine_scene__cam_bog_gamengine_demo_crumb_30 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Cam'] >
+		,
+		ReturnType< $bog_gamengine_scene['cam'] >
+	>
+	type $bog_gamengine_scene__kids_bog_gamengine_demo_crumb_31 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['nodes'] >
+		,
+		ReturnType< $bog_gamengine_scene['kids'] >
+	>
+	type $bog_gamengine_scene__phys_bog_gamengine_demo_crumb_32 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Phys'] >
+		,
+		ReturnType< $bog_gamengine_scene['phys'] >
+	>
+	type $bog_gamengine_tilemap__tile_bog_gamengine_demo_crumb_33 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Tile'] >
+		,
+		ReturnType< $bog_gamengine_tilemap['tile'] >
+	>
+	type $bog_gamengine_tilemap__atlas_bog_gamengine_demo_crumb_34 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_tilemap['atlas'] >
+	>
+	type $bog_gamengine_tilemap__palette_bog_gamengine_demo_crumb_35 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['palette'] >
+		,
+		ReturnType< $bog_gamengine_tilemap['palette'] >
+	>
+	type $bog_gamengine_demo_crumb_hero__input_bog_gamengine_demo_crumb_36 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Input'] >
+		,
+		ReturnType< $bog_gamengine_demo_crumb_hero['input'] >
+	>
+	type $bog_gamengine_demo_crumb_hero__pos_bog_gamengine_demo_crumb_37 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['hero_pos'] >
+		,
+		ReturnType< $bog_gamengine_demo_crumb_hero['pos'] >
+	>
+	type $bog_gamengine_sprite__parent_bog_gamengine_demo_crumb_38 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Hero'] >
+		,
+		ReturnType< $bog_gamengine_sprite['parent'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_crumb_39 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_crumb_40 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__size_bog_gamengine_demo_crumb_41 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['hero_size'] >
+		,
+		ReturnType< $bog_gamengine_sprite['size'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_crumb_42 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_crumb_43 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__pos_bog_gamengine_demo_crumb_44 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['crumb_pos'] >
+		,
+		ReturnType< $bog_gamengine_sprite['pos'] >
+	>
+	type $bog_gamengine_sprite__size_bog_gamengine_demo_crumb_45 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['crumb_size'] >
+		,
+		ReturnType< $bog_gamengine_sprite['size'] >
+	>
+	type $bog_gamengine_demo_crumb_rule__hero_bog_gamengine_demo_crumb_46 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['Hero'] >
+		,
+		ReturnType< $bog_gamengine_demo_crumb_rule['hero'] >
+	>
+	type $bog_gamengine_demo_crumb_rule__crumbs_bog_gamengine_demo_crumb_47 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb['crumbs'] >
+		,
+		ReturnType< $bog_gamengine_demo_crumb_rule['crumbs'] >
+	>
+	type $bog_gamengine_demo_crumb_rule__limit_bog_gamengine_demo_crumb_48 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_demo_crumb_rule['limit'] >
+	>
+	export class $bog_gamengine_demo_crumb extends $mol_page {
+		left_str( ): string
+		Left_label( ): $mol_labeler
+		time_str( ): string
+		Time_label( ): $mol_labeler
+		paused( ): boolean
+		Pause_switch( ): $mol_check_box
+		stat( ): ReturnType< ReturnType< $bog_gamengine_demo_crumb['Draw'] >['stat'] >
+		Draw( ): $bog_gamengine_draw
+		end_title( ): string
+		end_hint( ): string
+		End_hint( ): $mol_view
+		restart( next?: any ): any
+		Again( ): $mol_button_major
+		End( ): $mol_page
+		field( ): readonly(any)[]
+		Field( ): $mol_view
+		Stat( ): $mol_view
+		cam_pos( ): Float32Array
+		nodes( ): readonly(any)[]
+		bodies( ): readonly(any)[]
+		Phys( ): $bog_gamengine_phys
+		palette( ): Record<string, any>
+		hero_pos( next?: Float32Array ): Float32Array
+		hero_size( ): Float32Array
+		crumb_pos( id: any): Float32Array
+		crumb_size( ): Float32Array
+		crumbs( ): readonly(any)[]
+		title( ): string
+		key_map( ): Record<string, any>
+		tools( ): readonly(any)[]
+		body( ): readonly(any)[]
+		foot( ): readonly(any)[]
+		map( ): string
+		Tile( ): $bog_gamengine_phys_tile
+		Atlas( ): $bog_gamengine_atlas
+		Clock( ): $bog_gamengine_clock
+		Key( ): $bog_gamengine_key
+		Input( ): $bog_gamengine_input
+		Cam( ): $bog_gamengine_cam_flat
+		Scene( ): $bog_gamengine_scene
+		Tilemap( ): $bog_gamengine_tilemap
+		Hero( ): $bog_gamengine_demo_crumb_hero
+		Hero_sprite( ): $bog_gamengine_sprite
+		Crumb( id: any): $bog_gamengine_sprite
+		Rule( ): $bog_gamengine_demo_crumb_rule
+	}
+	
+}
+
+//# sourceMappingURL=crumb.view.tree.d.ts.map
+declare namespace $.$$ {
+    class $bog_gamengine_demo_crumb extends $.$bog_gamengine_demo_crumb {
+        key_map(): {
+            space: (state?: boolean) => boolean;
+        };
+        paused(next?: boolean): boolean;
+        palette(): {
+            '#': string;
+            '.': string;
+        };
+        cam_pos(): Float32Array<ArrayBuffer>;
+        hero_size(): Float32Array<ArrayBuffer>;
+        crumb_size(): Float32Array<ArrayBuffer>;
+        hero_pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        crumb_ids(): readonly string[];
+        crumb_pos(id: string): Float32Array<ArrayBuffer>;
+        crumbs(): $bog_gamengine_sprite[];
+        bodies(): $bog_gamengine_demo_crumb_hero[];
+        nodes(): ($bog_gamengine_sprite | $bog_gamengine_tilemap | $bog_gamengine_demo_crumb_rule | $bog_gamengine_demo_crumb_hero)[];
+        field(): ($mol_page | $.$bog_gamengine_draw)[];
+        left_str(): string;
+        time_str(): string;
+        end_title(): "Победа" | "Время вышло";
+        end_hint(): string;
+        restart(next?: any): null;
+    }
+}
+
+declare namespace $ {
+
+	export class $bog_gamengine_demo_crumb_studio extends $bog_gamengine_studio {
+		title( ): string
+	}
+	
+}
+
+//# sourceMappingURL=studio.view.tree.d.ts.map
+declare namespace $.$$ {
+    class $bog_gamengine_demo_crumb_studio extends $.$bog_gamengine_demo_crumb_studio {
+        Kit(): $bog_gamengine_studio_kit;
+    }
+}
+
+declare namespace $ {
+
+	type $bog_gamengine_phys__tile_bog_gamengine_demo_crumb2_level_1 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Tile'] >
+		,
+		ReturnType< $bog_gamengine_phys['tile'] >
+	>
+	type $bog_gamengine_phys__bodies_bog_gamengine_demo_crumb2_level_2 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $bog_gamengine_phys['bodies'] >
+	>
+	type $bog_gamengine_tilemap__name_bog_gamengine_demo_crumb2_level_3 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_tilemap['name'] >
+	>
+	type $bog_gamengine_tilemap__tile_bog_gamengine_demo_crumb2_level_4 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Tile'] >
+		,
+		ReturnType< $bog_gamengine_tilemap['tile'] >
+	>
+	type $bog_gamengine_tilemap__atlas_bog_gamengine_demo_crumb2_level_5 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_tilemap['atlas'] >
+	>
+	type $bog_gamengine_tilemap__palette_bog_gamengine_demo_crumb2_level_6 = $mol_type_enforce<
+		({ 
+			'#': string,
+			'.': string,
+		}) 
+		,
+		ReturnType< $bog_gamengine_tilemap['palette'] >
+	>
+	type $bog_gamengine_phys_walker__name_bog_gamengine_demo_crumb2_level_7 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_phys_walker['name'] >
+	>
+	type $bog_gamengine_phys_walker__pos_bog_gamengine_demo_crumb2_level_8 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Hero_pos'] >
+		,
+		ReturnType< $bog_gamengine_phys_walker['pos'] >
+	>
+	type $bog_gamengine_phys_walker__size_bog_gamengine_demo_crumb2_level_9 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Hero_size'] >
+		,
+		ReturnType< $bog_gamengine_phys_walker['size'] >
+	>
+	type $bog_gamengine_phys_walker__speed_bog_gamengine_demo_crumb2_level_10 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_phys_walker['speed'] >
+	>
+	type $bog_gamengine_phys_walker__role_bog_gamengine_demo_crumb2_level_11 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_phys_walker['role'] >
+	>
+	type $bog_gamengine_sprite__name_bog_gamengine_demo_crumb2_level_12 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['name'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_crumb2_level_13 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_crumb2_level_14 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__pos_bog_gamengine_demo_crumb2_level_15 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Coin_pos'] >
+		,
+		ReturnType< $bog_gamengine_sprite['pos'] >
+	>
+	type $bog_gamengine_sprite__role_bog_gamengine_demo_crumb2_level_16 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['role'] >
+	>
+	type $bog_gamengine_sprite__name_bog_gamengine_demo_crumb2_level_17 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['name'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_crumb2_level_18 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_crumb2_level_19 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__pos_bog_gamengine_demo_crumb2_level_20 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Sprite_1_pos'] >
+		,
+		ReturnType< $bog_gamengine_sprite['pos'] >
+	>
+	type $bog_gamengine_sprite__role_bog_gamengine_demo_crumb2_level_21 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['role'] >
+	>
+	type $bog_gamengine_sprite__name_bog_gamengine_demo_crumb2_level_22 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['name'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_crumb2_level_23 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_crumb2_level_24 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__pos_bog_gamengine_demo_crumb2_level_25 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Sprite_2_pos'] >
+		,
+		ReturnType< $bog_gamengine_sprite['pos'] >
+	>
+	type $bog_gamengine_sprite__role_bog_gamengine_demo_crumb2_level_26 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['role'] >
+	>
+	type $bog_gamengine_sprite__name_bog_gamengine_demo_crumb2_level_27 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['name'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_crumb2_level_28 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_crumb2_level_29 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__pos_bog_gamengine_demo_crumb2_level_30 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Sprite_3_pos'] >
+		,
+		ReturnType< $bog_gamengine_sprite['pos'] >
+	>
+	type $bog_gamengine_sprite__role_bog_gamengine_demo_crumb2_level_31 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['role'] >
+	>
+	type $bog_gamengine_sprite__name_bog_gamengine_demo_crumb2_level_32 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['name'] >
+	>
+	type $bog_gamengine_sprite__atlas_bog_gamengine_demo_crumb2_level_33 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Atlas'] >
+		,
+		ReturnType< $bog_gamengine_sprite['atlas'] >
+	>
+	type $bog_gamengine_sprite__frame_bog_gamengine_demo_crumb2_level_34 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['frame'] >
+	>
+	type $bog_gamengine_sprite__pos_bog_gamengine_demo_crumb2_level_35 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2_level['Sprite_4_pos'] >
+		,
+		ReturnType< $bog_gamengine_sprite['pos'] >
+	>
+	type $bog_gamengine_sprite__role_bog_gamengine_demo_crumb2_level_36 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_sprite['role'] >
+	>
+	type $bog_gamengine_phys_tile__map_bog_gamengine_demo_crumb2_level_37 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $bog_gamengine_phys_tile['map'] >
+	>
+	type $bog_gamengine_atlas__uris_bog_gamengine_demo_crumb2_level_38 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $bog_gamengine_atlas['uris'] >
+	>
+	type $bog_gamengine_atlas__size_bog_gamengine_demo_crumb2_level_39 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_atlas['size'] >
+	>
+	export class $bog_gamengine_demo_crumb2_level extends $bog_gamengine_scene {
+		Phys( ): $bog_gamengine_phys
+		Tiles( ): $bog_gamengine_tilemap
+		Hero_pos( next?: Float32Array ): Float32Array
+		Hero_size( next?: Float32Array ): Float32Array
+		Hero( ): $bog_gamengine_phys_walker
+		Coin_pos( next?: Float32Array ): Float32Array
+		Coin( ): $bog_gamengine_sprite
+		Sprite_1_pos( next?: Float32Array ): Float32Array
+		Sprite_1( ): $bog_gamengine_sprite
+		Sprite_2_pos( next?: Float32Array ): Float32Array
+		Sprite_2( ): $bog_gamengine_sprite
+		Sprite_3_pos( next?: Float32Array ): Float32Array
+		Sprite_3( ): $bog_gamengine_sprite
+		Sprite_4_pos( next?: Float32Array ): Float32Array
+		Sprite_4( ): $bog_gamengine_sprite
+		phys( ): ReturnType< $bog_gamengine_demo_crumb2_level['Phys'] >
+		Tile( ): $bog_gamengine_phys_tile
+		kids( ): readonly(any)[]
+		Atlas( ): $bog_gamengine_atlas
+	}
+	
+}
+
+//# sourceMappingURL=level.view.tree.d.ts.map
+declare namespace $.$$ {
+    class $bog_gamengine_demo_crumb2_level extends $.$bog_gamengine_demo_crumb2_level {
+        Hero_pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        Hero_size(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        Coin_pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        Sprite_1_pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        Sprite_2_pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        Sprite_3_pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
+        Sprite_4_pos(next?: Float32Array): Float32Array<ArrayBufferLike>;
+    }
+}
+
+declare namespace $ {
+    class $bog_gamengine_demo_crumb2_rule extends $bog_gamengine_node {
+        hero(next?: $bog_gamengine_node | null): $bog_gamengine_node | null;
+        crumbs(next?: readonly $bog_gamengine_node[]): readonly $bog_gamengine_node[];
+        reach(next?: number): number;
+        limit(next?: number): number;
+        taken(next?: number): number;
+        spent(next?: number): number;
+        left(): number;
+        rest(): number;
+        won(): boolean;
+        lost(): boolean;
+        over(): boolean;
+        restart(): void;
+        step(dt: number): void;
+    }
+}
+
+declare namespace $ {
+
+	type $mol_labeler__title_bog_gamengine_demo_crumb2_1 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_labeler['title'] >
+	>
+	type $mol_labeler__content_bog_gamengine_demo_crumb2_2 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_labeler['content'] >
+	>
+	type $mol_labeler__title_bog_gamengine_demo_crumb2_3 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_labeler['title'] >
+	>
+	type $mol_labeler__content_bog_gamengine_demo_crumb2_4 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_labeler['content'] >
+	>
+	type $mol_check_box__title_bog_gamengine_demo_crumb2_5 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_check_box['title'] >
+	>
+	type $mol_check_box__checked_bog_gamengine_demo_crumb2_6 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['paused'] >
+		,
+		ReturnType< $mol_check_box['checked'] >
+	>
+	type $bog_gamengine_draw__scene_bog_gamengine_demo_crumb2_7 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['Scene'] >
+		,
+		ReturnType< $bog_gamengine_draw['scene'] >
+	>
+	type $bog_gamengine_draw__cam_bog_gamengine_demo_crumb2_8 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['Cam'] >
+		,
+		ReturnType< $bog_gamengine_draw['cam'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_crumb2_9 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_button_major__title_bog_gamengine_demo_crumb2_10 = $mol_type_enforce<
+		string
+		,
+		ReturnType< $mol_button_major['title'] >
+	>
+	type $mol_button_major__click_bog_gamengine_demo_crumb2_11 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['restart'] >
+		,
+		ReturnType< $mol_button_major['click'] >
+	>
+	type $mol_page__title_bog_gamengine_demo_crumb2_12 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['end_title'] >
+		,
+		ReturnType< $mol_page['title'] >
+	>
+	type $mol_page__body_bog_gamengine_demo_crumb2_13 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_page['body'] >
+	>
+	type $mol_page__foot_bog_gamengine_demo_crumb2_14 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_page['foot'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_crumb2_15 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $mol_view__sub_bog_gamengine_demo_crumb2_16 = $mol_type_enforce<
+		readonly(any)[]
+		,
+		ReturnType< $mol_view['sub'] >
+	>
+	type $bog_gamengine_clock__paused_bog_gamengine_demo_crumb2_17 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['paused'] >
+		,
+		ReturnType< $bog_gamengine_clock['paused'] >
+	>
+	type $bog_gamengine_key__bind_bog_gamengine_demo_crumb2_18 = $mol_type_enforce<
+		({ 
+			'left': readonly(any)[],
+			'right': readonly(any)[],
+			'up': readonly(any)[],
+			'down': readonly(any)[],
+		}) 
+		,
+		ReturnType< $bog_gamengine_key['bind'] >
+	>
+	type $bog_gamengine_input__key_bog_gamengine_demo_crumb2_19 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['Key'] >
+		,
+		ReturnType< $bog_gamengine_input['key'] >
+	>
+	type $bog_gamengine_cam_flat__height_bog_gamengine_demo_crumb2_20 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_cam_flat['height'] >
+	>
+	type $bog_gamengine_cam_flat__pos_bog_gamengine_demo_crumb2_21 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['cam_pos'] >
+		,
+		ReturnType< $bog_gamengine_cam_flat['pos'] >
+	>
+	type $bog_gamengine_demo_crumb2_level__clock_bog_gamengine_demo_crumb2_22 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['Clock'] >
+		,
+		ReturnType< $bog_gamengine_demo_crumb2_level['clock'] >
+	>
+	type $bog_gamengine_demo_crumb2_level__input_bog_gamengine_demo_crumb2_23 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['Input'] >
+		,
+		ReturnType< $bog_gamengine_demo_crumb2_level['input'] >
+	>
+	type $bog_gamengine_demo_crumb2_level__cam_bog_gamengine_demo_crumb2_24 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['Cam'] >
+		,
+		ReturnType< $bog_gamengine_demo_crumb2_level['cam'] >
+	>
+	type $bog_gamengine_demo_crumb2_level__auto_nodes_bog_gamengine_demo_crumb2_25 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['nodes'] >
+		,
+		ReturnType< $bog_gamengine_demo_crumb2_level['auto_nodes'] >
+	>
+	type $bog_gamengine_demo_crumb2_rule__hero_bog_gamengine_demo_crumb2_26 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['hero'] >
+		,
+		ReturnType< $bog_gamengine_demo_crumb2_rule['hero'] >
+	>
+	type $bog_gamengine_demo_crumb2_rule__crumbs_bog_gamengine_demo_crumb2_27 = $mol_type_enforce<
+		ReturnType< $bog_gamengine_demo_crumb2['crumbs'] >
+		,
+		ReturnType< $bog_gamengine_demo_crumb2_rule['crumbs'] >
+	>
+	type $bog_gamengine_demo_crumb2_rule__limit_bog_gamengine_demo_crumb2_28 = $mol_type_enforce<
+		number
+		,
+		ReturnType< $bog_gamengine_demo_crumb2_rule['limit'] >
+	>
+	export class $bog_gamengine_demo_crumb2 extends $mol_page {
+		left_str( ): string
+		Left_label( ): $mol_labeler
+		time_str( ): string
+		Time_label( ): $mol_labeler
+		paused( ): boolean
+		Pause_switch( ): $mol_check_box
+		stat( ): ReturnType< ReturnType< $bog_gamengine_demo_crumb2['Draw'] >['stat'] >
+		Draw( ): $bog_gamengine_draw
+		end_title( ): string
+		end_hint( ): string
+		End_hint( ): $mol_view
+		restart( next?: any ): any
+		Again( ): $mol_button_major
+		End( ): $mol_page
+		field( ): readonly(any)[]
+		hero_str( ): string
+		Hero_stat( ): $mol_view
+		Stat( ): $mol_view
+		cam_pos( ): Float32Array
+		nodes( ): readonly(any)[]
+		hero( ): any
+		crumbs( ): readonly(any)[]
+		title( ): string
+		key_map( ): Record<string, any>
+		tools( ): readonly(any)[]
+		body( ): ReturnType< $bog_gamengine_demo_crumb2['field'] >
+		foot( ): readonly(any)[]
+		Clock( ): $bog_gamengine_clock
+		Key( ): $bog_gamengine_key
+		Input( ): $bog_gamengine_input
+		Cam( ): $bog_gamengine_cam_flat
+		Scene( ): $bog_gamengine_demo_crumb2_level
+		Rule( ): $bog_gamengine_demo_crumb2_rule
+	}
+	
+}
+
+//# sourceMappingURL=crumb2.view.tree.d.ts.map
+declare namespace $.$$ {
+    class $bog_gamengine_demo_crumb2 extends $.$bog_gamengine_demo_crumb2 {
+        key_map(): {
+            space: (state?: boolean) => boolean;
+        };
+        paused(next?: boolean): boolean;
+        hero(): $bog_gamengine_phys_walker;
+        crumbs(): readonly $bog_gamengine_node[];
+        nodes(): any[];
+        cam_pos(): Float32Array<ArrayBuffer>;
+        field(): ($mol_page | $.$bog_gamengine_draw)[];
+        hero_str(): string;
+        left_str(): string;
+        time_str(): string;
+        end_title(): "Победа" | "Время вышло";
+        end_hint(): string;
+        restart(next?: any): null;
+    }
+}
+
+declare namespace $.$$ {
+}
+
+declare namespace $ {
     class $bog_gamengine_demo_spin extends $bog_gamengine_node {
         tint(): Float32Array<ArrayBuffer>;
         step(dt: number): void;
@@ -51351,6 +52192,9 @@ declare namespace $ {
 		Shooter( ): $bog_gamengine_demo_shooter
 		Legion( ): $bog_gamengine_demo_legion
 		Studio( ): $bog_gamengine_studio
+		Crumb( ): $bog_gamengine_demo_crumb
+		Crumb_studio( ): $bog_gamengine_demo_crumb_studio
+		Crumb2( ): $bog_gamengine_demo_crumb2
 		paused( next?: ReturnType< ReturnType< $bog_gamengine_demo['Clock'] >['paused'] > ): ReturnType< ReturnType< $bog_gamengine_demo['Clock'] >['paused'] >
 		Batch( ): $bog_gamengine_batch
 		cam_deep_pos( ): Float32Array
@@ -51366,6 +52210,9 @@ declare namespace $ {
 			'shooter': ReturnType< $bog_gamengine_demo['Shooter'] >,
 			'legion': ReturnType< $bog_gamengine_demo['Legion'] >,
 			'studio': ReturnType< $bog_gamengine_demo['Studio'] >,
+			'crumb': ReturnType< $bog_gamengine_demo['Crumb'] >,
+			'crumb_studio': ReturnType< $bog_gamengine_demo['Crumb_studio'] >,
+			'crumb2': ReturnType< $bog_gamengine_demo['Crumb2'] >,
 		}) 
 		Clock( ): $bog_gamengine_clock
 		Scene( ): $bog_gamengine_scene

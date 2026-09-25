@@ -11359,6 +11359,11 @@ var $;
         plane(next = 'xy') {
             return next;
         }
+        origin(next) {
+            if (!next)
+                return new Float32Array(2);
+            return next instanceof Float32Array ? next : new Float32Array(next);
+        }
         rows() {
             return this.map().split('\n');
         }
@@ -11419,15 +11424,16 @@ var $;
         }
         place(cx, cy, lift, out) {
             const plane = this.plane();
+            const origin = this.origin();
             if (plane === 'xz') {
-                out[0] = cx;
+                out[0] = origin[0] + cx;
                 out[1] = lift;
-                out[2] = cy;
+                out[2] = origin[1] + cy;
                 return out;
             }
             if (plane === 'xy') {
-                out[0] = cx;
-                out[1] = -cy;
+                out[0] = origin[0] + cx;
+                out[1] = origin[1] - cy;
                 out[2] = lift;
                 return out;
             }
@@ -11450,6 +11456,9 @@ var $;
     __decorate([
         $mol_mem
     ], $bog_gamengine_map.prototype, "plane", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_map.prototype, "origin", null);
     __decorate([
         $mol_mem
     ], $bog_gamengine_map.prototype, "rows", null);
@@ -11492,8 +11501,9 @@ var $;
             return this.pos(x, y, 0, out);
         }
         cell_at(wx, wy, out) {
-            out[0] = Math.floor(wx);
-            out[1] = Math.floor(-wy);
+            const origin = this.origin();
+            out[0] = Math.floor(wx - origin[0]);
+            out[1] = Math.floor(origin[1] - wy);
             return out;
         }
         solid_at(wx, wy) {
@@ -18043,8 +18053,15 @@ var $;
         done_palette = null;
         done_world = new Float32Array(16);
         done_tint = new Float32Array(4);
-        fresh(map, world, size, palette, tint) {
+        done_origin = new Float32Array(2);
+        fresh(map, world, size, palette, tint, origin) {
             let same = map === this.done_map && size === this.done_size && palette === this.done_palette;
+            const done_origin = this.done_origin;
+            for (let i = 0; i < 2; ++i) {
+                if (origin[i] !== done_origin[i])
+                    same = false;
+                done_origin[i] = origin[i];
+            }
             const done_world = this.done_world;
             for (let i = 0; i < 16; ++i) {
                 if (world[i] !== done_world[i])
@@ -18075,7 +18092,7 @@ var $;
                 pool.count = 0;
                 return 0;
             }
-            if (this.fresh(tile.map(), world, size, palette, tint))
+            if (this.fresh(tile.map(), world, size, palette, tint, tile.origin()))
                 return pool.count;
             const rows = tile.rows();
             let need = 0;
@@ -18137,10 +18154,11 @@ var $;
             const world = this.world();
             const size = this.size();
             const half = size / 2;
-            const left = 0.5 - half;
-            const right = tile.width() - 0.5 + half;
-            const top = -0.5 + half;
-            const bottom = -tile.height() + 0.5 - half;
+            const origin = tile.origin();
+            const left = origin[0] + 0.5 - half;
+            const right = origin[0] + tile.width() - 0.5 + half;
+            const top = origin[1] - 0.5 + half;
+            const bottom = origin[1] - tile.height() + 0.5 - half;
             for (let k = 0; k < 3; ++k) {
                 box[k] = Infinity;
                 box[k + 3] = -Infinity;
@@ -51246,6 +51264,7 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    $.$bog_gamengine_studio_doc_grow_max = 32;
     class $bog_gamengine_studio_doc extends $mol_object2 {
         land(next) {
             return next ?? null;
@@ -51465,32 +51484,92 @@ var $;
         map() {
             return this.map_lines().map(line => [...line.value]);
         }
+        map_origin() {
+            const owner = this.map_owner();
+            const line = owner?.kids.find(kid => kid.type === 'origin');
+            const nums = line?.kids[0] ? this.numbers(this.flat(line.kids[0])) : null;
+            return [Number(nums?.[0] ?? 0), Number(nums?.[1] ?? 0)];
+        }
+        map_fill() {
+            const count = new Map();
+            for (const row of this.map())
+                for (const char of row)
+                    count.set(char, (count.get(char) ?? 0) + 1);
+            let fill = ' ';
+            let most = 0;
+            for (const [char, times] of count) {
+                if (times <= most)
+                    continue;
+                most = times;
+                fill = char;
+            }
+            return fill;
+        }
         paint_all(cells, char) {
             const lines = this.map_lines();
-            const rows = this.map();
-            const edits = new Map();
+            if (!lines.length)
+                return;
+            const rows = this.map().map(row => [...row]);
+            const fill = this.map_fill();
+            const grow = $.$bog_gamengine_studio_doc_grow_max;
+            let width = 0;
+            for (const row of rows)
+                width = Math.max(width, row.length);
+            let left = 0;
+            let top = 0;
+            let right = 0;
+            let bottom = 0;
             for (const [x, y] of cells) {
-                const row = rows[y];
-                if (!row || x < 0 || x >= row.length)
+                if (-x > grow || -y > grow || x - width >= grow || y - rows.length >= grow)
                     continue;
-                let chars = edits.get(y);
-                if (!chars)
-                    edits.set(y, chars = [...row]);
-                chars[x] = char;
+                left = Math.max(left, -x);
+                top = Math.max(top, -y);
+                right = Math.max(right, x + 1 - width);
+                bottom = Math.max(bottom, y + 1 - rows.length);
             }
-            const source = this.source().split('\n');
-            let changed = false;
-            for (const [y, chars] of edits) {
-                const text = chars.join('');
-                if (text === rows[y].join(''))
+            const wide = width + left + right;
+            for (const row of rows) {
+                while (row.length < width)
+                    row.push(fill);
+                for (let i = 0; i < left; ++i)
+                    row.unshift(fill);
+                while (row.length < wide)
+                    row.push(fill);
+            }
+            for (let i = 0; i < top; ++i)
+                rows.unshift(new Array(wide).fill(fill));
+            for (let i = 0; i < bottom; ++i)
+                rows.push(new Array(wide).fill(fill));
+            let changed = left > 0 || top > 0 || right > 0 || bottom > 0;
+            for (const [x, y] of cells) {
+                const row = rows[y + top];
+                const at = x + left;
+                if (!row || at < 0 || at >= row.length)
                     continue;
-                const at = lines[y].span.row - 1;
-                const cut = source[at].indexOf('\\');
-                source[at] = source[at].slice(0, cut + 1) + text;
+                if (row[at] === char)
+                    continue;
+                row[at] = char;
                 changed = true;
             }
-            if (changed)
-                this.source(source.join('\n'));
+            if (!changed)
+                return;
+            const source = this.source().split('\n');
+            const first = lines[0].span.row - 1;
+            const last = lines[lines.length - 1].span.row - 1;
+            const head = source[first].slice(0, source[first].indexOf('\\'));
+            const painted = rows.map(row => head + '\\' + row.join(''));
+            const origin_line = this.map_owner()?.kids.find(kid => kid.type === 'origin') ?? null;
+            const origin_at = origin_line ? origin_line.span.row - 1 : -1;
+            source.splice(first, last - first + 1, ...painted);
+            if (left > 0 || top > 0) {
+                const origin = this.map_origin();
+                const shifted = `${head.slice(0, -1)}origin / ${this.token(origin[0] - left)} ${this.token(origin[1] + top)}`;
+                if (origin_at < 0)
+                    source.splice(first - 1, 0, shifted);
+                else
+                    source[origin_at > last ? origin_at + painted.length - (last - first + 1) : origin_at] = shifted;
+            }
+            this.source(source.join('\n'));
         }
         paint(x, y, char) {
             this.paint_all([[x, y]], char);
@@ -52193,6 +52272,7 @@ var $;
             binds: {},
             list: '',
             ref: 'tile',
+            grid: true,
         },
     };
     $.$bog_gamengine_studio_kit_items = [
@@ -52237,6 +52317,13 @@ var $;
             part: true,
         },
     ];
+    function $bog_gamengine_studio_kit_origin_of(pos) {
+        const nums = pos.trim().split(/\s+/).slice(1).map(Number);
+        const x = Math.floor(Number.isFinite(nums[0]) ? nums[0] : 0);
+        const y = Math.ceil(Number.isFinite(nums[1]) ? nums[1] : 0);
+        return `/ ${x} ${y}`;
+    }
+    $.$bog_gamengine_studio_kit_origin_of = $bog_gamengine_studio_kit_origin_of;
     function $bog_gamengine_studio_kit_plan_of(item, known, root_props, pos) {
         const world = $.$bog_gamengine_studio_kit_worlds[item.world] ?? null;
         const decls = [];
@@ -52250,13 +52337,17 @@ var $;
                     if (known.indexOf(node) >= 0)
                         props[bound[i]] = `<= ${node}`;
                 }
+                if (world.grid)
+                    props.origin = $bog_gamengine_studio_kit_origin_of(pos);
                 decls.push({ node: world.node, klass: world.klass, props });
             }
             if (world.prop && root_props.indexOf(world.prop) < 0) {
                 root.push(`${world.prop} <= ${world.node}`);
             }
         }
-        const props = { ...item.props, pos };
+        const props = { ...item.props };
+        if (!world?.grid)
+            props.pos = pos;
         if (world?.ref)
             props[world.ref] = `<= ${world.node}`;
         const bound = Object.keys(item.binds ?? {});
@@ -53702,6 +53793,28 @@ var $;
     $.$bog_gamengine_studio_sample_tiles = [
         '$bog_gamengine_studio_sample_tiles $bog_gamengine_scene',
         '\tTile $bog_gamengine_phys_tile',
+        '\t\tmap \\',
+        '\t\t\t\\######',
+        '\t\t\t\\#....#',
+        '\t\t\t\\######',
+        '\tkids /',
+        '\t\t<= Tiles $bog_gamengine_tilemap',
+        '\t\t\tname \\Карта',
+        '\t\t\ttile <= Tile',
+        '\t\t\tatlas <= Atlas',
+        '\t\t\tpalette *',
+        '\t\t\t\t# \\wall',
+        '\t\t\t\t. \\floor',
+        '\tAtlas $bog_gamengine_atlas',
+        '\t\turis /',
+        '\t\t\t\\bog/gamengine/demo/atlas/wall.png',
+        '\t\t\t\\bog/gamengine/demo/atlas/floor.png',
+        '\t\tsize 64',
+    ].join('\n') + '\n';
+    $.$bog_gamengine_studio_sample_shift = [
+        '$bog_gamengine_studio_sample_shift $bog_gamengine_scene',
+        '\tTile $bog_gamengine_phys_tile',
+        '\t\torigin / 4 -3',
         '\t\tmap \\',
         '\t\t\t\\######',
         '\t\t\t\\#....#',
@@ -55417,6 +55530,1190 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    class $bog_gamengine_demo_crumb_hero extends $bog_gamengine_phys_body {
+        input(next) {
+            return next ?? null;
+        }
+        speed(next = 4) {
+            return next;
+        }
+        size(next) {
+            return next ?? new Float32Array([0.7, 0.7]);
+        }
+        step(dt) {
+            const input = this.input();
+            if (!input)
+                return;
+            const speed = this.speed();
+            const vx = input.axis('left', 'right') * speed;
+            const vy = input.axis('down', 'up') * speed;
+            const vel = this.vel();
+            if (vel[0] === vx && vel[1] === vy)
+                return;
+            const next = new Float32Array(3);
+            next[0] = vx;
+            next[1] = vy;
+            next[2] = vel[2];
+            this.vel(next);
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb_hero.prototype, "input", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb_hero.prototype, "speed", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb_hero.prototype, "size", null);
+    $.$bog_gamengine_demo_crumb_hero = $bog_gamengine_demo_crumb_hero;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_demo_crumb_rule extends $bog_gamengine_node {
+        hero(next) {
+            return next ?? null;
+        }
+        crumbs(next) {
+            return next ?? [];
+        }
+        reach(next = 0.6) {
+            return next;
+        }
+        limit(next = 40) {
+            return next;
+        }
+        taken(next = 0) {
+            return next;
+        }
+        spent(next = 0) {
+            return next;
+        }
+        props() {
+            return [
+                { name: 'hero', kind: 'node', get: () => this.hero(), set: next => this.hero(next) },
+                { name: 'crumbs', kind: 'nodes', get: () => this.crumbs(), set: next => this.crumbs(next) },
+                { name: 'reach', kind: 'number', get: () => this.reach(), set: next => this.reach(next) },
+                { name: 'limit', kind: 'number', get: () => this.limit(), set: next => this.limit(next) },
+            ];
+        }
+        left() {
+            return this.crumbs().length - this.taken();
+        }
+        rest() {
+            return Math.max(0, this.limit() - this.spent());
+        }
+        won() {
+            return this.crumbs().length > 0 && this.left() === 0;
+        }
+        lost() {
+            return !this.won() && this.rest() === 0;
+        }
+        over() {
+            return this.won() || this.lost();
+        }
+        restart() {
+            const crumbs = this.crumbs();
+            for (let i = 0; i < crumbs.length; ++i)
+                crumbs[i].hidden = false;
+            this.taken(0);
+            this.spent(0);
+        }
+        step(dt) {
+            if (dt === 0)
+                return;
+            const hero = this.hero();
+            const crumbs = this.crumbs();
+            const reach = this.reach();
+            const taken = this.taken();
+            const spent = this.spent();
+            if (!hero || taken === crumbs.length)
+                return;
+            if (spent >= this.limit())
+                return;
+            this.spent(spent + dt);
+            const at = hero.pos();
+            let count = taken;
+            for (let i = 0; i < crumbs.length; ++i) {
+                const crumb = crumbs[i];
+                if (crumb.hidden)
+                    continue;
+                const pos = crumb.pos();
+                const dx = pos[0] - at[0];
+                const dy = pos[1] - at[1];
+                if (dx * dx + dy * dy > reach * reach)
+                    continue;
+                crumb.hidden = true;
+                ++count;
+            }
+            if (count !== taken)
+                this.taken(count);
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb_rule.prototype, "hero", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb_rule.prototype, "crumbs", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb_rule.prototype, "reach", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb_rule.prototype, "limit", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb_rule.prototype, "taken", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb_rule.prototype, "spent", null);
+    $.$bog_gamengine_demo_crumb_rule = $bog_gamengine_demo_crumb_rule;
+})($ || ($ = {}));
+
+;
+	($.$bog_gamengine_demo_crumb) = class $bog_gamengine_demo_crumb extends ($.$mol_page) {
+		left_str(){
+			return "";
+		}
+		Left_label(){
+			const obj = new this.$.$mol_labeler();
+			(obj.title) = () => ("Осталось");
+			(obj.content) = () => ([(this.left_str())]);
+			return obj;
+		}
+		time_str(){
+			return "";
+		}
+		Time_label(){
+			const obj = new this.$.$mol_labeler();
+			(obj.title) = () => ("Время");
+			(obj.content) = () => ([(this.time_str())]);
+			return obj;
+		}
+		paused(){
+			return false;
+		}
+		Pause_switch(){
+			const obj = new this.$.$mol_check_box();
+			(obj.title) = () => ("Пауза");
+			(obj.checked) = (next) => ((this.paused(next)));
+			return obj;
+		}
+		stat(){
+			return (this.Draw().stat());
+		}
+		Draw(){
+			const obj = new this.$.$bog_gamengine_draw();
+			(obj.scene) = () => ((this.Scene()));
+			(obj.cam) = () => ((this.Cam()));
+			return obj;
+		}
+		end_title(){
+			return "";
+		}
+		end_hint(){
+			return "";
+		}
+		End_hint(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ([(this.end_hint())]);
+			return obj;
+		}
+		restart(next){
+			if(next !== undefined) return next;
+			return null;
+		}
+		Again(){
+			const obj = new this.$.$mol_button_major();
+			(obj.title) = () => ("Ещё раз");
+			(obj.click) = (next) => ((this.restart(next)));
+			return obj;
+		}
+		End(){
+			const obj = new this.$.$mol_page();
+			(obj.title) = () => ((this.end_title()));
+			(obj.body) = () => ([(this.End_hint())]);
+			(obj.foot) = () => ([(this.Again())]);
+			return obj;
+		}
+		field(){
+			return [(this.Draw()), (this.End())];
+		}
+		Field(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ((this.field()));
+			return obj;
+		}
+		Stat(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ([(this.stat())]);
+			return obj;
+		}
+		cam_pos(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		nodes(){
+			return [];
+		}
+		bodies(){
+			return [];
+		}
+		Phys(){
+			const obj = new this.$.$bog_gamengine_phys();
+			(obj.bodies) = () => ((this.bodies()));
+			(obj.tile) = () => ((this.Tile()));
+			return obj;
+		}
+		palette(){
+			return {};
+		}
+		hero_pos(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		hero_size(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		crumb_pos(id){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		crumb_size(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		crumbs(){
+			return [];
+		}
+		title(){
+			return "Крошки";
+		}
+		key_map(){
+			return {};
+		}
+		tools(){
+			return [
+				(this.Left_label()), 
+				(this.Time_label()), 
+				(this.Pause_switch())
+			];
+		}
+		body(){
+			return [(this.Field())];
+		}
+		foot(){
+			return [(this.Stat())];
+		}
+		map(){
+			return "############\n#....#.....#\n#.##....##.#\n#.#......#.#\n#....##....#\n#.#......#.#\n#.##....##.#\n#.....#....#\n############";
+		}
+		Tile(){
+			const obj = new this.$.$bog_gamengine_phys_tile();
+			(obj.map) = () => ((this.map()));
+			(obj.solid) = () => ("#");
+			return obj;
+		}
+		Atlas(){
+			const obj = new this.$.$bog_gamengine_atlas();
+			(obj.uris) = () => ([
+				"bog/gamengine/demo/atlas/hero.png", 
+				"bog/gamengine/demo/atlas/coin.png", 
+				"bog/gamengine/demo/atlas/wall.png", 
+				"bog/gamengine/demo/atlas/floor.png"
+			]);
+			(obj.size) = () => (64);
+			return obj;
+		}
+		Clock(){
+			const obj = new this.$.$bog_gamengine_clock();
+			(obj.paused) = () => ((this.paused()));
+			return obj;
+		}
+		Key(){
+			const obj = new this.$.$bog_gamengine_key();
+			(obj.bind) = () => ({
+				"left": ["A", "left"], 
+				"right": ["D", "right"], 
+				"up": ["W", "up"], 
+				"down": ["S", "down"]
+			});
+			return obj;
+		}
+		Input(){
+			const obj = new this.$.$bog_gamengine_input();
+			(obj.key) = () => ((this.Key()));
+			return obj;
+		}
+		Cam(){
+			const obj = new this.$.$bog_gamengine_cam_flat();
+			(obj.height) = () => (11);
+			(obj.pos) = () => ((this.cam_pos()));
+			return obj;
+		}
+		Scene(){
+			const obj = new this.$.$bog_gamengine_scene();
+			(obj.clock) = () => ((this.Clock()));
+			(obj.input) = () => ((this.Input()));
+			(obj.cam) = () => ((this.Cam()));
+			(obj.kids) = () => ((this.nodes()));
+			(obj.phys) = () => ((this.Phys()));
+			return obj;
+		}
+		Tilemap(){
+			const obj = new this.$.$bog_gamengine_tilemap();
+			(obj.tile) = () => ((this.Tile()));
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.palette) = () => ((this.palette()));
+			return obj;
+		}
+		Hero(){
+			const obj = new this.$.$bog_gamengine_demo_crumb_hero();
+			(obj.input) = () => ((this.Input()));
+			(obj.pos) = (next) => ((this.hero_pos(next)));
+			return obj;
+		}
+		Hero_sprite(){
+			const obj = new this.$.$bog_gamengine_sprite();
+			(obj.parent) = () => ((this.Hero()));
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.frame) = () => ("hero");
+			(obj.size) = () => ((this.hero_size()));
+			return obj;
+		}
+		Crumb(id){
+			const obj = new this.$.$bog_gamengine_sprite();
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.frame) = () => ("coin");
+			(obj.pos) = () => ((this.crumb_pos(id)));
+			(obj.size) = () => ((this.crumb_size()));
+			return obj;
+		}
+		Rule(){
+			const obj = new this.$.$bog_gamengine_demo_crumb_rule();
+			(obj.hero) = () => ((this.Hero()));
+			(obj.crumbs) = () => ((this.crumbs()));
+			(obj.limit) = () => (40);
+			return obj;
+		}
+	};
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Left_label"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Time_label"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Pause_switch"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Draw"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "End_hint"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "restart"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Again"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "End"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Field"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Stat"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "cam_pos"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Phys"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "hero_pos"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "hero_size"));
+	($mol_mem_key(($.$bog_gamengine_demo_crumb.prototype), "crumb_pos"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "crumb_size"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Tile"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Atlas"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Clock"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Key"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Input"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Cam"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Scene"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Tilemap"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Hero"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Hero_sprite"));
+	($mol_mem_key(($.$bog_gamengine_demo_crumb.prototype), "Crumb"));
+	($mol_mem(($.$bog_gamengine_demo_crumb.prototype), "Rule"));
+
+
+;
+"use strict";
+
+
+;
+"use strict";
+var $;
+(function ($) {
+    var $$;
+    (function ($$) {
+        const crumb_spots = [
+            [10.5, -1.5],
+            [1.5, -7.5],
+            [10.5, -7.5],
+            [5.5, -4.5],
+            [3.5, -4.5],
+        ];
+        class $bog_gamengine_demo_crumb extends $.$bog_gamengine_demo_crumb {
+            key_map() {
+                return {
+                    ...this.Key().keys(),
+                    space: (state) => {
+                        if (state)
+                            this.paused(!this.paused());
+                        return true;
+                    },
+                };
+            }
+            paused(next) {
+                return next ?? false;
+            }
+            palette() {
+                return { '#': 'wall', '.': 'floor' };
+            }
+            cam_pos() {
+                const tile = this.Tile();
+                return new Float32Array([tile.width() / 2, -tile.height() / 2, 0]);
+            }
+            hero_size() {
+                return new Float32Array([0.8, 0.8]);
+            }
+            crumb_size() {
+                return new Float32Array([0.6, 0.6]);
+            }
+            hero_pos(next) {
+                return next ?? new Float32Array([1.5, -1.5, 0]);
+            }
+            crumb_ids() {
+                return crumb_spots.map((spot, index) => String(index));
+            }
+            crumb_pos(id) {
+                const spot = crumb_spots[Number(id)];
+                return new Float32Array([spot[0], spot[1], 0]);
+            }
+            crumbs() {
+                return this.crumb_ids().map(id => this.Crumb(id));
+            }
+            bodies() {
+                return [this.Hero()];
+            }
+            nodes() {
+                return [this.Tilemap(), this.Hero(), this.Hero_sprite(), ...this.crumbs(), this.Rule()];
+            }
+            field() {
+                return [
+                    this.Draw(),
+                    ...this.Rule().over() ? [this.End()] : [],
+                ];
+            }
+            left_str() {
+                this.Scene().step();
+                return String(this.Rule().left());
+            }
+            time_str() {
+                this.Scene().step();
+                return `${this.Rule().rest().toFixed(1)} с`;
+            }
+            end_title() {
+                return this.Rule().won() ? 'Победа' : 'Время вышло';
+            }
+            end_hint() {
+                const rule = this.Rule();
+                return rule.won()
+                    ? `Все крошки собраны за ${rule.spent().toFixed(1)} с`
+                    : `Не собрано крошек: ${rule.left()}`;
+            }
+            restart(next) {
+                if (next === undefined)
+                    return null;
+                this.Rule().restart();
+                this.hero_pos(new Float32Array([1.5, -1.5, 0]));
+                this.Hero().vel(new Float32Array(3));
+                this.Clock().time(0);
+                return null;
+            }
+        }
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb.prototype, "paused", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb.prototype, "palette", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb.prototype, "cam_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb.prototype, "hero_size", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb.prototype, "crumb_size", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb.prototype, "hero_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb.prototype, "crumb_ids", null);
+        __decorate([
+            $mol_mem_key
+        ], $bog_gamengine_demo_crumb.prototype, "crumb_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb.prototype, "crumbs", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb.prototype, "bodies", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb.prototype, "nodes", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb.prototype, "field", null);
+        $$.$bog_gamengine_demo_crumb = $bog_gamengine_demo_crumb;
+    })($$ = $.$$ || ($.$$ = {}));
+})($ || ($ = {}));
+
+;
+	($.$bog_gamengine_demo_crumb_studio) = class $bog_gamengine_demo_crumb_studio extends ($.$bog_gamengine_studio) {
+		title(){
+			return "Студия крошек";
+		}
+	};
+
+
+;
+"use strict";
+
+
+;
+"use strict";
+var $;
+(function ($) {
+    var $$;
+    (function ($$) {
+        const kit_own = [
+            {
+                id: 'crumb_rule',
+                title: 'Правило крошек',
+                klass: '$bog_gamengine_demo_crumb_rule',
+                props: { name: '\\Правило', reach: '0.6', limit: '40' },
+                world: '',
+            },
+        ];
+        class $bog_gamengine_demo_crumb_studio extends $.$bog_gamengine_demo_crumb_studio {
+            Kit() {
+                const kit = super.Kit();
+                kit.list([...$bog_gamengine_studio_kit_items, ...kit_own]);
+                return kit;
+            }
+        }
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb_studio.prototype, "Kit", null);
+        $$.$bog_gamengine_demo_crumb_studio = $bog_gamengine_demo_crumb_studio;
+    })($$ = $.$$ || ($.$$ = {}));
+})($ || ($ = {}));
+
+;
+	($.$bog_gamengine_demo_crumb2_level) = class $bog_gamengine_demo_crumb2_level extends ($.$bog_gamengine_scene) {
+		Phys(){
+			const obj = new this.$.$bog_gamengine_phys();
+			(obj.tile) = () => ((this.Tile()));
+			(obj.bodies) = () => ([(this.Hero())]);
+			return obj;
+		}
+		Tiles(){
+			const obj = new this.$.$bog_gamengine_tilemap();
+			(obj.name) = () => ("Карта");
+			(obj.tile) = () => ((this.Tile()));
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.palette) = () => ({"#": "wall", ".": "floor"});
+			return obj;
+		}
+		Hero_pos(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		Hero_size(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		Hero(){
+			const obj = new this.$.$bog_gamengine_phys_walker();
+			(obj.name) = () => ("Герой");
+			(obj.pos) = (next) => ((this.Hero_pos(next)));
+			(obj.size) = (next) => ((this.Hero_size(next)));
+			(obj.speed) = () => (3);
+			(obj.role) = () => ("hero");
+			return obj;
+		}
+		Coin_pos(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		Coin(){
+			const obj = new this.$.$bog_gamengine_sprite();
+			(obj.name) = () => ("Монета");
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.frame) = () => ("coin");
+			(obj.pos) = (next) => ((this.Coin_pos(next)));
+			(obj.role) = () => ("crumb");
+			return obj;
+		}
+		Sprite_1_pos(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		Sprite_1(){
+			const obj = new this.$.$bog_gamengine_sprite();
+			(obj.name) = () => ("coin");
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.frame) = () => ("coin");
+			(obj.pos) = (next) => ((this.Sprite_1_pos(next)));
+			(obj.role) = () => ("crumb");
+			return obj;
+		}
+		Sprite_2_pos(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		Sprite_2(){
+			const obj = new this.$.$bog_gamengine_sprite();
+			(obj.name) = () => ("coin");
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.frame) = () => ("coin");
+			(obj.pos) = (next) => ((this.Sprite_2_pos(next)));
+			(obj.role) = () => ("crumb");
+			return obj;
+		}
+		Sprite_3_pos(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		Sprite_3(){
+			const obj = new this.$.$bog_gamengine_sprite();
+			(obj.name) = () => ("coin");
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.frame) = () => ("coin");
+			(obj.pos) = (next) => ((this.Sprite_3_pos(next)));
+			(obj.role) = () => ("crumb");
+			return obj;
+		}
+		Sprite_4_pos(next){
+			if(next !== undefined) return next;
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		Sprite_4(){
+			const obj = new this.$.$bog_gamengine_sprite();
+			(obj.name) = () => ("coin");
+			(obj.atlas) = () => ((this.Atlas()));
+			(obj.frame) = () => ("coin");
+			(obj.pos) = (next) => ((this.Sprite_4_pos(next)));
+			(obj.role) = () => ("crumb");
+			return obj;
+		}
+		phys(){
+			return (this.Phys());
+		}
+		Tile(){
+			const obj = new this.$.$bog_gamengine_phys_tile();
+			(obj.map) = () => ("######\n#..#.#\n#..#.#\n#.#..#\n######");
+			return obj;
+		}
+		kids(){
+			return [
+				(this.Tiles()), 
+				(this.Hero()), 
+				(this.Coin()), 
+				(this.Sprite_1()), 
+				(this.Sprite_2()), 
+				(this.Sprite_3()), 
+				(this.Sprite_4())
+			];
+		}
+		Atlas(){
+			const obj = new this.$.$bog_gamengine_atlas();
+			(obj.uris) = () => ([
+				"bog/gamengine/demo/atlas/hero.png", 
+				"bog/gamengine/demo/atlas/coin.png", 
+				"bog/gamengine/demo/atlas/wall.png", 
+				"bog/gamengine/demo/atlas/floor.png"
+			]);
+			(obj.size) = () => (64);
+			return obj;
+		}
+	};
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Phys"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Tiles"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Hero_pos"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Hero_size"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Hero"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Coin_pos"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Coin"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Sprite_1_pos"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Sprite_1"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Sprite_2_pos"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Sprite_2"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Sprite_3_pos"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Sprite_3"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Sprite_4_pos"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Sprite_4"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Tile"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2_level.prototype), "Atlas"));
+
+
+;
+"use strict";
+
+
+;
+"use strict";
+var $;
+(function ($) {
+    var $$;
+    (function ($$) {
+        class $bog_gamengine_demo_crumb2_level extends $.$bog_gamengine_demo_crumb2_level {
+            Hero_pos(next) {
+                return next ?? new Float32Array([1.5, -1.5, 0]);
+            }
+            Hero_size(next) {
+                return next ?? new Float32Array([0.8, 0.8]);
+            }
+            Coin_pos(next) {
+                return next ?? new Float32Array([4.5, -1.5, 0]);
+            }
+            Sprite_1_pos(next) {
+                return next ?? new Float32Array([1.5, -3.5, 0]);
+            }
+            Sprite_2_pos(next) {
+                return next ?? new Float32Array([4.5, -3.5, 0]);
+            }
+            Sprite_3_pos(next) {
+                return next ?? new Float32Array([2.5, -2.5, 0]);
+            }
+            Sprite_4_pos(next) {
+                return next ?? new Float32Array([4.5, -2.5, 0]);
+            }
+        }
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb2_level.prototype, "Hero_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb2_level.prototype, "Hero_size", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb2_level.prototype, "Coin_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb2_level.prototype, "Sprite_1_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb2_level.prototype, "Sprite_2_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb2_level.prototype, "Sprite_3_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb2_level.prototype, "Sprite_4_pos", null);
+        $$.$bog_gamengine_demo_crumb2_level = $bog_gamengine_demo_crumb2_level;
+    })($$ = $.$$ || ($.$$ = {}));
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    class $bog_gamengine_demo_crumb2_rule extends $bog_gamengine_node {
+        hero(next) {
+            return next ?? null;
+        }
+        crumbs(next) {
+            return next ?? [];
+        }
+        reach(next = 0.6) {
+            return next;
+        }
+        limit(next = 40) {
+            return next;
+        }
+        taken(next = 0) {
+            return next;
+        }
+        spent(next = 0) {
+            return next;
+        }
+        left() {
+            return this.crumbs().length - this.taken();
+        }
+        rest() {
+            return Math.max(0, this.limit() - this.spent());
+        }
+        won() {
+            return this.crumbs().length > 0 && this.left() === 0;
+        }
+        lost() {
+            return !this.won() && this.rest() === 0;
+        }
+        over() {
+            return this.won() || this.lost();
+        }
+        restart() {
+            const crumbs = this.crumbs();
+            for (let i = 0; i < crumbs.length; ++i)
+                crumbs[i].hidden = false;
+            this.taken(0);
+            this.spent(0);
+        }
+        step(dt) {
+            if (dt === 0)
+                return;
+            const hero = this.hero();
+            const crumbs = this.crumbs();
+            const reach = this.reach();
+            const taken = this.taken();
+            const spent = this.spent();
+            if (!hero || taken === crumbs.length)
+                return;
+            if (spent >= this.limit())
+                return;
+            this.spent(spent + dt);
+            const at = hero.pos();
+            let count = taken;
+            for (let i = 0; i < crumbs.length; ++i) {
+                const crumb = crumbs[i];
+                if (crumb.hidden)
+                    continue;
+                const pos = crumb.pos();
+                const dx = pos[0] - at[0];
+                const dy = pos[1] - at[1];
+                if (dx * dx + dy * dy > reach * reach)
+                    continue;
+                crumb.hidden = true;
+                ++count;
+            }
+            if (count !== taken)
+                this.taken(count);
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb2_rule.prototype, "hero", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb2_rule.prototype, "crumbs", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb2_rule.prototype, "reach", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb2_rule.prototype, "limit", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb2_rule.prototype, "taken", null);
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb2_rule.prototype, "spent", null);
+    $.$bog_gamengine_demo_crumb2_rule = $bog_gamengine_demo_crumb2_rule;
+})($ || ($ = {}));
+
+;
+	($.$bog_gamengine_demo_crumb2) = class $bog_gamengine_demo_crumb2 extends ($.$mol_page) {
+		left_str(){
+			return "";
+		}
+		Left_label(){
+			const obj = new this.$.$mol_labeler();
+			(obj.title) = () => ("Осталось");
+			(obj.content) = () => ([(this.left_str())]);
+			return obj;
+		}
+		time_str(){
+			return "";
+		}
+		Time_label(){
+			const obj = new this.$.$mol_labeler();
+			(obj.title) = () => ("Время");
+			(obj.content) = () => ([(this.time_str())]);
+			return obj;
+		}
+		paused(){
+			return false;
+		}
+		Pause_switch(){
+			const obj = new this.$.$mol_check_box();
+			(obj.title) = () => ("Пауза");
+			(obj.checked) = (next) => ((this.paused(next)));
+			return obj;
+		}
+		stat(){
+			return (this.Draw().stat());
+		}
+		Draw(){
+			const obj = new this.$.$bog_gamengine_draw();
+			(obj.scene) = () => ((this.Scene()));
+			(obj.cam) = () => ((this.Cam()));
+			return obj;
+		}
+		end_title(){
+			return "";
+		}
+		end_hint(){
+			return "";
+		}
+		End_hint(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ([(this.end_hint())]);
+			return obj;
+		}
+		restart(next){
+			if(next !== undefined) return next;
+			return null;
+		}
+		Again(){
+			const obj = new this.$.$mol_button_major();
+			(obj.title) = () => ("Ещё раз");
+			(obj.click) = (next) => ((this.restart(next)));
+			return obj;
+		}
+		End(){
+			const obj = new this.$.$mol_page();
+			(obj.title) = () => ((this.end_title()));
+			(obj.body) = () => ([(this.End_hint())]);
+			(obj.foot) = () => ([(this.Again())]);
+			return obj;
+		}
+		field(){
+			return [(this.Draw()), (this.End())];
+		}
+		hero_str(){
+			return "";
+		}
+		Hero_stat(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ([(this.hero_str())]);
+			return obj;
+		}
+		Stat(){
+			const obj = new this.$.$mol_view();
+			(obj.sub) = () => ([(this.stat())]);
+			return obj;
+		}
+		cam_pos(){
+			const obj = new this.$.Float32Array();
+			return obj;
+		}
+		nodes(){
+			return [];
+		}
+		hero(){
+			return null;
+		}
+		crumbs(){
+			return [];
+		}
+		title(){
+			return "Крошки мышью";
+		}
+		key_map(){
+			return {};
+		}
+		tools(){
+			return [
+				(this.Left_label()), 
+				(this.Time_label()), 
+				(this.Pause_switch())
+			];
+		}
+		body(){
+			return (this.field());
+		}
+		foot(){
+			return [(this.Hero_stat()), (this.Stat())];
+		}
+		Clock(){
+			const obj = new this.$.$bog_gamengine_clock();
+			(obj.paused) = () => ((this.paused()));
+			return obj;
+		}
+		Key(){
+			const obj = new this.$.$bog_gamengine_key();
+			(obj.bind) = () => ({
+				"left": ["A", "left"], 
+				"right": ["D", "right"], 
+				"up": ["W", "up"], 
+				"down": ["S", "down"]
+			});
+			return obj;
+		}
+		Input(){
+			const obj = new this.$.$bog_gamengine_input();
+			(obj.key) = () => ((this.Key()));
+			return obj;
+		}
+		Cam(){
+			const obj = new this.$.$bog_gamengine_cam_flat();
+			(obj.height) = () => (11);
+			(obj.pos) = () => ((this.cam_pos()));
+			return obj;
+		}
+		Scene(){
+			const obj = new this.$.$bog_gamengine_demo_crumb2_level();
+			(obj.clock) = () => ((this.Clock()));
+			(obj.input) = () => ((this.Input()));
+			(obj.cam) = () => ((this.Cam()));
+			(obj.auto_nodes) = () => ((this.nodes()));
+			return obj;
+		}
+		Rule(){
+			const obj = new this.$.$bog_gamengine_demo_crumb2_rule();
+			(obj.hero) = () => ((this.hero()));
+			(obj.crumbs) = () => ((this.crumbs()));
+			(obj.limit) = () => (40);
+			return obj;
+		}
+	};
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Left_label"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Time_label"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Pause_switch"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Draw"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "End_hint"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "restart"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Again"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "End"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Hero_stat"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Stat"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "cam_pos"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Clock"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Key"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Input"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Cam"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Scene"));
+	($mol_mem(($.$bog_gamengine_demo_crumb2.prototype), "Rule"));
+
+
+;
+"use strict";
+
+
+;
+"use strict";
+var $;
+(function ($) {
+    var $$;
+    (function ($$) {
+        class $bog_gamengine_demo_crumb2 extends $.$bog_gamengine_demo_crumb2 {
+            key_map() {
+                return {
+                    ...this.Key().keys(),
+                    space: (state) => {
+                        if (state)
+                            this.paused(!this.paused());
+                        return true;
+                    },
+                };
+            }
+            paused(next) {
+                return next ?? false;
+            }
+            hero() {
+                return this.Scene().by_role_one('hero');
+            }
+            crumbs() {
+                return this.Scene().by_role('crumb');
+            }
+            nodes() {
+                return [...super.nodes(), this.Rule()];
+            }
+            cam_pos() {
+                const tile = this.Scene().Tile();
+                return new Float32Array([tile.width() / 2, -tile.height() / 2, 0]);
+            }
+            field() {
+                return [
+                    this.Draw(),
+                    ...this.Rule().over() ? [this.End()] : [],
+                ];
+            }
+            hero_str() {
+                this.Scene().step();
+                const pos = this.hero().pos();
+                return `hero ${pos[0].toFixed(2)} × ${pos[1].toFixed(2)}`;
+            }
+            left_str() {
+                this.Scene().step();
+                return String(this.Rule().left());
+            }
+            time_str() {
+                this.Scene().step();
+                return `${this.Rule().rest().toFixed(1)} с`;
+            }
+            end_title() {
+                return this.Rule().won() ? 'Победа' : 'Время вышло';
+            }
+            end_hint() {
+                const rule = this.Rule();
+                return rule.won()
+                    ? `Все крошки собраны за ${rule.spent().toFixed(1)} с`
+                    : `Не собрано крошек: ${rule.left()}`;
+            }
+            restart(next) {
+                if (next === undefined)
+                    return null;
+                this.Rule().restart();
+                this.hero().pos(new Float32Array([1.5, -1.5, 0]));
+                this.hero().vel(new Float32Array(3));
+                this.Clock().time(0);
+                return null;
+            }
+        }
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb2.prototype, "paused", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb2.prototype, "nodes", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb2.prototype, "cam_pos", null);
+        __decorate([
+            $mol_mem
+        ], $bog_gamengine_demo_crumb2.prototype, "field", null);
+        $$.$bog_gamengine_demo_crumb2 = $bog_gamengine_demo_crumb2;
+    })($$ = $.$$ || ($.$$ = {}));
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    var $$;
+    (function ($$) {
+        $mol_style_define($bog_gamengine_demo_crumb2, {
+            Draw: {
+                flex: {
+                    grow: 1,
+                },
+                minHeight: '16rem',
+            },
+            End: {
+                position: 'absolute',
+                inset: '0',
+                margin: 'auto',
+                width: 'max-content',
+                height: 'max-content',
+            },
+        });
+    })($$ = $.$$ || ($.$$ = {}));
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     class $bog_gamengine_demo_spin extends $bog_gamengine_node {
         tint() {
             return new Float32Array([1, 0.04, 0.04, 1]);
@@ -55512,6 +56809,18 @@ var $;
 			const obj = new this.$.$bog_gamengine_studio();
 			return obj;
 		}
+		Crumb(){
+			const obj = new this.$.$bog_gamengine_demo_crumb();
+			return obj;
+		}
+		Crumb_studio(){
+			const obj = new this.$.$bog_gamengine_demo_crumb_studio();
+			return obj;
+		}
+		Crumb2(){
+			const obj = new this.$.$bog_gamengine_demo_crumb2();
+			return obj;
+		}
 		paused(next){
 			return (this.Clock().paused(next));
 		}
@@ -55542,7 +56851,10 @@ var $;
 				"jumper": (this.Jumper()), 
 				"shooter": (this.Shooter()), 
 				"legion": (this.Legion()), 
-				"studio": (this.Studio())
+				"studio": (this.Studio()), 
+				"crumb": (this.Crumb()), 
+				"crumb_studio": (this.Crumb_studio()), 
+				"crumb2": (this.Crumb2())
 			};
 		}
 		Clock(){
@@ -55585,6 +56897,9 @@ var $;
 	($mol_mem(($.$bog_gamengine_demo.prototype), "Shooter"));
 	($mol_mem(($.$bog_gamengine_demo.prototype), "Legion"));
 	($mol_mem(($.$bog_gamengine_demo.prototype), "Studio"));
+	($mol_mem(($.$bog_gamengine_demo.prototype), "Crumb"));
+	($mol_mem(($.$bog_gamengine_demo.prototype), "Crumb_studio"));
+	($mol_mem(($.$bog_gamengine_demo.prototype), "Crumb2"));
 	($mol_mem(($.$bog_gamengine_demo.prototype), "Batch"));
 	($mol_mem(($.$bog_gamengine_demo.prototype), "cam_deep_pos"));
 	($mol_mem(($.$bog_gamengine_demo.prototype), "Clock"));
@@ -55747,6 +57062,9 @@ var $;
                     this.Shooter().Key().keys(),
                     this.Legion().key_map(),
                     this.Studio().Key().keys(),
+                    this.Crumb().key_map(),
+                    this.Crumb_studio().Key().keys(),
+                    this.Crumb2().key_map(),
                 ];
                 const keys = {};
                 for (const map of maps) {
@@ -55797,6 +57115,9 @@ var $;
             },
         };
         $mol_style_define($bog_gamengine_demo, {
+            Menu: {
+                width: '9.3125rem',
+            },
             Quad: {
                 ...spread,
                 '>': {
@@ -55816,6 +57137,9 @@ var $;
             Shooter: spread,
             Legion: spread,
             Studio: spread,
+            Crumb: spread,
+            Crumb_studio: spread,
+            Crumb2: spread,
         });
     })($$ = $.$$ || ($.$$ = {}));
 })($ || ($ = {}));

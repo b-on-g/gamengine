@@ -4342,6 +4342,15 @@ var $;
             const map = $bog_gamengine_map_test_make('xz');
             $mol_assert_equal([...map.spot_pos('2_1', 0.5, new Float32Array(3))], [2.5, 0.5, 1.5]);
         },
+        'origin moves the whole grid on both planes'() {
+            const map = $bog_gamengine_map_test_make();
+            map.origin([4, -3]);
+            $mol_assert_equal([...map.pos(0, 0, 0, new Float32Array(3))], [4.5, -3.5, 0]);
+            $mol_assert_equal([...map.pos(2, 1, 0, new Float32Array(3))], [6.5, -4.5, 0]);
+            const ground = $bog_gamengine_map_test_make('xz');
+            ground.origin([4, 3]);
+            $mol_assert_equal([...ground.pos(2, 1, 0.5, new Float32Array(3))], [6.5, 0.5, 4.5]);
+        },
         'center sits in the middle of the map on both planes'() {
             $mol_assert_equal([...$bog_gamengine_map_test_make().center(0, new Float32Array(3))], [2.5, -2, 0]);
             $mol_assert_equal([...$bog_gamengine_map_test_make('xz').center(0, new Float32Array(3))], [2.5, 0, 2]);
@@ -4453,6 +4462,18 @@ var $;
             $mol_assert_equal(at[0], -1);
             $mol_assert_equal(at[1], -1);
             $mol_assert_equal(tile.cell(at[0], at[1]), true);
+        },
+        'shifted grid keeps drawing and passability on the same cell'() {
+            const tile = $bog_gamengine_phys_tile_test_make();
+            tile.origin([5, -4]);
+            const pos = tile.cell_pos(1, 1, new Float32Array(3));
+            $mol_assert_equal([pos[0], pos[1]], [6.5, -5.5]);
+            const at = tile.cell_at(pos[0], pos[1], new Int32Array(2));
+            $mol_assert_equal([at[0], at[1]], [1, 1]);
+            $mol_assert_equal(tile.solid_at(pos[0], pos[1]), false);
+            const wall = tile.cell_pos(0, 1, new Float32Array(3));
+            $mol_assert_equal(tile.solid_at(wall[0], wall[1]), true);
+            $mol_assert_equal(tile.solid_at(1.5, -1.5), true);
         },
         'solid at a point uses the same cell as cell at'() {
             const tile = $bog_gamengine_phys_tile_test_make();
@@ -5985,6 +6006,19 @@ var $;
             $mol_assert_equal(box[1], -tile.height());
             $mol_assert_equal(box[3], tile.width());
             $mol_assert_equal(box[4], 0);
+        },
+        'shifted grid moves the drawing and the box with it'() {
+            const node = $bog_gamengine_tilemap_test_make();
+            const tile = node.tile();
+            tile.origin([5, -4]);
+            $mol_assert_equal(node.emit(), 6);
+            const pos = tile.cell_pos(0, 0, new Float32Array(3));
+            $mol_assert_equal([pos[0], pos[1]], [5.5, -4.5]);
+            const trans = node.pool().trans;
+            $mol_assert_equal([trans[12], trans[13]], [pos[0], pos[1]]);
+            const box = node.aabb();
+            $mol_assert_equal([box[0], box[1]], [5, -4 - tile.height()]);
+            $mol_assert_equal([box[3], box[4]], [5 + tile.width(), -4]);
         },
     });
 })($ || ($ = {}));
@@ -13040,6 +13074,77 @@ var $;
             const doc = open($, $bog_gamengine_studio_sample);
             $mol_assert_equal(doc.map().map(row => row.join('')), ['######', '#....#', '#..#.#', '#....#', '######']);
         },
+        'paint past the right edge grows the map and leaves the grid where it was'($) {
+            const doc = open($, $bog_gamengine_studio_sample_shift);
+            $mol_assert_equal(doc.map_origin(), [4, -3]);
+            const tile = () => named(doc, 'Карта').tile();
+            const before = tile().cell_pos(1, 1, new Float32Array(3));
+            $mol_assert_equal([before[0], before[1]], [5.5, -4.5]);
+            doc.paint(6, 1, '#');
+            $mol_assert_equal(doc.map().map(row => row.join('')), ['#######', '#....##', '#######']);
+            $mol_assert_equal(doc.map_origin(), [4, -3]);
+            const after = tile().cell_pos(1, 1, new Float32Array(3));
+            $mol_assert_equal([after[0], after[1]], [before[0], before[1]]);
+        },
+        'paint past the bottom edge grows the map down and leaves the grid where it was'($) {
+            const doc = open($, $bog_gamengine_studio_sample_shift);
+            const tile = () => named(doc, 'Карта').tile();
+            const before = tile().cell_pos(1, 1, new Float32Array(3));
+            doc.paint(1, 4, '.');
+            $mol_assert_equal(doc.map().map(row => row.join('')), [
+                '######', '#....#', '######', '######', '#.####',
+            ]);
+            $mol_assert_equal(doc.map_origin(), [4, -3]);
+            const after = tile().cell_pos(1, 1, new Float32Array(3));
+            $mol_assert_equal([after[0], after[1]], [before[0], before[1]]);
+        },
+        'growth keeps passability on the very cells that are drawn'($) {
+            const doc = open($, $bog_gamengine_studio_sample_shift);
+            doc.paint(7, 4, '.');
+            const tiles = named(doc, 'Карта');
+            const tile = tiles.tile();
+            $mol_assert_equal([tile.width(), tile.height()], [8, 5]);
+            $mol_assert_equal(tiles.emit(), tile.width() * tile.height());
+            const trans = tiles.pool().trans;
+            const drawn = new Set();
+            for (let i = 0; i < tiles.pool().count; ++i)
+                drawn.add(`${trans[i * 16 + 12]} ${trans[i * 16 + 13]}`);
+            const pos = new Float32Array(3);
+            const at = new Int32Array(2);
+            for (let y = 0; y < tile.height(); ++y) {
+                for (let x = 0; x < tile.width(); ++x) {
+                    tile.cell_pos(x, y, pos);
+                    $mol_assert_ok(drawn.has(`${pos[0]} ${pos[1]}`));
+                    tile.cell_at(pos[0], pos[1], at);
+                    $mol_assert_equal([at[0], at[1]], [x, y]);
+                    $mol_assert_equal(tile.solid_at(pos[0], pos[1]), tile.cell(x, y));
+                }
+            }
+            $mol_assert_equal(tile.solid_at(11.5, -7.5), false);
+            $mol_assert_equal(tile.cell(7, 4), false);
+        },
+        'paint past the left top corner shifts the grid so the cells stay where they were drawn'($) {
+            const doc = open($, $bog_gamengine_studio_sample_shift);
+            const tile = () => named(doc, 'Карта').tile();
+            const before = tile().cell_pos(1, 1, new Float32Array(3));
+            doc.paint(-2, -1, '.');
+            $mol_assert_equal(doc.map_origin(), [2, -2]);
+            $mol_assert_equal(doc.map().map(row => row.join('')), [
+                '.#######', '########', '###....#', '########',
+            ]);
+            const moved = tile();
+            const after = moved.cell_pos(3, 2, new Float32Array(3));
+            $mol_assert_equal([after[0], after[1]], [before[0], before[1]]);
+            const at = moved.cell_at(before[0], before[1], new Int32Array(2));
+            $mol_assert_equal([at[0], at[1]], [3, 2]);
+            $mol_assert_equal(moved.solid_at(before[0], before[1]), false);
+        },
+        'paint far outside the map is ignored instead of growing it to the moon'($) {
+            const doc = open($, $bog_gamengine_studio_sample_shift);
+            const before = doc.source();
+            doc.paint(400, 400, '#');
+            $mol_assert_equal(doc.source(), before);
+        },
         'paint changes exactly one char of exactly one source line'($) {
             const doc = open($, $bog_gamengine_studio_sample);
             doc.set('Hero', 'pos', [-2, 0, 0]);
@@ -13057,8 +13162,16 @@ var $;
             const doc = open($, $bog_gamengine_studio_sample);
             doc.paint(0, 0, '#');
             $mol_assert_equal(doc.source(), $bog_gamengine_studio_sample);
+        },
+        'paint below and right of the map grows it in both directions at once'($) {
+            const doc = open($, $bog_gamengine_studio_sample);
             doc.paint(9, 9, '#');
-            $mol_assert_equal(doc.source(), $bog_gamengine_studio_sample);
+            const rows = doc.map();
+            $mol_assert_equal(rows.length, 10);
+            $mol_assert_equal(rows[0].length, 10);
+            $mol_assert_equal(rows[9][9], '#');
+            $mol_assert_equal(rows[1].join('').slice(0, 6), '#....#');
+            $mol_assert_equal(doc.map_origin(), [0, 0]);
         },
         'rect paints a rectangle'($) {
             const doc = open($, $bog_gamengine_studio_sample);
@@ -16703,6 +16816,23 @@ var $;
             $mol_assert_ok(scene.nodes().some(one => one instanceof $bog_gamengine_tilemap && one.tile()));
             $mol_assert_equal($bog_gamengine_studio_kit_bound(doc, name, 'atlas'), '');
         },
+        'map of the palette puts the click into the grid, not into the node'($) {
+            const doc = new $bog_gamengine_studio_doc;
+            doc.$ = $;
+            doc.source_own('$bog_gamengine_studio_sample $bog_gamengine_scene\n\tkids /\n');
+            const kit = new $bog_gamengine_studio_kit;
+            $bog_gamengine_studio_kit_apply(doc, kit.item('map'), '/ 6.5 -4.5 0');
+            $mol_assert_ok(doc.source().includes('origin / 6 -4'));
+            $mol_assert_equal(doc.source().includes('pos /'), false);
+            const tiles = doc.scene().nodes().find(one => one instanceof $bog_gamengine_tilemap);
+            const tile = tiles.tile();
+            $mol_assert_equal([...tiles.pos()], [0, 0, 0]);
+            $mol_assert_equal([...tile.origin()], [6, -4]);
+            const pos = tile.cell_pos(0, 0, new Float32Array(3));
+            $mol_assert_equal([pos[0], pos[1]], [6.5, -4.5]);
+            const at = tile.cell_at(pos[0], pos[1], new Int32Array(2));
+            $mol_assert_equal([at[0], at[1]], [0, 0]);
+        },
         'brush paints into the map that the palette has just placed'($) {
             const doc = new $bog_gamengine_studio_doc;
             doc.$ = $;
@@ -17916,6 +18046,189 @@ var $;
             wide.place('bog/gamengine/demo/atlas/floor.png', [40, -30, 0]);
             wide.fit();
             $mol_assert_ok(wide.Cam().zoom() < first);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function $bog_gamengine_demo_crumb_rule_stage(spots) {
+        const hero = new $bog_gamengine_node;
+        hero.pos(new Float32Array([0, 0, 0]));
+        const crumbs = spots.map(spot => {
+            const crumb = new $bog_gamengine_node;
+            crumb.pos(new Float32Array([spot[0], spot[1], 0]));
+            return crumb;
+        });
+        const rule = new $bog_gamengine_demo_crumb_rule;
+        rule.hero(hero);
+        rule.crumbs(crumbs);
+        return { hero, crumbs, rule };
+    }
+    $mol_test({
+        'crumb under the hero is taken and hidden'() {
+            const { hero, crumbs, rule } = $bog_gamengine_demo_crumb_rule_stage([[0.2, 0], [5, 5]]);
+            rule.step(0.1);
+            $mol_assert_equal(rule.taken(), 1);
+            $mol_assert_equal(crumbs[0].hidden, true);
+            $mol_assert_equal(crumbs[1].hidden, false);
+            $mol_assert_equal(rule.left(), 1);
+            $mol_assert_equal(hero.hidden, false);
+        },
+        'all crumbs taken is a win'() {
+            const { hero, rule } = $bog_gamengine_demo_crumb_rule_stage([[0.2, 0], [3, 0]]);
+            rule.step(0.1);
+            $mol_assert_equal(rule.won(), false);
+            hero.pos(new Float32Array([3, 0, 0]));
+            rule.step(0.1);
+            $mol_assert_equal(rule.won(), true);
+            $mol_assert_equal(rule.over(), true);
+            $mol_assert_equal(rule.lost(), false);
+        },
+        'time over without all crumbs is a loss'() {
+            const { rule } = $bog_gamengine_demo_crumb_rule_stage([[5, 5]]);
+            rule.limit(2);
+            rule.step(1);
+            $mol_assert_equal(rule.lost(), false);
+            $mol_assert_equal(rule.rest(), 1);
+            rule.step(1);
+            $mol_assert_equal(rule.rest(), 0);
+            $mol_assert_equal(rule.lost(), true);
+        },
+        'restart brings the crumbs back'() {
+            const { crumbs, rule } = $bog_gamengine_demo_crumb_rule_stage([[0.2, 0]]);
+            rule.step(0.1);
+            $mol_assert_equal(rule.won(), true);
+            rule.restart();
+            $mol_assert_equal(rule.taken(), 0);
+            $mol_assert_equal(rule.spent(), 0);
+            $mol_assert_equal(crumbs[0].hidden, false);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
+    function $bog_gamengine_demo_crumb2_rule_stage(spots) {
+        const hero = new $bog_gamengine_node;
+        hero.pos(new Float32Array([0, 0, 0]));
+        const crumbs = spots.map(spot => {
+            const crumb = new $bog_gamengine_node;
+            crumb.pos(new Float32Array([spot[0], spot[1], 0]));
+            return crumb;
+        });
+        const rule = new $bog_gamengine_demo_crumb2_rule;
+        rule.hero(hero);
+        rule.crumbs(crumbs);
+        return { hero, crumbs, rule };
+    }
+    $mol_test({
+        'crumb under the hero is taken and hidden'() {
+            const { hero, crumbs, rule } = $bog_gamengine_demo_crumb2_rule_stage([[0.2, 0], [5, 5]]);
+            rule.step(0.1);
+            $mol_assert_equal(rule.taken(), 1);
+            $mol_assert_equal(crumbs[0].hidden, true);
+            $mol_assert_equal(crumbs[1].hidden, false);
+            $mol_assert_equal(rule.left(), 1);
+            $mol_assert_equal(hero.hidden, false);
+        },
+        'all crumbs taken is a win'() {
+            const { hero, rule } = $bog_gamengine_demo_crumb2_rule_stage([[0.2, 0], [3, 0]]);
+            rule.step(0.1);
+            $mol_assert_equal(rule.won(), false);
+            hero.pos(new Float32Array([3, 0, 0]));
+            rule.step(0.1);
+            $mol_assert_equal(rule.won(), true);
+            $mol_assert_equal(rule.over(), true);
+            $mol_assert_equal(rule.lost(), false);
+        },
+        'time over without all crumbs is a loss'() {
+            const { rule } = $bog_gamengine_demo_crumb2_rule_stage([[5, 5]]);
+            rule.limit(2);
+            rule.step(1);
+            $mol_assert_equal(rule.lost(), false);
+            $mol_assert_equal(rule.rest(), 1);
+            rule.step(1);
+            $mol_assert_equal(rule.rest(), 0);
+            $mol_assert_equal(rule.lost(), true);
+        },
+        'restart brings the crumbs back'() {
+            const { crumbs, rule } = $bog_gamengine_demo_crumb2_rule_stage([[0.2, 0]]);
+            rule.step(0.1);
+            $mol_assert_equal(rule.won(), true);
+            rule.restart();
+            $mol_assert_equal(rule.taken(), 0);
+            $mol_assert_equal(rule.spent(), 0);
+            $mol_assert_equal(crumbs[0].hidden, false);
+        },
+    });
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($_1) {
+    class $bog_gamengine_demo_crumb2_time_mock extends $mol_state_time {
+        static stamp(next = 0) {
+            return next;
+        }
+        static now(precision) {
+            return this.stamp();
+        }
+    }
+    __decorate([
+        $mol_mem
+    ], $bog_gamengine_demo_crumb2_time_mock, "stamp", null);
+    function $bog_gamengine_demo_crumb2_test_run($, key, ticks) {
+        $.$mol_state_time = $bog_gamengine_demo_crumb2_time_mock;
+        const app = $$.$bog_gamengine_demo_crumb2.make({ $ });
+        $bog_gamengine_demo_crumb2_time_mock.stamp(0);
+        app.Scene().step();
+        app.Key().keys()[key](true);
+        for (let tick = 1; tick <= ticks; ++tick) {
+            $bog_gamengine_demo_crumb2_time_mock.stamp(tick * 16);
+            app.Scene().step();
+        }
+        return app;
+    }
+    $mol_test({
+        'hero walks right while D is held'($) {
+            const app = $bog_gamengine_demo_crumb2_test_run($, 'D', 20);
+            $mol_assert_ok(app.hero().pos()[0] > 1);
+        },
+        'wall of the painted map stops the hero'($) {
+            const app = $bog_gamengine_demo_crumb2_test_run($, 'D', 400);
+            $mol_assert_ok(app.hero().pos()[0] < 5);
+        },
+        'five crumbs are counted at the start'($) {
+            const app = $$.$bog_gamengine_demo_crumb2.make({ $ });
+            $mol_assert_equal(app.crumbs().length, 5);
+            $mol_assert_equal(app.Rule().left(), 5);
+        },
+        'crumb under the hero is taken'($) {
+            const app = $$.$bog_gamengine_demo_crumb2.make({ $ });
+            app.hero().pos(new Float32Array(app.crumbs()[0].pos()));
+            app.Rule().step(0.1);
+            $mol_assert_equal(app.Rule().left(), 4);
+        },
+        'every crumb taken is a win'($) {
+            const app = $$.$bog_gamengine_demo_crumb2.make({ $ });
+            for (const crumb of app.crumbs()) {
+                app.hero().pos(new Float32Array(crumb.pos()));
+                app.Rule().step(0.1);
+            }
+            $mol_assert_ok(app.Rule().won());
+            $mol_assert_equal(app.end_title(), 'Победа');
+        },
+        'time over without crumbs is a loss'($) {
+            const app = $$.$bog_gamengine_demo_crumb2.make({ $ });
+            app.Rule().spent(app.Rule().limit());
+            $mol_assert_ok(app.Rule().lost());
+            $mol_assert_equal(app.end_title(), 'Время вышло');
         },
     });
 })($ || ($ = {}));
