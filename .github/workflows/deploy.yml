@@ -35,12 +35,20 @@ jobs:
     # demo/shooter/look и demo/legion/look тоже намеренно: подпись на раннере всё равно не
     # сверяется, а файлы у трёх подписей почти одинаковые и ломаются вместе с движковым look,
     # который в списке стоит. Одного экземпляра, demo/jumper/look, хватает на компиляцию.
+    # Остаток, названный явно: исходники этих двух не компилируются нигде — лечится сведением
+    # трёх подписей в один модуль с параметром, это задача, а не строка списка.
+    # net/stand, net/lobby, demo/shooter/gen, studio/case, brain/act/move, save стоят здесь не ради
+    # своих тестов, а ради ТАЙПЧЕКА: модуль проверяется, если он в этом списке или он зависимость
+    # чего-то из списка. Шесть имён закрывают пятнадцать модулей из восемнадцати, которые иначе не
+    # компилируются в CI вовсе. Цена замерена временем, а не числом тестов: около 14 секунд локально,
+    # порядка тридцати на раннере, при прогоне в десять минут. Большое число тестов у studio/case —
+    # это повторный прогон движковых по замыканию, а не новая работа.
     - uses: hyoo-ru/mam_build@master2
       env:
         CI: true
       with:
         package: 'bog/gamengine'
-        modules: 'demo probe look net/probe demo/jumper/probe demo/jumper/look demo/shooter/probe demo/legion/probe studio/probe pack'
+        modules: 'demo probe look net/probe net/stand net/lobby demo/jumper/probe demo/jumper/look demo/shooter/probe demo/shooter/gen demo/legion/probe studio/probe studio/case brain/act/move save pack'
 
     - uses: hyoo-ru/gh-deploy@v4.4.1
       if: github.ref == 'refs/heads/main'
