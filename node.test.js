@@ -11959,6 +11959,18 @@ var $;
                 return true;
             return this.solid().includes(row[x]);
         }
+        cells(out, width, height) {
+            const rows = this.rows();
+            const marks = this.solid();
+            for (let y = 0; y < height; ++y) {
+                const row = y < rows.length ? rows[y] : '';
+                const len = row.length;
+                for (let x = 0; x < width; ++x) {
+                    out[y * width + x] = x >= len || marks.includes(row[x]) ? 1 : 0;
+                }
+            }
+            return out;
+        }
         cell_pos(x, y, out) {
             return this.pos(x, y, 0, out);
         }
@@ -15790,6 +15802,9 @@ var $;
 		stat(){
 			return "";
 		}
+		peak(){
+			return 0;
+		}
 		report(){
 			return {
 				"tick": 0, 
@@ -16118,6 +16133,34 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    class $bog_gamengine_watch extends $mol_object2 {
+        seen = [];
+        at = 0;
+        same = true;
+        open() {
+            this.at = 0;
+            this.same = true;
+            return this;
+        }
+        of(value) {
+            const at = this.at++;
+            if (this.seen[at] !== value) {
+                this.seen[at] = value;
+                this.same = false;
+            }
+            return value;
+        }
+        fresh() {
+            return this.same && this.at === this.seen.length;
+        }
+    }
+    $.$bog_gamengine_watch = $bog_gamengine_watch;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     $.$bog_gamengine_skin_max = 64;
     $.$bog_gamengine_skin_empty = new Float32Array(0);
     function $bog_gamengine_skin_mat_trs(out, at, trs, from) {
@@ -16296,11 +16339,7 @@ var $;
         worlds = $.$bog_gamengine_skin_empty;
         trs_main = $.$bog_gamengine_skin_empty;
         trs_mix = $.$bog_gamengine_skin_empty;
-        done_skeleton = null;
-        done_time = NaN;
-        done_clip = '';
-        done_mix = '';
-        done_weight = NaN;
+        watch = new $bog_gamengine_watch;
         prepare() {
             if (this.bones.length)
                 return this.bones;
@@ -16338,17 +16377,19 @@ var $;
             if (skeleton.count > $.$bog_gamengine_skin_max) {
                 return $mol_fail(new Error(`Skeleton has more than ${$.$bog_gamengine_skin_max} joints`));
             }
-            const time = this.time();
-            const clip = this.clip();
-            const mix = this.mix();
-            const weight = this.weight();
-            if (this.done_skeleton === skeleton
-                && this.done_time === time
-                && this.done_clip === clip
-                && this.done_mix === mix
-                && this.done_weight === weight)
+            const watch = this.watch.open();
+            const time = watch.of(this.time());
+            const clip = watch.of(this.clip());
+            const mix = watch.of(this.mix());
+            const weight = watch.of(this.weight());
+            const clips = watch.of(shape.clips());
+            watch.of(skeleton.count);
+            watch.of(skeleton.base);
+            watch.of(skeleton.order);
+            watch.of(skeleton.parents);
+            watch.of(skeleton.binds);
+            if (watch.fresh())
                 return this.bones;
-            const clips = shape.clips();
             const count = skeleton.count;
             const trs = this.trs_main;
             this.apply(clips.get(clip), time, trs, count, skeleton.base);
@@ -16377,11 +16418,6 @@ var $;
                 }
                 $bog_gamengine_skin_mat_mul(this.bones, i * 16, this.worlds, i * 16, skeleton.binds, i * 16);
             }
-            this.done_skeleton = skeleton;
-            this.done_time = time;
-            this.done_clip = clip;
-            this.done_mix = mix;
-            this.done_weight = weight;
             ++this.version;
             return this.bones;
         }
@@ -17366,6 +17402,14 @@ var $;
                     triangles: this.mean(this.triangles_ring, size),
                     bytes: this.mean(this.bytes_ring, size),
                 };
+            }
+            peak() {
+                const size = Math.min(this.samples, stat_window);
+                let worst = 0;
+                for (let i = 0; i < size; ++i)
+                    if (this.ticks[i] > worst)
+                        worst = this.ticks[i];
+                return worst;
             }
             stat() {
                 const frame = this.scene().clock().frame();
@@ -18752,34 +18796,6 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    class $bog_gamengine_watch extends $mol_object2 {
-        seen = [];
-        at = 0;
-        same = true;
-        open() {
-            this.at = 0;
-            this.same = true;
-            return this;
-        }
-        of(value) {
-            const at = this.at++;
-            if (this.seen[at] !== value) {
-                this.seen[at] = value;
-                this.same = false;
-            }
-            return value;
-        }
-        fresh() {
-            return this.same && this.at === this.seen.length;
-        }
-    }
-    $.$bog_gamengine_watch = $bog_gamengine_watch;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
     class $bog_gamengine_tilemap_pool extends $mol_object2 {
         cap = 0;
         count = 0;
@@ -19165,11 +19181,7 @@ var $;
             const solid = new Uint8Array(width * height);
             if (!tile)
                 return solid;
-            for (let y = 0; y < height; ++y) {
-                for (let x = 0; x < width; ++x)
-                    solid[y * width + x] = tile.cell(x, y) ? 1 : 0;
-            }
-            return solid;
+            return tile.cells(solid, width, height);
         }
         cell(x, y) {
             const width = this.width();
@@ -20586,6 +20598,7 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    $.$bog_gamengine_text_font_advance_miss = 0.6;
     $.$bog_gamengine_text_font_chars = ' !"#%&\'()*+,-./0123456789:;<=>?@'
         + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_'
         + 'abcdefghijklmnopqrstuvwxyz{|}~'
@@ -20643,7 +20656,22 @@ var $;
             return this.glyphs().sources;
         }
         advance(char) {
-            return this.glyphs().advance.get(char) ?? 0.6;
+            return this.glyphs().advance.get(char) ?? $.$bog_gamengine_text_font_advance_miss;
+        }
+        advances(value, out) {
+            const advance = this.glyphs().advance;
+            for (let i = 0; i < value.length; ++i) {
+                out[i] = advance.get(value[i]) ?? $.$bog_gamengine_text_font_advance_miss;
+            }
+            return out;
+        }
+        total(value) {
+            const advance = this.glyphs().advance;
+            let sum = 0;
+            for (let i = 0; i < value.length; ++i) {
+                sum += advance.get(value[i]) ?? $.$bog_gamengine_text_font_advance_miss;
+            }
+            return sum;
         }
     }
     __decorate([
@@ -20738,12 +20766,7 @@ var $;
             ];
         }
         width() {
-            const value = this.value();
-            const font = this.font();
-            let total = 0;
-            for (let i = 0; i < value.length; ++i)
-                total += font.advance(value[i]);
-            return total * this.height();
+            return this.font().total(this.value()) * this.height();
         }
         box_local() {
             let width = 0;
@@ -20769,6 +20792,7 @@ var $;
             return box;
         }
         axes = new Float32Array(16);
+        steps = new Float64Array(0);
         watch = new $bog_gamengine_watch;
         emit() {
             const pool = this.pool_own();
@@ -20811,14 +20835,17 @@ var $;
             const layer = pool.layer;
             const aabb = pool.aabb;
             const radius = height * $bog_gamengine_batch_scale_max(axes) * Math.SQRT1_2;
+            if (this.steps.length < value.length)
+                this.steps = new Float64Array(value.length);
+            const steps = font.advances(value, this.steps);
             let total = 0;
             for (let i = 0; i < value.length; ++i)
-                total += font.advance(value[i]);
+                total += steps[i];
             let pen = align === 'center' ? -total * height / 2 : align === 'right' ? -total * height : 0;
             let count = 0;
             for (let i = 0; i < value.length; ++i) {
                 const char = value[i];
-                const step = font.advance(char) * height;
+                const step = steps[i] * height;
                 const dx = pen + step / 2;
                 pen += step;
                 if (char === ' ')
@@ -29946,7 +29973,8 @@ var $;
                 const div = ids.length || 1;
                 return `mine ${this.mine_live_ids().length} | foes ${this.foe_live_ids().length}`
                     + ` | sel ${ids.length} | at ${(x / div).toFixed(2)} × ${(y / div).toFixed(2)}`
-                    + ` | nodes ${this.Scene().nodes().length} | atlas 1`;
+                    + ` | nodes ${this.Scene().nodes().length} | atlas 1`
+                    + ` | peak ${this.Draw().peak().toFixed(1)} ms`;
             }
         }
         __decorate([
@@ -53089,6 +53117,25 @@ var $;
             $mol_assert_equal(tile.solid_at(wall[0], wall[1]), true);
             $mol_assert_equal(tile.solid_at(1.5, -1.5), true);
         },
+        'cells fills in bulk exactly what cell answers one by one'() {
+            for (const map of [
+                '###\n#.#\n###',
+                '#..#\n##\n#\n#..##',
+                '..o..\n.###.\n.E...\n#####',
+            ]) {
+                const tile = new $bog_gamengine_phys_tile;
+                tile.map(map);
+                tile.solid('#=');
+                const width = tile.width();
+                const height = tile.height();
+                const bulk = tile.cells(new Uint8Array(width * height), width, height);
+                for (let y = 0; y < height; ++y) {
+                    for (let x = 0; x < width; ++x) {
+                        $mol_assert_equal(bulk[y * width + x] === 1, tile.cell(x, y));
+                    }
+                }
+            }
+        },
         'shifted grid on the vertical plane reads back the very cell it drew'() {
             const tile = new $bog_gamengine_phys_tile;
             tile.map('####\n#..#\n#..#\n####');
@@ -56393,6 +56440,58 @@ var $;
         return skin;
     }
     $mol_test({
+        'clips changed under the same skeleton move the pose'($) {
+            const skeleton = $bog_gamengine_skin_test_skeleton();
+            let clips = $bog_gamengine_skin_test_clips();
+            const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: () => skeleton, clips: () => clips });
+            const skin = new $bog_gamengine_skin;
+            skin.shape(shape);
+            skin.clip('there');
+            skin.time(1);
+            $mol_assert_ok(Math.abs(skin.pose()[12] - 2) < 1e-4);
+            const was = clips.get('there');
+            const next = new Map(clips);
+            next.set('there', {
+                ...was,
+                channels: [{ ...was.channels[0], values: new Float32Array([5, 0, 0, 5, 0, 0]) }],
+            });
+            clips = next;
+            $mol_assert_equal(shape.skeleton(), skeleton);
+            $mol_assert_ok(Math.abs(skin.pose()[12] - 5) < 1e-4);
+        },
+        'skeleton array swapped under the same object moves the pose'($) {
+            const skeleton = $bog_gamengine_skin_test_skeleton();
+            const clips = $bog_gamengine_skin_test_clips();
+            const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: () => skeleton, clips: () => clips });
+            const skin = new $bog_gamengine_skin;
+            skin.shape(shape);
+            skin.clip('here');
+            skin.time(0);
+            $mol_assert_ok(Math.abs(skin.pose()[12]) < 1e-4);
+            const binds = new Float32Array(skeleton.binds);
+            binds[12] = 3;
+            skeleton.binds = binds;
+            $mol_assert_ok(Math.abs(skin.pose()[12] - 3) < 1e-4);
+        },
+        'every drawing input of the skin is watched'($) {
+            const steps = [
+                (skin) => skin.time(0.5),
+                (skin) => skin.clip('there'),
+                (skin) => skin.mix('here'),
+                (skin) => skin.weight(0.5),
+            ];
+            for (const step of steps) {
+                const skin = $bog_gamengine_skin_test_make($, 'turn');
+                skin.time(0);
+                skin.mix('');
+                skin.weight(0);
+                skin.pose();
+                const version = skin.version;
+                step(skin);
+                skin.pose();
+                $mol_assert_equal(skin.version > version, true);
+            }
+        },
         'pose at time zero keeps the bind pose'($) {
             const skin = $bog_gamengine_skin_test_make($, 'turn');
             const bones = skin.pose();
@@ -57463,6 +57562,15 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    function $bog_gamengine_text_font_test_make() {
+        const font = new $bog_gamengine_text_font;
+        const glyphs = {
+            sources: [],
+            advance: new Map([['a', 0.25], ['b', 0.75], [' ', 0.5]]),
+        };
+        Object.assign(font, { glyphs: () => glyphs });
+        return font;
+    }
     $mol_test({
         'without a canvas the font gives no glyphs'() {
             const font = new $bog_gamengine_text_font;
@@ -57472,6 +57580,32 @@ var $;
             const font = new $bog_gamengine_text_font;
             $mol_assert_equal(font.advance('a'), 0.6);
             $mol_assert_equal(font.advance('Ж'), 0.6);
+        },
+        'advances in bulk agrees with advance one by one, edges included'() {
+            const font = $bog_gamengine_text_font_test_make();
+            const odd = String.fromCharCode(0) + String.fromCharCode(0xFFFF);
+            for (const value of ['', 'a', 'ab Ж', '  ', odd, '\u{1F600}', 'a\u{1F600}b', '\t\n']) {
+                const bulk = font.advances(value, new Float64Array(Math.max(1, value.length)));
+                for (let i = 0; i < value.length; ++i) {
+                    $mol_assert_equal(bulk[i], font.advance(value[i]));
+                }
+            }
+        },
+        'total in bulk agrees with the sum of advance one by one'() {
+            const font = $bog_gamengine_text_font_test_make();
+            for (const value of ['', 'a', 'ab Ж', '😀', 'a😀b']) {
+                let sum = 0;
+                for (let i = 0; i < value.length; ++i)
+                    sum += font.advance(value[i]);
+                $mol_assert_equal(font.total(value), sum);
+            }
+        },
+        'bulk leaves the tail of a longer buffer alone'() {
+            const font = $bog_gamengine_text_font_test_make();
+            const out = new Float64Array(8).fill(-1);
+            font.advances('ab', out);
+            $mol_assert_equal([out[0], out[1]], [font.advance('a'), font.advance('b')]);
+            $mol_assert_equal([out[2], out[7]], [-1, -1]);
         },
     });
 })($ || ($ = {}));

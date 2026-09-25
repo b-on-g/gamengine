@@ -4475,6 +4475,25 @@ var $;
             $mol_assert_equal(tile.solid_at(wall[0], wall[1]), true);
             $mol_assert_equal(tile.solid_at(1.5, -1.5), true);
         },
+        'cells fills in bulk exactly what cell answers one by one'() {
+            for (const map of [
+                '###\n#.#\n###',
+                '#..#\n##\n#\n#..##',
+                '..o..\n.###.\n.E...\n#####',
+            ]) {
+                const tile = new $bog_gamengine_phys_tile;
+                tile.map(map);
+                tile.solid('#=');
+                const width = tile.width();
+                const height = tile.height();
+                const bulk = tile.cells(new Uint8Array(width * height), width, height);
+                for (let y = 0; y < height; ++y) {
+                    for (let x = 0; x < width; ++x) {
+                        $mol_assert_equal(bulk[y * width + x] === 1, tile.cell(x, y));
+                    }
+                }
+            }
+        },
         'shifted grid on the vertical plane reads back the very cell it drew'() {
             const tile = new $bog_gamengine_phys_tile;
             tile.map('####\n#..#\n#..#\n####');
@@ -7779,6 +7798,58 @@ var $;
         return skin;
     }
     $mol_test({
+        'clips changed under the same skeleton move the pose'($) {
+            const skeleton = $bog_gamengine_skin_test_skeleton();
+            let clips = $bog_gamengine_skin_test_clips();
+            const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: () => skeleton, clips: () => clips });
+            const skin = new $bog_gamengine_skin;
+            skin.shape(shape);
+            skin.clip('there');
+            skin.time(1);
+            $mol_assert_ok(Math.abs(skin.pose()[12] - 2) < 1e-4);
+            const was = clips.get('there');
+            const next = new Map(clips);
+            next.set('there', {
+                ...was,
+                channels: [{ ...was.channels[0], values: new Float32Array([5, 0, 0, 5, 0, 0]) }],
+            });
+            clips = next;
+            $mol_assert_equal(shape.skeleton(), skeleton);
+            $mol_assert_ok(Math.abs(skin.pose()[12] - 5) < 1e-4);
+        },
+        'skeleton array swapped under the same object moves the pose'($) {
+            const skeleton = $bog_gamengine_skin_test_skeleton();
+            const clips = $bog_gamengine_skin_test_clips();
+            const shape = $bog_gamengine_shape_gltf.make({ $, skeleton: () => skeleton, clips: () => clips });
+            const skin = new $bog_gamengine_skin;
+            skin.shape(shape);
+            skin.clip('here');
+            skin.time(0);
+            $mol_assert_ok(Math.abs(skin.pose()[12]) < 1e-4);
+            const binds = new Float32Array(skeleton.binds);
+            binds[12] = 3;
+            skeleton.binds = binds;
+            $mol_assert_ok(Math.abs(skin.pose()[12] - 3) < 1e-4);
+        },
+        'every drawing input of the skin is watched'($) {
+            const steps = [
+                (skin) => skin.time(0.5),
+                (skin) => skin.clip('there'),
+                (skin) => skin.mix('here'),
+                (skin) => skin.weight(0.5),
+            ];
+            for (const step of steps) {
+                const skin = $bog_gamengine_skin_test_make($, 'turn');
+                skin.time(0);
+                skin.mix('');
+                skin.weight(0);
+                skin.pose();
+                const version = skin.version;
+                step(skin);
+                skin.pose();
+                $mol_assert_equal(skin.version > version, true);
+            }
+        },
         'pose at time zero keeps the bind pose'($) {
             const skin = $bog_gamengine_skin_test_make($, 'turn');
             const bones = skin.pose();
@@ -8835,6 +8906,15 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    function $bog_gamengine_text_font_test_make() {
+        const font = new $bog_gamengine_text_font;
+        const glyphs = {
+            sources: [],
+            advance: new Map([['a', 0.25], ['b', 0.75], [' ', 0.5]]),
+        };
+        Object.assign(font, { glyphs: () => glyphs });
+        return font;
+    }
     $mol_test({
         'without a canvas the font gives no glyphs'() {
             const font = new $bog_gamengine_text_font;
@@ -8844,6 +8924,32 @@ var $;
             const font = new $bog_gamengine_text_font;
             $mol_assert_equal(font.advance('a'), 0.6);
             $mol_assert_equal(font.advance('Ж'), 0.6);
+        },
+        'advances in bulk agrees with advance one by one, edges included'() {
+            const font = $bog_gamengine_text_font_test_make();
+            const odd = String.fromCharCode(0) + String.fromCharCode(0xFFFF);
+            for (const value of ['', 'a', 'ab Ж', '  ', odd, '\u{1F600}', 'a\u{1F600}b', '\t\n']) {
+                const bulk = font.advances(value, new Float64Array(Math.max(1, value.length)));
+                for (let i = 0; i < value.length; ++i) {
+                    $mol_assert_equal(bulk[i], font.advance(value[i]));
+                }
+            }
+        },
+        'total in bulk agrees with the sum of advance one by one'() {
+            const font = $bog_gamengine_text_font_test_make();
+            for (const value of ['', 'a', 'ab Ж', '😀', 'a😀b']) {
+                let sum = 0;
+                for (let i = 0; i < value.length; ++i)
+                    sum += font.advance(value[i]);
+                $mol_assert_equal(font.total(value), sum);
+            }
+        },
+        'bulk leaves the tail of a longer buffer alone'() {
+            const font = $bog_gamengine_text_font_test_make();
+            const out = new Float64Array(8).fill(-1);
+            font.advances('ab', out);
+            $mol_assert_equal([out[0], out[1]], [font.advance('a'), font.advance('b')]);
+            $mol_assert_equal([out[2], out[7]], [-1, -1]);
         },
     });
 })($ || ($ = {}));

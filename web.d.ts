@@ -4337,6 +4337,7 @@ declare namespace $ {
     class $bog_gamengine_phys_tile extends $bog_gamengine_map {
         solid(next?: string): string;
         cell(x: number, y: number): boolean;
+        cells(out: Uint8Array, width: number, height: number): Uint8Array<ArrayBufferLike>;
         cell_pos(x: number, y: number, out: Float32Array): Float32Array<ArrayBufferLike>;
         cell_at(wx: number, wv: number, out: Int32Array): Int32Array<ArrayBufferLike>;
         spot: Float32Array<ArrayBuffer>;
@@ -4961,6 +4962,17 @@ declare namespace $ {
 }
 
 declare namespace $ {
+    class $bog_gamengine_watch extends $mol_object2 {
+        seen: unknown[];
+        at: number;
+        same: boolean;
+        open(): this;
+        of<Value>(value: Value): Value;
+        fresh(): boolean;
+    }
+}
+
+declare namespace $ {
     const $bog_gamengine_skin_max = 64;
     const $bog_gamengine_skin_empty: Float32Array<ArrayBuffer>;
     function $bog_gamengine_skin_mat_trs(out: Float32Array, at: number, trs: Float32Array, from: number): Float32Array<ArrayBufferLike>;
@@ -4988,11 +5000,7 @@ declare namespace $ {
         worlds: Float32Array<ArrayBuffer>;
         trs_main: Float32Array<ArrayBuffer>;
         trs_mix: Float32Array<ArrayBuffer>;
-        done_skeleton: $bog_gamengine_shape_gltf_skeleton | null;
-        done_time: number;
-        done_clip: string;
-        done_mix: string;
-        done_weight: number;
+        watch: $bog_gamengine_watch;
         prepare(): Float32Array<ArrayBuffer>;
         apply(clip: $bog_gamengine_shape_gltf_clip | undefined, time: number, trs: Float32Array, count: number, base: Float32Array): Float32Array<ArrayBufferLike>;
         pose(): Float32Array<ArrayBuffer>;
@@ -5062,6 +5070,7 @@ declare namespace $ {
 		Tone( ): $bog_gamengine_shader_post_tone
 		passes( ): readonly(any)[]
 		stat( ): string
+		peak( ): number
 		report( ): ({ 
 			'tick': number,
 			'fill': number,
@@ -5264,6 +5273,7 @@ declare namespace $.$$ {
             triangles: number;
             bytes: number;
         };
+        peak(): number;
         stat(): string;
     }
     export {};
@@ -5608,17 +5618,6 @@ declare namespace $ {
 }
 
 declare namespace $ {
-    class $bog_gamengine_watch extends $mol_object2 {
-        seen: unknown[];
-        at: number;
-        same: boolean;
-        open(): this;
-        of<Value>(value: Value): Value;
-        fresh(): boolean;
-    }
-}
-
-declare namespace $ {
     class $bog_gamengine_tilemap_pool extends $mol_object2 {
         cap: number;
         count: number;
@@ -5684,7 +5683,7 @@ declare namespace $ {
         pad(next?: number): number;
         width(): number;
         height(): number;
-        solid(): Uint8Array<ArrayBuffer>;
+        solid(): Uint8Array<ArrayBufferLike>;
         cell(x: number, y: number): boolean;
         cell_out: Int32Array<ArrayBuffer>;
         spot: Float32Array<ArrayBuffer>;
@@ -5851,6 +5850,7 @@ declare namespace $ {
         sources: readonly $bog_gamengine_atlas_source[];
         advance: ReadonlyMap<string, number>;
     };
+    const $bog_gamengine_text_font_advance_miss = 0.6;
     const $bog_gamengine_text_font_chars: string;
     function $bog_gamengine_text_font_render(context: typeof globalThis, family: string, size: number, chars: string): $bog_gamengine_text_font_glyphs;
     class $bog_gamengine_text_font extends $mol_object2 {
@@ -5861,6 +5861,8 @@ declare namespace $ {
         glyphs(): $bog_gamengine_text_font_glyphs;
         sources(): readonly $bog_gamengine_atlas_source[];
         advance(char: string): number;
+        advances(value: string, out: Float64Array): Float64Array<ArrayBufferLike>;
+        total(value: string): number;
     }
 }
 
@@ -5892,6 +5894,7 @@ declare namespace $ {
         width(): number;
         box_local(): Float32Array<ArrayBuffer> | null;
         axes: Float32Array<ArrayBuffer>;
+        steps: Float64Array<ArrayBuffer>;
         watch: $bog_gamengine_watch;
         emit(): number;
     }
@@ -38377,7 +38380,7 @@ declare namespace $ {
         static meta: $giper_baza_link;
         path(next?: string): string;
         type(next?: string): string;
-        base(next?: $giper_baza_vary_type): string | number | bigint | boolean | Element | Float32Array<ArrayBuffer> | Int32Array<ArrayBuffer> | $giper_baza_link | Uint8Array<ArrayBuffer> | Uint16Array<ArrayBuffer> | Uint32Array<ArrayBuffer> | BigUint64Array<ArrayBuffer> | Int8Array<ArrayBuffer> | Int16Array<ArrayBuffer> | BigInt64Array<ArrayBuffer> | Float64Array<ArrayBuffer> | $mol_time_moment | $mol_time_duration | $mol_time_interval | $mol_tree2 | readonly $giper_baza_vary_type[] | Readonly<{
+        base(next?: $giper_baza_vary_type): string | number | bigint | boolean | Element | Float32Array<ArrayBuffer> | Float64Array<ArrayBuffer> | Int32Array<ArrayBuffer> | $giper_baza_link | Uint8Array<ArrayBuffer> | Uint16Array<ArrayBuffer> | Uint32Array<ArrayBuffer> | BigUint64Array<ArrayBuffer> | Int8Array<ArrayBuffer> | Int16Array<ArrayBuffer> | BigInt64Array<ArrayBuffer> | $mol_time_moment | $mol_time_duration | $mol_time_interval | $mol_tree2 | readonly $giper_baza_vary_type[] | Readonly<{
             [x: string]: $giper_baza_vary_type;
         }> | null;
         kind(next?: $giper_baza_flex_meta): $giper_baza_flex_meta | null;
@@ -46173,18 +46176,18 @@ declare namespace $.$$ {
         dict_pawn(): $giper_baza_dict;
         schema(): "Bool" | "Bint" | "Real" | "Text" | null;
         Sub(): $.$mol_list | $.$mol_select | $mol_bar | $.$mol_textarea | $.$giper_baza_vary_edit | $.$mol_expander | $.$giper_baza_rich_edit;
-        enum(next?: $giper_baza_vary_type): string | number | bigint | boolean | Element | Float32Array<ArrayBuffer> | Int32Array<ArrayBuffer> | $giper_baza_link | Uint8Array<ArrayBuffer> | Uint16Array<ArrayBuffer> | Uint32Array<ArrayBuffer> | BigUint64Array<ArrayBuffer> | Int8Array<ArrayBuffer> | Int16Array<ArrayBuffer> | BigInt64Array<ArrayBuffer> | Float64Array<ArrayBuffer> | $mol_time_moment | $mol_time_duration | $mol_time_interval | $mol_tree2 | readonly $giper_baza_vary_type[] | Readonly<{
+        enum(next?: $giper_baza_vary_type): string | number | bigint | boolean | Element | Float32Array<ArrayBuffer> | Float64Array<ArrayBuffer> | Int32Array<ArrayBuffer> | $giper_baza_link | Uint8Array<ArrayBuffer> | Uint16Array<ArrayBuffer> | Uint32Array<ArrayBuffer> | BigUint64Array<ArrayBuffer> | Int8Array<ArrayBuffer> | Int16Array<ArrayBuffer> | BigInt64Array<ArrayBuffer> | $mol_time_moment | $mol_time_duration | $mol_time_interval | $mol_tree2 | readonly $giper_baza_vary_type[] | Readonly<{
             [x: string]: $giper_baza_vary_type;
         }> | null;
         enum_options(): readonly $giper_baza_vary_type[];
         enum_label(option: $giper_baza_vary_type): string;
-        atom_value(next?: $giper_baza_vary_type): string | number | bigint | boolean | Element | Float32Array<ArrayBuffer> | Int32Array<ArrayBuffer> | $giper_baza_link | Uint8Array<ArrayBuffer> | Uint16Array<ArrayBuffer> | Uint32Array<ArrayBuffer> | BigUint64Array<ArrayBuffer> | Int8Array<ArrayBuffer> | Int16Array<ArrayBuffer> | BigInt64Array<ArrayBuffer> | Float64Array<ArrayBuffer> | $mol_time_moment | $mol_time_duration | $mol_time_interval | $mol_tree2 | readonly $giper_baza_vary_type[] | Readonly<{
+        atom_value(next?: $giper_baza_vary_type): string | number | bigint | boolean | Element | Float32Array<ArrayBuffer> | Float64Array<ArrayBuffer> | Int32Array<ArrayBuffer> | $giper_baza_link | Uint8Array<ArrayBuffer> | Uint16Array<ArrayBuffer> | Uint32Array<ArrayBuffer> | BigUint64Array<ArrayBuffer> | Int8Array<ArrayBuffer> | Int16Array<ArrayBuffer> | BigInt64Array<ArrayBuffer> | $mol_time_moment | $mol_time_duration | $mol_time_interval | $mol_tree2 | readonly $giper_baza_vary_type[] | Readonly<{
             [x: string]: $giper_baza_vary_type;
         }> | null;
         atom_selection(next?: readonly [path: string, begin: number, end: number]): (string | number)[] | readonly [path: string, begin: number, end: number];
         link(next?: $giper_baza_link): null;
         link_content(): ($.$mol_select | $.$giper_baza_unit_sand_dump)[];
-        link_value(): string | number | bigint | boolean | Element | Float32Array<ArrayBuffer> | Int32Array<ArrayBuffer> | $giper_baza_link | Uint8Array<ArrayBuffer> | Uint16Array<ArrayBuffer> | Uint32Array<ArrayBuffer> | BigUint64Array<ArrayBuffer> | Int8Array<ArrayBuffer> | Int16Array<ArrayBuffer> | BigInt64Array<ArrayBuffer> | Float64Array<ArrayBuffer> | $mol_time_moment | $mol_time_duration | $mol_time_interval | $mol_tree2 | readonly $giper_baza_vary_type[] | Readonly<{
+        link_value(): string | number | bigint | boolean | Element | Float32Array<ArrayBuffer> | Float64Array<ArrayBuffer> | Int32Array<ArrayBuffer> | $giper_baza_link | Uint8Array<ArrayBuffer> | Uint16Array<ArrayBuffer> | Uint32Array<ArrayBuffer> | BigUint64Array<ArrayBuffer> | Int8Array<ArrayBuffer> | Int16Array<ArrayBuffer> | BigInt64Array<ArrayBuffer> | $mol_time_moment | $mol_time_duration | $mol_time_interval | $mol_tree2 | readonly $giper_baza_vary_type[] | Readonly<{
             [x: string]: $giper_baza_vary_type;
         }> | null;
         link_options(): readonly $giper_baza_vary_type[];

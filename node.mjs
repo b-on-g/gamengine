@@ -11968,6 +11968,18 @@ var $;
                 return true;
             return this.solid().includes(row[x]);
         }
+        cells(out, width, height) {
+            const rows = this.rows();
+            const marks = this.solid();
+            for (let y = 0; y < height; ++y) {
+                const row = y < rows.length ? rows[y] : '';
+                const len = row.length;
+                for (let x = 0; x < width; ++x) {
+                    out[y * width + x] = x >= len || marks.includes(row[x]) ? 1 : 0;
+                }
+            }
+            return out;
+        }
         cell_pos(x, y, out) {
             return this.pos(x, y, 0, out);
         }
@@ -15799,6 +15811,9 @@ var $;
 		stat(){
 			return "";
 		}
+		peak(){
+			return 0;
+		}
 		report(){
 			return {
 				"tick": 0, 
@@ -16127,6 +16142,34 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    class $bog_gamengine_watch extends $mol_object2 {
+        seen = [];
+        at = 0;
+        same = true;
+        open() {
+            this.at = 0;
+            this.same = true;
+            return this;
+        }
+        of(value) {
+            const at = this.at++;
+            if (this.seen[at] !== value) {
+                this.seen[at] = value;
+                this.same = false;
+            }
+            return value;
+        }
+        fresh() {
+            return this.same && this.at === this.seen.length;
+        }
+    }
+    $.$bog_gamengine_watch = $bog_gamengine_watch;
+})($ || ($ = {}));
+
+;
+"use strict";
+var $;
+(function ($) {
     $.$bog_gamengine_skin_max = 64;
     $.$bog_gamengine_skin_empty = new Float32Array(0);
     function $bog_gamengine_skin_mat_trs(out, at, trs, from) {
@@ -16305,11 +16348,7 @@ var $;
         worlds = $.$bog_gamengine_skin_empty;
         trs_main = $.$bog_gamengine_skin_empty;
         trs_mix = $.$bog_gamengine_skin_empty;
-        done_skeleton = null;
-        done_time = NaN;
-        done_clip = '';
-        done_mix = '';
-        done_weight = NaN;
+        watch = new $bog_gamengine_watch;
         prepare() {
             if (this.bones.length)
                 return this.bones;
@@ -16347,17 +16386,19 @@ var $;
             if (skeleton.count > $.$bog_gamengine_skin_max) {
                 return $mol_fail(new Error(`Skeleton has more than ${$.$bog_gamengine_skin_max} joints`));
             }
-            const time = this.time();
-            const clip = this.clip();
-            const mix = this.mix();
-            const weight = this.weight();
-            if (this.done_skeleton === skeleton
-                && this.done_time === time
-                && this.done_clip === clip
-                && this.done_mix === mix
-                && this.done_weight === weight)
+            const watch = this.watch.open();
+            const time = watch.of(this.time());
+            const clip = watch.of(this.clip());
+            const mix = watch.of(this.mix());
+            const weight = watch.of(this.weight());
+            const clips = watch.of(shape.clips());
+            watch.of(skeleton.count);
+            watch.of(skeleton.base);
+            watch.of(skeleton.order);
+            watch.of(skeleton.parents);
+            watch.of(skeleton.binds);
+            if (watch.fresh())
                 return this.bones;
-            const clips = shape.clips();
             const count = skeleton.count;
             const trs = this.trs_main;
             this.apply(clips.get(clip), time, trs, count, skeleton.base);
@@ -16386,11 +16427,6 @@ var $;
                 }
                 $bog_gamengine_skin_mat_mul(this.bones, i * 16, this.worlds, i * 16, skeleton.binds, i * 16);
             }
-            this.done_skeleton = skeleton;
-            this.done_time = time;
-            this.done_clip = clip;
-            this.done_mix = mix;
-            this.done_weight = weight;
             ++this.version;
             return this.bones;
         }
@@ -17375,6 +17411,14 @@ var $;
                     triangles: this.mean(this.triangles_ring, size),
                     bytes: this.mean(this.bytes_ring, size),
                 };
+            }
+            peak() {
+                const size = Math.min(this.samples, stat_window);
+                let worst = 0;
+                for (let i = 0; i < size; ++i)
+                    if (this.ticks[i] > worst)
+                        worst = this.ticks[i];
+                return worst;
             }
             stat() {
                 const frame = this.scene().clock().frame();
@@ -18761,34 +18805,6 @@ var $;
 "use strict";
 var $;
 (function ($) {
-    class $bog_gamengine_watch extends $mol_object2 {
-        seen = [];
-        at = 0;
-        same = true;
-        open() {
-            this.at = 0;
-            this.same = true;
-            return this;
-        }
-        of(value) {
-            const at = this.at++;
-            if (this.seen[at] !== value) {
-                this.seen[at] = value;
-                this.same = false;
-            }
-            return value;
-        }
-        fresh() {
-            return this.same && this.at === this.seen.length;
-        }
-    }
-    $.$bog_gamengine_watch = $bog_gamengine_watch;
-})($ || ($ = {}));
-
-;
-"use strict";
-var $;
-(function ($) {
     class $bog_gamengine_tilemap_pool extends $mol_object2 {
         cap = 0;
         count = 0;
@@ -19174,11 +19190,7 @@ var $;
             const solid = new Uint8Array(width * height);
             if (!tile)
                 return solid;
-            for (let y = 0; y < height; ++y) {
-                for (let x = 0; x < width; ++x)
-                    solid[y * width + x] = tile.cell(x, y) ? 1 : 0;
-            }
-            return solid;
+            return tile.cells(solid, width, height);
         }
         cell(x, y) {
             const width = this.width();
@@ -20595,6 +20607,7 @@ var $;
 "use strict";
 var $;
 (function ($) {
+    $.$bog_gamengine_text_font_advance_miss = 0.6;
     $.$bog_gamengine_text_font_chars = ' !"#%&\'()*+,-./0123456789:;<=>?@'
         + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_'
         + 'abcdefghijklmnopqrstuvwxyz{|}~'
@@ -20652,7 +20665,22 @@ var $;
             return this.glyphs().sources;
         }
         advance(char) {
-            return this.glyphs().advance.get(char) ?? 0.6;
+            return this.glyphs().advance.get(char) ?? $.$bog_gamengine_text_font_advance_miss;
+        }
+        advances(value, out) {
+            const advance = this.glyphs().advance;
+            for (let i = 0; i < value.length; ++i) {
+                out[i] = advance.get(value[i]) ?? $.$bog_gamengine_text_font_advance_miss;
+            }
+            return out;
+        }
+        total(value) {
+            const advance = this.glyphs().advance;
+            let sum = 0;
+            for (let i = 0; i < value.length; ++i) {
+                sum += advance.get(value[i]) ?? $.$bog_gamengine_text_font_advance_miss;
+            }
+            return sum;
         }
     }
     __decorate([
@@ -20747,12 +20775,7 @@ var $;
             ];
         }
         width() {
-            const value = this.value();
-            const font = this.font();
-            let total = 0;
-            for (let i = 0; i < value.length; ++i)
-                total += font.advance(value[i]);
-            return total * this.height();
+            return this.font().total(this.value()) * this.height();
         }
         box_local() {
             let width = 0;
@@ -20778,6 +20801,7 @@ var $;
             return box;
         }
         axes = new Float32Array(16);
+        steps = new Float64Array(0);
         watch = new $bog_gamengine_watch;
         emit() {
             const pool = this.pool_own();
@@ -20820,14 +20844,17 @@ var $;
             const layer = pool.layer;
             const aabb = pool.aabb;
             const radius = height * $bog_gamengine_batch_scale_max(axes) * Math.SQRT1_2;
+            if (this.steps.length < value.length)
+                this.steps = new Float64Array(value.length);
+            const steps = font.advances(value, this.steps);
             let total = 0;
             for (let i = 0; i < value.length; ++i)
-                total += font.advance(value[i]);
+                total += steps[i];
             let pen = align === 'center' ? -total * height / 2 : align === 'right' ? -total * height : 0;
             let count = 0;
             for (let i = 0; i < value.length; ++i) {
                 const char = value[i];
-                const step = font.advance(char) * height;
+                const step = steps[i] * height;
                 const dx = pen + step / 2;
                 pen += step;
                 if (char === ' ')
@@ -29955,7 +29982,8 @@ var $;
                 const div = ids.length || 1;
                 return `mine ${this.mine_live_ids().length} | foes ${this.foe_live_ids().length}`
                     + ` | sel ${ids.length} | at ${(x / div).toFixed(2)} × ${(y / div).toFixed(2)}`
-                    + ` | nodes ${this.Scene().nodes().length} | atlas 1`;
+                    + ` | nodes ${this.Scene().nodes().length} | atlas 1`
+                    + ` | peak ${this.Draw().peak().toFixed(1)} ms`;
             }
         }
         __decorate([
