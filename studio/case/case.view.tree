@@ -1,0 +1,46 @@
+$bog_gamengine_studio_case $bog_gamengine_studio_sample_map
+	atlas <= Atlas
+	map \
+		\######
+		\#....#
+		\#..#.#
+		\#....#
+		\######
+	palette *
+		# \wall
+		. \floor
+	kids /
+		<= Hero $bog_gamengine_studio_sample_hero
+			name \Герой
+			role \hero
+			atlas <= Atlas
+			input <= input
+			frame \hero
+			pos? <=> Hero_pos? Float32Array
+			speed 3
+		<= Coin $bog_gamengine_sprite
+			name \Монета
+			role \crumb
+			atlas <= Atlas
+			frame \coin
+			pos? <=> Coin_pos? Float32Array
+			tint? <=> Coin_tint? Float32Array
+		<= Wall $bog_gamengine_sprite
+			name \Стена
+			atlas <= Atlas
+			frame \wall
+			pos? <=> Wall_pos? Float32Array
+			scale? <=> Wall_scale? Float32Array
+		<= Sprite_1 $bog_gamengine_sprite
+			name \Ключ
+			role \crumb
+			atlas <= Atlas
+			frame \coin
+			pos? <=> Sprite_1_pos? Float32Array
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/atlas/hero.png
+			\bog/gamengine/demo/atlas/coin.png
+			\bog/gamengine/demo/atlas/wall.png
+			\bog/gamengine/demo/atlas/floor.png
+		size 64

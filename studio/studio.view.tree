@@ -1,0 +1,372 @@
+$bog_gamengine_studio $mol_view
+	title \Студия
+	selected? null
+	source? \
+	source_own? \
+	klass? \
+	land_link? \
+	plugins /
+		<= Escape $mol_hotkey
+			key * escape? <=> tool_drop? null
+		<= Delete_key $mol_hotkey
+			key * delete? <=> key_drop? null
+		<= Undo_key $mol_hotkey
+			mod_ctrl true
+			key * Z? <=> key_undo? null
+		<= Redo_key $mol_hotkey
+			mod_ctrl true
+			mod_shift true
+			key * Z? <=> key_redo? null
+	sub /
+		<= Side $mol_view
+			sub /
+				<= Side_switch $mol_switch
+					value? <=> tab? \0
+					options *
+						0 \Сцена
+						1 \Ассеты
+						2 \Тайлы
+						3 \Классы
+				<= Tree $mol_scroll
+					title \Сцена
+					attr *
+						^
+						hidden <= tab_hidden_0 true
+					sub /
+						<= Nodes $mol_list
+							rows <= node_rows /
+				<= Assets_page $mol_scroll
+					title \Ассеты
+					attr *
+						^
+						hidden <= tab_hidden_1 true
+					sub /
+						<= Asset_list $mol_list
+							rows <= asset_rows /
+				<= Tiles_page $mol_scroll
+					title \Тайлы
+					attr *
+						^
+						hidden <= tab_hidden_2 true
+					sub /
+						<= Tile_list $mol_list
+							rows <= tile_rows /
+				<= Kit_page $mol_scroll
+					title \Классы
+					attr *
+						^
+						hidden <= tab_hidden_3 true
+					sub /
+						<= Kit_list $mol_list
+							rows <= kit_rows /
+		<= Canvas $mol_page
+			title \Холст
+			tools /
+				<= Grid $mol_check_box
+					title \К сетке
+					checked? <=> grid? true
+				<= Undo $mol_button_minor
+					title \Отменить
+					enabled <= can_undo false
+					click? <=> undo? null
+				<= Redo $mol_button_minor
+					title \Вернуть
+					enabled <= can_redo false
+					click? <=> redo? null
+				<= Fit $mol_button_minor
+					title \Показать всё
+					click? <=> fit? null
+				<= Play $mol_button_minor
+					title \Играть
+					enabled <= editing true
+					click? <=> play? null
+				<= Pause $mol_check_box
+					title \Пауза
+					enabled <= playing false
+					checked? <=> paused? false
+				<= Stop $mol_button_minor
+					title \Стоп
+					enabled <= playing
+					click? <=> stop? null
+			body /
+				<= Drop $mol_drop
+					attr *
+						^
+						bog_gamengine_studio_placing <= placing false
+					drop? <=> asset_drop? null
+					Sub <= Draw $bog_gamengine_draw
+						scene <= Scene
+						cam <= Cam
+						width => draw_width
+						height => draw_height
+						event *
+							pointerdown? <=> pointer_down? null
+							pointermove? <=> pointer_move? null
+							pointerup? <=> pointer_up? null
+							wheel? <=> wheel? null
+			foot <= canvas_foot /
+				<= Status $mol_status
+					status <= scene_status null
+				<= Live $mol_view
+					sub /
+						<= live_stat \
+		<= Inspect $mol_page
+			title \Свойства
+			body /
+				<= Form $mol_form
+					form_fields <= fields /
+					foot <= form_foot /
+						<= Detach $mol_button_minor
+							title \Переопределить в этом инстансе
+							enabled <= editing
+							click? <=> detach? null
+						<= Node_dup $mol_button_minor
+							title \Дублировать
+							enabled <= editing
+							click? <=> node_dup? null
+						<= Node_drop $mol_button_minor
+							title \Удалить
+							enabled <= editing
+							click? <=> node_drop? null
+		<= Source $mol_page
+			title \Исходник
+			tools /
+				<= Save $mol_link
+					uri <= source_uri \
+					file_name \scene.view.tree
+					title \Скачать документ
+				<= Klass $mol_string
+					hint \$bog_myapp_level
+					value? <=> klass?
+				<= Export_tree $mol_link
+					uri <= module_tree_uri \
+					file_name <= module_tree_name \
+					title \Вывезти дерево
+				<= Export_ts $mol_link
+					uri <= module_ts_uri \
+					file_name <= module_ts_name \
+					title \Вывезти спутник
+			body /
+				<= Editor $mol_textarea
+					value? <=> source?
+			foot /
+				<= Aim $mol_view
+					sub / \Документ это копия для редактора. Паку нужны оба вывезенных файла, дерево и спутник.
+				<= Kept $mol_view
+					sub / <= kept_stat \
+				<= Undo_stat $mol_view
+					sub / <= undo_stat \
+	Doc $bog_gamengine_studio_doc
+		source_own? <=> source_own?
+		land <= doc_land null
+		input <= scene_input null
+		overlay <= overlay_batches /
+		clock <= Clock $bog_gamengine_clock
+			paused <= clock_paused true
+		scene => Scene
+	Gizmo_arrows $bog_gamengine_batch
+		shader <= Gizmo_shader $bog_gamengine_shader_flat
+		shape <= Gizmo_arrow $bog_gamengine_shape_lines
+		nodes <= gizmo_arrow_nodes /
+	Gizmo_boxes $bog_gamengine_batch
+		shader <= Gizmo_shader
+		shape <= Gizmo_box $bog_gamengine_shape_lines
+		nodes <= gizmo_box_nodes /
+	Rect_lines $bog_gamengine_batch
+		shader <= Gizmo_shader
+		shape <= Rect_shape $bog_gamengine_shape_lines
+		nodes <= rect_nodes /
+	Land $bog_gamengine_studio_doc_land
+		link? <=> land_link?
+		name <= mate_name \
+	Mate_shape $bog_gamengine_shape_lines
+	Mate_lines $bog_gamengine_batch
+		shader <= Gizmo_shader
+		shape <= Mate_shape
+		nodes <= mate_nodes /
+	Mate* $bog_gamengine_node
+		pos <= mate_pos* Float32Array
+		scale <= mate_scale Float32Array
+		tint <= mate_tint* Float32Array
+	Font $bog_gamengine_text_font
+		size 32
+	Font_atlas $bog_gamengine_atlas
+		size 32
+		sources <= font_sources /
+	Text_shader $bog_gamengine_shader_sprite
+	Mate_text* $bog_gamengine_text
+		font <= Font
+		atlas <= Font_atlas
+		value <= mate_title* \
+		height <= mate_text_height 0
+		color <= mate_tint*
+		pos <= mate_text_pos* Float32Array
+	Mate_text_batch* $bog_gamengine_batch
+		shader <= Text_shader
+		atlas <= Font_atlas
+		source <= mate_pool* null
+	Assets $bog_gamengine_studio_assets
+		fallback /
+			*
+				uri \bog/gamengine/demo/atlas/hero.png
+				kind \image
+			*
+				uri \bog/gamengine/demo/atlas/hero_1.png
+				kind \image
+			*
+				uri \bog/gamengine/demo/atlas/hero_2.png
+				kind \image
+			*
+				uri \bog/gamengine/demo/atlas/coin.png
+				kind \image
+			*
+				uri \bog/gamengine/demo/atlas/wall.png
+				kind \image
+			*
+				uri \bog/gamengine/demo/atlas/floor.png
+				kind \image
+			*
+				uri \bog/gamengine/demo/room/model/pillar.glb
+				kind \model
+			*
+				uri \bog/gamengine/demo/sound/coin.wav
+				kind \sound
+	Key $bog_gamengine_key
+		bind *
+			left /
+				\A
+				\left
+			right /
+				\D
+				\right
+			up /
+				\W
+				\up
+			down /
+				\S
+				\down
+	Input $bog_gamengine_input
+		key <= Key
+	Cam $bog_gamengine_cam_flat
+		height 6
+		zoom_min 0.05
+		zoom_max 8
+	Point $bog_gamengine_point
+		cam <= Cam
+		width <= draw_width
+		height <= draw_height
+	Gizmo_x $bog_gamengine_sprite
+		pos <= gizmo_pos Float32Array
+		scale <= gizmo_scale Float32Array
+		tint <= gizmo_tint_x Float32Array
+	Gizmo_y $bog_gamengine_sprite
+		pos <= gizmo_pos
+		scale <= gizmo_scale
+		rot <= gizmo_rot_y Float32Array
+		tint <= gizmo_tint_y Float32Array
+	Gizmo_xy $bog_gamengine_sprite
+		pos <= gizmo_pos
+		scale <= gizmo_scale
+		tint <= gizmo_tint_xy
+	Rect_node $bog_gamengine_node
+		tint <= gizmo_tint_xy Float32Array
+	Tools $mol_switch
+		value? <=> tool_pick? \
+		options *
+			cell \Клетка
+			rect \Прямоугольник
+			fill \Заливка
+	Tile* $mol_check
+		Icon <= tile_icon* null
+		title <= tile_title* \
+		checked? <=> tile_selected*? false
+	Tile_image* $mol_image
+		uri <= tile_uri* \ Float32Array
+	Row* $mol_check
+		title <= row_title* \
+		checked? <=> row_selected*? false
+		attr *
+			^
+			bog_gamengine_studio_shared <= row_shared* false
+	Kit $bog_gamengine_studio_kit
+	Kit_row* $mol_check
+		title <= kit_title* \
+		checked? <=> kit_selected*? false
+	Aim_at* $mol_check
+		title \Указать мышью
+		checked? <=> armed*? false
+	Refs* $mol_row
+		sub /
+			<= Refs_names* $mol_view
+				sub / <= refs_names* \
+			<= Refs_aim* $mol_check
+				title \Указать мышью
+				checked? <=> armed*? false
+			<= Refs_clear* $mol_button_minor
+				title \Очистить
+				enabled <= editing
+				click? <=> refs_clear*? null
+	Asset* $mol_drag
+		transfer *
+			^
+			text/plain <= asset_uri* \
+		Sub <= Asset_row* $mol_check
+			Icon <= asset_icon* null
+			title <= asset_file* \
+			checked? <=> asset_selected*? false
+	Asset_image* $mol_image
+		uri <= asset_uri*
+	Asset_model* $mol_icon_cube
+	Asset_sound* $mol_icon_music
+	field_bid_lead \часть префаба, затронет
+	field_bid_words /
+		\инстанс
+		\инстанса
+		\инстансов
+	Name_field $mol_form_field
+		name \Имя
+		content /
+			<= Name_string $mol_string
+				enabled <= editing
+				hint <= node_hint \
+				value? <=> node_name? \
+	Field* $mol_form_field
+		name <= field_name* \
+		bids <= field_bids* /string
+		content <= field_content* /
+	Vec_num* $mol_number
+		enabled <= editing
+		precision_view 0.01
+		precision_change 0.1
+		value? <=> vec_value*? +NaN
+	Num* $mol_number
+		enabled <= editing
+		precision_view 0.01
+		precision_change 0.1
+		value? <=> num_value*? +NaN
+	Flag* $mol_check_box
+		enabled <= editing
+		checked? <=> flag_value*? false
+	Text* $mol_string
+		enabled <= editing
+		value? <=> text_value*? \
+	Frame* $mol_select
+		enabled <= editing
+		value? <=> text_value*? \
+		options <= frame_options /string
+	List* $mol_list
+		rows <= list_rows* /
+	List_row* $mol_row
+		sub <= list_row* /
+	List_field* $mol_string
+		enabled <= editing
+		hint <= list_hint* \
+		value? <=> list_value*? \
+	List_drop* $mol_button_minor
+		enabled <= editing
+		title \Убрать
+		click? <=> list_drop*? null
+	List_add* $mol_button_minor
+		enabled <= editing
+		title \Добавить
+		click? <=> list_add*? null

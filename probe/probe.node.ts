@@ -404,6 +404,7 @@ namespace $ {
 				scroll: Math.round( book.scrollWidth ),
 				client: book.clientWidth,
 				canvas: canvas ? canvas.width : 0,
+				canvas_css: canvas ? Math.round( canvas.getBoundingClientRect().width ) : 0,
 			})
 		}
 		return { dpr: devicePixelRatio, inner: innerWidth, spreads, pages }
@@ -595,6 +596,7 @@ namespace $ {
 		readonly scroll: number
 		readonly client: number
 		readonly canvas: number
+		readonly canvas_css: number
 	}
 
 	export type $bog_gamengine_probe_menu_result = {
@@ -929,7 +931,8 @@ namespace $ {
 			}
 
 			if( page.scroll > page.client + 1 ) return fail( `на странице ${ page.spread } книга шире окна` )
-			if( !( page.canvas > got.inner ) ) return fail( `на странице ${ page.spread } холст не вырос по плотности пикселей` )
+			if( !( page.canvas_css > 0 ) ) return fail( `на странице ${ page.spread } холст не занял места` )
+			if( !( page.canvas > page.canvas_css ) ) return fail( `на странице ${ page.spread } холст не вырос по плотности пикселей` )
 		}
 
 		return say( $bog_gamengine_probe_menu_ok )

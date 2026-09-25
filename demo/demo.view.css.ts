@@ -40,6 +40,8 @@ namespace $.$$ {
 
 		Legion: spread,
 
+		Studio: spread,
+
 	} )
 
 }

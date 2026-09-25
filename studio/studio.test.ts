@@ -1,0 +1,993 @@
+namespace $ {
+
+	class $bog_gamengine_studio_time_mock extends $mol_state_time {
+
+		@ $mol_mem
+		static stamp( next = 0 ) {
+			return next
+		}
+
+		static now( precision: number ) {
+			return this.stamp()
+		}
+
+	}
+
+	function played( $: $ ) {
+		$.$mol_state_time = $bog_gamengine_studio_time_mock
+		const app = $$.$bog_gamengine_studio.make({ $ })
+		$bog_gamengine_studio_time_mock.stamp( 0 )
+		app.Scene().step()
+		app.play()
+		app.Key().keys().D( true )
+		for( let tick = 1; tick <= 3; ++ tick ) {
+			$bog_gamengine_studio_time_mock.stamp( tick * 16 )
+			app.Scene().step()
+		}
+		return app
+	}
+
+	function canvas_app( $: $ ) {
+		return $$.$bog_gamengine_studio.make({ $, draw_width: ()=> 616, draw_height: ()=> 801 })
+	}
+
+	function spot_at( app: $bog_gamengine_studio, x: number, y: number ) {
+		return Array.from( app.Point().world( new Float32Array( 3 ), x, y ) )
+	}
+
+	function wheel_at( delta: number, x: number, y: number ) {
+		return {
+			deltaY: delta, deltaMode: 0, offsetX: x, offsetY: y, preventDefault: ()=> {},
+		} as unknown as WheelEvent
+	}
+
+	function row_of( app: $bog_gamengine_studio, title: string ) {
+		return app.Doc().nodes().findIndex( row => row.title === title )
+	}
+
+	function pick( app: $bog_gamengine_studio, title: string ) {
+		app.selected( row_of( app, title ) )
+		return app
+	}
+
+	function press_at( x: number, y: number, button = 0 ) {
+		return {
+			button, offsetX: x, offsetY: y, pointerId: 1, isTrusted: false,
+		} as unknown as PointerEvent
+	}
+
+	function hero_row( app: $bog_gamengine_studio ) {
+		return row_of_name( app, 'Hero' )
+	}
+
+	function row_of_name( app: $bog_gamengine_studio, name: string ) {
+		const at = app.Doc().nodes().findIndex( row => row.name === name )
+		$mol_assert_ok( at >= 0 )
+		return at
+	}
+
+	function scene_named( app: $bog_gamengine_studio, title: string ) {
+		const node = app.Scene().nodes().find( one => one.title() === title )
+		$mol_assert_ok( Boolean( node ) )
+		return node!
+	}
+
+	function hero( app: $bog_gamengine_studio ) {
+		return scene_named( app, 'Герой' )
+	}
+
+	$mol_test({
+
+		'play with D held moves the hero right'( $ ) {
+			$.$mol_state_time = $bog_gamengine_studio_time_mock
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			pick( app, 'Герой' )
+			app.write( 'pos', [ 1.5, -1.5, 0 ] )
+			$bog_gamengine_studio_time_mock.stamp( 0 )
+			app.Scene().step()
+			app.play()
+			app.Key().keys().D( true )
+			for( let tick = 1; tick <= 3; ++ tick ) {
+				$bog_gamengine_studio_time_mock.stamp( tick * 16 )
+				app.Scene().step()
+			}
+			$mol_assert_ok( hero( app ).pos()[ 0 ] > 1.5 )
+			$mol_assert_equal( hero( app ).pos()[ 1 ], -1.5 )
+		},
+
+		'stop returns the hero to where the play started'( $ ) {
+			$.$mol_state_time = $bog_gamengine_studio_time_mock
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			$bog_gamengine_studio_time_mock.stamp( 0 )
+			app.Scene().step()
+			hero( app ).pos( new Float32Array([ -5, 1, 0 ]) )
+			app.play()
+			hero( app ).pos( new Float32Array([ -2, 1, 0 ]) )
+			$mol_assert_equal( hero( app ).pos()[ 0 ], -2 )
+			app.stop()
+			$mol_assert_equal( Array.from( hero( app ).pos() ), [ -5, 1, 0 ] )
+		},
+
+		'play and stop leave the source untouched'( $ ) {
+			const app = played( $ )
+			app.stop()
+			$mol_assert_equal( app.source(), $bog_gamengine_studio_sample )
+		},
+
+		'pause stops the movement'( $ ) {
+			const app = played( $ )
+			app.Pause().checked( true )
+			const before = hero( app ).pos()[ 0 ]
+			$bog_gamengine_studio_time_mock.stamp( 64 )
+			app.Scene().step()
+			$bog_gamengine_studio_time_mock.stamp( 80 )
+			app.Scene().step()
+			$mol_assert_equal( hero( app ).pos()[ 0 ], before )
+		},
+
+		'the key changes nothing in the edit mode'( $ ) {
+			$.$mol_state_time = $bog_gamengine_studio_time_mock
+			const run = ( held: boolean )=> {
+				const app = $$.$bog_gamengine_studio.make({ $ })
+				pick( app, 'Герой' )
+				app.write( 'pos', [ 1.5, -1.5, 0 ] )
+				$bog_gamengine_studio_time_mock.stamp( 0 )
+				app.Scene().step()
+				if( held ) app.Key().keys().D( true )
+				for( let tick = 1; tick <= 3; ++ tick ) {
+					$bog_gamengine_studio_time_mock.stamp( tick * 16 )
+					app.Scene().step()
+				}
+				return Array.from( hero( app ).pos() )
+			}
+			$mol_assert_equal( run( true ), run( false ) )
+		},
+
+		'the edit mode leaves the scene without input'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			$mol_assert_equal( app.scene_input(), null )
+			app.play()
+			$mol_assert_equal( app.scene_input(), app.Input() )
+		},
+
+		'stop restores a number of a component, not only of a node'( $ ) {
+			$.$mol_state_time = $bog_gamengine_studio_time_mock
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.selected( hero_row( app ) )
+			const part = app.kit_attach( 'combat' )
+			const row = app.Doc().nodes().findIndex( one => one.path === `Hero/${ part }` )
+			app.selected( row )
+			const health = ()=> app.props_of( `Hero/${ part }` ).find( one => one.name === 'health_max' )!
+			const before = health().get()
+			$mol_assert_ok( Number( before ) > 0 )
+			$bog_gamengine_studio_time_mock.stamp( 0 )
+			app.play()
+			health().set( 7 )
+			$mol_assert_equal( health().get(), 7 )
+			app.stop()
+			$mol_assert_equal( health().get(), before )
+			$mol_assert_not( app.source().includes( 'health_max 7' ) )
+		},
+
+		'placed sound is selected by a row, renamed and dropped by the button'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.place( 'bog/gamengine/demo/sound/coin.wav', [ 0, 0, 0 ] )
+			const rows = app.Doc().nodes()
+			const at = rows.findIndex( one => one.name === 'Sound' )
+			$mol_assert_ok( at >= 0 )
+			$mol_assert_equal( rows[ at ].kind, 'own' )
+			app.selected( at )
+			$mol_assert_equal( app.doc_path(), 'Sound' )
+			$mol_assert_equal( app.props_of( 'Sound' ), [] )
+			app.node_name( 'Звуки' )
+			$mol_assert_equal( app.row_title( at ), 'Звуки' )
+			app.Node_drop().click( null )
+			$mol_assert_not( app.source().includes( 'coin.wav' ) )
+			$mol_assert_not( app.Doc().nodes().some( one => one.name === 'Sound' ) )
+			$mol_assert_ok( app.Scene().nodes().some( node => node.title() === 'Герой' ) )
+		},
+
+		'component attached to a node shows up in the tree under its owner'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.selected( hero_row( app ) )
+			const part = app.kit_attach( 'combat' )
+			$mol_assert_ok( part.length > 0 )
+			const rows = app.Doc().nodes()
+			const at = rows.findIndex( row => row.path === `Hero/${ part }` )
+			$mol_assert_ok( at > 0 )
+			$mol_assert_equal( rows[ at ].kind, 'part' )
+			$mol_assert_equal( rows[ 0 ].kind, 'node' )
+			app.selected( at )
+			$mol_assert_equal( app.doc_path(), `Hero/${ part }` )
+			app.write( 'health_max', 70 )
+			$mol_assert_ok( app.source().includes( 'health_max 70' ) )
+		},
+
+		'scene tree lists every declaration of the document, not only the nodes'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			const titles = app.node_rows().map( ( row, at )=> app.row_title( at ) )
+			$mol_assert_equal( titles.length, app.Doc().nodes().length )
+			for( const title of [ 'Герой', 'Монета', 'Стена', 'Atlas' ] ) {
+				$mol_assert_ok( titles.indexOf( title ) >= 0 )
+			}
+			$mol_assert_ok( titles.length > app.Scene().nodes().length )
+		},
+
+		'tree row shows node name'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			$mol_assert_equal( app.row_title( row_of( app, 'Герой' ) ), 'Герой' )
+		},
+
+		'pos typed into the inspector moves the selected node'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			pick( app, 'Монета' )
+			app.Vec_num( 'pos_0' ).value( 5 )
+			$mol_assert_equal( scene_named( app, 'Монета' ).pos()[ 0 ], 5 )
+		},
+
+		'pos typed into the inspector rewrites the source'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			pick( app, 'Герой' )
+			app.write( 'pos', [ 0, 0, 0 ] )
+			app.Vec_num( 'pos_0' ).value( 5 )
+			$mol_assert_ok( app.source().includes( '\t\t\tpos / 5 0 0\n' ) )
+		},
+
+		'source typed into the editor moves the node'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			pick( app, 'Герой' )
+			app.write( 'pos', [ 0, 0, 0 ] )
+			app.source( app.source().replace( '\t\t\tpos / 0 0 0\n', '\t\t\tpos / 7 0 0\n' ) )
+			$mol_assert_equal( hero( app ).pos()[ 0 ], 7 )
+		},
+
+		'rotation is edited in degrees'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			pick( app, 'Герой' )
+			app.Vec_num( 'rot_2' ).value( 90 )
+			$mol_assert_equal( Math.round( hero( app ).rot()[ 2 ] * 1e6 ) / 1e6, Math.round( Math.PI / 2 * 1e6 ) / 1e6 )
+		},
+
+		'assets tab lists every asset of the pack with its file name'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			$mol_assert_equal( app.asset_rows().length, 8 )
+			$mol_assert_equal( app.Asset_row( 'bog/gamengine/demo/atlas/coin.png' ).title(), 'coin.png' )
+			$mol_assert_ok( app.asset_icon( 'bog/gamengine/demo/atlas/coin.png' ) instanceof $mol_image )
+			$mol_assert_ok( app.asset_icon( 'bog/gamengine/demo/sound/coin.wav' ) instanceof $mol_icon_music )
+		},
+
+		'picked image placed by a canvas click becomes a sprite at the click point'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			$mol_assert_ok( app.placing() )
+			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 1, -2, 0 ] )
+			$mol_assert_ok( row_of( app, 'floor' ) >= 0 )
+			$mol_assert_equal( scene_named( app, 'floor' ).pos()[ 1 ], -2 )
+			$mol_assert_ok( app.source().includes( '\t\t\t\\bog/gamengine/demo/atlas/floor.png\n' ) )
+			$mol_assert_ok( app.source().includes( '\t\t<= Sprite_1 $bog_gamengine_sprite\n\t\t\tname \\floor\n\t\t\tatlas <= Atlas\n\t\t\tframe \\floor\n\t\t\tpos / 1 -2 0\n' ) )
+		},
+
+		'placed model gets a loader shape and no batch of its own'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.place( 'bog/gamengine/demo/room/model/pillar.glb', [ 0, 1, 0 ] )
+			$mol_assert_equal( app.row_title( row_of( app, 'pillar' ) ), 'pillar' )
+			$mol_assert_ok( app.source().includes( '\t\t\tshape <= Mesh_1_shape $bog_gamengine_studio_assets_gltf\n\t\t\t\turi \\bog/gamengine/demo/room/model/pillar.glb\n' ) )
+			$mol_assert_not( app.source().includes( '$bog_gamengine_batch' ) )
+			$mol_assert_ok( app.Scene().batches().some( batch => batch.shape() instanceof $bog_gamengine_studio_assets_gltf ) )
+			$mol_assert_ok( scene_named( app, 'pillar' ) instanceof $bog_gamengine_mesh )
+		},
+
+		'model and sprites go to batches of their own'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			const before = app.Scene().batches().length
+			app.place( 'bog/gamengine/demo/room/model/pillar.glb', [ 0, 1, 0 ] )
+			const batches = app.Scene().batches()
+			$mol_assert_equal( batches.length, before + 1 )
+			const mesh = batches.find( batch => batch.shape() instanceof $bog_gamengine_studio_assets_gltf )!
+			$mol_assert_equal( mesh.nodes().length, 1 )
+			$mol_assert_ok( mesh.nodes()[ 0 ] instanceof $bog_gamengine_mesh )
+		},
+
+		'placed sound is written into the sound dictionary'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.place( 'bog/gamengine/demo/sound/coin.wav', [ 0, 0, 0 ] )
+			$mol_assert_ok( app.source().endsWith( '\tSound $bog_gamengine_sound\n\t\turis *\n\t\t\tcoin \\bog/gamengine/demo/sound/coin.wav\n' ) )
+			app.place( 'bog/gamengine/demo/sound/coin.wav', [ 0, 0, 0 ] )
+			$mol_assert_equal( app.source().split( 'coin.wav' ).length, 2 )
+			const at = app.Doc().nodes().findIndex( row => row.name === 'Sound' )
+			$mol_assert_ok( at >= 0 )
+			$mol_assert_equal( app.row_title( at ), 'Sound' )
+			app.selected( at )
+			$mol_assert_equal( app.doc_path(), 'Sound' )
+		},
+
+		'assets tab survives the scene rebuild'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.Side_switch().value( '1' )
+			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 1, -2, 0 ] )
+			$mol_assert_equal( app.tab(), '1' )
+			$mol_assert_not( app.tab_hidden_1() )
+			app.Side_switch().value( '' )
+			$mol_assert_equal( app.tab(), '1' )
+		},
+
+		'tiles tab lists the palette of the scene'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			$mol_assert_equal( app.tile_rows().length, 3 )
+			$mol_assert_equal( app.tile_title( '#' ), '# wall' )
+			$mol_assert_equal( app.tile_uri( '.' ), 'bog/gamengine/demo/atlas/floor.png' )
+			$mol_assert_ok( app.tile_icon( '#' ) instanceof $mol_image )
+		},
+
+		'picked char and cell tool paint the map of the document'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			app.brush_down([ 1, 1 ])
+			app.brush_move([ 2, 1 ])
+			app.brush_up([ 2, 1 ])
+			$mol_assert_equal( app.Doc().map()[ 1 ].join( '' ), '###..#' )
+		},
+
+		'rect tool paints a rectangle and shows a preview frame'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'rect' )
+			app.brush_down([ 1, 1 ])
+			app.brush_move([ 2, 2 ])
+			$mol_assert_equal( app.rect_nodes().length, 1 )
+			app.brush_up([ 2, 2 ])
+			$mol_assert_equal( app.rect_nodes().length, 0 )
+			$mol_assert_equal( app.Doc().map().map( row => row.join( '' ) ), [ '######', '###..#', '####.#', '#....#', '######' ] )
+		},
+
+		'fill tool floods the room and the tool blocks the gizmo'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			pick( app, 'Герой' )
+			$mol_assert_equal( app.gizmo_arrow_nodes().length, 2 )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'fill' )
+			$mol_assert_equal( app.gizmo_arrow_nodes().length, 0 )
+			app.brush_down([ 1, 1 ])
+			$mol_assert_equal( app.Doc().map().map( row => row.join( '' ) ), [ '######', '######', '######', '######', '######' ] )
+			app.tool_drop()
+			$mol_assert_equal( app.gizmo_arrow_nodes().length, 2 )
+		},
+
+		'painted cell reaches the map of the scene'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			$mol_assert_equal( app.tile_grid()!.rows()[ 1 ][ 1 ], '.' )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			app.brush_down([ 1, 1 ])
+			$mol_assert_equal( app.tile_grid()!.rows()[ 1 ][ 1 ], '#' )
+			app.brush_up([ 1, 1 ])
+			$mol_assert_equal( app.tile_grid()!.rows()[ 1 ][ 1 ], '#' )
+			$mol_assert_ok( app.source().includes( '\\##...#' ) )
+		},
+
+		'inspector draws a row per record of a list prop'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_brain )
+			app.selected( row_of_name( app, 'Walk' ) )
+			$mol_assert_equal( app.row_title( 1 ), 'Ходит' )
+			$mol_assert_ok( app.fields().some( field => field.name() === 'next' ) )
+			$mol_assert_equal( app.list_rows( 'next' ).length, 2 )
+			$mol_assert_equal( app.list_row( 'next/0' ).length, 3 )
+			$mol_assert_equal( app.List_field( 'next/0/to' ).value(), 'Ждёт' )
+			$mol_assert_equal( app.List_field( 'next/0/when' ).value(), 'near' )
+			$mol_assert_equal( app.List_field( 'next/0/when' ).hint(), 'when' )
+		},
+
+		'text typed into a list row rewrites the record in the source'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_brain )
+			app.selected( row_of_name( app, 'Walk' ) )
+			app.List_field( 'next/0/to' ).value( 'Спит' )
+			$mol_assert_ok( app.source().includes( '\t\t\t\t\tto \\Спит\n\t\t\t\t\twhen \\near\n' ) )
+			$mol_assert_equal( app.list_values( 'next' ).length, 1 )
+		},
+
+		'buttons add and drop a record of a list prop'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_brain )
+			app.selected( row_of_name( app, 'Walk' ) )
+			app.List_add( 'next' ).click( null )
+			$mol_assert_equal( app.list_values( 'next' ).length, 2 )
+			$mol_assert_equal( app.list_rows( 'next' ).length, 3 )
+			app.List_field( 'next/1/to' ).value( 'Ждёт' )
+			app.List_drop( 'next/0' ).click( null )
+			$mol_assert_equal( app.list_values( 'next' ), [ { to: 'Ждёт', when: '' } ] )
+		},
+
+		'inspector writes into the nested node, not into its neighbour'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_nest )
+			const titles = app.Scene().nodes().map( node => node.title() )
+			$mol_assert_equal( titles, [ 'Сторож', 'Ходит', 'Ждёт', 'Метка' ] )
+			app.selected( titles.indexOf( 'Ходит' ) )
+			app.Vec_num( 'pos_0' ).value( 5 )
+			const nodes = app.Scene().nodes()
+			const walk = nodes.find( node => node.title() === 'Ходит' )!
+			$mol_assert_equal( walk.pos()[ 0 ], 5 )
+			$mol_assert_equal( nodes.find( node => node.title() === 'Метка' )!.pos()[ 0 ], 2 )
+			walk.pos([ 7, 0, 0 ])
+			$mol_assert_equal( walk.pos()[ 0 ], 7 )
+		},
+
+		'inspector signs a field shared by prefab instances'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_prefab )
+			const titles = app.Scene().nodes().map( node => node.title() )
+			app.selected( titles.indexOf( 'Ствол' ) )
+			$mol_assert_equal( app.doc_path(), 'Enemy_1/Gun' )
+			$mol_assert_equal( app.field_bids( 'pos' ), [ 'часть префаба, затронет 2 инстанса' ] )
+			app.selected( titles.indexOf( 'Вожак' ) )
+			$mol_assert_equal( app.field_bids( 'name' ), [] )
+		},
+
+		'detach button rebinds one instance and leaves the prefab compiling'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_prefab )
+			app.selected( app.Scene().nodes().map( node => node.title() ).indexOf( 'Ствол' ) )
+			$mol_assert_ok( app.form_foot().includes( app.Detach() ) )
+			app.Detach().click( null )
+			$mol_assert_equal( app.doc_path(), 'Enemy_1/Enemy_1_Gun' )
+			$mol_assert_not( app.form_foot().includes( app.Detach() ) )
+			app.Vec_num( 'pos_0' ).value( 9 )
+			const nodes = app.Scene().nodes()
+			$mol_assert_equal( nodes.map( node => node.title() ), [ 'Страж', 'Ствол', 'Вожак', 'Ствол' ] )
+			$mol_assert_equal( nodes.filter( node => node.title() === 'Ствол' ).map( node => node.pos()[ 0 ] ), [ 9, 0 ] )
+		},
+
+		'edited source comes back to a freshly opened editor'( $ ) {
+			const key = 'bog_gamengine_studio_source_test_keep'
+			const make = ()=> {
+				const app = $$.$bog_gamengine_studio.make({ $ })
+				app.source_key = ()=> key
+				return app
+			}
+			try {
+				const first = make()
+				const edited = first.source().replace( '\\Герой', '\\Крошка' )
+				first.source( edited )
+				$mol_assert_equal( make().source(), edited )
+			} finally {
+				$.$mol_state_local.value( key, null )
+			}
+		},
+
+		'node put by the mouse is still there after a reload, without asking to save'( $ ) {
+			const key = 'bog_gamengine_studio_source_test_place'
+			const make = ()=> {
+				const app = $$.$bog_gamengine_studio.make({ $ })
+				app.source_key = ()=> key
+				return app
+			}
+			try {
+				const first = make()
+				first.place( 'bog/gamengine/demo/atlas/floor.png', [ 1, -2, 0 ] )
+				$mol_assert_ok( row_of( first, 'floor' ) >= 0 )
+				const again = make()
+				$mol_assert_ok( row_of( again, 'floor' ) >= 0 )
+				$mol_assert_equal( scene_named( again, 'floor' ).pos()[ 1 ], -2 )
+			} finally {
+				$.$mol_state_local.value( key, null )
+			}
+		},
+
+		'editor keeps working and tells the truth when the browser refuses to save'( $ ) {
+			class $mol_state_local_locked< Value > extends $mol_state_local< Value > {
+				@ $mol_mem_key
+				static value< Value >( key: string, next?: Value | null ): Value | null {
+					return $mol_fail( new Error( 'The operation is insecure' ) )
+				}
+			}
+			$.$mol_state_local = $mol_state_local_locked
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			const edited = app.source().replace( '\\Герой', '\\Крошка' )
+			app.source( edited )
+			$mol_assert_equal( app.source(), edited )
+			$mol_assert_ok( row_of( app, 'Крошка' ) >= 0 )
+			$mol_assert_ok( app.kept_stat().startsWith( 'Браузер не сохраняет, вынимайте файлом' ) )
+			$mol_assert_ok( app.source_uri().length > 0 )
+		},
+
+		'footer says the work lies in the browser while saving goes through'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source_key = ()=> 'bog_gamengine_studio_source_test_stat'
+			app.source( app.source() )
+			$mol_assert_ok( app.kept_stat().startsWith( 'Браузер этой машины' ) )
+		},
+
+		'editor without kept source starts from the sample'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source_key = ()=> 'bog_gamengine_studio_source_test_empty'
+			$mol_assert_equal( app.source(), $bog_gamengine_studio_sample )
+		},
+
+		'source uri carries the document and asks to be saved as a tree file'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source_key = ()=> 'bog_gamengine_studio_source_test_uri'
+			const uri = app.source_uri()
+			$mol_assert_ok( uri.startsWith( 'data:text/plain;charset=utf-8,' ) )
+			$mol_assert_equal( decodeURIComponent( uri.slice( 'data:text/plain;charset=utf-8,'.length ) ), app.source() )
+			$mol_assert_equal( app.Save().file_name(), 'scene.view.tree' )
+		},
+
+		'name typed into the inspector renames the node in the tree and in the source'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			pick( app, 'Герой' )
+			app.Name_string().value( 'Крошка' )
+			$mol_assert_equal( app.row_title( row_of( app, 'Крошка' ) ), 'Крошка' )
+			$mol_assert_ok( app.source().includes( 'name \\Крошка\n' ) )
+			$mol_assert_not( app.source().includes( 'name \\Герой\n' ) )
+		},
+
+		'cleared name falls the node back to its declaration name'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			pick( app, 'Герой' )
+			app.Name_string().value( '' )
+			$mol_assert_equal( app.node_name(), '' )
+			$mol_assert_not( app.source().includes( 'name \\Герой' ) )
+		},
+
+		'name hint shows what the node is called now'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.selected( row_of_name( app, 'Coin' ) )
+			$mol_assert_equal( app.node_hint(), 'Монета' )
+		},
+
+		'form has no name field while nothing is selected'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			$mol_assert_equal( app.fields().length, 0 )
+			pick( app, 'Герой' )
+			$mol_assert_equal( app.fields()[ 0 ], app.Name_field() )
+		},
+
+		'delete button takes the selected node out of the scene and drops the selection'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.selected( row_of_name( app, 'Coin' ) )
+			app.Node_drop().click( null )
+			$mol_assert_ok( row_of( app, 'Монета' ) < 0 )
+			$mol_assert_equal( app.selected(), null )
+			$mol_assert_not( app.source().includes( 'Монета' ) )
+		},
+
+		'duplicate button copies the node and selects the copy'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			const at = row_of_name( app, 'Coin' )
+			app.selected( at )
+			app.Node_dup().click( null )
+			$mol_assert_equal( app.Doc().nodes().filter( row => row.title === 'Монета' ).length, 2 )
+			$mol_assert_ok( app.selected() !== at )
+			$mol_assert_equal( app.row_title( app.selected() ?? -1 ), 'Монета' )
+		},
+
+		'delete leaves the atlas and the map of the scene alone'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.selected( row_of_name( app, 'Coin' ) )
+			app.Node_drop().click( null )
+			$mol_assert_ok( app.source().includes( 'Atlas $bog_gamengine_atlas' ) )
+			$mol_assert_ok( app.source().includes( '\\######' ) )
+			$mol_assert_equal( Object.keys( app.palette() ), [ '#', '.' ] )
+		},
+
+		'inspector shows no delete and no duplicate while nothing is selected'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			$mol_assert_equal( app.form_foot().length, 0 )
+			pick( app, 'Герой' )
+			$mol_assert_equal( app.form_foot(), [ app.Node_dup(), app.Node_drop() ] )
+		},
+
+		'delete key drops the selected node'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.selected( row_of_name( app, 'Coin' ) )
+			app.Delete_key().keydown({ keyCode: 46, target: { tagName: 'BUTTON' } } as unknown as KeyboardEvent )
+			$mol_assert_ok( row_of( app, 'Монета' ) < 0 )
+			$mol_assert_not( app.source().includes( 'Монета' ) )
+		},
+
+		'delete key typed into a field leaves the node alone'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.selected( row_of_name( app, 'Coin' ) )
+			for( const tag of [ 'INPUT', 'TEXTAREA' ] ) {
+				app.Delete_key().keydown({ keyCode: 46, target: { tagName: tag } } as unknown as KeyboardEvent )
+			}
+			$mol_assert_ok( row_of( app, 'Монета' ) >= 0 )
+			$mol_assert_ok( app.source().includes( 'Монета' ) )
+		},
+
+		'delete key does nothing while the game is playing'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.selected( row_of_name( app, 'Coin' ) )
+			app.play()
+			app.Delete_key().keydown({ keyCode: 46, target: { tagName: 'BUTTON' } } as unknown as KeyboardEvent )
+			$mol_assert_ok( row_of( app, 'Монета' ) >= 0 )
+		},
+
+		'undo returns the document to the state before the edit, redo brings it back'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			const before = app.source()
+			pick( app, 'Герой' )
+			app.Vec_num( 'pos_0' ).value( 7 )
+			$mol_assert_ok( app.source().includes( '\t\t\tpos / 7 ' ) )
+			app.undo()
+			$mol_assert_equal( app.source(), before )
+			$mol_assert_ok( row_of( app, 'Герой' ) >= 0 )
+			app.redo()
+			$mol_assert_ok( app.source().includes( '\t\t\tpos / 7 ' ) )
+		},
+
+		'undo takes back a deleted node'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.selected( row_of_name( app, 'Coin' ) )
+			app.Node_drop().click( null )
+			$mol_assert_ok( row_of( app, 'Монета' ) < 0 )
+			app.undo()
+			$mol_assert_ok( row_of( app, 'Монета' ) >= 0 )
+		},
+
+		'two edits within the pause give one step of history'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			const before = app.source()
+			app.source( before.replace( '\\Герой', '\\Первый' ) )
+			app.source( app.source().replace( '\\Первый', '\\Второй' ) )
+			$mol_assert_equal( app.history.length, 1 )
+			app.undo()
+			$mol_assert_equal( app.source(), before )
+		},
+
+		'pointer gesture holds the history window open until the pointer is up'( $ ) {
+			const app = canvas_app( $ )
+			app.pointer_down( press_at( 5, 5 ) )
+			$mol_assert_equal( app.history_gesture, true )
+			app.pointer_up( press_at( 5, 5 ) )
+			$mol_assert_equal( app.history_gesture, false )
+		},
+
+		'one undo takes the whole gesture, not a frame of it'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			pick( app, 'Герой' )
+			const before = app.source()
+			app.history_gesture = true
+			app.history_taken = false
+			for( const x of [ 3, 4, 5 ] ) app.write( 'pos', [ x, 0, 0 ] )
+			app.history_gesture = false
+			$mol_assert_ok( app.source().includes( 'pos / 5 0 0' ) )
+			$mol_assert_equal( app.history.length, 1 )
+			app.undo()
+			$mol_assert_equal( app.source(), before )
+		},
+
+		'a held session of many clicks gives one step of history'( $ ) {
+			const app = canvas_app( $ )
+			pick( app, 'Герой' )
+			const before = app.source()
+			app.history_hold( true )
+			for( const x of [ 3, 4, 5 ] ) {
+				app.pointer_down( press_at( 5, 5 ) )
+				app.pointer_up( press_at( 5, 5 ) )
+				pick( app, 'Герой' )
+				app.write( 'pos', [ x, 0, 0 ] )
+			}
+			app.history_hold( false )
+			$mol_assert_ok( app.source().includes( 'pos / 5 0 0' ) )
+			$mol_assert_equal( app.history.length, 1 )
+			app.undo()
+			$mol_assert_equal( app.source(), before )
+		},
+
+		'undo button is dark while there is nothing to undo'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			$mol_assert_equal( app.can_undo(), false )
+			$mol_assert_equal( app.can_redo(), false )
+			$mol_assert_equal( app.undo_stat(), 'Отмена: отменять нечего' )
+			pick( app, 'Герой' )
+			app.Vec_num( 'pos_0' ).value( 7 )
+			$mol_assert_equal( app.can_undo(), true )
+			$mol_assert_equal( app.undo_stat(), 'Отмена: 1 шаг, до перезагрузки' )
+			app.undo()
+			$mol_assert_equal( app.can_undo(), false )
+			$mol_assert_equal( app.can_redo(), true )
+		},
+
+		'history forgets the oldest step when it is full'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.history_depth = ()=> 2
+			pick( app, 'Герой' )
+			for( const x of [ 1, 2, 3, 4 ] ) {
+				app.history_at = 0
+				app.Vec_num( 'pos_0' ).value( x )
+			}
+			$mol_assert_equal( app.history.length, 2 )
+			$mol_assert_equal( app.undo_stat(), 'Отмена: 2 шага, до перезагрузки' )
+		},
+
+		'shared document leaves undo to the base'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			pick( app, 'Герой' )
+			app.Vec_num( 'pos_0' ).value( 7 )
+			app.doc_land = ()=> ( {} as unknown as $bog_gamengine_studio_doc_land )
+			$mol_assert_equal( app.can_undo(), false )
+			$mol_assert_equal( app.undo_stat(), 'Отмена у Базы: документ общий' )
+		},
+
+		'ctrl z typed into a field leaves the document to the browser'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			pick( app, 'Герой' )
+			app.Vec_num( 'pos_0' ).value( 7 )
+			const typed = app.source()
+			app.Undo_key().keydown({ keyCode: 90, ctrlKey: true, target: { tagName: 'TEXTAREA' } } as unknown as KeyboardEvent )
+			$mol_assert_equal( app.source(), typed )
+			app.Undo_key().keydown({ keyCode: 90, ctrlKey: true, target: { tagName: 'BUTTON' } } as unknown as KeyboardEvent )
+			$mol_assert_not( app.source().includes( 'pos / 7 0 0' ) )
+		},
+
+		'gizmo hit on the x arrow'( $ ) {
+			$mol_assert_equal( $bog_gamengine_studio_gizmo_hit( 0.7, 0.05, 1 ), 'x' )
+		},
+
+		'gizmo hit on the y arrow'( $ ) {
+			$mol_assert_equal( $bog_gamengine_studio_gizmo_hit( -0.05, 0.9, 1 ), 'y' )
+		},
+
+		'gizmo hit on the box'( $ ) {
+			$mol_assert_equal( $bog_gamengine_studio_gizmo_hit( 0.1, -0.1, 1 ), 'xy' )
+		},
+
+		'gizmo miss'( $ ) {
+			$mol_assert_equal( $bog_gamengine_studio_gizmo_hit( 0.5, 0.5, 1 ), null )
+		},
+
+		'wheel up zooms in, wheel down zooms out, line mode counts as pixels'( $ ) {
+			$mol_assert_ok( $bog_gamengine_studio_zoom_factor( -100 ) > 1 )
+			$mol_assert_ok( $bog_gamengine_studio_zoom_factor( 100 ) < 1 )
+			$mol_assert_equal( $bog_gamengine_studio_zoom_factor( -3, 1 ), $bog_gamengine_studio_zoom_factor( -48 ) )
+		},
+
+		'wheel keeps the world point under the cursor'( $ ) {
+			const app = canvas_app( $ )
+			const before = spot_at( app, 500, 700 )
+			app.wheel( wheel_at( -240, 500, 700 ) )
+			const after = spot_at( app, 500, 700 )
+			$mol_assert_ok( app.Cam().zoom() > 1 )
+			$mol_assert_ok( Math.abs( after[ 0 ] - before[ 0 ] ) < 1e-4 )
+			$mol_assert_ok( Math.abs( after[ 1 ] - before[ 1 ] ) < 1e-4 )
+		},
+
+		'zoom stops at the camera limits'( $ ) {
+			const app = canvas_app( $ )
+			for( let i = 0; i < 40; ++ i ) app.wheel( wheel_at( -400, 300, 400 ) )
+			$mol_assert_equal( app.Cam().zoom(), app.Cam().zoom_max() )
+			for( let i = 0; i < 80; ++ i ) app.wheel( wheel_at( 400, 300, 400 ) )
+			$mol_assert_equal( app.Cam().zoom(), app.Cam().zoom_min() )
+		},
+
+		'middle button drag pans the camera by the grabbed distance'( $ ) {
+			const app = canvas_app( $ )
+			const from = spot_at( app, 300, 400 )
+			const to = spot_at( app, 400, 500 )
+			app.pointer_down( press_at( 300, 400, 1 ) )
+			app.pointer_move( press_at( 400, 500, 1 ) )
+			app.pointer_up( press_at( 400, 500, 1 ) )
+			const pos = app.Cam().pos()
+			$mol_assert_ok( Math.abs( pos[ 0 ] - ( from[ 0 ] - to[ 0 ] ) ) < 1e-4 )
+			$mol_assert_ok( Math.abs( pos[ 1 ] - ( from[ 1 ] - to[ 1 ] ) ) < 1e-4 )
+		},
+
+		'drag on empty space pans, drag started on a node does not'( $ ) {
+			const app = canvas_app( $ )
+			app.pointer_down( press_at( 10, 10 ) )
+			app.pointer_move( press_at( 120, 120 ) )
+			app.pointer_up( press_at( 120, 120 ) )
+			const panned = app.Cam().pos()[ 0 ]
+			$mol_assert_ok( panned !== 0 )
+			const node = hero( app )
+			const seen = app.Point().screen( new Float32Array( 3 ), node.pos() )
+			app.pointer_down( press_at( seen[ 0 ], seen[ 1 ] ) )
+			app.pointer_move( press_at( seen[ 0 ] + 60, seen[ 1 ] + 60 ) )
+			app.pointer_up( press_at( seen[ 0 ] + 60, seen[ 1 ] + 60 ) )
+			$mol_assert_equal( app.Cam().pos()[ 0 ], panned )
+		},
+
+		'fit brings every node of the scene into the view'( $ ) {
+			const app = canvas_app( $ )
+			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 40, -30, 0 ] )
+			app.fit()
+			const bounds = $bog_gamengine_studio_bounds( app.Scene().nodes(), new Float32Array( 4 ) )!
+			const cam = app.Cam()
+			const half = cam.height() / cam.zoom() / 2
+			const aspect = app.draw_width() / app.draw_height()
+			const pos = cam.pos()
+			$mol_assert_ok( bounds[ 0 ] >= pos[ 0 ] - half * aspect )
+			$mol_assert_ok( bounds[ 2 ] <= pos[ 0 ] + half * aspect )
+			$mol_assert_ok( bounds[ 1 ] >= pos[ 1 ] - half )
+			$mol_assert_ok( bounds[ 3 ] <= pos[ 1 ] + half )
+		},
+
+		'grid snapping rounds to the step, and without it to a thousandth'( $ ) {
+			$mol_assert_equal( $bog_gamengine_studio_grid_value( -4.500001, 0.5 ), -4.5 )
+			$mol_assert_equal( $bog_gamengine_studio_grid_value( 5.3, 0.5 ), 5.5 )
+			$mol_assert_equal( $bog_gamengine_studio_grid_value( 5.3000001907, 0 ), 5.3 )
+		},
+
+		'click puts the node on the grid without a tail of digits'( $ ) {
+			const app = canvas_app( $ )
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			app.pointer_down( press_at( 293, 517 ) )
+			const pos = app.Scene().nodes()[ app.Scene().nodes().length - 1 ].pos()
+			$mol_assert_equal( pos[ 0 ], app.grid_value( pos[ 0 ] ) )
+			$mol_assert_equal( pos[ 1 ], app.grid_value( pos[ 1 ] ) )
+			$mol_assert_not( /\d\.\d{4,}/.test( app.source() ) )
+		},
+
+		'click without snapping keeps the point but drops the float tail'( $ ) {
+			const app = canvas_app( $ )
+			app.Grid().checked( false )
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			const at = spot_at( app, 293, 517 )
+			app.pointer_down( press_at( 293, 517 ) )
+			const pos = app.Scene().nodes()[ app.Scene().nodes().length - 1 ].pos()
+			$mol_assert_ok( Math.abs( pos[ 0 ] - at[ 0 ] ) < 1e-3 )
+			$mol_assert_not( /\d\.\d{4,}/.test( app.source() ) )
+		},
+
+		'gizmo drag writes a snapped position'( $ ) {
+			const app = canvas_app( $ )
+			pick( app, 'Герой' )
+			const node = hero( app )
+			const was = node.pos()[ 0 ]
+			const seen = app.Point().screen( new Float32Array( 3 ), node.pos() )
+			app.pointer_down( press_at( seen[ 0 ], seen[ 1 ] ) )
+			app.pointer_move( press_at( seen[ 0 ] + 97, seen[ 1 ] - 53 ) )
+			app.pointer_up( press_at( seen[ 0 ] + 97, seen[ 1 ] - 53 ) )
+			const pos = hero( app ).pos()
+			$mol_assert_ok( pos[ 0 ] !== was )
+			$mol_assert_equal( pos[ 0 ], app.grid_value( pos[ 0 ] ) )
+			$mol_assert_not( /\d\.\d{4,}/.test( app.source() ) )
+		},
+
+		'taking the brush drops the picked asset instead of losing the stroke'( $ ) {
+			const app = canvas_app( $ )
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			$mol_assert_ok( app.placing() )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			$mol_assert_not( app.placing() )
+			$mol_assert_not( app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked() )
+			$mol_assert_ok( app.brushing() )
+			const before = app.node_rows().length
+			app.brush_down([ 1, 1 ])
+			app.brush_up([ 1, 1 ])
+			$mol_assert_equal( app.Doc().map()[ 1 ][ 1 ], '#' )
+			$mol_assert_equal( app.node_rows().length, before )
+		},
+
+		'taking an asset drops the brush instead of painting a cell'( $ ) {
+			const app = canvas_app( $ )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			$mol_assert_ok( app.brushing() )
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			$mol_assert_not( app.brushing() )
+			$mol_assert_equal( app.Tools().value(), '' )
+			$mol_assert_not( app.Tile( '#' ).checked() )
+			const before = app.node_rows().length
+			const map_before = app.Doc().map().map( row => row.join( '' ) ).join( '\n' )
+			app.pointer_down( press_at( 200, 300 ) )
+			$mol_assert_equal( app.node_rows().length, before + 1 )
+			$mol_assert_equal( app.Doc().map().map( row => row.join( '' ) ).join( '\n' ), map_before )
+		},
+
+		'picked class of the palette drops the brush too'( $ ) {
+			const app = canvas_app( $ )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			app.Kit_row( 'walker' ).checked( true )
+			$mol_assert_not( app.brushing() )
+			$mol_assert_equal( app.kit(), 'walker' )
+		},
+
+		'escape drops the tile under the brush as well'( $ ) {
+			const app = canvas_app( $ )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			app.tool_drop()
+			$mol_assert_equal( app.tile_char(), '' )
+			$mol_assert_not( app.Tile( '#' ).checked() )
+		},
+
+		'picked asset stays picked and puts a copy on every click'( $ ) {
+			const app = canvas_app( $ )
+			const before = app.node_rows().length
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			app.pointer_down( press_at( 200, 300 ) )
+			$mol_assert_ok( app.placing() )
+			app.pointer_down( press_at( 260, 360 ) )
+			app.pointer_down( press_at( 320, 420 ) )
+			$mol_assert_equal( app.node_rows().length, before + 3 )
+			$mol_assert_ok( app.placing() )
+		},
+
+		'escape drops both the tile tool and the picked asset'( $ ) {
+			const app = canvas_app( $ )
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			app.Tile( '#' ).checked( true )
+			app.tool( 'cell' )
+			app.tool_drop()
+			$mol_assert_equal( app.tool(), '' )
+			$mol_assert_not( app.placing() )
+		},
+
+		'after fit every node can be reached by the mouse inside the canvas'( $ ) {
+			const app = canvas_app( $ )
+			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 40, -30, 0 ] )
+			app.fit()
+			const seen = new Float32Array( 3 )
+			for( const node of app.Scene().nodes() ) {
+				app.Point().screen( seen, node.pos() )
+				$mol_assert_ok( seen[ 0 ] >= 0 && seen[ 0 ] <= app.draw_width() )
+				$mol_assert_ok( seen[ 1 ] >= 0 && seen[ 1 ] <= app.draw_height() )
+			}
+		},
+
+		'fit shows the whole tile map of a scene made of tiles alone'( $ ) {
+			const app = canvas_app( $ )
+			app.source( $bog_gamengine_studio_sample_tiles )
+			app.fit()
+			const rows = app.tile_grid()!.rows()
+			const cam = app.Cam()
+			const half = cam.height() / cam.zoom() / 2
+			const aspect = app.draw_width() / app.draw_height()
+			const pos = cam.pos()
+			$mol_assert_ok( cam.zoom() !== 1 )
+			$mol_assert_ok( pos[ 0 ] - half * aspect <= 0 && pos[ 0 ] + half * aspect >= rows[ 0 ].length )
+			$mol_assert_ok( pos[ 1 ] - half <= - rows.length && pos[ 1 ] + half >= 0 )
+		},
+
+		'picked asset drops the picked class of the palette'( $ ) {
+			const app = canvas_app( $ )
+			app.Kit_row( 'walker' ).checked( true )
+			$mol_assert_equal( app.kit(), 'walker' )
+			app.Asset_row( 'bog/gamengine/demo/atlas/floor.png' ).checked( true )
+			$mol_assert_equal( app.kit(), null )
+			$mol_assert_ok( app.placing() )
+		},
+
+		'export links hand out the module the document turns into'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			$mol_assert_equal( app.klass(), '$bog_gamengine_studio_sample' )
+			$mol_assert_equal( app.module_tree_name(), 'sample.view.tree' )
+			$mol_assert_equal( app.module_ts_name(), 'sample.view.ts' )
+			const made = app.module()!
+			$mol_assert_ok( made.tree.includes( 'pos? <=> Hero_pos? Float32Array' ) )
+			$mol_assert_ok( made.ts.includes( 'Hero_pos( next?: Float32Array ) {' ) )
+			$mol_assert_not( /^\t+pos \/ /m.test( made.tree ) )
+			$mol_assert_equal( decodeURIComponent( app.module_tree_uri().replace( /^data:[^,]*,/, '' ) ), made.tree )
+			$mol_assert_equal( decodeURIComponent( app.module_ts_uri().replace( /^data:[^,]*,/, '' ) ), made.ts )
+		},
+
+		'export names follow the class typed by hand and stop on a bad one'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.Klass().value( '$bog_myapp_level' )
+			$mol_assert_equal( app.module_tree_name(), 'level.view.tree' )
+			$mol_assert_ok( app.module()!.tree.split( '\n' )[ 0 ].startsWith( '$bog_myapp_level $' ) )
+			$mol_assert_ok( app.module()!.ts.includes( 'export class $bog_myapp_level extends $.$bog_myapp_level {' ) )
+			app.Klass().value( 'level' )
+			$mol_assert_equal( app.module(), null )
+			$mol_assert_equal( app.module_tree_uri(), '' )
+		},
+
+		'fit of a wide map zooms out, fit of one sprite zooms in'( $ ) {
+			const wide = canvas_app( $ )
+			wide.fit()
+			const first = wide.Cam().zoom()
+			wide.place( 'bog/gamengine/demo/atlas/floor.png', [ 40, -30, 0 ] )
+			wide.fit()
+			$mol_assert_ok( wide.Cam().zoom() < first )
+		},
+
+	})
+
+}

@@ -30,6 +30,7 @@ $bog_gamengine_demo $mol_book2_catalog
 		jumper <= Jumper $bog_gamengine_demo_jumper
 		shooter <= Shooter $bog_gamengine_demo_shooter
 		legion <= Legion $bog_gamengine_demo_legion
+		studio <= Studio $bog_gamengine_studio
 	Clock $bog_gamengine_clock
 		paused? => paused?
 	Scene $bog_gamengine_scene
