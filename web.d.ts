@@ -4756,6 +4756,7 @@ declare namespace $ {
         step(dt: number): void;
         step_ms(): number;
         step_world(dt: number): void;
+        step_time(dt: number): void;
         substep(dt: number): void;
         bounds(): void;
         bounds_of(i: number): void;

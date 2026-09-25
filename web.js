@@ -11556,6 +11556,8 @@ var $;
             return size ? sum / size : 0;
         }
         step_world(dt) {
+            if (dt === 0)
+                return;
             const bodies = this.bodies();
             const tile = this.tile();
             const gravity = this.gravity();
@@ -14524,6 +14526,18 @@ var $;
         }
         step_world(dt) {
             this.steps_done = 0;
+            if (dt !== 0)
+                this.step_time(dt);
+            const count = this.count;
+            const flags = this.flags, rot_view = this.rot_view, pos_view = this.pos_view, trans_view = this.trans_view;
+            const sleep = $bog_gamengine_phys3.flag_sleep;
+            for (let i = 0; i < count; ++i) {
+                if (flags[i] & sleep)
+                    continue;
+                $bog_gamengine_vec_quat_to_mat4(trans_view[i], rot_view[i], pos_view[i], this.scale_of(i));
+            }
+        }
+        step_time(dt) {
             const timestep = this.timestep;
             let pending = this.pending + dt;
             while (pending >= timestep - 1e-9 && this.steps_done < this.max_steps) {
@@ -14534,14 +14548,6 @@ var $;
             if (pending < 0)
                 pending = 0;
             this.pending = pending < timestep ? pending : timestep;
-            const count = this.count;
-            const flags = this.flags, rot_view = this.rot_view, pos_view = this.pos_view, trans_view = this.trans_view;
-            const sleep = $bog_gamengine_phys3.flag_sleep;
-            for (let i = 0; i < count; ++i) {
-                if (flags[i] & sleep)
-                    continue;
-                $bog_gamengine_vec_quat_to_mat4(trans_view[i], rot_view[i], pos_view[i], this.scale_of(i));
-            }
         }
         substep(dt) {
             const count = this.count;

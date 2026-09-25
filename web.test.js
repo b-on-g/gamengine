@@ -4560,6 +4560,21 @@ var $;
             $mol_assert_equal(ghost.hits, [mover]);
             $mol_assert_equal(mover.hits, [ghost]);
         },
+        'body inside tile wall stays put while time stands still and moves out once it runs'() {
+            const body = new Probe;
+            body.pos(new Float32Array([0.5, -0.5, 0]));
+            const tile = new $bog_gamengine_phys_tile;
+            tile.map(map);
+            const phys = new $bog_gamengine_phys;
+            phys.tile(tile);
+            phys.bodies([body]);
+            phys.step(0);
+            $mol_assert_equal(body.pos()[0], 0.5);
+            $mol_assert_equal(body.pos()[1], -0.5);
+            $mol_assert_equal(body.hits, []);
+            phys.step(0.1);
+            $mol_assert_ok(body.pos()[0] !== 0.5 || body.pos()[1] !== -0.5);
+        },
         'ghost inside tile wall is not pushed out'() {
             const ghost = new Probe;
             ghost.ghost(true);
@@ -4936,15 +4951,24 @@ var $;
             for (let n = 0; n < 6; ++n)
                 $mol_assert_ok(Math.abs(one.vel[n] - six.vel[n]) < 1e-6);
         },
-        'step of 1 makes at most four substeps and drops the debt'() {
+        'step of 1 makes at most four substeps and keeps the debt for the next running step'() {
             const world = new $bog_gamengine_phys3;
             box(world, 1, 0, 0, 0);
             world.step(1);
             $mol_assert_equal(world.steps_done, 4);
             world.step(0);
-            $mol_assert_equal(world.steps_done, 1);
-            world.step(0);
             $mol_assert_equal(world.steps_done, 0);
+            world.step(1 / 60);
+            $mol_assert_equal(world.steps_done, 2);
+        },
+        'step of 0 moves nothing even right after a frame that spent all substeps'() {
+            const world = new $bog_gamengine_phys3;
+            world.gravity(new Float32Array([0, -10, 0]));
+            const body = box(world, 1, 0, 5, 0);
+            world.step(1);
+            const was = world.pos[body * 3 + 1];
+            world.step(0);
+            $mol_assert_equal(world.pos[body * 3 + 1], was);
         },
         'step_ms is zero before the first step and a time after it'() {
             const world = new $bog_gamengine_phys3;
