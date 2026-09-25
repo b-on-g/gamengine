@@ -79,8 +79,20 @@ namespace $ {
 	$mol_test({
 
 		'play with D held moves the hero right'( $ ) {
-			const app = played( $ )
-			$mol_assert_ok( hero( app ).pos()[ 0 ] > -2 )
+			$.$mol_state_time = $bog_gamestudio_app_time_mock
+			const app = $$.$bog_gamestudio_app.make({ $ })
+			pick( app, 'Герой' )
+			app.write( 'pos', [ 1.5, -1.5, 0 ] )
+			$bog_gamestudio_app_time_mock.stamp( 0 )
+			app.Scene().step()
+			app.play()
+			app.Key().keys().D( true )
+			for( let tick = 1; tick <= 3; ++ tick ) {
+				$bog_gamestudio_app_time_mock.stamp( tick * 16 )
+				app.Scene().step()
+			}
+			$mol_assert_ok( hero( app ).pos()[ 0 ] > 1.5 )
+			$mol_assert_equal( hero( app ).pos()[ 1 ], -1.5 )
 		},
 
 		'stop returns the hero to where the play started'( $ ) {
@@ -208,13 +220,16 @@ namespace $ {
 		'pos typed into the inspector rewrites the source'( $ ) {
 			const app = $$.$bog_gamestudio_app.make({ $ })
 			pick( app, 'Герой' )
+			app.write( 'pos', [ 0, 0, 0 ] )
 			app.Vec_num( 'pos_0' ).value( 5 )
 			$mol_assert_ok( app.source().includes( '\t\t\tpos / 5 0 0\n' ) )
 		},
 
 		'source typed into the editor moves the node'( $ ) {
 			const app = $$.$bog_gamestudio_app.make({ $ })
-			app.source( app.source().replace( 'pos / -2 0 0', 'pos / 7 0 0' ) )
+			pick( app, 'Герой' )
+			app.write( 'pos', [ 0, 0, 0 ] )
+			app.source( app.source().replace( '\t\t\tpos / 0 0 0\n', '\t\t\tpos / 7 0 0\n' ) )
 			$mol_assert_equal( hero( app ).pos()[ 0 ], 7 )
 		},
 
@@ -587,12 +602,12 @@ namespace $ {
 			const before = app.source()
 			pick( app, 'Герой' )
 			app.Vec_num( 'pos_0' ).value( 7 )
-			$mol_assert_ok( app.source().includes( 'pos / 7 0 0' ) )
+			$mol_assert_ok( app.source().includes( '\t\t\tpos / 7 ' ) )
 			app.undo()
 			$mol_assert_equal( app.source(), before )
 			$mol_assert_ok( row_of( app, 'Герой' ) >= 0 )
 			app.redo()
-			$mol_assert_ok( app.source().includes( 'pos / 7 0 0' ) )
+			$mol_assert_ok( app.source().includes( '\t\t\tpos / 7 ' ) )
 		},
 
 		'undo takes back a deleted node'( $ ) {

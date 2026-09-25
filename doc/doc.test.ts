@@ -28,23 +28,26 @@ namespace $ {
 
 		'set changes exactly one line of the source'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
+			doc.set( 'Hero', 'pos', [ 1, 2, 0 ] )
 			const before = doc.source().split( '\n' )
 			doc.set( 'Hero', 'pos', [ 3, 0, 0 ] )
 			const after = doc.source().split( '\n' )
 			$mol_assert_equal( after.length, before.length )
 			const changed = before.filter( ( line, index )=> line !== after[ index ] )
-			$mol_assert_equal( changed, [ '\t\t\tpos / -2 0 0' ] )
+			$mol_assert_equal( changed, [ '\t\t\tpos / 1 2 0' ] )
 			$mol_assert_equal( after[ before.indexOf( changed[ 0 ] ) ], '\t\t\tpos / 3 0 0' )
 		},
 
 		'set adds a missing line to the node'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
+			doc.set( 'Wall', 'pos', [ 0, 0, 0 ] )
 			doc.set( 'Wall', 'flip_x', true )
 			$mol_assert_ok( doc.source().includes( '\t\t\tpos / 0 0 0\n\t\t\tflip_x true\n' ) )
 		},
 
 		'scene follows the document'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
+			doc.set( 'Hero', 'pos', [ -2, 0, 0 ] )
 			$mol_assert_equal( named( doc, 'Герой' ).pos()[ 0 ], -2 )
 			doc.set( 'Hero', 'pos', [ 3, 0, 0 ] )
 			$mol_assert_equal( named( doc, 'Герой' ).pos()[ 0 ], 3 )
@@ -183,6 +186,7 @@ namespace $ {
 
 		'paint changes exactly one char of exactly one source line'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
+			doc.set( 'Hero', 'pos', [ -2, 0, 0 ] )
 			const before = doc.source().split( '\n' )
 			doc.paint( 2, 1, '#' )
 			const after = doc.source().split( '\n' )
@@ -380,6 +384,7 @@ namespace $ {
 
 		'copy keeps every property of the node and lives on its own'( $ ) {
 			const doc = open( $, $bog_gamestudio_sample )
+			doc.set( 'Coin', 'pos', [ 2, 0, 0 ] )
 			const made = doc.dup( 'Coin' )
 			$mol_assert_equal( doc.node( made ).klass, '$bog_gamengine_sprite' )
 			const coins = ()=> doc.scene().nodes().filter( node => node.title() === 'Монета' ).map( node => node.pos()[ 0 ] )
