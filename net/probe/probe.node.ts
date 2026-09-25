@@ -4,23 +4,37 @@ namespace $ {
 
 	export const $bog_gamengine_net_probe_master = 'localhost:9090'
 
-	export const $bog_gamengine_net_probe_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0 && /land \\S{10,}/.test( document.body.innerText )`
+	export const $bog_gamengine_net_probe_me_seen = `/me [\\w-]{8} /.test( document.body.innerText )`
+
+	export const $bog_gamengine_net_probe_ready_wait = 60000
+
+	export const $bog_gamengine_net_probe_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0 && /land \\S{10,}/.test( document.body.innerText ) && ${ $bog_gamengine_net_probe_me_seen }`
 
 	export const $bog_gamengine_net_probe_ok = 'второе окно увидело движение первого'
 
 	export const $bog_gamengine_net_probe_no_master = 'мастер Базы на 9090 не слушает, проба пропущена'
 
-	export const $bog_gamengine_net_probe_alone_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0`
+	export const $bog_gamengine_net_probe_alone_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0 && ${ $bog_gamengine_net_probe_me_seen }`
 
 	export const $bog_gamengine_net_probe_state_script = `
 		return {
 			mol: typeof $ !== 'undefined',
 			canvas: document.querySelector( 'canvas' )?.width ?? -1,
 			land: /land \\S{10,}/.test( document.body.innerText ),
+			me: ${ $bog_gamengine_net_probe_me_seen },
 			text: document.body.innerText.slice( 0, 200 ),
 			errors: window.$bog_gamengine_net_probe_errors ?? null,
 		}
 	`
+
+	export type $bog_gamengine_net_probe_state = {
+		readonly mol: boolean
+		readonly canvas: number
+		readonly land: boolean
+		readonly me: boolean
+		readonly text: string
+		readonly errors: unknown
+	}
 
 	export const $bog_gamengine_net_probe_alone_ok = 'окно с мастером в адресе нарисовало стенд и увело героя вправо'
 
@@ -126,11 +140,17 @@ namespace $ {
 				await window.browser.open_page(
 					`${ page }#!master=${ $bog_gamengine_net_probe_master }`,
 					$bog_gamengine_net_probe_alone_ready,
-					60000,
+					$bog_gamengine_net_probe_ready_wait,
 				)
 			} catch( error ) {
-				const seen = await window.browser.evaluate( $bog_gamengine_net_probe_state_script, 15000 ).catch( () => 'страница не ответила' )
-				say( `стенд не вышел в готовность, состояние: ${ JSON.stringify( seen ) }` )
+				const seen = await window.browser.evaluate(
+					$bog_gamengine_net_probe_state_script, 15000,
+				).catch( () => null ) as $bog_gamengine_net_probe_state | null
+				say( `стенд не вышел в готовность, состояние: ${ JSON.stringify( seen ?? 'страница не ответила' ) }` )
+				if( seen && seen.canvas > 0 && !seen.me ) return $mol_fail( new Error(
+					`стенд нарисовался, но за ${ $bog_gamengine_net_probe_ready_wait } мс не назвал свою личность:`
+					+ ' сценарию нечего читать, и дело не в герое'
+				) )
 				return $mol_fail( error as Error )
 			}
 
@@ -144,7 +164,9 @@ namespace $ {
 
 			say( `${ Date.now() - started } мс, ${ JSON.stringify( head ) }, ${ JSON.stringify( moved ) }` )
 
-			if( !moved.start || !moved.moved ) return $mol_fail( new Error( 'окно не показало позицию героя' ) )
+			if( !head.me ) return $mol_fail( new Error( 'окно вышло в готовность, а личности в подвале нет' ) )
+			if( !moved.start ) return $mol_fail( new Error( 'подвал не назвал позицию героя ДО нажатия' ) )
+			if( !moved.moved ) return $mol_fail( new Error( 'подвал не назвал позицию героя ПОСЛЕ нажатия' ) )
 			if( !( moved.moved[ 0 ] > moved.start[ 0 ] ) ) return $mol_fail( new Error( 'герой не поехал вправо на D' ) )
 
 			return say( $bog_gamengine_net_probe_alone_ok )
@@ -209,7 +231,9 @@ namespace $ {
 				const seen = await watching as $bog_gamengine_net_probe_seen
 
 				const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify({ moved, seen }) }` ) )
-				if( !moved.start || !moved.moved || !( moved.moved[ 0 ] > moved.start[ 0 ] ) ) return fail( 'герой первого окна не сдвинулся вправо' )
+				if( !moved.start ) return fail( 'подвал первого окна не назвал позицию героя ДО нажатия' )
+				if( !moved.moved ) return fail( 'подвал первого окна не назвал позицию героя ПОСЛЕ нажатия' )
+				if( !( moved.moved[ 0 ] > moved.start[ 0 ] ) ) return fail( 'герой первого окна не сдвинулся вправо' )
 				if( seen.t1 < 0 ) return fail( 'второе окно не увидело сдвига за 5 с' )
 
 				if( round < 0 ) say( `прогрев: ${ seen.t1 - moved.t0 } мс, в замер не идёт` )
