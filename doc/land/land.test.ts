@@ -65,7 +65,7 @@ namespace $ {
 			$mol_after_mock_warp()
 			$mol_assert_ok( land.text().includes( 'pos / 3 0 0' ) )
 			$mol_assert_equal( doc.source(), land.text() )
-			$mol_assert_equal( doc.nodes()[ 0 ].props.pos.toString(), 'pos / 3 0 0\n' )
+			$mol_assert_equal( doc.node( 'Hero' ).props.pos.toString(), 'pos / 3 0 0\n' )
 		},
 
 		'presence is written once per rate interval and not more often'( $ ) {
