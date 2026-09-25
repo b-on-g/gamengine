@@ -17,6 +17,34 @@ namespace $ {
 			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_look_ok, $bog_gamengine_look_away ) )
 		},
 
+		'dark end of the jumper level is a witness, not a gate'() {
+			const it = $bog_gamengine_demo_look_of( 'jumper' )
+			const scene = it.scenes[ 0 ]
+			$mol_assert_ok( scene.witness!.includes( 'low' ) )
+			$mol_assert_equal( $bog_gamengine_look_drift(
+				scene.name,
+				it.base.gpu[ scene.name ],
+				it.base.soft[ scene.name ],
+			).length, 1 )
+			$mol_assert_equal( $bog_gamengine_look_drift(
+				scene.name,
+				it.base.gpu[ scene.name ],
+				it.base.soft[ scene.name ],
+				$bog_gamengine_look_tol,
+				scene.witness,
+			), [] )
+		},
+
+		'diff between the two recorded machines stays inside the envelope for every game'() {
+			for( const game of Object.keys( $bog_gamengine_demo_look_games ) ) {
+				const base = $bog_gamengine_demo_look_games[ game ].base
+				for( const name of Object.keys( base.soft ) ) {
+					const shifts = $bog_gamengine_look_shifts( game + '/' + name, base.gpu[ name ], base.soft[ name ] )
+					$mol_assert_equal( $bog_gamengine_look_refuse( shifts ), [] )
+				}
+			}
+		},
+
 		'every game of the demo has a signature of its own page'() {
 			const games = Object.keys( $bog_gamengine_demo_look_games )
 			$mol_assert_equal( games.length, new Set( games.map( game => $bog_gamengine_demo_look_of( game ).page ) ).size )

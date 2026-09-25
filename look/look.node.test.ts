@@ -126,6 +126,63 @@ namespace $ {
 			$mol_assert_not( other === $bog_gamengine_look_machine.soft )
 		},
 
+		'number named a witness is printed but no longer gates'() {
+			const now = $bog_gamengine_look_test_shot({ low: 40 })
+			$mol_assert_equal( $bog_gamengine_look_drift( 'test', now, $bog_gamengine_look_test_shot() ).length, 1 )
+			$mol_assert_equal( $bog_gamengine_look_drift( 'test', now, $bog_gamengine_look_test_shot(), $bog_gamengine_look_tol, [ 'low' ] ), [] )
+		},
+
+		'diff of the size of a renderer swap stays inside the envelope'() {
+			for( const name of Object.keys( $bog_gamengine_look_base.soft ) ) {
+				const shifts = $bog_gamengine_look_shifts(
+					name,
+					$bog_gamengine_look_base.gpu[ name ],
+					$bog_gamengine_look_base.soft[ name ],
+				)
+				$mol_assert_equal( $bog_gamengine_look_refuse( shifts ), [] )
+			}
+		},
+
+		'diff shaped like fading is refused even when every number is small'() {
+			const shifts = $bog_gamengine_look_shifts(
+				'test',
+				$bog_gamengine_look_test_shot({
+					median: 59, low: 19, high: 119,
+					spots: { floor: [ 99, 99, 99, 255 ] },
+				}),
+				$bog_gamengine_look_test_shot(),
+			)
+			$mol_assert_equal( shifts.length, 4 )
+			$mol_assert_equal( shifts.filter( one => one.gap > one.limit ).length, 0 )
+			const refuse = $bog_gamengine_look_refuse( shifts )
+			$mol_assert_equal( refuse.length, 1 )
+			$mol_assert_ok( refuse[ 0 ].includes( 'побледнения' ) )
+		},
+
+		'same count of numbers moved both ways is not fading'() {
+			const shifts = $bog_gamengine_look_shifts(
+				'test',
+				$bog_gamengine_look_test_shot({
+					median: 59, low: 19, high: 121,
+					spots: { floor: [ 101, 101, 101, 255 ] },
+				}),
+				$bog_gamengine_look_test_shot(),
+			)
+			$mol_assert_equal( shifts.length, 4 )
+			$mol_assert_equal( $bog_gamengine_look_refuse( shifts ), [] )
+		},
+
+		'single number past the envelope is refused on its own'() {
+			const shifts = $bog_gamengine_look_shifts(
+				'test',
+				$bog_gamengine_look_test_shot({ spots: { floor: [ 97, 100, 100, 255 ] } }),
+				$bog_gamengine_look_test_shot(),
+			)
+			const refuse = $bog_gamengine_look_refuse( shifts )
+			$mol_assert_equal( refuse.length, 1 )
+			$mol_assert_ok( refuse[ 0 ].includes( 'конверте окружения' ) )
+		},
+
 		'scene signature holds against the written one'() {
 			const out = $bog_probe_test( 'bog/gamengine/look/-/node.js', 'bog_gamengine_look_check' )
 			$mol_assert_ok( $bog_probe_done( out, $bog_gamengine_look_ok, $bog_gamengine_look_away ) )

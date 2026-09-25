@@ -24,6 +24,7 @@ namespace $ {
 		readonly mark?: string
 		readonly click?: string
 		readonly spots: $bog_gamengine_look_spots
+		readonly witness?: readonly string[]
 	}
 
 	export const $bog_gamengine_look_scenes: readonly $bog_gamengine_look_scene[] = [
@@ -155,31 +156,34 @@ namespace $ {
 		now: $bog_gamengine_look_shot,
 		base: $bog_gamengine_look_shot,
 		tol = $bog_gamengine_look_tol,
+		witness: readonly string[] = [],
 	) {
 
 		const out = [] as string[]
 
-		const level_off = ( name: string, fresh: number, kept: number )=> {
+		const level_off = ( name: string, prop: string, fresh: number, kept: number )=> {
+			if( witness.includes( prop ) ) return
 			if( Math.abs( fresh - kept ) > tol.level ) {
 				out.push( `${ scene }: ${ name } ${ fresh } против ${ kept }` )
 			}
 		}
 
-		level_off( 'медиана', now.median, base.median )
-		level_off( 'тёмный конец', now.low, base.low )
-		level_off( 'светлый конец', now.high, base.high )
+		level_off( 'медиана', 'median', now.median, base.median )
+		level_off( 'тёмный конец', 'low', now.low, base.low )
+		level_off( 'светлый конец', 'high', now.high, base.high )
 
-		if( now.dark - base.dark > tol.share ) {
+		if( !witness.includes( 'dark' ) && now.dark - base.dark > tol.share ) {
 			out.push( `${ scene }: провалов ${ now.dark } против ${ base.dark }` )
 		}
-		if( now.blown - base.blown > tol.share ) {
+		if( !witness.includes( 'blown' ) && now.blown - base.blown > tol.share ) {
 			out.push( `${ scene }: выжженных ${ now.blown } против ${ base.blown }` )
 		}
-		if( base.sat - now.sat > tol.sat ) {
+		if( !witness.includes( 'sat' ) && base.sat - now.sat > tol.sat ) {
 			out.push( `${ scene }: насыщенность ${ now.sat } против ${ base.sat }` )
 		}
 
 		for( const name of Object.keys( base.spots ) ) {
+			if( witness.includes( name ) ) continue
 			const fresh = now.spots[ name ]
 			const kept = base.spots[ name ]
 			if( !fresh ) {
@@ -193,6 +197,85 @@ namespace $ {
 				const was = $bog_gamengine_look_sum( kept )
 				out.push( `${ scene }: точка ${ name } ${ fresh.slice( 0, 3 ).join( ',' ) } против ${ kept.slice( 0, 3 ).join( ',' ) }, в линейке ${ fell.toFixed( 3 ) } против ${ was.toFixed( 3 ) }` )
 			}
+		}
+
+		return out as readonly string[]
+	}
+
+	export type $bog_gamengine_look_shift = {
+		readonly name: string
+		readonly gap: number
+		readonly limit: number
+		readonly fading: boolean
+		readonly line: string
+	}
+
+	export function $bog_gamengine_look_round( value: number ) {
+		return Math.round( value * 1e6 ) / 1e6
+	}
+
+	export function $bog_gamengine_look_shifts(
+		scene: string,
+		now: $bog_gamengine_look_shot,
+		base: $bog_gamengine_look_shot,
+		env = $bog_gamengine_look_env,
+	) {
+
+		const out = [] as $bog_gamengine_look_shift[]
+
+		const put = ( name: string, fresh: number | string, kept: number | string, gap: number, limit: number, fading: boolean )=> {
+			if( !gap ) return
+			out.push({ name, gap, limit, fading, line: `${ scene }: ${ name } ${ fresh } против ${ kept }` })
+		}
+
+		for( const name of [ 'median', 'low', 'high' ] as const ) {
+			put( name, now[ name ], base[ name ], Math.abs( now[ name ] - base[ name ] ), env.level, now[ name ] < base[ name ] )
+		}
+		put( 'dark', now.dark, base.dark, $bog_gamengine_look_round( Math.abs( now.dark - base.dark ) ), env.share, now.dark > base.dark )
+		put( 'blown', now.blown, base.blown, $bog_gamengine_look_round( Math.abs( now.blown - base.blown ) ), env.share, now.blown < base.blown )
+		put( 'sat', now.sat, base.sat, $bog_gamengine_look_round( Math.abs( now.sat - base.sat ) ), env.sat, now.sat < base.sat )
+
+		for( const name of Object.keys( base.spots ) ) {
+			const fresh = now.spots[ name ]
+			const kept = base.spots[ name ]
+			if( !fresh ) {
+				out.push({ name, gap: 255, limit: env.spot, fading: false, line: `${ scene }: точки ${ name } нет в замере` })
+				continue
+			}
+			let gap = 0
+			for( let i = 0; i < 3; ++ i ) gap = Math.max( gap, Math.abs( fresh[ i ] - kept[ i ] ) )
+			put(
+				'точка ' + name,
+				fresh.slice( 0, 3 ).join( ',' ),
+				kept.slice( 0, 3 ).join( ',' ),
+				gap,
+				env.spot,
+				$bog_gamengine_look_sum( fresh ) < $bog_gamengine_look_sum( kept ),
+			)
+		}
+
+		return out as readonly $bog_gamengine_look_shift[]
+	}
+
+	export function $bog_gamengine_look_refuse(
+		shifts: readonly $bog_gamengine_look_shift[],
+		env = $bog_gamengine_look_env,
+	) {
+
+		const out = [] as string[]
+
+		for( const shift of shifts ) {
+			if( shift.gap > shift.limit ) {
+				out.push( `${ shift.line }, это ${ shift.gap } при конверте окружения ${ shift.limit }` )
+			}
+		}
+
+		const fading = shifts.filter( one => one.fading )
+		if( fading.length >= env.same_way && fading.length === shifts.length ) {
+			out.push(
+				`${ fading.length } чисел уехали в сторону побледнения и ни одно против,`
+				+ ` а окружение согласованно двигает не больше ${ env.same_way - 1 }`
+			)
 		}
 
 		return out as readonly string[]
@@ -381,6 +464,10 @@ namespace $ {
 		flags: readonly string[] = $bog_gamengine_look_soft_flags,
 		page = $bog_gamengine_look_page,
 		scenes: readonly $bog_gamengine_look_scene[] = $bog_gamengine_look_scenes,
+		base = $bog_gamengine_look_base,
+		why = '',
+		machine = $bog_gamengine_look_machine,
+		env = $bog_gamengine_look_env,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, line + '\n' ); return line }
@@ -390,6 +477,41 @@ namespace $ {
 
 		say( `рендерер: ${ got.renderer }` )
 		say( JSON.stringify( got.scenes, null, '\t' ) )
+
+		const family = $bog_gamengine_look_family( got.renderer, machine )
+		if( !family ) return say( 'рендерер незнакомый, дифф с записанной подписью не считался' )
+
+		const kept = family === 'soft' ? base.soft : base.gpu
+		const shifts = [] as $bog_gamengine_look_shift[]
+
+		for( const scene of scenes ) {
+			const shot = kept[ scene.name ]
+			const fresh = got.scenes[ scene.name ]
+			if( !shot ) { say( `сцена ${ scene.name } записывается впервые, сверять не с чем` ); continue }
+			if( !fresh ) { say( `сцена ${ scene.name } не снялась` ); continue }
+			shifts.push( ... $bog_gamengine_look_shifts( scene.name, fresh, shot, env ) )
+		}
+
+		if( !shifts.length ) {
+			say( `дифф с подписью ${ base.at } пуст` )
+			return got
+		}
+
+		say( `дифф с подписью ${ base.at }:\n  ` + shifts.map( one => one.line ).join( '\n  ' ) )
+
+		const refuse = $bog_gamengine_look_refuse( shifts, env )
+		if( !refuse.length ) {
+			say( `дифф лежит в конверте окружения ${ env.at }, пересъёмка не требует объяснения` )
+			return got
+		}
+
+		if( !why ) return $mol_fail( new Error(
+			`дифф не похож на смену машины:\n  ${ refuse.join( '\n  ' ) }\n`
+			+ `  пересъёмка обязана объясниться: передай причину доводом why\n`
+			+ `  ${ env.note }`
+		) )
+
+		say( `дифф вышел за конверт, причина названа: ${ why }\n  ${ refuse.join( '\n  ' ) }` )
 
 		return got
 	}
@@ -437,7 +559,7 @@ namespace $ {
 		for( const scene of scenes ) {
 			const shot = kept[ scene.name ]
 			if( !shot ) return fail( `для сцены ${ scene.name } нет записанной подписи` )
-			drift.push( ... $bog_gamengine_look_drift( scene.name, got.scenes[ scene.name ], shot ) )
+			drift.push( ... $bog_gamengine_look_drift( scene.name, got.scenes[ scene.name ], shot, $bog_gamengine_look_tol, scene.witness ) )
 		}
 
 		if( drift.length ) return fail( `подпись ушла от записанной ${ base.at }:\n  ${ drift.join( '\n  ' ) }` )

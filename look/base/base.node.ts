@@ -9,6 +9,17 @@ namespace $ {
 		gpu: 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)',
 	}
 
+	export const $bog_gamengine_look_env = {
+		at: '2026-09-25',
+		pair: [ 'soft', 'gpu' ] as const,
+		level: 2,
+		share: 0.0001,
+		sat: 0.06,
+		spot: 2,
+		same_way: 4,
+		note: 'конверт замерен по одной паре машин и намеренно тесен: выход за него требует объяснения, а объяснение «просто другая машина» расширяет конверт новым замером с датой и строкой рендерера',
+	}
+
 	export const $bog_gamengine_look_base = {
 
 		at: '2026-09-25',

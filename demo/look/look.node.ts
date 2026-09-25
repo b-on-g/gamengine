@@ -20,6 +20,7 @@ namespace $ {
 						ground: [ 0.3, 0.96 ],
 						hero: [ 0.025, 0.861 ],
 					},
+					witness: [ 'low' ],
 				},
 			],
 			base: {
@@ -151,9 +152,10 @@ namespace $ {
 		game: string,
 		root = $node.process.cwd(),
 		flags: readonly string[] = $bog_gamengine_look_soft_flags,
+		why = '',
 	) {
 		const it = $bog_gamengine_demo_look_of( game )
-		return await $bog_gamengine_look_say( root, flags, it.page, it.scenes )
+		return await $bog_gamengine_look_say( root, flags, it.page, it.scenes, it.base, why )
 	}
 
 	export async function $bog_gamengine_demo_look_check(
