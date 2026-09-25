@@ -15,6 +15,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
 
     steps:
 
@@ -117,8 +118,11 @@ jobs:
           art="bog/gamengine/$mod/-/node.audit.js"
           rm -f "$art"
           start=$SECONDS
-          node bog/gamengine/.github/audit.js "bog/gamengine/$mod"
+          timeout 300 node bog/gamengine/.github/audit.js "bog/gamengine/$mod"
           code=$?
+          if [ "$code" -eq 124 ]; then
+            echo "$mod: аудит висел дольше 300 с и снят по таймауту, это отказ, а не задержка"
+          fi
           spent=$(( SECONDS - start ))
           total=$(( total + spent ))
           echo "| \`$mod\` | $spent |" >> "$GITHUB_STEP_SUMMARY"
