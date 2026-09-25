@@ -1,23 +1,25 @@
-$bog_gamengine_studio_case $bog_gamengine_studio_sample_map
-	atlas <= Atlas
-	map \
-		\######
-		\#....#
-		\#..#.#
-		\#....#
-		\######
-	palette *
-		# \wall
-		. \floor
+$bog_gamengine_studio_case $bog_gamengine_scene
+	Tile $bog_gamengine_phys_tile
+		map \
+			\######
+			\#....#
+			\#..#.#
+			\#....#
+			\######
 	kids /
-		<= Hero $bog_gamengine_studio_sample_hero
+		<= Tiles $bog_gamengine_tilemap
+			name \Карта
+			tile <= Tile
+			atlas <= Atlas
+			palette *
+				# \wall
+				. \floor
+		<= Hero $bog_gamengine_sprite
 			name \Герой
 			role \hero
 			atlas <= Atlas
-			input <= input
 			frame \hero
 			pos? <=> Hero_pos? Float32Array
-			speed 3
 		<= Coin $bog_gamengine_sprite
 			name \Монета
 			role \crumb

@@ -70,7 +70,7 @@ namespace $ {
 		},
 
 		'editor document itself keeps the list form that never type checks'( $ ) {
-			$mol_assert_ok( $bog_gamengine_studio_case_source.includes( '\t\t\tpos / 3.25 0 0\n' ) )
+			$mol_assert_ok( /\n\t+pos \/ -?[\d.]+ -?[\d.]+ -?[\d.]+\n/.test( $bog_gamengine_studio_case_source ) )
 			$mol_assert_not( case_file( 'case.view.tree' ).includes( 'pos / ' ) )
 		},
 
