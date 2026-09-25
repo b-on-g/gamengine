@@ -35,6 +35,10 @@ jobs:
     # Подписи трёх игр сведены в demo/look: данные лежат словарём по имени демо, и один модуль
     # в списке компилирует все три. Сверка картинки всё равно только местная, в CI от подписи
     # проверяется компиляция.
+    # ПОРЯДОК в списке значит больше, чем кажется: mam_build встаёт на первом падении, поэтому модуль,
+    # который может упасть по неизвестной причине, стоит последним — иначе он закроет собой ответы про
+    # все, что за ним. net/probe стоял четвёртым, упал на готовности страницы, и pack со подписями в
+    # том прогоне не проверялись вовсе. Новое и неуверенное — в конец.
     # net/stand, net/lobby, demo/shooter/gen, studio/case, brain/act/move, save стоят здесь не ради
     # своих тестов, а ради ТАЙПЧЕКА: модуль проверяется, если он в этом списке или он зависимость
     # чего-то из списка. Шесть имён закрывают пятнадцать модулей из восемнадцати, которые иначе не
@@ -46,7 +50,7 @@ jobs:
         CI: true
       with:
         package: 'bog/gamengine'
-        modules: 'demo probe look net/probe net/stand net/lobby demo/jumper/probe demo/look demo/shooter/probe demo/shooter/gen demo/legion/probe studio/probe studio/case brain/act/move save pack'
+        modules: 'demo probe look net/stand net/lobby demo/jumper/probe demo/look demo/shooter/probe demo/shooter/gen demo/legion/probe studio/probe studio/case brain/act/move save pack net/probe'
 
     - uses: hyoo-ru/gh-deploy@v4.4.1
       if: github.ref == 'refs/heads/main'
