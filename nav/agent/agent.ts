@@ -91,11 +91,14 @@ namespace $ {
 			this.index = 0
 		}
 
+		static born = 0
+
 		route = new Float32Array( 0 )
 		stride = 2
 		count = 0
 		index = 0
 		since = Infinity
+		phase = ( $bog_gamengine_nav_agent.born ++ * 0.6180339887498949 ) % 1
 		vel = new Float32Array( 3 )
 
 		path_count() {
@@ -120,7 +123,8 @@ namespace $ {
 				this.count = 0
 			}
 			this.index = this.count > 1 ? 1 : 0
-			this.since = 0
+			this.since = this.phase * this.replan()
+			this.phase = 0
 		}
 
 		step( dt: number ) {
