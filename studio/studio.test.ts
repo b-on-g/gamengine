@@ -329,6 +329,49 @@ namespace $ {
 			$mol_assert_equal( app.Doc().map()[ 1 ].join( '' ), '###..#' )
 		},
 
+		'brush past the right edge shows the new cells while the stroke is held'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			const wide = app.tile_grid()!.width()
+			app.brush_down([ 1, 1 ])
+			app.brush_move([ wide + 1, 1 ])
+			$mol_assert_equal( app.tile_grid()!.width(), wide + 2 )
+			$mol_assert_equal( app.tile_grid()!.char( wide + 1, 1 ), '#' )
+			app.brush_up([ wide + 1, 1 ])
+			$mol_assert_equal( app.Doc().map()[ 1 ].length, wide + 2 )
+			$mol_assert_equal( app.Doc().map()[ 1 ][ wide + 1 ], '#' )
+		},
+
+		'brush past the top left corner shifts the previewed grid, not its cells'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'cell' )
+			const grid = ()=> app.tile_grid()!
+			const before = grid().cell_pos( 1, 1, new Float32Array( 3 ) )
+			app.brush_down([ 1, 1 ])
+			app.brush_move([ - 2, - 1 ])
+			$mol_assert_equal( [ ... grid().origin() ], [ - 2, 1 ] )
+			$mol_assert_equal( grid().char( 0, 0 ), '#' )
+			const after = grid().cell_pos( 3, 2, new Float32Array( 3 ) )
+			$mol_assert_equal( [ after[ 0 ], after[ 1 ] ], [ before[ 0 ], before[ 1 ] ] )
+			app.brush_up([ - 2, - 1 ])
+			$mol_assert_equal( app.Doc().map_origin(), [ - 2, 1 ] )
+		},
+
+		'rect preview frame sits on the shifted grid'( $ ) {
+			const app = $$.$bog_gamengine_studio.make({ $ })
+			app.source( $bog_gamengine_studio_sample_shift )
+			app.Tile( '#' ).checked( true )
+			app.Tools().value( 'rect' )
+			app.brush_down([ 1, 1 ])
+			app.brush_move([ 2, 1 ])
+			const points = app.Rect_shape().points()
+			$mol_assert_equal( [ points[ 0 ], points[ 1 ] ], [ 5, - 4 ] )
+			$mol_assert_equal( [ points[ 3 ], points[ 4 ] ], [ 7, - 4 ] )
+			app.brush_up([ 2, 1 ])
+		},
+
 		'rect tool paints a rectangle and shows a preview frame'( $ ) {
 			const app = $$.$bog_gamengine_studio.make({ $ })
 			app.Tile( '#' ).checked( true )

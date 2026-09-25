@@ -265,9 +265,9 @@ namespace $ {
 			return [ Number( nums?.[ 0 ] ?? 0 ), Number( nums?.[ 1 ] ?? 0 ) ] as readonly [ number, number ]
 		}
 
-		map_fill() {
+		fill_of( base: readonly ( readonly string[] )[] ) {
 			const count = new Map< string, number >()
-			for( const row of this.map() ) for( const char of row ) count.set( char, ( count.get( char ) ?? 0 ) + 1 )
+			for( const row of base ) for( const char of row ) count.set( char, ( count.get( char ) ?? 0 ) + 1 )
 			let fill = ' '
 			let most = 0
 			for( const [ char, times ] of count ) {
@@ -278,11 +278,13 @@ namespace $ {
 			return fill
 		}
 
-		paint_all( cells: readonly ( readonly [ number, number ] )[], char: string ) {
-			const lines = this.map_lines()
-			if( !lines.length ) return
-			const rows = this.map().map( row => [ ...row ] )
-			const fill = this.map_fill()
+		map_fill() {
+			return this.fill_of( this.map() )
+		}
+
+		grown( base: readonly ( readonly string[] )[], cells: readonly ( readonly [ number, number ] )[], char: string ) {
+			const rows = base.map( row => [ ...row ] )
+			const fill = this.fill_of( base )
 			const grow = $bog_gamengine_studio_doc_grow_max
 			let width = 0
 			for( const row of rows ) width = Math.max( width, row.length )
@@ -314,6 +316,13 @@ namespace $ {
 				row[ at ] = char
 				changed = true
 			}
+			return { rows: rows as readonly ( readonly string[] )[], left, top, changed }
+		}
+
+		paint_all( cells: readonly ( readonly [ number, number ] )[], char: string ) {
+			const lines = this.map_lines()
+			if( !lines.length ) return
+			const { rows, left, top, changed } = this.grown( this.map(), cells, char )
 			if( !changed ) return
 			const source = this.source().split( '\n' )
 			const first = lines[ 0 ].span.row - 1

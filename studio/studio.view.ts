@@ -1220,10 +1220,11 @@ namespace $.$$ {
 		}
 
 		rect_preview( from: readonly [ number, number ], to: readonly [ number, number ] ) {
-			const x0 = Math.min( from[ 0 ], to[ 0 ] )
-			const x1 = Math.max( from[ 0 ], to[ 0 ] ) + 1
-			const y0 = - Math.min( from[ 1 ], to[ 1 ] )
-			const y1 = - Math.max( from[ 1 ], to[ 1 ] ) - 1
+			const origin = this.brush_origin
+			const x0 = origin[ 0 ] + Math.min( from[ 0 ], to[ 0 ] )
+			const x1 = origin[ 0 ] + Math.max( from[ 0 ], to[ 0 ] ) + 1
+			const y0 = origin[ 1 ] - Math.min( from[ 1 ], to[ 1 ] )
+			const y1 = origin[ 1 ] - Math.max( from[ 1 ], to[ 1 ] ) - 1
 			this.Rect_shape().points( new Float32Array([
 				x0, y0, 0, x1, y0, 0,
 				x1, y0, 0, x1, y1, 0,
@@ -1241,6 +1242,7 @@ namespace $.$$ {
 
 		brush_at = new Int32Array( 2 )
 		brush_base = ''
+		brush_origin = [ 0, 0 ] as readonly [ number, number ]
 
 		brush_cell( event: PointerEvent ) {
 			const at = this.Point().world( this.point_world, this.point_x( event ), this.point_y( event ) )
@@ -1249,18 +1251,18 @@ namespace $.$$ {
 		}
 
 		painted( text: string, cells: readonly ( readonly [ number, number ] )[], char: string ) {
-			const rows = text.split( '\n' ).map( row => [ ... row ] )
-			for( const [ x, y ] of cells ) {
-				const row = rows[ y ]
-				if( !row || x < 0 || x >= row.length ) continue
-				row[ x ] = char
-			}
-			return rows.map( row => row.join( '' ) ).join( '\n' )
+			const base = text.split( '\n' ).map( row => [ ... row ] as readonly string[] )
+			const grown = this.Doc().grown( base, cells, char )
+			return grown.rows.map( row => row.join( '' ) ).join( '\n' )
 		}
 
 		brush_show( cells: readonly ( readonly [ number, number ] )[] ) {
 			const grid = this.tile_grid()!
-			grid.map( this.painted( this.brush_base, cells, this.tile_char() ) )
+			const base = this.brush_base.split( '\n' ).map( row => [ ... row ] as readonly string[] )
+			const grown = this.Doc().grown( base, cells, this.tile_char() )
+			const origin = this.brush_origin
+			grid.map( grown.rows.map( row => row.join( '' ) ).join( '\n' ) )
+			grid.origin([ origin[ 0 ] - grown.left, origin[ 1 ] + grown.top ])
 		}
 
 		brush_down( cell: readonly [ number, number ] ) {
@@ -1268,7 +1270,9 @@ namespace $.$$ {
 			if( this.tool() === 'fill' ) return this.Doc().fill( cell[ 0 ], cell[ 1 ], char )
 			this.brush_from = cell
 			this.brush_cells = [ cell ]
-			this.brush_base = this.tile_grid()!.map()
+			const grid = this.tile_grid()!
+			this.brush_base = grid.map()
+			this.brush_origin = [ grid.origin()[ 0 ], grid.origin()[ 1 ] ]
 			if( this.tool() === 'rect' ) return this.rect_preview( cell, cell )
 			this.brush_show( this.brush_cells )
 		}
