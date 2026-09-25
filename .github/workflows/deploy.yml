@@ -32,7 +32,7 @@ jobs:
     - uses: hyoo-ru/mam_build@master2
       with:
         package: 'bog/gamengine'
-        modules: 'demo probe'
+        modules: 'demo probe demo/jumper/probe demo/jumper/look'
 
     - uses: hyoo-ru/gh-deploy@v4.4.1
       if: github.ref == 'refs/heads/main'
@@ -46,4 +46,5 @@ jobs:
           echo "- https://b-on-g.github.io/gamengine/#!demo=quad"
           echo "- https://b-on-g.github.io/gamengine/#!demo=flat"
           echo "- https://b-on-g.github.io/gamengine/#!demo=room"
+          echo "- https://b-on-g.github.io/gamengine/#!demo=jumper"
         } >> "$GITHUB_STEP_SUMMARY"

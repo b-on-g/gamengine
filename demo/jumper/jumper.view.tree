@@ -1,0 +1,168 @@
+$bog_gamengine_demo_jumper $mol_page
+	title \Прыгун
+	tools /
+		<= Lives $mol_labeler
+			title \Жизни
+			content / <= lives_stat \
+		<= Coins $mol_labeler
+			title \Монеты
+			content / <= coins_stat \
+		<= Screen_switch $mol_check_box
+			title \Кнопки
+			checked? <=> screen_shown? false
+	body <= game /
+		<= Draw $bog_gamengine_draw
+			scene <= Scene
+			cam <= Cam
+			stat => stat
+			width => draw_width
+			height => draw_height
+		<= Screen $bog_gamengine_input_screen
+			shown? <=> screen_shown? false
+			actions /
+				\jump
+			titles *
+				jump \Прыжок
+		<= End $mol_page
+			title <= end_title \
+			body /
+				<= End_hint $mol_view
+					sub / <= end_hint \
+			foot /
+				<= Again $mol_button_major
+					title \Ещё раз
+					click? <=> restart? null
+	foot /
+		<= Time $mol_view
+			sub / <= time_stat \
+		<= Hero_stat $mol_view
+			sub / <= hero_stat \
+		<= Stat $mol_view
+			sub / <= stat
+	map \
+		\........................................
+		\........................................
+		\.................................o.F....
+		\................................=====...
+		\.........................o.E............
+		\........................=====...........
+		\................o.x.....................
+		\................=====...................
+		\.........o.E............................
+		\........=====...........................
+		\....o........#..E..#....xx....o.........
+		\########################################
+	Level $bog_gamengine_demo_jumper_level
+		tile <= Tile
+	Tile $bog_gamengine_phys_tile
+		map <= map
+		solid \#=
+	Atlas $bog_gamengine_atlas
+		uris /
+			\bog/gamengine/demo/jumper/atlas/hero.png
+			\bog/gamengine/demo/jumper/atlas/hero_1.png
+			\bog/gamengine/demo/jumper/atlas/enemy.png
+			\bog/gamengine/demo/jumper/atlas/coin.png
+			\bog/gamengine/demo/jumper/atlas/spike.png
+			\bog/gamengine/demo/jumper/atlas/flag.png
+			\bog/gamengine/demo/jumper/atlas/ground.png
+			\bog/gamengine/demo/jumper/atlas/platform.png
+			\bog/gamengine/demo/jumper/atlas/sky.png
+		size 64
+	Sound $bog_gamengine_sound
+		uris *
+			jump \bog/gamengine/demo/jumper/sound/jump.wav
+			coin \bog/gamengine/demo/jumper/sound/coin.wav
+			death \bog/gamengine/demo/jumper/sound/death.wav
+	Key $bog_gamengine_key
+		bind *
+			left /
+				\A
+				\left
+			right /
+				\D
+				\right
+			jump /
+				\W
+				\up
+				\space
+	Input $bog_gamengine_input
+		key <= Key
+		screen <= Screen
+	Clock $bog_gamengine_clock
+	Scene $bog_gamengine_scene
+		clock <= Clock
+		input <= Input
+		kids <= nodes /
+		phys <= Phys $bog_gamengine_phys
+			bodies <= bodies /
+			tile <= Tile
+		batches /
+			<= Batch $bog_gamengine_batch
+				shader <= Sprite_shader $bog_gamengine_shader_sprite
+				atlas <= Atlas
+				nodes <= sprites /
+	Cam $bog_gamengine_cam_flat
+		height <= cam_height 12
+		target <= Hero
+		bounds <= cam_bounds Float32Array
+	Sky $bog_gamengine_sprite
+		atlas <= Atlas
+		frame \sky
+		pos <= sky_pos Float32Array
+		size <= sky_size Float32Array
+	Cell* $bog_gamengine_sprite
+		atlas <= Atlas
+		frame <= cell_frame* \
+		pos <= cell_pos* Float32Array
+	Hero $bog_gamengine_demo_jumper_hero
+		input <= Input
+		sound <= Sound
+		start <= hero_start Float32Array
+		pos? <=> hero_pos? Float32Array
+		lives? => hero_lives?
+		coins? => hero_coins?
+		won? => hero_won?
+		face_left? => hero_face_left?
+		clip? => hero_clip?
+	Hero_sprite $bog_gamengine_sprite
+		parent <= Hero
+		atlas <= Atlas
+		frame \hero
+		flip_x <= hero_face_left
+		clock <= Clock
+		clip <= hero_clip
+		fps 8
+		clips *
+			walk /
+				\hero
+				\hero_1
+	Item* $bog_gamengine_demo_jumper_item
+		role <= item_role* \
+		pos <= item_pos* Float32Array
+		taken? => item_taken*?
+	Item_sprite* $bog_gamengine_sprite
+		parent <= Item*
+		atlas <= Atlas
+		frame <= item_role*
+	Enemy* $bog_gamengine_demo_jumper_enemy
+		tile <= Tile
+		pos? <=> enemy_pos*? Float32Array
+		brain <= Brain*
+		kids <= enemy_kids* /
+		dead? => enemy_dead*?
+		face_left? => enemy_face_left*?
+	Enemy_sprite* $bog_gamengine_sprite
+		parent <= Enemy*
+		atlas <= Atlas
+		frame \enemy
+		flip_x <= enemy_face_left*
+	Brain* $bog_gamengine_brain_fsm
+		owner <= Enemy*
+		kids <= brain_kids* /
+	Walk_right* $bog_gamengine_brain_state
+		name \right
+		next <= walk_right_next /
+	Walk_left* $bog_gamengine_brain_state
+		name \left
+		next <= walk_left_next /

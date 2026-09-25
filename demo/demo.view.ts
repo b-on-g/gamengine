@@ -4,7 +4,12 @@ namespace $.$$ {
 
 		@ $mol_mem
 		key_map() {
-			const maps = [ this.Flat().Key().keys(), this.Room().Key().keys(), this.Boxes().Key().keys() ]
+			const maps = [
+				this.Flat().Key().keys(),
+				this.Room().Key().keys(),
+				this.Boxes().Key().keys(),
+				this.Jumper().Key().keys(),
+			]
 			const keys: Record< string, ( state?: boolean )=> boolean > = {}
 			for( const map of maps ) {
 				for( const name of Object.keys( map ) ) {
