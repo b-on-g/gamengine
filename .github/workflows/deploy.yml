@@ -52,6 +52,27 @@ jobs:
         package: 'bog/gamengine'
         modules: 'demo probe look net/stand net/lobby demo/jumper/probe demo/look demo/shooter/probe demo/shooter/gen demo/legion/probe studio/probe studio/case brain/act/move save pack net/probe'
 
+    # Замер цены тайпчека без прогона тестов. Шесть имён выше стоят в `modules:` только ради
+    # тайпчека, а `modules:` гонит на каждое имя `npm start`, то есть `npm update` и `bundleAll`
+    # со сборкой всех веб-целей и запуском тестового замыкания дочерним процессом. Аудит —
+    # отдельная цель: `bundleAuditJS` строит свою программу TS и другие бандлы ему не нужны.
+    # Пока шаг стоит ВМЕСТЕ с шестью именами, чтобы сравнить цену, ничего не потеряв: если он
+    # зелёный и дешёвый, имена из `modules:` убираются вторым шагом и поток возвращает 263 секунды.
+    - name: Typecheck without running tests
+      env:
+        CI: true
+      run: |
+        set -euo pipefail
+        start=$SECONDS
+        node bog/gamengine/.github/audit.js \
+          bog/gamengine/net/stand \
+          bog/gamengine/net/lobby \
+          bog/gamengine/demo/shooter/gen \
+          bog/gamengine/studio/case \
+          bog/gamengine/brain/act/move \
+          bog/gamengine/save
+        echo "Аудит шести модулей без тестов: $(( SECONDS - start )) с" >> "$GITHUB_STEP_SUMMARY"
+
     - uses: hyoo-ru/gh-deploy@v4.4.1
       if: github.ref == 'refs/heads/main'
       with:
