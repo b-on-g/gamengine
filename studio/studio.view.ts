@@ -1,6 +1,6 @@
 namespace $.$$ {
 
-	const kit_own: readonly $bog_gamestudio_kit_item[] = [
+	const kit_own: readonly $bog_gamengine_studio_kit_item[] = [
 		{
 			id: 'crumb_rule',
 			title: 'Правило крошек',
@@ -15,7 +15,7 @@ namespace $.$$ {
 		@ $mol_mem
 		Kit() {
 			const kit = super.Kit()
-			kit.list([ ... $bog_gamestudio_kit_items, ... kit_own ])
+			kit.list([ ... $bog_gamengine_studio_kit_items, ... kit_own ])
 			return kit
 		}
 
