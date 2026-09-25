@@ -14,9 +14,7 @@ namespace $ {
 
 	export const $bog_gamengine_demo_legion_probe_far_max = 24
 
-	export const $bog_gamengine_demo_legion_probe_far_ok = 'приказ всем своим в дальний угол доведён, и худший кадр не вырос выше признанного потолка'
-
-	export const $bog_gamengine_demo_legion_probe_far_away = 'приказ всем своим в дальний угол доведён, а потолок худшего кадра не сверялся: прогон не на машине, где он назначен'
+	export const $bog_gamengine_demo_legion_probe_far_ok = 'приказ всем своим в дальний угол доведён, и худший кадр уложился в порог'
 
 	export const $bog_gamengine_demo_legion_probe_far_zooms = 10
 
@@ -165,22 +163,13 @@ namespace $ {
 			+ ` средний ${ got.tick!.toFixed( 2 ) } мс,`
 			+ ` перепланирований ${ got.plans }, в густейшем кадре ${ got.dense_top }`
 
-		const mine = !$bog_probe_needed()
-
-		if( !mine ) return say(
-			`${ $bog_gamengine_demo_legion_probe_far_away }: ${ seen },`
-			+ ` местный потолок ${ $bog_gamengine_demo_legion_probe_far_max } мс,`
-			+ ` цель ${ $bog_gamengine_demo_legion_probe_peak_max } мс`
-		)
-
 		if( !( got.peak! < $bog_gamengine_demo_legion_probe_far_max ) ) return fail(
-			`худший кадр дороже ${ $bog_gamengine_demo_legion_probe_far_max } мс:`
-			+ ` признанный потолок вырос, а цель ${ $bog_gamengine_demo_legion_probe_peak_max } мс`
+			`худший кадр дороже ${ $bog_gamengine_demo_legion_probe_far_max } мс`
 		)
 
 		return say(
 			`${ $bog_gamengine_demo_legion_probe_far_ok }, ${ seen },`
-			+ ` потолок ${ $bog_gamengine_demo_legion_probe_far_max } мс, цель ${ $bog_gamengine_demo_legion_probe_peak_max } мс`
+			+ ` порог ${ $bog_gamengine_demo_legion_probe_far_max } мс`
 		)
 	}
 
