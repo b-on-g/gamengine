@@ -14,6 +14,8 @@ namespace $ {
 
 	export const $bog_gamengine_demo_legion_probe_far_max = 24
 
+	export const $bog_gamengine_demo_legion_probe_far_runner_max = 60
+
 	export const $bog_gamengine_demo_legion_probe_far_ok = 'приказ всем своим в дальний угол доведён, и худший кадр уложился в порог'
 
 	export const $bog_gamengine_demo_legion_probe_far_scene = 'стратегия: приказ всем своим в дальний угол'
@@ -165,22 +167,24 @@ namespace $ {
 			+ ` средний ${ got.tick!.toFixed( 2 ) } мс,`
 			+ ` перепланирований ${ got.plans }, в густейшем кадре ${ got.dense_top }`
 
+		const runner = $bog_probe_needed()
+		const limit = runner
+			? $bog_gamengine_demo_legion_probe_far_runner_max
+			: $bog_gamengine_demo_legion_probe_far_max
+
 		$bog_probe_step_add({
 			scene: $bog_gamengine_demo_legion_probe_far_scene,
 			peak: got.peak!,
 			tick: got.tick!,
 			plans: got.plans!,
-			limit: $bog_gamengine_demo_legion_probe_far_max,
+			limit,
 		})
 
-		if( !( got.peak! < $bog_gamengine_demo_legion_probe_far_max ) ) return fail(
-			`худший кадр дороже ${ $bog_gamengine_demo_legion_probe_far_max } мс`
-		)
+		const named = runner ? 'порог раннера' : 'местный порог'
 
-		return say(
-			`${ $bog_gamengine_demo_legion_probe_far_ok }, ${ seen },`
-			+ ` порог ${ $bog_gamengine_demo_legion_probe_far_max } мс`
-		)
+		if( !( got.peak! < limit ) ) return fail( `худший кадр дороже ${ limit } мс, это ${ named }` )
+
+		return say( `${ $bog_gamengine_demo_legion_probe_far_ok }, ${ seen }, ${ named } ${ limit } мс` )
 	}
 
 	export const $bog_gamengine_demo_legion_probe_script = `

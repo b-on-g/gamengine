@@ -16,6 +16,12 @@ namespace $ {
 			$mol_assert_ok( $bog_gamengine_demo_legion_probe_far_max >= $bog_gamengine_demo_legion_probe_peak_max )
 		},
 
+		'threshold of the runner stands above the local one, because the runner is slower'() {
+			$mol_assert_ok(
+				$bog_gamengine_demo_legion_probe_far_runner_max > $bog_gamengine_demo_legion_probe_far_max
+			)
+		},
+
 	})
 
 }
