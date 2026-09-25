@@ -891,6 +891,7 @@ namespace $ {
 		const at = ( x, y )=> pixel( x, canvas.height - 1 - y )
 		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
 		const hero_x = ()=> Number( ( editor.value.match( /Герой[^]*?pos \\/ (\\S+)/ ) || [] )[ 1 ] )
+		const hero_y = ()=> Number( ( editor.value.match( /Герой[^]*?pos \\/ \\S+ (\\S+)/ ) || [] )[ 1 ] )
 		const rect = canvas.getBoundingClientRect()
 		const dpr = devicePixelRatio
 		const ppu = canvas.height / 6
@@ -898,12 +899,12 @@ namespace $ {
 			bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: type === 'pointerup' ? 0 : 1,
 			clientX: rect.left + x / dpr, clientY: rect.top + y / dpr,
 		} ) )
-		document.querySelector( '[bog_gamestudio_app_row]' ).click()
+		Array.from( document.querySelectorAll( '[bog_gamestudio_app_row]' ) ).find( el => el.innerText.trim() === 'Герой' ).click()
 		await frame()
 		await frame()
 		const before = hero_x()
 		const origin_x = canvas.width / 2 + before * ppu
-		const origin_y = canvas.height / 2
+		const origin_y = canvas.height / 2 - hero_y() * ppu
 		${ $bog_gamestudio_probe_arrow_script }
 		const arrow = arrow_at( at, origin_x, origin_y )
 		if( !arrow ) return { t0: -1, before, after: before, arrow }
@@ -925,6 +926,7 @@ namespace $ {
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
 		const hero_x = ()=> Number( ( editor.value.match( /Герой[^]*?pos \\/ (\\S+)/ ) || [] )[ 1 ] )
+		const hero_y = ()=> Number( ( editor.value.match( /Герой[^]*?pos \\/ \\S+ (\\S+)/ ) || [] )[ 1 ] )
 		const before = hero_x()
 		const began = Date.now()
 		let t1 = -1
@@ -939,7 +941,7 @@ namespace $ {
 		const gl = canvas.getContext( 'webgl2' )
 		const out = new Uint8Array( 4 )
 		const ppu = canvas.height / 6
-		gl.readPixels( ( canvas.width / 2 + after * ppu ) | 0, ( canvas.height / 2 ) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
+		gl.readPixels( ( canvas.width / 2 + after * ppu ) | 0, ( canvas.height / 2 + hero_y() * ppu ) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, out )
 		const mates = Number( ( /mates (\\d+)/.exec( document.body.innerText ) || [] )[ 1 ] || -1 )
 		return { t1, before, after, spot: Array.from( out ), mates }
 	`
