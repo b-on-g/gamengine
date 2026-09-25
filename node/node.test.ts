@@ -34,10 +34,14 @@ namespace $ {
 			$mol_assert_equal( node.title(), 'Hero' )
 		},
 
-		'base props are pos, rot, scale and tint with kinds'() {
+		'base props name their kinds'() {
 			const props = new $bog_gamengine_node().props()
-			$mol_assert_equal( props.map( prop => prop.name ), [ 'pos', 'rot', 'scale', 'tint' ] )
-			$mol_assert_equal( props.map( prop => prop.kind ), [ 'vec3', 'euler', 'vec3', 'vec4' ] )
+			const kind = ( name: string )=> props.find( prop => prop.name === name )?.kind ?? 'нет такого'
+			$mol_assert_equal( kind( 'pos' ), 'vec3' )
+			$mol_assert_equal( kind( 'rot' ), 'euler' )
+			$mol_assert_equal( kind( 'scale' ), 'vec3' )
+			$mol_assert_equal( kind( 'tint' ), 'vec4' )
+			$mol_assert_equal( kind( 'role' ), 'text' )
 		},
 
 		'set through props changes pos'() {
@@ -150,13 +154,15 @@ namespace $ {
 			const part = new $bog_gamengine_combat
 			part.health_max( 40 )
 			node.parts([ part ])
-			$mol_assert_equal( node.props().map( prop => prop.name ), [ 'pos', 'rot', 'scale', 'tint' ] )
+			const names = node.props().map( prop => prop.name )
+			$mol_assert_equal( names.filter( name => /health|rate|\./.test( name ) ), [] )
 			$mol_assert_equal( part.props().find( prop => prop.name === 'health_max' )!.get(), 40 )
 		},
 
-		'node without parts shows the same props as before'() {
-			const node = new $bog_gamengine_node
-			$mol_assert_equal( node.props().map( prop => prop.name ), [ 'pos', 'rot', 'scale', 'tint' ] )
+		'node without parts keeps its props to itself'() {
+			const names = new $bog_gamengine_node().props().map( prop => prop.name )
+			$mol_assert_equal( names.filter( name => name.includes( '.' ) ), [] )
+			$mol_assert_ok( names.indexOf( 'pos' ) >= 0 )
 		},
 
 	})

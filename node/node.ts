@@ -26,6 +26,11 @@ namespace $ {
 			return next
 		}
 
+		@ $mol_mem
+		role( next = '' ) {
+			return next
+		}
+
 		title() {
 			const name = this.name()
 			if( name ) return name
@@ -39,6 +44,7 @@ namespace $ {
 				{ name: 'rot', kind: 'euler', get: ()=> this.rot(), set: next => this.rot( next as ArrayLike< number > ) },
 				{ name: 'scale', kind: 'vec3', get: ()=> this.scale(), set: next => this.scale( next as ArrayLike< number > ) },
 				{ name: 'tint', kind: 'vec4', get: ()=> this.tint(), set: next => this.tint( next as ArrayLike< number > ) },
+				{ name: 'role', kind: 'text', get: ()=> this.role(), set: next => this.role( String( next ?? '' ) ) },
 			]
 		}
 

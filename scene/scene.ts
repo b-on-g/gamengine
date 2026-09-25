@@ -59,6 +59,22 @@ namespace $ {
 			return list as readonly $bog_gamengine_node[]
 		}
 
+		@ $mol_mem_key
+		by_role( role: string ) {
+			const nodes = this.nodes()
+			const out = [] as $bog_gamengine_node[]
+			for( let i = 0; i < nodes.length; ++i ) {
+				if( nodes[ i ].role() === role ) out.push( nodes[ i ] )
+			}
+			return out as readonly $bog_gamengine_node[]
+		}
+
+		by_role_one( role: string ) {
+			const found = this.by_role( role )
+			if( found.length === 1 ) return found[ 0 ]
+			return $mol_fail( new Error( `Role "${ role }" is on ${ found.length } nodes, need exactly one` ) )
+		}
+
 		@ $mol_mem
 		lights() {
 			const nodes = this.nodes()

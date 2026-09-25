@@ -22,6 +22,14 @@ namespace $ {
 
 	}
 
+	class $bog_gamengine_scene_roled extends $bog_gamengine_node {
+
+		role() {
+			return 'hero'
+		}
+
+	}
+
 	class $bog_gamengine_scene_parted extends $bog_gamengine_node {
 
 		own = [] as readonly $bog_gamengine_part[]
@@ -439,6 +447,63 @@ namespace $ {
 			scene.step()
 			$mol_assert_equal( scene.snapshot_version(), version + 1 )
 			$mol_assert_equal( scene.snapshot(), snap )
+		},
+
+		'nodes of a role come in the order of the scene'() {
+			const first = new $bog_gamengine_node
+			const second = new $bog_gamengine_node
+			const other = new $bog_gamengine_node
+			first.role( 'crumb' )
+			second.role( 'crumb' )
+			other.role( 'hero' )
+			const scene = new $bog_gamengine_scene
+			scene.kids([ first, other, second ])
+			$mol_assert_equal( scene.by_role( 'crumb' ), [ first, second ] )
+			$mol_assert_equal( scene.by_role( 'hero' ), [ other ] )
+			$mol_assert_equal( scene.by_role( 'ghost' ), [] )
+		},
+
+		'list of a role is remembered until a role changes'() {
+			const node = new $bog_gamengine_node
+			const mate = new $bog_gamengine_node
+			node.role( 'crumb' )
+			const scene = new $bog_gamengine_scene
+			scene.kids([ node, mate ])
+			const first = scene.by_role( 'crumb' )
+			$mol_assert_equal( scene.by_role( 'crumb' ), first )
+			mate.role( 'crumb' )
+			$mol_assert_equal( scene.by_role( 'crumb' ), [ node, mate ] )
+			node.role( '' )
+			$mol_assert_equal( scene.by_role( 'crumb' ), [ mate ] )
+		},
+
+		'role given by a tree is seen as well as one given by code'() {
+			const node = new $bog_gamengine_scene_roled
+			const scene = new $bog_gamengine_scene
+			scene.kids([ node ])
+			$mol_assert_equal( scene.by_role( 'hero' ), [ node ] )
+			$mol_assert_equal( scene.by_role_one( 'hero' ), node )
+		},
+
+		'single node of a role is demanded loudly'() {
+			const first = new $bog_gamengine_node
+			const second = new $bog_gamengine_node
+			first.role( 'hero' )
+			const scene = new $bog_gamengine_scene
+			scene.kids([ first, second ])
+			$mol_assert_equal( scene.by_role_one( 'hero' ), first )
+			$mol_assert_fail( ()=> scene.by_role_one( 'ghost' ), 'Role "ghost" is on 0 nodes, need exactly one' )
+			second.role( 'hero' )
+			$mol_assert_fail( ()=> scene.by_role_one( 'hero' ), 'Role "hero" is on 2 nodes, need exactly one' )
+		},
+
+		'role of a node is shown to the inspector as text'() {
+			const node = new $bog_gamengine_node
+			const prop = node.props().find( one => one.name === 'role' )!
+			$mol_assert_equal( prop.kind, 'text' )
+			$mol_assert_equal( prop.get(), '' )
+			prop.set( 'hero' )
+			$mol_assert_equal( node.role(), 'hero' )
 		},
 
 		'part declared by a tree gets its owner on the nodes walk'() {
