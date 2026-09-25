@@ -20,6 +20,8 @@ namespace $ {
 
 	export const $bog_gamengine_demo_legion_probe_far_scene = 'стратегия: приказ всем своим в дальний угол'
 
+	export const $bog_gamengine_demo_legion_probe_far_log = 'bog/gamengine/demo/legion/probe/-/far.md'
+
 	export const $bog_gamengine_demo_legion_probe_far_zooms = 10
 
 	export const $bog_gamengine_demo_legion_probe_far_frames = 90
@@ -172,13 +174,16 @@ namespace $ {
 			? $bog_gamengine_demo_legion_probe_far_runner_max
 			: $bog_gamengine_demo_legion_probe_far_max
 
-		$bog_probe_step_add({
+		const frame = {
 			scene: $bog_gamengine_demo_legion_probe_far_scene,
 			peak: got.peak!,
 			tick: got.tick!,
 			plans: got.plans!,
 			limit,
-		})
+		}
+
+		$bog_probe_step_add( frame )
+		$bog_probe_step_file( frame, $bog_gamengine_demo_legion_probe_far_log )
 
 		const named = runner ? 'порог раннера' : 'местный порог'
 
