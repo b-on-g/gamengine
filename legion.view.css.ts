@@ -1,6 +1,6 @@
 namespace $.$$ {
 
-	$mol_style_define( $bog_legion_app, {
+	$mol_style_define( $bog_gamengine_demo_legion, {
 
 		flex: {
 			grow: 1,

@@ -1,6 +1,6 @@
 namespace $ {
 
-	function $bog_legion_unit_pair() {
+	function $bog_gamengine_demo_legion_unit_pair() {
 		const tile = new $bog_gamengine_phys_tile
 		tile.map( [
 			'#####',
@@ -11,10 +11,10 @@ namespace $ {
 		].join( '\n' ) )
 		const grid = new $bog_gamengine_nav_grid
 		grid.tile( tile )
-		const mine = new $bog_legion_unit
+		const mine = new $bog_gamengine_demo_legion_unit
 		mine.camp( 0 )
 		mine.grid( grid )
-		const foe = new $bog_legion_unit
+		const foe = new $bog_gamengine_demo_legion_unit
 		foe.camp( 1 )
 		foe.grid( grid )
 		for( const unit of [ mine, foe ] ) {
@@ -38,7 +38,7 @@ namespace $ {
 	$mol_test({
 
 		'order sends the unit toward the goal'() {
-			const { mine } = $bog_legion_unit_pair()
+			const { mine } = $bog_gamengine_demo_legion_unit_pair()
 			mine.mode_set( 'move' )
 			mine.aim( 3.5, -3.5 )
 			const before = mine.pos()[ 0 ]
@@ -47,7 +47,7 @@ namespace $ {
 		},
 
 		'foe in sight becomes the target, out of sight does not'() {
-			const { mine, foe } = $bog_legion_unit_pair()
+			const { mine, foe } = $bog_gamengine_demo_legion_unit_pair()
 			mine.sight( 10 )
 			mine.step( 0.05 )
 			$mol_assert_equal( mine.has_foe(), true )
@@ -58,7 +58,7 @@ namespace $ {
 		},
 
 		'attack drains health by the rate and kills'() {
-			const { mine, foe, clock } = $bog_legion_unit_pair()
+			const { mine, foe, clock } = $bog_gamengine_demo_legion_unit_pair()
 			foe.pos( new Float32Array([ 2, -1.5, 0 ]) )
 			mine.damage( 10 )
 			mine.fight()!.rate( 1 )
@@ -74,7 +74,7 @@ namespace $ {
 		},
 
 		'dead unit stops moving'() {
-			const { mine } = $bog_legion_unit_pair()
+			const { mine } = $bog_gamengine_demo_legion_unit_pair()
 			mine.mode_set( 'move' )
 			mine.aim( 3.5, -3.5 )
 			mine.die()
@@ -85,7 +85,7 @@ namespace $ {
 		},
 
 		'reset brings the unit back to full health at the start'() {
-			const { mine } = $bog_legion_unit_pair()
+			const { mine } = $bog_gamengine_demo_legion_unit_pair()
 			mine.wound( mine.health_max() )
 			$mol_assert_equal( mine.dead(), true )
 			mine.reset( new Float32Array([ 1.5, -1.5, 0 ]) )
@@ -94,7 +94,7 @@ namespace $ {
 		},
 
 		'patrol picks a goal around home and skips walls'() {
-			const { mine, grid } = $bog_legion_unit_pair()
+			const { mine, grid } = $bog_gamengine_demo_legion_unit_pair()
 			mine.home( new Float32Array([ 2.5, -2.5, 0 ]) )
 			mine.roam( 6 )
 			mine.mode_set( 'patrol' )

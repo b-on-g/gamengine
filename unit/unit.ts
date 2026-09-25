@@ -1,6 +1,6 @@
 namespace $ {
 
-	export class $bog_legion_unit extends $bog_gamengine_nav_agent {
+	export class $bog_gamengine_demo_legion_unit extends $bog_gamengine_nav_agent {
 
 		@ $mol_mem
 		camp( next = 0 ) {
@@ -13,7 +13,7 @@ namespace $ {
 		}
 
 		@ $mol_mem
-		foes( next?: readonly $bog_legion_unit[] ): readonly $bog_legion_unit[] {
+		foes( next?: readonly $bog_gamengine_demo_legion_unit[] ): readonly $bog_gamengine_demo_legion_unit[] {
 			return next ?? []
 		}
 
@@ -82,7 +82,7 @@ namespace $ {
 
 		order_on = false
 		mode_now = ''
-		foe_now = null as $bog_legion_unit | null
+		foe_now = null as $bog_gamengine_demo_legion_unit | null
 		foe_dist = Infinity
 		scan_left = 0
 		roam_left = 0
@@ -182,7 +182,7 @@ namespace $ {
 			const foes = this.foes()
 			const pos = this.pos()
 			const sight = this.sight()
-			let best = null as $bog_legion_unit | null
+			let best = null as $bog_gamengine_demo_legion_unit | null
 			let best_dist = sight * sight
 
 			for( let i = 0; i < foes.length; ++i ) {

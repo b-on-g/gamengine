@@ -1,16 +1,16 @@
 namespace $ {
 
-	export const $bog_legion_probe_page = 'bog/legion/app/-/index.html'
+	export const $bog_gamengine_demo_legion_probe_page = 'bog/gamengine/demo/-/index.html#!demo=legion'
 
-	export const $bog_legion_probe_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0`
+	export const $bog_gamengine_demo_legion_probe_ready = `typeof $ !== 'undefined' && ( document.querySelector( 'canvas' )?.width ?? 0 ) > 0`
 
-	export const $bog_legion_probe_ok = 'сто юнитов на карте, рамка выделяет своих, приказ ведёт их к точке, кадр не чёрный'
+	export const $bog_gamengine_demo_legion_probe_ok = 'сто юнитов на карте, рамка выделяет своих, приказ ведёт их к точке, кадр не чёрный'
 
-	export const $bog_legion_probe_flags = [ '--use-angle=swiftshader' ] as const
+	export const $bog_gamengine_demo_legion_probe_flags = [ '--use-angle=swiftshader' ] as const
 
-	export const $bog_legion_probe_tick_max = 8
+	export const $bog_gamengine_demo_legion_probe_tick_max = 8
 
-	export const $bog_legion_probe_script = `
+	export const $bog_gamengine_demo_legion_probe_script = `
 		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
 		const canvas = document.querySelector( 'canvas' )
 		const gl = canvas && canvas.getContext( 'webgl2' )
@@ -40,7 +40,7 @@ namespace $ {
 		await frame()
 		point( 'pointermove', box.width * 0.44, box.height * 0.72 )
 		await frame()
-		const band = document.querySelector( '[bog_legion_app_band]' )
+		const band = document.querySelector( '[bog_gamengine_demo_legion_band]' )
 		const band_box = band ? band.getBoundingClientRect() : null
 		point( 'pointerup', box.width * 0.44, box.height * 0.72 )
 		for( let i = 0; i < 4; ++ i ) await frame()
@@ -53,7 +53,7 @@ namespace $ {
 		const after = read()
 		const pixel = new Uint8Array( 4 )
 		gl.readPixels( canvas.width / 2 | 0, canvas.height / 2 | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel )
-		const dots = document.querySelectorAll( '[bog_legion_app_dot]' ).length
+		const dots = document.querySelectorAll( '[bog_gamengine_demo_legion_dot]' ).length
 		return {
 			webgl: true, loaded: true, start, picked, moved, after, dots,
 			band: band_box ? [ band_box.width, band_box.height ] : null,
@@ -62,7 +62,7 @@ namespace $ {
 		}
 	`
 
-	export type $bog_legion_probe_read = {
+	export type $bog_gamengine_demo_legion_probe_read = {
 		readonly mine: number
 		readonly foes: number
 		readonly sel: number
@@ -72,13 +72,13 @@ namespace $ {
 		readonly atlas: number
 	}
 
-	export type $bog_legion_probe_result = {
+	export type $bog_gamengine_demo_legion_probe_result = {
 		readonly webgl: boolean
 		readonly loaded: boolean
-		readonly start?: $bog_legion_probe_read
-		readonly picked?: $bog_legion_probe_read | null
-		readonly moved?: $bog_legion_probe_read | null
-		readonly after?: $bog_legion_probe_read | null
+		readonly start?: $bog_gamengine_demo_legion_probe_read
+		readonly picked?: $bog_gamengine_demo_legion_probe_read | null
+		readonly moved?: $bog_gamengine_demo_legion_probe_read | null
+		readonly after?: $bog_gamengine_demo_legion_probe_read | null
 		readonly dots?: number
 		readonly band?: readonly [ number, number ] | null
 		readonly tick?: number
@@ -86,9 +86,9 @@ namespace $ {
 		readonly size?: readonly [ number, number ]
 	}
 
-	export async function $bog_legion_probe_check(
+	export async function $bog_gamengine_demo_legion_probe_check(
 		root = $node.process.cwd(),
-		flags: readonly string[] = $bog_legion_probe_flags,
+		flags: readonly string[] = $bog_gamengine_demo_legion_probe_flags,
 	) {
 
 		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
@@ -98,12 +98,12 @@ namespace $ {
 		const got = await $bog_probe_run({
 			root,
 			flags,
-			page: $bog_legion_probe_page,
-			ready: $bog_legion_probe_ready,
-			script: $bog_legion_probe_script,
+			page: $bog_gamengine_demo_legion_probe_page,
+			ready: $bog_gamengine_demo_legion_probe_ready,
+			script: $bog_gamengine_demo_legion_probe_script,
 			width: 1280,
 			height: 800,
-		}) as $bog_legion_probe_result | typeof $bog_probe_skip
+		}) as $bog_gamengine_demo_legion_probe_result | typeof $bog_probe_skip
 
 		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
 
@@ -123,9 +123,9 @@ namespace $ {
 
 		const [ r, g, b ] = got.center!
 		if( r < 25 && g < 25 && b < 25 ) return fail( 'центр чёрный, карта не нарисована' )
-		if( !( got.tick! < $bog_legion_probe_tick_max ) ) return fail( `кадр дороже ${ $bog_legion_probe_tick_max } мс` )
+		if( !( got.tick! < $bog_gamengine_demo_legion_probe_tick_max ) ) return fail( `кадр дороже ${ $bog_gamengine_demo_legion_probe_tick_max } мс` )
 
-		return say( `${ $bog_legion_probe_ok }, tick ${ got.tick!.toFixed( 2 ) } мс` )
+		return say( `${ $bog_gamengine_demo_legion_probe_ok }, tick ${ got.tick!.toFixed( 2 ) } мс` )
 	}
 
 }

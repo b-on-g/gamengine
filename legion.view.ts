@@ -10,7 +10,7 @@ namespace $.$$ {
 	const mine_lit = screen_tint( 1, 1, 0.45, 1 )
 	const flash_tint = screen_tint( 1, 0.92, 0.6, 1, 1, 0.35, 0.15, 0 )
 
-	export class $bog_legion_app extends $.$bog_legion_app {
+	export class $bog_gamengine_demo_legion extends $.$bog_gamengine_demo_legion {
 
 		key_map() {
 			return {

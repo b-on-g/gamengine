@@ -1,8 +1,6 @@
-$bog_legion_app $mol_page
+$bog_gamengine_demo_legion $mol_page
 	title \Легион
-	plugins /
-		<= Control $mol_keyboard_state
-			key <= key_map *
+	key_map *
 	tools /
 		<= Mine_count $mol_labeler
 			title \Свои
@@ -99,18 +97,18 @@ $bog_legion_app $mol_page
 		pad 0.2
 	Atlas $bog_gamengine_atlas
 		uris /
-			\bog/legion/app/atlas/mine.png
-			\bog/legion/app/atlas/foe.png
-			\bog/legion/app/atlas/floor.png
-			\bog/legion/app/atlas/wall.png
-			\bog/legion/app/atlas/res.png
+			\bog/gamengine/demo/legion/atlas/mine.png
+			\bog/gamengine/demo/legion/atlas/foe.png
+			\bog/gamengine/demo/legion/atlas/floor.png
+			\bog/gamengine/demo/legion/atlas/wall.png
+			\bog/gamengine/demo/legion/atlas/res.png
 		size 64
 	Sound $bog_gamengine_sound
 		listener <= Cam
 		range 24
 		uris *
-			hit \bog/legion/app/sound/hit.wav
-			order \bog/legion/app/sound/order.wav
+			hit \bog/gamengine/demo/legion/sound/hit.wav
+			order \bog/gamengine/demo/legion/sound/order.wav
 	Point $bog_gamengine_point
 		cam <= Cam
 		width <= draw_width
@@ -161,7 +159,7 @@ $bog_legion_app $mol_page
 		frame \res
 		pos <= res_pos* Float32Array
 		size <= res_size Float32Array
-	Mine* $bog_legion_unit
+	Mine* $bog_gamengine_demo_legion_unit
 		camp 0
 		grid <= Grid
 		sound <= Sound
@@ -198,7 +196,7 @@ $bog_legion_app $mol_page
 		next <= attack_next /
 	Fallen* $bog_gamengine_brain_state
 		name \dead
-	Foe* $bog_legion_unit
+	Foe* $bog_gamengine_demo_legion_unit
 		camp 1
 		grid <= Grid
 		sound <= Sound
@@ -230,13 +228,13 @@ $bog_legion_app $mol_page
 		kids <= fight_kids* /
 	Near* $bog_gamengine_brain_bt_cond
 		when \in_reach
-	Strike* $bog_legion_act
+	Strike* $bog_gamengine_demo_legion_act
 		mode \attack
 	Hunt* $bog_gamengine_brain_bt_seq
 		kids <= hunt_kids* /
 	Seen* $bog_gamengine_brain_bt_cond
 		when \has_foe
-	Rush* $bog_legion_act
+	Rush* $bog_gamengine_demo_legion_act
 		mode \move
-	Roam* $bog_legion_act
+	Roam* $bog_gamengine_demo_legion_act
 		mode \patrol
