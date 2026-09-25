@@ -295,11 +295,12 @@ namespace $ {
 
 		'assets tab survives the scene rebuild'( $ ) {
 			const app = $$.$bog_gamestudio_app.make({ $ })
-			app.Side().current( '1' )
+			app.Side_switch().value( '1' )
 			app.place( 'bog/gamengine/demo/atlas/floor.png', [ 1, -2, 0 ] )
-			$mol_assert_equal( app.Side().current(), '1' )
-			app.Side().current( '' )
-			$mol_assert_equal( app.Side().current(), '1' )
+			$mol_assert_equal( app.tab(), '1' )
+			$mol_assert_not( app.tab_hidden_1() )
+			app.Side_switch().value( '' )
+			$mol_assert_equal( app.tab(), '1' )
 		},
 
 		'tiles tab lists the palette of the scene'( $ ) {

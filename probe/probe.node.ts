@@ -300,6 +300,116 @@ namespace $ {
 		`
 	}
 
+	export const $bog_gamestudio_probe_tabs_ok = 'кисть красит после каждого переключения вкладок левой колонки'
+
+	export const $bog_gamestudio_probe_tabs_script = `
+		const frame = ()=> new Promise( done => requestAnimationFrame( ()=> done() ) )
+		const wait = async n => { for( let i = 0; i < n; ++ i ) await frame() }
+		const canvas = ()=> document.querySelector( 'canvas' )
+		const editor = document.querySelector( '[bog_gamestudio_app_source] textarea' )
+		if( !canvas() || !editor ) return { ready: false }
+		const map_of = ()=> ( editor.value.match( /map \\\\\\n(?:[ \\t]*\\\\.*\\n)+/ ) || [ '' ] )[ 0 ]
+		const tab = async title => {
+			const hit = [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === title )
+			if( hit ) hit.click()
+			await wait( 8 )
+			return Boolean( hit )
+		}
+		const floor_cell = ()=> {
+			const rows = ( map_of().match( /\\\\[.#]+/g ) || [] ).map( row => row.slice( 1 ) )
+			for( let y = 0; y < rows.length; ++ y ) {
+				const x = rows[ y ].indexOf( '.' )
+				if( x >= 0 ) return [ x, y ]
+			}
+			return null
+		}
+		const paint = async ( cx, cy )=> {
+			const node = canvas()
+			const box = node.getBoundingClientRect()
+			const dpr = devicePixelRatio
+			const ppu = node.height / 6
+			const x = node.width / 2 + ( cx + 0.5 ) * ppu
+			const y = node.height / 2 + ( cy + 0.5 ) * ppu
+			const before = map_of()
+			for( const kind of [ 'pointerdown', 'pointerup' ] ) node.dispatchEvent( new PointerEvent( kind, {
+				bubbles: true, pointerId: 1, isPrimary: true, button: 0, buttons: kind === 'pointerup' ? 0 : 1,
+				clientX: box.left + x / dpr, clientY: box.top + y / dpr,
+			} ) )
+			await wait( 8 )
+			return map_of() !== before
+		}
+		await wait( 20 )
+		if( !await tab( 'Тайлы' ) ) return { ready: false }
+		const tile = [ ... document.querySelectorAll( '[bog_gamestudio_app_tile]' ) ].find( el => el.textContent.includes( 'wall' ) )
+		const tool = [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === 'Клетка' )
+		if( !tile || !tool ) return { ready: false }
+		tile.click()
+		await wait( 4 )
+		tool.click()
+		await wait( 8 )
+		const stroke = async ()=> {
+			const cell = floor_cell()
+			if( !cell ) return false
+			return await paint( cell[ 0 ], cell[ 1 ] )
+		}
+		const armed = await stroke()
+		await tab( 'Классы' )
+		const after_kit = await stroke()
+		await tab( 'Сцена' )
+		const after_tree = await stroke()
+		await tab( 'Тайлы' )
+		const back = await stroke()
+		const tile_kept = tile.getAttribute( 'mol_check_checked' ) === 'true'
+		const tool_kept = tool.getAttribute( 'mol_check_checked' ) === 'true'
+		return { ready: true, armed, after_kit, after_tree, back, tile_kept, tool_kept, map: map_of().replace( /\\s+/g, ' ' ) }
+	`
+
+	export type $bog_gamestudio_probe_tabs_result = {
+		readonly ready: boolean
+		readonly armed?: boolean
+		readonly after_kit?: boolean
+		readonly after_tree?: boolean
+		readonly back?: boolean
+		readonly tile_kept?: boolean
+		readonly tool_kept?: boolean
+		readonly map?: string
+	}
+
+	export async function $bog_gamestudio_probe_tabs(
+		root = $node.process.cwd(),
+		flags: readonly string[] = $bog_gamestudio_probe_flags,
+	) {
+
+		const say = ( line: string )=> { $node.fs.writeSync( 1, 'проба: ' + line + '\n' ); return line }
+
+		const started = Date.now()
+
+		const got = await $bog_probe_run({
+			root,
+			flags,
+			page: $bog_gamestudio_probe_page,
+			ready: $bog_gamestudio_probe_ready,
+			script: $bog_gamestudio_probe_tabs_script,
+			width: 1600,
+			height: 800,
+		}) as $bog_gamestudio_probe_tabs_result | typeof $bog_probe_skip
+
+		if( got === $bog_probe_skip ) return say( $bog_probe_skip )
+
+		say( `${ flags.join( ' ' ) || 'без флагов' }: ${ Date.now() - started } мс, ${ JSON.stringify( got ) }` )
+
+		const fail = ( reason: string )=> $mol_fail( new Error( `${ reason }: ${ JSON.stringify( got ) }` ) )
+
+		if( !got.ready ) return fail( 'страница не собралась для замера' )
+		if( !got.armed ) return fail( 'кисть не покрасила до переключения' )
+		if( !got.after_kit ) return fail( 'кисть умерла после ухода на «Классы»' )
+		if( !got.after_tree ) return fail( 'кисть умерла после ухода на «Сцену»' )
+		if( !got.back ) return fail( 'кисть умерла после возврата на «Тайлы»' )
+		if( !got.tile_kept || !got.tool_kept ) return fail( 'переключение сбросило выбор тайла или инструмента' )
+
+		return say( $bog_gamestudio_probe_tabs_ok )
+	}
+
 	export const $bog_gamestudio_probe_pick_ok = 'кисть поверх ассета красит и снимает ассет, ассет поверх кисти ставит узел и снимает кисть'
 
 	export const $bog_gamestudio_probe_pick_script = `
@@ -355,6 +465,7 @@ namespace $ {
 		await wait( 4 )
 		tool.click()
 		await wait( 6 )
+		const asset_after_brush = checked( row_of( 'bog_gamestudio_app_asset_row', 'coin.png' ) )
 		const placing_after_brush = placing()
 		const map_before = map_of()
 		const sprites_before = sprites()
@@ -362,12 +473,9 @@ namespace $ {
 		const map_after = map_of()
 		const sprites_after = sprites()
 
-		await tab( 'Ассеты' )
-		const asset_after_brush = checked( row_of( 'bog_gamestudio_app_asset_row', 'coin.png' ) )
 		const asset_again = row_of( 'bog_gamestudio_app_asset_row', 'coin.png' )
 		asset_again.click()
 		await wait( 6 )
-		await tab( 'Тайлы' )
 		const tile_after_asset = checked( row_of( 'bog_gamestudio_app_tile', 'wall' ) )
 		const tool_after_asset = checked( [ ... document.querySelectorAll( '[mol_check]' ) ].find( el => el.textContent.trim() === 'Клетка' ) )
 		const map_mid = map_of()

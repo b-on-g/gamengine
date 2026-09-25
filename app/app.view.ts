@@ -542,6 +542,22 @@ namespace $.$$ {
 			return this.tab_stored()
 		}
 
+		tab_hidden_0() {
+			return this.tab() !== '0'
+		}
+
+		tab_hidden_1() {
+			return this.tab() !== '1'
+		}
+
+		tab_hidden_2() {
+			return this.tab() !== '2'
+		}
+
+		tab_hidden_3() {
+			return this.tab() !== '3'
+		}
+
 		@ $mol_mem
 		asset( next?: string | null ) {
 			return next ?? null

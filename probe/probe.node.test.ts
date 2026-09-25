@@ -7,6 +7,11 @@ namespace $ {
 			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamestudio_probe_ok ) )
 		},
 
+		'brush keeps painting after every switch of the left column tabs'() {
+			const out = $bog_probe_test( 'bog/gamestudio/probe/-/node.js', 'bog_gamestudio_probe_tabs' )
+			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamestudio_probe_tabs_ok ) )
+		},
+
 		'brush over a picked asset paints and drops it, asset over a brush places and drops it'() {
 			const out = $bog_probe_test( 'bog/gamestudio/probe/-/node.js', 'bog_gamestudio_probe_pick' )
 			$mol_assert_ok( out.includes( $bog_probe_skip ) || out.includes( $bog_gamestudio_probe_pick_ok ) )

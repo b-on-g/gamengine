@@ -4,6 +4,8 @@ namespace $.$$ {
 
 		Side: {
 			flex: { grow: 0, shrink: 0, basis: '16rem' },
+			minWidth: 0,
+			overflow: 'hidden',
 			background: { color: $mol_theme.card },
 			'>': {
 				$mol_switch: {

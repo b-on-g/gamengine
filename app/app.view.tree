@@ -19,26 +19,44 @@ $bog_gamestudio_app $mol_view
 			mod_shift true
 			key * Z? <=> key_redo? null
 	sub /
-		<= Side $mol_deck
-			current? <=> tab? \0
-			items /
+		<= Side $mol_view
+			sub /
+				<= Side_switch $mol_switch
+					value? <=> tab? \0
+					options *
+						0 \Сцена
+						1 \Ассеты
+						2 \Тайлы
+						3 \Классы
 				<= Tree $mol_scroll
 					title \Сцена
+					attr *
+						^
+						hidden <= tab_hidden_0 true
 					sub /
 						<= Nodes $mol_list
 							rows <= node_rows /
 				<= Assets_page $mol_scroll
 					title \Ассеты
+					attr *
+						^
+						hidden <= tab_hidden_1 true
 					sub /
 						<= Asset_list $mol_list
 							rows <= asset_rows /
 				<= Tiles_page $mol_scroll
 					title \Тайлы
+					attr *
+						^
+						hidden <= tab_hidden_2 true
 					sub /
 						<= Tile_list $mol_list
 							rows <= tile_rows /
 				<= Kit_page $mol_scroll
 					title \Классы
+					attr *
+						^
+						hidden <= tab_hidden_3 true
 					sub /
 						<= Kit_list $mol_list
 							rows <= kit_rows /
